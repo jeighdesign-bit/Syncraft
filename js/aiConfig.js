@@ -13,5 +13,5 @@
  * 2. Put your key in 'syncraft_gemini_api_key' in localStorage or replace the constant below.
  */
 
-export const DEFAULT_GEMINI_API_KEY = '';
-export const DEFAULT_RECRAFT_API_KEY = '';
+export const DEFAULT_GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+export const DEFAULT_RECRAFT_API_KEY = import.meta.env.VITE_RECRAFT_API_KEY || '';
