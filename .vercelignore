@@ -1,0 +1,9 @@
+node_modules
+dist
+.vercel
+.agents
+.git
+stitch_syncraft_landing_page_design
+*.md
+supabase-debug.html
+v41_vector_result.svg

@@ -1,0 +1,7 @@
+node_modules
+dist
+.vercel
+.agents
+.DS_Store
+*.log
+.env*

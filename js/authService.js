@@ -1,0 +1,543 @@
+/**
+ * ─────────────────────────────────────────────
+ * SYNCRAFT  –  Authentication & Subscription Service
+ * ─────────────────────────────────────────────
+ *
+ * Links user authentication, sessions, and credit quotas directly to Supabase.
+ * If Supabase is not configured yet, it gracefully falls back to LocalStorage simulation.
+ */
+
+import { supabaseClient } from './supabaseConfig.js';
+
+const USERS_KEY = 'syncraft_users';
+const SESSION_KEY = 'syncraft_current_user';
+
+const PLAN_LIMITS = {
+  'Starter': 25,
+  'Professional': 750,
+  'Enterprise': 1800
+};
+
+class AuthService {
+  constructor() {
+    this.currentUserCache = null;
+    this.bootstrap();
+  }
+
+  async bootstrap() {
+    if (!localStorage.getItem(USERS_KEY)) {
+      // Create a default fallback demo user
+      const demoUser = {
+        email: 'demo@syncraft.ai',
+        password: 'password123',
+        plan: 'Starter',
+        creditsUsed: 2,
+        creditsMax: PLAN_LIMITS['Starter'],
+        history: [
+          { date: new Date(Date.now() - 3600000 * 2).toISOString(), type: 'Generation', desc: 'Studio Lighting vector' },
+          { date: new Date(Date.now() - 3600000).toISOString(), type: 'Export', desc: 'Studio Lighting SVG export' }
+        ]
+      };
+      localStorage.setItem(USERS_KEY, JSON.stringify([demoUser]));
+    }
+
+    if (supabaseClient) {
+      supabaseClient.auth.onAuthStateChange(async (event, session) => {
+        console.log('Supabase Auth Event:', event);
+        if (session) {
+          localStorage.setItem(SESSION_KEY, session.user.email);
+          localStorage.setItem('syncraft_current_user_id', session.user.id);
+          await this.syncProfile(session.user);
+        } else {
+          localStorage.removeItem(SESSION_KEY);
+          localStorage.removeItem('syncraft_current_user_id');
+          this.currentUserCache = null;
+        }
+        document.dispatchEvent(new CustomEvent('syncraft:authChange', { detail: { event, session } }));
+      });
+    }
+  }
+
+  async syncProfile(supabaseUser) {
+    if (!supabaseClient || !supabaseUser) return;
+    
+    // Fetch profile from public.profiles
+    let { data: profile, error } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('id', supabaseUser.id)
+      .single();
+
+    if (error) {
+      console.warn('Profile not found or sync failed, attempting to create profile on-the-fly:', error);
+      const fallbackProfile = {
+        id: supabaseUser.id,
+        plan: 'Starter',
+        credits_used: 0,
+        credits_max: PLAN_LIMITS['Starter'],
+        history: []
+      };
+
+      const { data: insertedProfile, error: insertError } = await supabaseClient
+        .from('profiles')
+        .upsert(fallbackProfile)
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Failed to create user profile on the fly:', insertError);
+        return;
+      }
+      profile = insertedProfile;
+    }
+
+    console.log('[AuthService] Supabase User metadata:', supabaseUser.user_metadata);
+    const avatarUrl = supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture || null;
+    console.log('[AuthService] Resolved avatar URL:', avatarUrl);
+
+    this.currentUserCache = {
+      id: supabaseUser.id,
+      email: supabaseUser.email,
+      plan: profile.plan,
+      creditsUsed: profile.credits_used,
+      creditsMax: profile.credits_max,
+      avatarUrl: avatarUrl,
+      history: profile.history || []
+    };
+  }
+
+  getUsers() {
+    return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+  }
+
+  saveUsers(users) {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  }
+
+  getCurrentUser() {
+    if (supabaseClient && this.currentUserCache) {
+      if (this.currentUserCache.email && this.currentUserCache.email.toLowerCase() === 'jeighdesign@gmail.com') {
+        this.currentUserCache.plan = 'Enterprise Unlimited';
+        this.currentUserCache.creditsMax = 99999;
+        this.currentUserCache.creditsUsed = 0;
+      }
+      return this.currentUserCache;
+    }
+    
+    const email = localStorage.getItem(SESSION_KEY);
+    if (!email) return null;
+    
+    const users = this.getUsers();
+    let localUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const userId = localStorage.getItem('syncraft_current_user_id');
+    
+    if (!localUser) {
+      // Create local fallback representation
+      localUser = {
+        id: userId || 'supabase-fallback-' + email,
+        email: email,
+        plan: 'Starter',
+        creditsUsed: 0,
+        creditsMax: PLAN_LIMITS['Starter'],
+        avatarUrl: null,
+        history: []
+      };
+      // Save it so it can be retrieved next time
+      users.push(localUser);
+      this.saveUsers(users);
+    } else if (userId && !localUser.id) {
+      // If we got the user ID now, update the local user ID
+      localUser.id = userId;
+      const idx = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+      if (idx !== -1) {
+        users[idx] = localUser;
+        this.saveUsers(users);
+      }
+    }
+    
+    if (localUser && localUser.email && localUser.email.toLowerCase() === 'jeighdesign@gmail.com') {
+      localUser.plan = 'Enterprise Unlimited';
+      localUser.creditsMax = 99999;
+      localUser.creditsUsed = 0;
+    }
+    
+    return localUser;
+  }
+
+  async saveCurrentUserState(user) {
+    if (supabaseClient && user.id) {
+      // Sync update to Supabase
+      const { error } = await supabaseClient
+        .from('profiles')
+        .update({
+          plan: user.plan,
+          credits_used: user.creditsUsed,
+          credits_max: user.creditsMax,
+          history: user.history
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      this.currentUserCache = user;
+    } else {
+      const users = this.getUsers();
+      const idx = users.findIndex(u => u.email.toLowerCase() === user.email.toLowerCase());
+      if (idx !== -1) {
+        users[idx] = user;
+        this.saveUsers(users);
+      }
+    }
+  }
+
+  isAuthenticated() {
+    return !!localStorage.getItem(SESSION_KEY);
+  }
+
+  async login(email, password) {
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email.trim(),
+        password: password
+      });
+      if (error) throw error;
+      
+      localStorage.setItem(SESSION_KEY, data.user.email);
+      await this.syncProfile(data.user);
+      return this.getCurrentUser();
+    } else {
+      const users = this.getUsers();
+      const user = users.find(u => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password);
+      if (!user) {
+        throw new Error('Invalid email or password');
+      }
+      localStorage.setItem(SESSION_KEY, user.email);
+      document.dispatchEvent(new CustomEvent('syncraft:authChange', { detail: { event: 'SIGNED_IN', session: { user } } }));
+      return user;
+    }
+  }
+
+  async loginWithGoogle() {
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+      return data;
+    } else {
+      throw new Error('Supabase is not configured. Google Sign-In requires a live Supabase link.');
+    }
+  }
+
+  async signUp(email, password) {
+    if (!email || !email.includes('@')) {
+      throw new Error('Please enter a valid email address');
+    }
+    if (!password || password.length < 6) {
+      throw new Error('Password must be at least 6 characters long');
+    }
+
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient.auth.signUp({
+        email: email.trim(),
+        password: password
+      });
+      if (error) throw error;
+      if (!data.user) throw new Error('SignUp failed');
+
+      localStorage.setItem(SESSION_KEY, data.user.email);
+      
+      // Delay briefly to allow public.profiles trigger execution on Supabase backend
+      await new Promise(resolve => setTimeout(resolve, 800));
+      await this.syncProfile(data.user);
+      return this.getCurrentUser();
+    } else {
+      const users = this.getUsers();
+      const exists = users.some(u => u.email.toLowerCase() === email.trim().toLowerCase());
+      if (exists) {
+        throw new Error('An account with this email already exists');
+      }
+
+      const newUser = {
+        email: email.trim(),
+        password: password,
+        plan: 'Starter',
+        creditsUsed: 0,
+        creditsMax: PLAN_LIMITS['Starter'],
+        history: []
+      };
+
+      users.push(newUser);
+      this.saveUsers(users);
+      localStorage.setItem(SESSION_KEY, newUser.email);
+      document.dispatchEvent(new CustomEvent('syncraft:authChange', { detail: { event: 'SIGNED_IN', session: { user: newUser } } }));
+      return newUser;
+    }
+  }
+
+  async logout() {
+    // 1. Explicitly clear authentication tokens and session keys from LocalStorage
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem('syncraft_current_user_id');
+    this.currentUserCache = null;
+
+    // 2. Clear all Supabase auth storage items
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('sb-') || key.includes('supabase.auth.token'))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+
+    // 3. Perform Supabase signOut if active
+    if (supabaseClient) {
+      try {
+        await supabaseClient.auth.signOut();
+      } catch (err) {
+        console.warn('Supabase signOut failed or already signed out:', err);
+      }
+    }
+
+    // 4. Trigger event-driven state update globally to force headers to re-render and route
+    document.dispatchEvent(new CustomEvent('syncraft:authChange', { detail: { event: 'SIGNED_OUT', session: null } }));
+  }
+
+  async recoverPassword(email) {
+    if (supabaseClient) {
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email.trim());
+      if (error) throw error;
+      return true;
+    } else {
+      const users = this.getUsers();
+      const exists = users.some(u => u.email.toLowerCase() === email.trim().toLowerCase());
+      if (!exists) {
+        throw new Error('No account found with this email address');
+      }
+      return true;
+    }
+  }
+
+  hasCredits() {
+    const user = this.getCurrentUser();
+    if (!user) return false;
+    return user.creditsUsed < user.creditsMax;
+  }
+
+  hasEnoughCredits(cost = 1) {
+    const user = this.getCurrentUser();
+    if (!user) return false;
+    return (user.creditsMax - user.creditsUsed) >= cost;
+  }
+
+  async consumeCredit(type, desc, cost = 1) {
+    const user = this.getCurrentUser();
+    if (!user) throw new Error('No active user session');
+
+    if (user.email && user.email.toLowerCase() === 'jeighdesign@gmail.com') {
+      // Skip actual consumption for testing account, just log history
+      user.history.unshift({
+        date: new Date().toISOString(),
+        type: type,
+        desc: desc + ' (Unlimited Testing)',
+        cost: 0
+      });
+      await this.saveCurrentUserState(user);
+      document.dispatchEvent(new CustomEvent('syncraft:authChange', { detail: { event: 'CREDIT_CONSUMED', session: null } }));
+      return user;
+    }
+
+    if (user.creditsUsed + cost > user.creditsMax) {
+      throw new Error(`Quota exceeded. This operation requires ${cost} tokens, but you only have ${user.creditsMax - user.creditsUsed} left.`);
+    }
+
+    user.creditsUsed += cost;
+    user.history.unshift({
+      date: new Date().toISOString(),
+      type: type,
+      desc: desc,
+      cost: cost
+    });
+
+    await this.saveCurrentUserState(user);
+    document.dispatchEvent(new CustomEvent('syncraft:authChange', { detail: { event: 'CREDIT_CONSUMED', session: null } }));
+    return user;
+  }
+
+  async upgradeSubscription(planName, chosenCreditsMax = null) {
+    const user = this.getCurrentUser();
+    if (!user) throw new Error('No active user session');
+
+    if (!PLAN_LIMITS[planName]) {
+      throw new Error('Invalid plan selection');
+    }
+
+    user.plan = planName;
+    user.creditsMax = (planName === 'Professional' && chosenCreditsMax !== null)
+      ? chosenCreditsMax
+      : PLAN_LIMITS[planName];
+
+    user.history.unshift({
+      date: new Date().toISOString(),
+      type: 'Billing',
+      desc: `Upgraded subscription to ${planName} (limit: ${user.creditsMax} tokens)`
+    });
+
+    await this.saveCurrentUserState(user);
+    document.dispatchEvent(new CustomEvent('syncraft:authChange', { detail: { event: 'SUBSCRIPTION_UPGRADED', session: null } }));
+    return user;
+  }
+
+  getUserMetadata() {
+    const user = this.getCurrentUser();
+    if (!user) return { name: '', username: '' };
+    const entry = user.history.find(h => h.type === 'USER_METADATA_STORE');
+    if (entry && entry.metadata) {
+      return entry.metadata;
+    }
+    const emailPrefix = user.email ? user.email.split('@')[0] : 'User';
+    return { name: emailPrefix, username: emailPrefix };
+  }
+
+  async updateUserMetadata(name, username) {
+    const user = this.getCurrentUser();
+    if (!user) throw new Error('No active user session');
+
+    let idx = user.history.findIndex(h => h.type === 'USER_METADATA_STORE');
+    const metadata = { name, username };
+
+    if (idx !== -1) {
+      user.history[idx] = {
+        date: new Date().toISOString(),
+        type: 'USER_METADATA_STORE',
+        desc: 'Updated profile metadata',
+        metadata
+      };
+    } else {
+      user.history.push({
+        date: new Date().toISOString(),
+        type: 'USER_METADATA_STORE',
+        desc: 'Created profile metadata',
+        metadata
+      });
+    }
+
+    await this.saveCurrentUserState(user);
+    return user;
+  }
+
+  getDeveloperKeys() {
+    const user = this.getCurrentUser();
+    if (!user) return [];
+    const entry = user.history.find(h => h.type === 'USER_API_KEYS_STORE');
+    return entry && Array.isArray(entry.keys) ? entry.keys : [];
+  }
+
+  async createDeveloperKey(name) {
+    const user = this.getCurrentUser();
+    if (!user) throw new Error('No active user session');
+
+    const randBytes = Array.from({ length: 24 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    const fullKey = 'sc_live_' + randBytes;
+
+    let entryIdx = user.history.findIndex(h => h.type === 'USER_API_KEYS_STORE');
+    let keys = [];
+    if (entryIdx !== -1 && Array.isArray(user.history[entryIdx].keys)) {
+      keys = user.history[entryIdx].keys;
+    }
+
+    const newKeyObj = {
+      id: 'sc_key_' + Math.random().toString(36).substr(2, 9),
+      name: name || 'Developer Key',
+      key: fullKey,
+      created: new Date().toISOString()
+    };
+
+    keys.push(newKeyObj);
+
+    const keysStoreObj = {
+      date: new Date().toISOString(),
+      type: 'USER_API_KEYS_STORE',
+      desc: 'Updated developer API keys',
+      keys: keys
+    };
+
+    if (entryIdx !== -1) {
+      user.history[entryIdx] = keysStoreObj;
+    } else {
+      user.history.push(keysStoreObj);
+    }
+
+    user.history.unshift({
+      date: new Date().toISOString(),
+      type: 'API',
+      desc: `Generated API Key: ${name || 'Developer Key'}`
+    });
+
+    await this.saveCurrentUserState(user);
+    return newKeyObj;
+  }
+
+  async revokeDeveloperKey(id) {
+    const user = this.getCurrentUser();
+    if (!user) throw new Error('No active user session');
+
+    let entryIdx = user.history.findIndex(h => h.type === 'USER_API_KEYS_STORE');
+    if (entryIdx === -1 || !Array.isArray(user.history[entryIdx].keys)) {
+      return [];
+    }
+
+    let keys = user.history[entryIdx].keys;
+    const keyToDelete = keys.find(k => k.id === id);
+    const keyName = keyToDelete ? keyToDelete.name : 'Unknown';
+
+    keys = keys.filter(k => k.id !== id);
+
+    user.history[entryIdx] = {
+      date: new Date().toISOString(),
+      type: 'USER_API_KEYS_STORE',
+      desc: 'Updated developer API keys',
+      keys: keys
+    };
+
+    user.history.unshift({
+      date: new Date().toISOString(),
+      type: 'API',
+      desc: `Revoked API Key: ${keyName}`
+    });
+
+    await this.saveCurrentUserState(user);
+    return keys;
+  }
+
+  async deleteAccount() {
+    const user = this.getCurrentUser();
+    if (!user) return;
+
+    if (supabaseClient && user.id) {
+      const { error: projErr } = await supabaseClient
+        .from('projects')
+        .delete()
+        .eq('user_id', user.id);
+      if (projErr) console.warn('Supabase projects deletion failed:', projErr);
+
+      const { error: profErr } = await supabaseClient
+        .from('profiles')
+        .delete()
+        .eq('id', user.id);
+      if (profErr) console.warn('Supabase profile deletion failed:', profErr);
+    } else {
+      const users = this.getUsers();
+      const updated = users.filter(u => u.email.toLowerCase() !== user.email.toLowerCase());
+      this.saveUsers(updated);
+    }
+
+    await this.logout();
+  }
+}
+
+const authService = new AuthService();
+export default authService;

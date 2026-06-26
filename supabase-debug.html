@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Syncraft – Supabase Database Diagnostics</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    :root {
+      --color-bg: #0b0c10;
+      --color-surface: #1f2833;
+      --color-primary: #d4ff59;
+      --color-text: #c5c6c7;
+      --color-text-bright: #ffffff;
+      --color-success: #00e676;
+      --color-error: #ff5252;
+      --color-warning: #ffd600;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--color-bg);
+      color: var(--color-text);
+      font-family: 'Outfit', sans-serif;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 40px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--color-text-bright);
+      margin-bottom: 10px;
+      letter-spacing: -0.03em;
+    }
+
+    h1 span {
+      color: var(--color-primary);
+    }
+
+    .subtitle {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 1.1rem;
+    }
+
+    .card {
+      background: rgba(31, 40, 51, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(10px);
+    }
+
+    h2 {
+      font-size: 1.4rem;
+      color: var(--color-text-bright);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .config-label {
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .config-value {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--color-text-bright);
+      word-break: break-all;
+    }
+
+    .status-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 16px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .status-icon {
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+    }
+
+    .status-icon.success {
+      background: rgba(0, 230, 118, 0.1);
+      color: var(--color-success);
+    }
+
+    .status-icon.error {
+      background: rgba(255, 82, 82, 0.1);
+      color: var(--color-error);
+    }
+
+    .status-icon.warning {
+      background: rgba(255, 214, 0, 0.1);
+      color: var(--color-warning);
+    }
+
+    .status-icon.pending {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--color-text);
+      animation: rotate 1.5s infinite linear;
+    }
+
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .status-content h3 {
+      font-size: 1.1rem;
+      color: var(--color-text-bright);
+      margin-bottom: 4px;
+    }
+
+    .status-content p {
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .error-details {
+      margin-top: 10px;
+      padding: 12px;
+      background: rgba(255, 82, 82, 0.05);
+      border: 1px solid rgba(255, 82, 82, 0.2);
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: #ff8a80;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .btn {
+      background: var(--color-primary);
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .console-log {
+      background: #050508;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      max-height: 300px;
+      overflow-y: auto;
+      color: #8bc34a;
+    }
+
+    .log-entry {
+      margin-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+      padding-bottom: 6px;
+    }
+
+    .log-time {
+      color: rgba(255, 255, 255, 0.3);
+      margin-right: 10px;
+    }
+
+    .log-err {
+      color: var(--color-error);
+    }
+
+    .log-warn {
+      color: var(--color-warning);
+    }
+
+    /* Auth panel */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .form-group input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 12px;
+      color: #fff;
+      font-family: inherit;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1><span>Syncraft</span> Database Diagnostics</h1>
+      <p class="subtitle">Real-time health check for your Supabase cloud database link</p>
+    </header>
+
+    <div class="card">
+      <h2><i class="ti ti-settings"></i> Supabase Configuration</h2>
+      <div class="config-grid">
+        <div class="config-label">API URL:</div>
+        <div class="config-value" id="cfg-url">Loading...</div>
+
+        <div class="config-label">Anon Key:</div>
+        <div class="config-value" id="cfg-key">Loading...</div>
+      </div>
+      <button class="btn" onclick="runDiagnostics()"><i class="ti ti-refresh"></i> Run Diagnostic Checks</button>
+    </div>
+
+    <div class="card">
+      <h2><i class="ti ti-activity"></i> Health Check Results</h2>
+      <div class="status-list" id="status-container">
+        <!-- Status items dynamic -->
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><i class="ti ti-user-check"></i> Sign In to test Authenticated RLS</h2>
+      <p style="margin-bottom: 15px; font-size: 0.95rem; color: rgba(255,255,255,0.5);">
+        Some diagnostic checks (like inserting or reading user-specific projects) require a logged-in session. 
+        Sign in with your Syncraft credentials below to test them.
+      </p>
+      <div style="max-width: 400px;">
+        <div class="form-group">
+          <label for="diag-email">Email Address</label>
+          <input type="email" id="diag-email" placeholder="name@example.com">
+        </div>
+        <div class="form-group">
+          <label for="diag-password">Password</label>
+          <input type="password" id="diag-password" placeholder="••••••••">
+        </div>
+        <button class="btn" style="background:#fff; color:#000;" onclick="testLogin()"><i class="ti ti-login"></i> Login & Test</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><i class="ti ti-terminal-2"></i> Diagnostics Log console</h2>
+      <div class="console-log" id="console-log">
+        <!-- Log entries dynamic -->
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/supabaseConfig.js';
+
+    document.getElementById('cfg-url').textContent = SUPABASE_URL || 'Not Configured';
+    document.getElementById('cfg-key').textContent = SUPABASE_ANON_KEY ? (SUPABASE_ANON_KEY.substring(0, 15) + '...') : 'Not Configured';
+
+    const logEl = document.getElementById('console-log');
+    function log(msg, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry`;
+      if (type === 'error') entry.classList.add('log-err');
+      if (type === 'warn') entry.classList.add('log-warn');
+
+      const time = new Date().toLocaleTimeString();
+      entry.innerHTML = `<span class="log-time">[${time}]</span>${msg}`;
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    window.log = log;
+
+    // Define diagnostic status manager
+    const statuses = {
+      client: { title: 'Supabase Client Initialization', desc: 'Checks if client initializes with credentials' },
+      ping: { title: 'REST API Connection', desc: 'Pings Supabase REST endpoint' },
+      session: { title: 'User Session Status', desc: 'Checks if an authenticated user session exists' },
+      rls_profiles: { title: 'Profiles RLS Policy', desc: 'Tests read access to profiles table' },
+      rls_projects: { title: 'Projects RLS Policy', desc: 'Tests write/read access to projects table' }
+    };
+
+    function renderInitialStatuses() {
+      const container = document.getElementById('status-container');
+      container.innerHTML = '';
+      Object.keys(statuses).forEach(key => {
+        container.innerHTML += `
+          <div class="status-item" id="status-${key}">
+            <div class="status-icon pending"><i class="ti ti-loader-quarter"></i></div>
+            <div class="status-content">
+              <h3>${statuses[key].title}</h3>
+              <p>${statuses[key].desc}</p>
+              <div class="error-details" id="err-${key}" style="display:none;"></div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function setStatus(key, state, message, details = '') {
+      const el = document.getElementById(`status-${key}`);
+      if (!el) return;
+
+      const iconEl = el.querySelector('.status-icon');
+      iconEl.className = `status-icon ${state}`;
+      
+      if (state === 'success') {
+        iconEl.innerHTML = '<i class="ti ti-circle-check"></i>';
+        log(`✓ ${statuses[key].title}: ${message}`);
+      } else if (state === 'error') {
+        iconEl.innerHTML = '<i class="ti ti-circle-x"></i>';
+        log(`✗ ${statuses[key].title}: ${message}`, 'error');
+        if (details) {
+          const detEl = document.getElementById(`err-${key}`);
+          detEl.textContent = typeof details === 'object' ? JSON.stringify(details, null, 2) : details;
+          detEl.style.display = 'block';
+        }
+      } else if (state === 'warning') {
+        iconEl.innerHTML = '<i class="ti ti-alert-triangle"></i>';
+        log(`! ${statuses[key].title}: ${message}`, 'warn');
+        if (details) {
+          const detEl = document.getElementById(`err-${key}`);
+          detEl.textContent = details;
+          detEl.style.display = 'block';
+        }
+      }
+    }
+
+    let supabase = null;
+
+    async function runDiagnostics() {
+      renderInitialStatuses();
+      log('--- Starting Database Diagnostics ---');
+
+      // 1. Client Init
+      try {
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+          throw new Error("Supabase credentials missing. Check 'js/supabaseConfig.js'");
+        }
+        supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        setStatus('client', 'success', 'Initialized Supabase client object');
+      } catch (err) {
+        setStatus('client', 'error', 'Initialization failed', err.message);
+        setStatus('ping', 'error', 'Blocked by client failure');
+        setStatus('session', 'error', 'Blocked by client failure');
+        setStatus('rls_profiles', 'error', 'Blocked by client failure');
+        setStatus('rls_projects', 'error', 'Blocked by client failure');
+        return;
+      }
+
+      // 2. Ping Rest Endpoint
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+          headers: { 'apikey': SUPABASE_ANON_KEY }
+        });
+        if (res.status === 200 || res.status === 401) {
+          setStatus('ping', 'success', `Connected successfully. Status code: ${res.status}`);
+        } else {
+          throw new Error(`Endpoint returned HTTP ${res.status} ${res.statusText}`);
+        }
+      } catch (err) {
+        setStatus('ping', 'error', 'Connection failed', err.message);
+      }
+
+      // 3. User Session Check
+      let user = null;
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        user = data.session?.user;
+        if (user) {
+          setStatus('session', 'success', `Logged in as: ${user.email}`);
+        } else {
+          setStatus('session', 'warning', 'No authenticated session found. Running tests anonymously.');
+        }
+      } catch (err) {
+        setStatus('session', 'error', 'Session query failed', err.message);
+      }
+
+      // 4. Profiles RLS
+      try {
+        const { data, error, status } = await supabase.from('profiles').select('*').limit(1);
+        if (error) throw error;
+        setStatus('rls_profiles', 'success', `Profiles read OK. Returned ${data.length} row(s)`);
+      } catch (err) {
+        if (err.code === '42501') {
+          setStatus('rls_profiles', 'warning', 'Profiles read blocked by RLS policies (this is typical for anonymous requests)', err.message);
+        } else {
+          setStatus('rls_profiles', 'error', 'Profiles table error', err);
+        }
+      }
+
+      // 5. Projects RLS read/write
+      try {
+        log('Testing projects table access...');
+        // Try reading first
+        const { data: readData, error: readError } = await supabase.from('projects').select('id').limit(1);
+        if (readError) throw readError;
+
+        // Try writing a diagnostic entry
+        if (user) {
+          log('Session authenticated. Testing write upsert capability...');
+          const testId = '00000000-0000-0000-0000-000000000000';
+          const { error: writeError } = await supabase.from('projects').upsert({
+            id: testId,
+            user_id: user.id,
+            name: 'Diagnostics Connection Test Row',
+            thumbnail: '',
+            canvas_data: {},
+            last_modified: new Date().toISOString()
+          });
+
+          if (writeError) {
+            throw writeError;
+          } else {
+            // Delete it again immediately
+            await supabase.from('projects').delete().eq('id', testId);
+            setStatus('rls_projects', 'success', 'Projects read, write, and delete verified successfully!');
+          }
+        } else {
+          setStatus('rls_projects', 'warning', 'Projects read succeeded, but cannot test write anonymously (sign in below to test writes)');
+        }
+      } catch (err) {
+        if (err.code === '42501') {
+          setStatus('rls_projects', 'error', 'RLS Policy Denied access. Check your database policies for the "projects" table.', err);
+        } else {
+          setStatus('rls_projects', 'error', 'Projects table error', err);
+        }
+      }
+    }
+
+    async function testLogin() {
+      const email = document.getElementById('diag-email').value.trim();
+      const password = document.getElementById('diag-password').value;
+
+      if (!email || !password) {
+        alert('Please fill out both credentials');
+        return;
+      }
+
+      if (!supabase) {
+        alert('Supabase client is not initialized yet. Run diagnostics first.');
+        return;
+      }
+
+      log(`--- Attempting authentication for: ${email} ---`);
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        log(`✓ Authenticated successfully! User ID: ${data.user.id}`);
+        alert('Login success! Re-running diagnostic checks...');
+        await runDiagnostics();
+      } catch (err) {
+        log(`✗ Authentication failed: ${err.message}`, 'error');
+        alert(`Login failed: ${err.message}`);
+      }
+    }
+
+    window.runDiagnostics = runDiagnostics;
+    window.testLogin = testLogin;
+
+    // Run automatically on load
+    runDiagnostics();
+  </script>
+</body>
+</html>

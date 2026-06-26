@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Syncraft | AI Vector Art & Design Workspace</title>
+  <link rel="icon" type="image/svg+xml" href="brand%20logos/Syncraft%20Logo-17.svg">
+  
+  <script>
+    // Programmatically unregister any active service workers to resolve local development port conflicts (ERR_FAILED / CSP block)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let registration of registrations) {
+          registration.unregister();
+          console.log('[Syncraft Helper] Unregistered conflicting service worker:', registration);
+        }
+      }).catch(err => console.error('SW unregister error:', err));
+    }
+  </script>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@flaticon/flaticon-uicons@3.3.1/css/bold/all.min.css">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css?v=2.0.1">
+  <link rel="stylesheet" href="css/landing.css?v=3.3.1">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/workspace.css">
+  <link rel="stylesheet" href="css/settings.css?v=2.0.0">
+</head>
+<body>
+
+  <header id="global-header" class="global-header"></header>
+
+  <!-- ========================================== -->
+  <!-- 1. LANDING PAGE VIEW                       -->
+  <!-- ========================================== -->
+  <div id="landing-view">
+    <!-- Main Header Navigation (Removed in favor of unified global-header) -->
+
+    <main class="flex-grow">
+      <!-- Hero Section -->
+      <section class="landing-hero">
+        <!-- Inner Hero Card -->
+        <div class="hero-card clip-path-hero">
+          <!-- Top Content Area -->
+          <div class="hero-top-area">
+            <div class="hero-text-content">
+              <h1 class="hero-title">
+                design.
+                <div>vector.</div>
+                <div>export.</div>
+              </h1>
+              <p class="hero-description">
+                Generate production-ready SVG vectors from text prompts or transform reference images into clean, editable vector artwork using AI.
+              </p>
+            </div>
+            <!-- Starburst Badge -->
+            <div class="starburst-container">
+              <div class="starburst">
+                <span class="starburst-text">SR</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mid Content Area: Angled Boxes -->
+          <div class="hero-mid-area">
+            <div class="angled-box">export</div>
+            <div class="angled-box">reference to vector</div>
+            <div class="angled-box">prompt</div>
+            <div class="angled-box">vector</div>
+          </div>
+
+          <!-- Bottom Content Area -->
+          <div class="hero-bottom-area">
+            <!-- Speech Bubble CTA -->
+            <div class="speech-bubble">
+              <h3>Connect & Sync</h3>
+              <div class="speech-socials">
+                <div class="speech-social-icon" aria-label="Facebook">
+                  <svg fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"></path></svg>
+                </div>
+                <div class="speech-social-icon" aria-label="Twitter">
+                  <svg fill="currentColor" viewBox="0 0 24 24"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84"></path></svg>
+                </div>
+                <div class="speech-social-icon" aria-label="Instagram">
+                  <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z"></path></svg>
+                </div>
+                <div class="speech-social-icon" aria-label="LinkedIn">
+                  <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path></svg>
+                </div>
+              </div>
+            </div>
+
+            <!-- Secondary CTA -->
+            <div class="start-creating-cta">
+              <span>START CREATING</span>
+              <div class="start-creating-cta-arrow">
+                <svg fill="none" height="16" viewBox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Core Capabilities Section -->
+      <section class="capabilities-section" id="features">
+        <div class="card-swap-container">
+          <!-- Left side: text details -->
+          <div class="card-swap-text-side">
+            <span class="card-swap-section-tag">AI CORE PLATFORM</span>
+            <h2 class="card-swap-section-title">Core Capabilities</h2>
+            <p class="card-swap-section-subtitle">Powerful AI protocols designed to augment vector composition and export workflows.</p>
+            
+            <div class="card-swap-active-details" id="swap-active-details">
+              <h3 class="card-swap-active-title" id="swap-active-title">PROMPT TO VECTOR</h3>
+            </div>
+          </div>
+
+          <!-- Right side: the 3D card stack -->
+          <div class="card-swap-visual-side">
+            <div class="card-swap-stack" id="card-swap-stack" aria-label="Capabilities Showcase">
+              
+              <!-- Card 0: Prompt to Vector -->
+              <div class="swap-card card-pos-0" data-index="0" data-title="PROMPT TO VECTOR" data-desc="Transform simple text prompts into professional, scalable vector artwork ready for editing and production." data-btn="Generate Vector" data-icon="fi-br-magic-wand" data-action="dashboard">
+                <div class="swap-card-header-bar">
+                  <span class="swap-card-header-sr">SR</span>
+                  <span class="swap-card-header-protocol">PROTOCOL 01</span>
+                </div>
+                <div class="swap-card-body">
+                  <div class="swap-card-icon-container">
+                    <i class="icon fi fi-br-magic-wand"></i>
+                  </div>
+                  <h4>PROMPT TO VECTOR</h4>
+                  <p class="swap-card-preview-text">>_ generate --prompt="vector design"</p>
+                  <div class="swap-card-status">
+                    <div class="swap-card-status-dot"></div>
+                    <span>Active Protocol</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 1: Production-Ready Export -->
+              <div class="swap-card card-pos-1" data-index="1" data-title="PRODUCTION-READY EXPORT" data-desc="Export your generated designs as SVG, PDF, EPS, or PNG with crisp quality for print and digital use." data-btn="Export Design" data-icon="fi-br-bolt" data-action="workspace">
+                <div class="swap-card-header-bar">
+                  <span class="swap-card-header-sr">SR</span>
+                  <span class="swap-card-header-protocol">PROTOCOL 02</span>
+                </div>
+                <div class="swap-card-body">
+                  <div class="swap-card-icon-container">
+                    <i class="icon fi fi-br-bolt"></i>
+                  </div>
+                  <h4>PRODUCTION-READY EXPORT</h4>
+                  <p class="swap-card-preview-text">>_ export --format=svg --dpi=300</p>
+                  <div class="swap-card-status">
+                    <div class="swap-card-status-dot"></div>
+                    <span>Active Protocol</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 2: Reference to Vector -->
+              <div class="swap-card card-pos-2" data-index="2" data-title="REFERENCE TO VECTOR" data-desc="Upload any logo, sketch, screenshot, or artwork and let AI recreate it as a clean, editable vector." data-btn="Upload Reference" data-icon="fi-br-terminal" data-action="dashboard">
+                <div class="swap-card-header-bar">
+                  <span class="swap-card-header-sr">SR</span>
+                  <span class="swap-card-header-protocol">PROTOCOL 03</span>
+                </div>
+                <div class="swap-card-body">
+                  <div class="swap-card-icon-container">
+                    <i class="icon fi fi-br-terminal"></i>
+                  </div>
+                  <h4>REFERENCE TO VECTOR</h4>
+                  <p class="swap-card-preview-text">>_ vectorize --source=raster.png</p>
+                  <div class="swap-card-status">
+                    <div class="swap-card-status-dot"></div>
+                    <span>Active Protocol</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Logo Loop / Integrations Section -->
+      <section class="logo-loop-section">
+        <div class="logo-loop-container">
+          <div class="logo-loop-track">
+            
+            <!-- Logo Set 1 -->
+            <div class="logo-loop-set">
+              <!-- 1. Adobe Photoshop -->
+              <div class="logo-item" title="Adobe Photoshop">
+                <svg viewBox="0 0 128 128" fill="currentColor">
+                  <path d="M22.666 1.6C10.133 1.6 0 11.734 0 24.268v79.464C0 116.266 10.133 126.4 22.666 126.4h82.668c12.533 0 22.666-10.134 22.666-22.668V24.268C128 11.734 117.867 1.6 105.334 1.6H22.666zm23.201 31.734c4.373 0 8 .532 10.986 1.652A19.05 19.05 0 0 1 64 39.361a16.976 16.976 0 0 1 3.894 6.079c.8 2.24 1.225 4.533 1.225 6.933 0 4.587-1.066 8.373-3.2 11.36-2.132 2.986-5.118 5.227-8.585 6.507-3.627 1.334-7.627 1.813-12 1.813-1.28 0-2.135 0-2.668-.053-.533-.053-1.28-.053-2.293-.053v17.12c.053.373-.213.694-.586.747H29.44c-.426 0-.638-.215-.638-.695V34.24c0-.373.16-.588.533-.588.907 0 1.76 0 2.986-.052 1.28-.054 2.613-.052 4.053-.106 1.44-.053 2.987-.054 4.64-.107 1.654-.054 3.254-.053 4.854-.053zm1.19 10.504a18.68 18.68 0 0 0-.817.002c-1.386 0-2.613.001-3.627.055-1.066-.054-1.812-.001-2.185.052v17.92c.746.054 1.438.106 2.078.106h2.828c2.08 0 4.16-.32 6.133-.96 1.707-.48 3.2-1.494 4.373-2.827 1.12-1.334 1.654-3.146 1.654-5.493a8.776 8.776 0 0 0-1.226-4.746c-.907-1.386-2.188-2.454-3.735-3.04-1.727-.7-3.576-1.033-5.476-1.07zm44.73 2.723c2.187 0 4.427.158 6.613.478 1.6.213 3.146.642 4.586 1.229.214.053.427.265.533.478.054.213.108.427.108.64v8.694a.655.655 0 0 1-.266.533c-.48.107-.747.107-.96 0-1.6-.853-3.308-1.439-5.122-1.812-1.973-.427-3.946-.695-5.972-.695-1.067-.054-2.188.108-3.201.374-.694.16-1.28.534-1.653 1.067-.266.427-.426.96-.426 1.44s.214.96.534 1.386c.48.587 1.119 1.068 1.812 1.442a48.8 48.8 0 0 0 3.787 1.757c2.88.96 5.653 2.295 8.213 3.895 1.76 1.12 3.2 2.614 4.213 4.427a11.509 11.509 0 0 1 1.228 5.493 12.412 12.412 0 0 1-2.082 7.093 13.362 13.362 0 0 1-5.972 4.746c-2.614 1.12-5.814 1.707-9.654 1.707-2.454 0-4.852-.213-7.252-.693a21.51 21.51 0 0 1-5.44-1.707c-.373-.213-.641-.587-.588-1.014V78.24c0-.16.053-.374.213-.48.16-.107.32-.052.48.054a22.83 22.83 0 0 0 6.614 2.614c2.027.533 4.161.799 6.295.799 2.026 0 3.466-.267 4.426-.747.853-.373 1.439-1.28 1.439-2.24 0-.746-.426-1.441-1.28-2.135-.853-.693-2.613-1.492-5.226-2.505a32.638 32.638 0 0 1-7.574-3.84 13.81 13.81 0 0 1-4.053-4.533 11.44 11.44 0 0 1-1.226-5.44c0-2.293.639-4.48 1.812-6.453 1.333-2.133 3.308-3.84 5.602-4.906 2.506-1.28 5.652-1.867 9.44-1.867z"/>
+                </svg>
+                <span>Photoshop</span>
+              </div>
+              <!-- 2. Adobe Illustrator -->
+              <div class="logo-item" title="Adobe Illustrator">
+                <svg viewBox="0 0 128 128" fill="currentColor">
+                  <path d="M105.33 1.6H22.67A22.64 22.64 0 0 0 0 24.27v79.46a22.64 22.64 0 0 0 22.67 22.67h82.66A22.64 22.64 0 0 0 128 103.73V24.27A22.64 22.64 0 0 0 105.33 1.6Zm-27.09 88H67.09a.82.82 0 0 1-.85-.59l-4.37-12.74H42L38 88.8a.93.93 0 0 1-1 .75H27c-.58 0-.74-.32-.58-1l17.1-49.4c.16-.54.32-1.12.53-1.76a18.14 18.14 0 0 0 .32-3.47.54.54 0 0 1 .43-.59h13.81c.43 0 .64.16.7.43l19.46 54.93c.16.59 0 .86-.53.86Zm18.4-.6c0 .59-.21.85-.69.85H85.49a.75.75 0 0 1-.8-.85V47.89c0-.53.22-.74.7-.74H96c.48 0 .69.26.69.74Zm-1.12-48.2a6.3 6.3 0 0 1-4.85 1.87 6.61 6.61 0 0 1-4.75-1.87 6.87 6.87 0 0 1-1.81-4.91A6.23 6.23 0 0 1 86 31.15a6.8 6.8 0 0 1 4.74-1.87 6.4 6.4 0 0 1 4.86 1.87 6.75 6.75 0 0 1 1.76 4.74 6.76 6.76 0 0 1-1.84 4.91ZM58.67 65.44H45.12c.8-2.24 1.6-4.75 2.35-7.47s1.65-5.33 2.45-7.89a64.65 64.65 0 0 0 1.81-6.88h.11c.37 1.28.75 2.67 1.17 4.16s.91 3.09 1.44 4.75 1 3.25 1.55 4.9 1 3.15 1.44 4.59.91 2.72 1.23 3.84Z"/>
+                </svg>
+                <span>Illustrator</span>
+              </div>
+              <!-- 3. Figma -->
+              <div class="logo-item" title="Figma">
+                <svg viewBox="0 0 128 130">
+                  <path fill="currentColor" d="M45.5 129c11.9 0 21.5-9.6 21.5-21.5V86H45.5C33.6 86 24 95.6 24 107.5S33.6 129 45.5 129zm0 0"/>
+                  <path fill="currentColor" d="M24 64.5C24 52.6 33.6 43 45.5 43H67v43H45.5C33.6 86 24 76.4 24 64.5zm0 0"/>
+                  <path fill="currentColor" d="M24 21.5C24 9.6 33.6 0 45.5 0H67v43H45.5C33.6 43 24 33.4 24 21.5zm0 0"/>
+                  <path fill="currentColor" d="M67 0h21.5C100.4 0 110 9.6 110 21.5S100.4 43 88.5 43H67zm0 0"/>
+                  <path fill="currentColor" d="M110 64.5c0 11.9-9.6 21.5-21.5 21.5S67 76.4 67 64.5 76.6 43 88.5 43 110 52.6 110 64.5zm0 0"/>
+                </svg>
+                <span>Figma</span>
+              </div>
+              <!-- 4. PDF -->
+              <div class="logo-item" title="PDF Document">
+                <svg viewBox="0 0 500 511.56">
+                  <path fill="currentColor" d="M117.91 0h201.68c3.93 0 7.44 1.83 9.72 4.67l114.28 123.67c2.21 2.37 3.27 5.4 3.27 8.41l.06 310c0 35.43-29.4 64.81-64.8 64.81H117.91c-35.57 0-64.81-29.24-64.81-64.81V64.8C53.1 29.13 82.23 0 117.91 0zM325.5 37.15v52.94c2.4 31.34 23.57 42.99 52.93 43.5l36.16-.04-89.09-96.4zM422 158.45l-43.77-.04c-42.59-.68-74.12-21.97-77.54-66.54l-.09-66.95H117.91c-21.93 0-39.89 17.96-39.89 39.88v381.95c0 21.82 18.07 39.89 39.89 39.89h264.21c21.71 0 39.88-18.15 39.88-39.89v-288.3z"/>
+                  <path fill="currentColor" d="M28.04 194.61h443.92c15.43 0 28.04 12.63 28.04 28.04v188.54c0 15.4-12.63 28.04-28.04 28.04H28.04C12.64 439.23 0 426.61 0 411.19V222.65c0-15.43 12.62-28.04 28.04-28.04z"/>
+                  <path fill="#0d0d0d" fill-rule="nonzero" d="M150.36 348.17H125.2v29.21H86.5V256.45h60.95c27.74 0 41.6 14.9 41.6 44.7 0 16.38-3.61 28.51-10.83 36.37-2.71 2.97-6.45 5.49-11.22 7.55-4.78 2.07-10.32 3.1-16.64 3.1zm-25.16-60.76v29.8h8.9c4.65 0 8.03-.49 10.16-1.45 2.13-.97 3.19-3.2 3.19-6.68v-13.54c0-3.49-1.06-5.71-3.19-6.68-2.13-.97-5.51-1.45-10.16-1.45h-8.9zm79.82 89.97V256.45h54.17c21.8 0 36.77 4.65 44.89 13.93 8.13 9.29 12.19 24.8 12.19 46.54 0 21.73-4.06 37.24-12.19 46.53-8.12 9.29-23.09 13.93-44.89 13.93h-54.17zm54.75-89.97h-16.06v59.02h16.06c5.29 0 9.13-.62 11.52-1.84 2.38-1.23 3.58-4.03 3.58-8.42v-38.5c0-4.39-1.2-7.2-3.58-8.42-2.39-1.23-6.23-1.84-11.52-1.84zm145.99 45.08h-32.89v44.89h-38.7V256.45h79.33l-4.84 30.96h-35.79v16.25h32.89v28.83z"/>
+                </svg>
+                <span>PDF Export</span>
+              </div>
+              <!-- 5. Sketch -->
+              <div class="logo-item" title="Sketch">
+                <svg viewBox="0 0 128 128" fill="none">
+                  <path fill="currentColor" d="M27.93 10.334 L64 6.547 L100.07 10.334 L128 47.517 L64 121.453 L0 47.517 Z" />
+                  <path stroke="#0d0d0d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" d="M27.93 10.334 L25.925 47.517 L64 121.453" />
+                  <path stroke="#0d0d0d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" d="M100.07 10.334 L102.075 47.517 L64 121.453" />
+                  <path stroke="#0d0d0d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" d="M64 6.547 L25.925 47.517 H102.075 L64 6.547" />
+                  <path stroke="#0d0d0d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" d="M0 47.517 H128" />
+                </svg>
+                <span>Sketch</span>
+              </div>
+              <!-- 6. Adobe Creative Cloud -->
+              <div class="logo-item" title="Adobe CC">
+                <svg viewBox="0 0 91 80" fill="none">
+                  <path d="M56.9686 0H90.4318V80L56.9686 0Z" fill="currentColor"/>
+                  <path d="M33.4632 0H0V80L33.4632 0Z" fill="currentColor"/>
+                  <path d="M45.1821 29.4668L66.5199 80.0002H52.5657L46.1982 63.9461H30.6182L45.1821 29.4668Z" fill="currentColor"/>
+                </svg>
+                <span>Adobe CC</span>
+              </div>
+              <!-- 7. Pen Tool (Vector) -->
+              <div class="logo-item" title="Vector Graphics">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2L2 22l10-6 10 6L12 2z" />
+                  <circle cx="12" cy="11" r="2" />
+                </svg>
+                <span>SVG Vector</span>
+              </div>
+            </div>
+
+            <!-- Logo Set 2 (Duplicated for seamless transition) -->
+            <div class="logo-loop-set">
+              <!-- 1. Adobe Photoshop -->
+              <div class="logo-item" title="Adobe Photoshop">
+                <svg viewBox="0 0 128 128" fill="currentColor">
+                  <path d="M22.666 1.6C10.133 1.6 0 11.734 0 24.268v79.464C0 116.266 10.133 126.4 22.666 126.4h82.668c12.533 0 22.666-10.134 22.666-22.668V24.268C128 11.734 117.867 1.6 105.334 1.6H22.666zm23.201 31.734c4.373 0 8 .532 10.986 1.652A19.05 19.05 0 0 1 64 39.361a16.976 16.976 0 0 1 3.894 6.079c.8 2.24 1.225 4.533 1.225 6.933 0 4.587-1.066 8.373-3.2 11.36-2.132 2.986-5.118 5.227-8.585 6.507-3.627 1.334-7.627 1.813-12 1.813-1.28 0-2.135 0-2.668-.053-.533-.053-1.28-.053-2.293-.053v17.12c.053.373-.213.694-.586.747H29.44c-.426 0-.638-.215-.638-.695V34.24c0-.373.16-.588.533-.588.907 0 1.76 0 2.986-.052 1.28-.054 2.613-.052 4.053-.106 1.44-.053 2.987-.054 4.64-.107 1.654-.054 3.254-.053 4.854-.053zm1.19 10.504a18.68 18.68 0 0 0-.817.002c-1.386 0-2.613.001-3.627.055-1.066-.054-1.812-.001-2.185.052v17.92c.746.054 1.438.106 2.078.106h2.828c2.08 0 4.16-.32 6.133-.96 1.707-.48 3.2-1.494 4.373-2.827 1.12-1.334 1.654-3.146 1.654-5.493a8.776 8.776 0 0 0-1.226-4.746c-.907-1.386-2.188-2.454-3.735-3.04-1.727-.7-3.576-1.033-5.476-1.07zm44.73 2.723c2.187 0 4.427.158 6.613.478 1.6.213 3.146.642 4.586 1.229.214.053.427.265.533.478.054.213.108.427.108.64v8.694a.655.655 0 0 1-.266.533c-.48.107-.747.107-.96 0-1.6-.853-3.308-1.439-5.122-1.812-1.973-.427-3.946-.695-5.972-.695-1.067-.054-2.188.108-3.201.374-.694.16-1.28.534-1.653 1.067-.266.427-.426.96-.426 1.44s.214.96.534 1.386c.48.587 1.119 1.068 1.812 1.442a48.8 48.8 0 0 0 3.787 1.757c2.88.96 5.653 2.295 8.213 3.895 1.76 1.12 3.2 2.614 4.213 4.427a11.509 11.509 0 0 1 1.228 5.493 12.412 12.412 0 0 1-2.082 7.093 13.362 13.362 0 0 1-5.972 4.746c-2.614 1.12-5.814 1.707-9.654 1.707-2.454 0-4.852-.213-7.252-.693a21.51 21.51 0 0 1-5.44-1.707c-.373-.213-.641-.587-.588-1.014V78.24c0-.16.053-.374.213-.48.16-.107.32-.052.48.054a22.83 22.83 0 0 0 6.614 2.614c2.027.533 4.161.799 6.295.799 2.026 0 3.466-.267 4.426-.747.853-.373 1.439-1.28 1.439-2.24 0-.746-.426-1.441-1.28-2.135-.853-.693-2.613-1.492-5.226-2.505a32.638 32.638 0 0 1-7.574-3.84 13.81 13.81 0 0 1-4.053-4.533 11.44 11.44 0 0 1-1.226-5.44c0-2.293.639-4.48 1.812-6.453 1.333-2.133 3.308-3.84 5.602-4.906 2.506-1.28 5.652-1.867 9.44-1.867z"/>
+                </svg>
+                <span>Photoshop</span>
+              </div>
+              <!-- 2. Adobe Illustrator -->
+              <div class="logo-item" title="Adobe Illustrator">
+                <svg viewBox="0 0 128 128" fill="currentColor">
+                  <path d="M105.33 1.6H22.67A22.64 22.64 0 0 0 0 24.27v79.46a22.64 22.64 0 0 0 22.67 22.67h82.66A22.64 22.64 0 0 0 128 103.73V24.27A22.64 22.64 0 0 0 105.33 1.6Zm-27.09 88H67.09a.82.82 0 0 1-.85-.59l-4.37-12.74H42L38 88.8a.93.93 0 0 1-1 .75H27c-.58 0-.74-.32-.58-1l17.1-49.4c.16-.54.32-1.12.53-1.76a18.14 18.14 0 0 0 .32-3.47.54.54 0 0 1 .43-.59h13.81c.43 0 .64.16.7.43l19.46 54.93c.16.59 0 .86-.53.86Zm18.4-.6c0 .59-.21.85-.69.85H85.49a.75.75 0 0 1-.8-.85V47.89c0-.53.22-.74.7-.74H96c.48 0 .69.26.69.74Zm-1.12-48.2a6.3 6.3 0 0 1-4.85 1.87 6.61 6.61 0 0 1-4.75-1.87 6.87 6.87 0 0 1-1.81-4.91A6.23 6.23 0 0 1 86 31.15a6.8 6.8 0 0 1 4.74-1.87 6.4 6.4 0 0 1 4.86 1.87 6.75 6.75 0 0 1 1.76 4.74 6.76 6.76 0 0 1-1.84 4.91ZM58.67 65.44H45.12c.8-2.24 1.6-4.75 2.35-7.47s1.65-5.33 2.45-7.89a64.65 64.65 0 0 0 1.81-6.88h.11c.37 1.28.75 2.67 1.17 4.16s.91 3.09 1.44 4.75 1 3.25 1.55 4.9 1 3.15 1.44 4.59.91 2.72 1.23 3.84Z"/>
+                </svg>
+                <span>Illustrator</span>
+              </div>
+              <!-- 3. Figma -->
+              <div class="logo-item" title="Figma">
+                <svg viewBox="0 0 128 130">
+                  <path fill="currentColor" d="M45.5 129c11.9 0 21.5-9.6 21.5-21.5V86H45.5C33.6 86 24 95.6 24 107.5S33.6 129 45.5 129zm0 0"/>
+                  <path fill="currentColor" d="M24 64.5C24 52.6 33.6 43 45.5 43H67v43H45.5C33.6 86 24 76.4 24 64.5zm0 0"/>
+                  <path fill="currentColor" d="M24 21.5C24 9.6 33.6 0 45.5 0H67v43H45.5C33.6 43 24 33.4 24 21.5zm0 0"/>
+                  <path fill="currentColor" d="M67 0h21.5C100.4 0 110 9.6 110 21.5S100.4 43 88.5 43H67zm0 0"/>
+                  <path fill="currentColor" d="M110 64.5c0 11.9-9.6 21.5-21.5 21.5S67 76.4 67 64.5 76.6 43 88.5 43 110 52.6 110 64.5zm0 0"/>
+                </svg>
+                <span>Figma</span>
+              </div>
+              <!-- 4. PDF -->
+              <div class="logo-item" title="PDF Document">
+                <svg viewBox="0 0 500 511.56">
+                  <path fill="currentColor" d="M117.91 0h201.68c3.93 0 7.44 1.83 9.72 4.67l114.28 123.67c2.21 2.37 3.27 5.4 3.27 8.41l.06 310c0 35.43-29.4 64.81-64.8 64.81H117.91c-35.57 0-64.81-29.24-64.81-64.81V64.8C53.1 29.13 82.23 0 117.91 0zM325.5 37.15v52.94c2.4 31.34 23.57 42.99 52.93 43.5l36.16-.04-89.09-96.4zM422 158.45l-43.77-.04c-42.59-.68-74.12-21.97-77.54-66.54l-.09-66.95H117.91c-21.93 0-39.89 17.96-39.89 39.88v381.95c0 21.82 18.07 39.89 39.89 39.89h264.21c21.71 0 39.88-18.15 39.88-39.89v-288.3z"/>
+                  <path fill="currentColor" d="M28.04 194.61h443.92c15.43 0 28.04 12.63 28.04 28.04v188.54c0 15.4-12.63 28.04-28.04 28.04H28.04C12.64 439.23 0 426.61 0 411.19V222.65c0-15.43 12.62-28.04 28.04-28.04z"/>
+                  <path fill="#0d0d0d" fill-rule="nonzero" d="M150.36 348.17H125.2v29.21H86.5V256.45h60.95c27.74 0 41.6 14.9 41.6 44.7 0 16.38-3.61 28.51-10.83 36.37-2.71 2.97-6.45 5.49-11.22 7.55-4.78 2.07-10.32 3.1-16.64 3.1zm-25.16-60.76v29.8h8.9c4.65 0 8.03-.49 10.16-1.45 2.13-.97 3.19-3.2 3.19-6.68v-13.54c0-3.49-1.06-5.71-3.19-6.68-2.13-.97-5.51-1.45-10.16-1.45h-8.9zm79.82 89.97V256.45h54.17c21.8 0 36.77 4.65 44.89 13.93 8.13 9.29 12.19 24.8 12.19 46.54 0 21.73-4.06 37.24-12.19 46.53-8.12 9.29-23.09 13.93-44.89 13.93h-54.17zm54.75-89.97h-16.06v59.02h16.06c5.29 0 9.13-.62 11.52-1.84 2.38-1.23 3.58-4.03 3.58-8.42v-38.5c0-4.39-1.2-7.2-3.58-8.42-2.39-1.23-6.23-1.84-11.52-1.84zm145.99 45.08h-32.89v44.89h-38.7V256.45h79.33l-4.84 30.96h-35.79v16.25h32.89v28.83z"/>
+                </svg>
+                <span>PDF Export</span>
+              </div>
+              <!-- 5. Sketch -->
+              <div class="logo-item" title="Sketch">
+                <svg viewBox="0 0 128 128" fill="none">
+                  <path fill="currentColor" d="M27.93 10.334 L64 6.547 L100.07 10.334 L128 47.517 L64 121.453 L0 47.517 Z" />
+                  <path stroke="#0d0d0d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" d="M27.93 10.334 L25.925 47.517 L64 121.453" />
+                  <path stroke="#0d0d0d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" d="M100.07 10.334 L102.075 47.517 L64 121.453" />
+                  <path stroke="#0d0d0d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" d="M64 6.547 L25.925 47.517 H102.075 L64 6.547" />
+                  <path stroke="#0d0d0d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" d="M0 47.517 H128" />
+                </svg>
+                <span>Sketch</span>
+              </div>
+              <!-- 6. Adobe Creative Cloud -->
+              <div class="logo-item" title="Adobe CC">
+                <svg viewBox="0 0 91 80" fill="none">
+                  <path d="M56.9686 0H90.4318V80L56.9686 0Z" fill="currentColor"/>
+                  <path d="M33.4632 0H0V80L33.4632 0Z" fill="currentColor"/>
+                  <path d="M45.1821 29.4668L66.5199 80.0002H52.5657L46.1982 63.9461H30.6182L45.1821 29.4668Z" fill="currentColor"/>
+                </svg>
+                <span>Adobe CC</span>
+              </div>
+              <!-- 7. Pen Tool (Vector) -->
+              <div class="logo-item" title="Vector Graphics">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2L2 22l10-6 10 6L12 2z" />
+                  <circle cx="12" cy="11" r="2" />
+                </svg>
+                <span>SVG Vector</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- Access Tiers Pricing Section -->
+      <section class="pricing-section" id="pricing">
+        <div class="pricing-container">
+          <div class="section-header">
+            <h2 class="section-title">Access Tiers</h2>
+            <p class="section-subtitle">Select the protocol designation that aligns with your infrastructural requirements.</p>
+          </div>
+          <div class="pricing-grid">
+            <!-- Free Tier -->
+            <div class="pricing-card" id="pricing-card-starter">
+              <h3>Starter</h3>
+              <p class="pricing-card-desc">Essential tools for individual operators.</p>
+              <div class="pricing-price-box">
+                <span class="pricing-price">₱0</span>
+                <span class="pricing-period">/mo</span>
+              </div>
+              <ul class="pricing-features">
+                <li class="pricing-feature-item">
+                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
+                  25 free trial tokens
+                </li>
+                <li class="pricing-feature-item">
+                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
+                  Standard response speed
+                </li>
+                <li class="pricing-feature-item">
+                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
+                  Basic de-mockup tools
+                </li>
+              </ul>
+              <button class="pricing-btn" id="landing-starter-btn">Initialize Free</button>
+            </div>
+            <!-- Pro Tier -->
+            <div class="pricing-card pricing-card-pro">
+              <div class="pricing-badge">Optimal Deployment</div>
+              <h3>Professional</h3>
+              <p class="pricing-card-desc">Advanced capabilities for active environments.</p>
+              <div class="pricing-price-box">
+                <span class="pricing-price" id="landing-pro-price">₱899</span>
+                <span class="pricing-period">/mo</span>
+              </div>
+
+              <!-- Slider Wrapper -->
+              <div style="margin: 20px 0; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px; color: #131313; font-weight: 700;">
+                  <span>Adjust Budget</span>
+                  <span id="landing-pro-slider-val" style="color: #000000; font-weight: 800;">₱899</span>
+                </div>
+                <input type="range" id="landing-pro-slider" min="150" max="899" step="1" value="899" style="
+                  width: 100%;
+                  accent-color: #000000;
+                  background: rgba(0, 0, 0, 0.15);
+                  height: 6px;
+                  border-radius: 999px;
+                  cursor: pointer;
+                  outline: none;
+                ">
+                <div style="display: flex; justify-content: space-between; font-size: 10px; color: rgba(0, 0, 0, 0.6); font-weight: 600;">
+                  <span>₱150</span>
+                  <span>₱899</span>
+                </div>
+              </div>
+
+
+              <ul class="pricing-features">
+                <li class="pricing-feature-item">
+                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
+                  <span id="landing-pro-tokens-text">750 vector tokens / mo</span>
+                </li>
+                <li class="pricing-feature-item">
+                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
+                  Priority queue routing
+                </li>
+                <li class="pricing-feature-item">
+                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
+                  Clean background patterns
+                </li>
+                <li class="pricing-feature-item">
+                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
+                  Unlimited downloads
+                </li>
+              </ul>
+              <button class="pricing-btn" id="landing-pro-btn">Deploy Pro</button>
+            </div>
+            <!-- Enterprise Tier -->
+            <div class="pricing-card" id="pricing-card-enterprise">
+              <h3>Enterprise</h3>
+              <p class="pricing-card-desc">Bespoke architecture for massive scale.</p>
+              <div class="pricing-price-box">
+                <span class="pricing-price">₱2,000</span>
+                <span class="pricing-period">/mo</span>
+              </div>
+              <ul class="pricing-features">
+                <li class="pricing-feature-item">
+                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
+                  1,800 vector tokens / mo
+                </li>
+                <li class="pricing-feature-item">
+                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
+                  Dedicated processing queues
+                </li>
+                <li class="pricing-feature-item">
+                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
+                  Advanced pattern extraction
+                </li>
+                <li class="pricing-feature-item">
+                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
+                  Unlimited downloads & sharing
+                </li>
+              </ul>
+              <button class="pricing-btn" id="landing-enterprise-btn">Contact Sales</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FAQ Accordion Section -->
+      <section class="faq-section" id="faq">
+        <div class="faq-container">
+          <div class="section-header">
+            <h2 class="section-title">FAQ</h2>
+            <p class="section-subtitle">Everything you need to know about creating AI-generated vector graphics with Syncraft.</p>
+          </div>
+          <div class="faq-list">
+            <!-- Item 1 -->
+            <details class="faq-item">
+              <summary>
+                <div class="faq-question-content">
+                  <div class="faq-icon-box">
+                    <i class="icon fi fi-br-paint-brush"></i>
+                  </div>
+                  <span class="faq-question-text">What can I create with Syncraft?</span>
+                </div>
+                <i class="icon fi fi-br-angle-down faq-arrow"></i>
+              </summary>
+              <div class="faq-answer">
+                Syncraft lets you generate professional vector graphics from text prompts or recreate existing artwork from reference images. Create logos, mascots, badges, icons, illustrations, typography, and more.
+              </div>
+            </details>
+            <!-- Item 2 -->
+            <details class="faq-item">
+              <summary>
+                <div class="faq-question-content">
+                  <div class="faq-icon-box">
+                    <i class="icon fi fi-br-picture"></i>
+                  </div>
+                  <span class="faq-question-text">Can I upload my own reference image?</span>
+                </div>
+                <i class="icon fi fi-br-angle-down faq-arrow"></i>
+              </summary>
+              <div class="faq-answer">
+                Yes. Upload a logo, sketch, screenshot, or existing artwork and Syncraft will intelligently recreate it as a clean, editable vector while preserving the overall style and composition.
+              </div>
+            </details>
+            <!-- Item 3 -->
+            <details class="faq-item">
+              <summary>
+                <div class="faq-question-content">
+                  <div class="faq-icon-box">
+                    <i class="icon fi fi-br-file-export"></i>
+                  </div>
+                  <span class="faq-question-text">Which file formats can I export?</span>
+                </div>
+                <i class="icon fi fi-br-angle-down faq-arrow"></i>
+              </summary>
+              <div class="faq-answer">
+                Export your designs as SVG, PDF, EPS, or transparent PNG. Every output is optimized for editing, printing, branding, apparel, and digital use.
+              </div>
+            </details>
+            <!-- Item 4 -->
+            <details class="faq-item">
+              <summary>
+                <div class="faq-question-content">
+                  <div class="faq-icon-box">
+                    <i class="icon fi fi-br-edit"></i>
+                  </div>
+                  <span class="faq-question-text">Are the generated vectors editable?</span>
+                </div>
+                <i class="icon fi fi-br-angle-down faq-arrow"></i>
+              </summary>
+              <div class="faq-answer">
+                Absolutely. Your exported vector files are fully editable in Adobe Illustrator, Figma, CorelDRAW, Inkscape, and other vector editing software.
+              </div>
+            </details>
+            <!-- Item 5 -->
+            <details class="faq-item">
+              <summary>
+                <div class="faq-question-content">
+                  <div class="faq-icon-box">
+                    <i class="icon fi fi-br-briefcase"></i>
+                  </div>
+                  <span class="faq-question-text">Is Syncraft suitable for commercial projects?</span>
+                </div>
+                <i class="icon fi fi-br-angle-down faq-arrow"></i>
+              </summary>
+              <div class="faq-answer">
+                Absolutely. Your generated vector graphics are suitable for commercial projects, apparel printing, branding, logo designs, and other commercial purposes.
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bottom Demo CTA -->
+      <section class="demo-cta-section" id="workspace-demo">
+        <div class="cta-bg-glow">
+          <div class="cta-glow-circle"></div>
+        </div>
+        <div class="cta-container">
+          <h2 class="cta-title slanted-title">Ready to <span>Initialize?</span></h2>
+          <p class="cta-description">
+            Experience the workspace for generating, vectorizing, and editing vectors with Syncraft's frontier AI models.
+          </p>
+          <div class="cta-actions">
+            <button class="cta-btn-try-free" id="demo-play-trigger-btn">
+              TRY IT FREE
+            </button>
+          </div>
+
+          <!-- Mock Editor UI Container -->
+          <div class="mock-editor-window" id="demo-mock-editor">
+            <!-- Window Title/Header Bar -->
+            <div class="mock-editor-header">
+              <div class="mock-header-left">
+                <div class="mock-window-dots">
+                  <span class="mock-dot red"></span>
+                  <span class="mock-dot yellow"></span>
+                  <span class="mock-dot green"></span>
+                </div>
+                <div class="mock-editor-logo">S</div>
+                <div class="mock-editor-nav">
+                  <span class="mock-nav-item active">New Interface</span>
+                  <span class="mock-nav-item">History</span>
+                  <span class="mock-nav-item">Templates</span>
+                  <span class="mock-nav-item">Help</span>
+                </div>
+              </div>
+              <div class="mock-header-center">
+                <div class="mock-project-name">Syncraft Walkthrough</div>
+              </div>
+              <div class="mock-header-right">
+                <span class="mock-zoom-level">29%</span>
+                <button class="mock-btn-share">Share</button>
+                <button class="mock-btn-export">Export SVG</button>
+                <div class="mock-avatar">U</div>
+              </div>
+            </div>
+
+            <!-- Editor Workspace Body -->
+            <div class="mock-editor-body">
+              <!-- Left Toolbar -->
+              <div class="mock-sidebar-left">
+                <button class="mock-tool-btn active" id="mock-tool-select" title="Select (V)"><i class="icon fi fi-br-cursor"></i></button>
+                <button class="mock-tool-btn" id="mock-tool-pan" title="Pan (H)"><i class="icon fi fi-br-pan"></i></button>
+                <button class="mock-tool-btn"><i class="icon fi fi-br-text"></i></button>
+                <button class="mock-tool-btn"><i class="icon fi fi-br-picture"></i></button>
+                <button class="mock-tool-btn"><i class="icon fi fi-br-magic-wand"></i></button>
+                <div class="mock-tool-divider"></div>
+                <button class="mock-tool-btn"><i class="icon fi fi-br-undo"></i></button>
+                <button class="mock-tool-btn"><i class="icon fi fi-br-redo"></i></button>
+              </div>
+
+              <!-- Main Canvas Area -->
+              <div class="mock-canvas-viewport">
+                <!-- Play Overlay -->
+                <div class="mock-play-overlay" id="mock-play-overlay">
+                  <div class="mock-play-circle">
+                    <i class="icon fi fi-br-play"></i>
+                  </div>
+                  <span class="mock-play-text">Click to Run Workspace Demo</span>
+                </div>
+
+                <!-- 4-Card Grid Layout -->
+                <div class="mock-grid-container">
+                  <!-- Card 1 -->
+                  <div class="mock-grid-card generated" id="mock-card-1">
+                    <div class="mock-card-svg-wrap">
+                      <svg id="mock-svg-1" viewBox="0 0 100 100" fill="none">
+                        <circle cx="50" cy="50" r="38" stroke="#d4ff59" stroke-width="2.5" class="anim-path" stroke-dasharray="240" stroke-dashoffset="240" />
+                        <polygon points="50,22 74,68 26,68" stroke="#ffffff" stroke-width="1.8" class="anim-path" stroke-dasharray="180" stroke-dashoffset="180" />
+                        <circle cx="50" cy="50" r="6" fill="#d4ff59" opacity="0" class="anim-core" style="transition: opacity 0.5s ease;" />
+                      </svg>
+                    </div>
+                  </div>
+                  <!-- Card 2 -->
+                  <div class="mock-grid-card generated" id="mock-card-2">
+                    <div class="mock-card-svg-wrap">
+                      <svg id="mock-svg-2" viewBox="0 0 100 100" fill="none">
+                        <polygon points="50,20 78,48 50,76 22,48" stroke="#ffffff" stroke-width="2.5" class="anim-path" stroke-dasharray="240" stroke-dashoffset="240" />
+                        <circle cx="50" cy="50" r="18" stroke="#d4ff59" stroke-width="1.8" class="anim-path" stroke-dasharray="120" stroke-dashoffset="120" />
+                        <rect x="44" y="44" width="12" height="12" fill="#d4ff59" opacity="0" class="anim-core" style="transition: opacity 0.5s ease;" />
+                      </svg>
+                    </div>
+                  </div>
+                  <!-- Card 3 (Placeholder) -->
+                  <div class="mock-grid-card placeholder" id="mock-card-3"></div>
+                  <!-- Card 4 (Placeholder) -->
+                  <div class="mock-grid-card placeholder" id="mock-card-4"></div>
+                </div>
+
+                <!-- Floating cursor indicator -->
+                <div class="mock-cursor-pointer">
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none">
+                    <path d="M4.5 3V21L10.5 15H19.5L4.5 3Z" fill="white" stroke="#131313" stroke-width="2" stroke-linejoin="round" />
+                  </svg>
+                </div>
+
+                <!-- Floating bottom prompt bar -->
+                <div class="mock-floating-prompt-bar">
+                  <div class="mock-floating-prompt-row">
+                    <span class="mock-prompt-status" id="mock-prompt-status">All done</span>
+                  </div>
+                  <div class="mock-floating-prompt-input-container">
+                    <input type="text" class="mock-floating-prompt-input" id="mock-prompt-input" readonly value="Describe what you want to generate...">
+                    <div class="mock-prompt-options">
+                      <span><i class="icon fi fi-br-cursor"></i> Manual</span>
+                      <span><i class="icon fi fi-br-magic-wand"></i> v4</span>
+                      <span><i class="icon fi fi-br-settings"></i> No styles</span>
+                      <span><i class="icon fi fi-br-expand"></i> 3:4</span>
+                      <span><i class="icon fi fi-br-picture"></i> 4 images</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+    </main>
+
+    <!-- Premium Sitemap Footer (Recraft-inspired) -->
+    <footer class="landing-footer">
+      <div class="footer-sitemap">
+        <!-- Column 1: Features -->
+        <div class="sitemap-col">
+          <h4>Features</h4>
+          <a href="#features">AI Prompt to Vector</a>
+          <a href="#features">AI Image Vectorizer</a>
+          <a href="#features">AI Vector Generator</a>
+          <a href="#features">Mockup Generator</a>
+          <a href="#features">Image Upscaler</a>
+          <a href="#features">Background Remover</a>
+        </div>
+        
+        <!-- Column 2: Use Cases -->
+        <div class="sitemap-col">
+          <h4>Use Cases</h4>
+          <a href="#features">Logos & Branding</a>
+          <a href="#features">Vector Icons</a>
+          <a href="#features">Marketing Ads</a>
+          <a href="#features">Game Characters</a>
+          <a href="#features">Stock Vector Images</a>
+        </div>
+        
+        <!-- Column 3: Resources -->
+        <div class="sitemap-col">
+          <h4>Resources</h4>
+          <a href="#features">Community Gallery</a>
+          <a href="#features">Release Notes</a>
+          <a href="#pricing">Pricing Plans</a>
+          <a href="#faq">Feature Requests</a>
+          <a href="#faq">System Status</a>
+        </div>
+        
+        <!-- Column 4: Follow Us -->
+        <div class="sitemap-col">
+          <h4>Follow Us</h4>
+          <a href="https://instagram.com" target="_blank" rel="noopener">Instagram</a>
+          <a href="https://youtube.com" target="_blank" rel="noopener">YouTube</a>
+          <a href="https://twitter.com" target="_blank" rel="noopener">X / Twitter</a>
+          <a href="https://discord.com" target="_blank" rel="noopener">Discord</a>
+          <a href="https://linkedin.com" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+        
+        <!-- Column 5: How To & Company -->
+        <div class="sitemap-col double-col">
+          <div class="sitemap-sub-col">
+            <h4>How to</h4>
+            <a href="#faq">Create vector artwork</a>
+            <a href="#faq">Vectorize sketches with AI</a>
+            <a href="#faq">Generate SVG illustrations</a>
+          </div>
+          <div class="sitemap-sub-col">
+            <h4>Company</h4>
+            <a href="#/workspace">About Us</a>
+            <a href="#/workspace">Press Releases</a>
+            <a href="#/workspace">Careers</a>
+            <a href="#/workspace">Contact Us</a>
+          </div>
+        </div>
+
+        <!-- Column 6: App Badges & Legals -->
+        <div class="sitemap-col sitemap-col-right">
+          <div class="app-badges">
+            <!-- App Store Badge -->
+            <a href="#" class="app-badge-link" aria-label="Download on App Store">
+              <svg viewBox="0 0 135 40" class="app-badge-svg">
+                <rect width="135" height="40" rx="6" fill="#000000" stroke="#333333" stroke-width="1"/>
+                <path d="M20.5 25.4c.1 1.7 1.4 2.2 1.4 2.3-.1.2-.2.5-.4.7-.4.6-.9 1.3-1.6 1.3-.7 0-.9-.4-1.7-.4s-1 .4-1.7.4c-.7 0-1.2-.6-1.6-1.2-1-1.3-1.7-3.8-.7-5.5.5-.8 1.3-1.3 2.2-1.3.7 0 1.3.5 1.7.5.4 0 1.2-.6 2-.5.8.1 1.5.3 2 .9-.1.1-1.4.9-1.4 2.5zM18.8 19.3c.4-.5.6-1.1.5-1.7-.5 0-1.1.3-1.5.8-.3.4-.6 1-.5 1.6.5.1 1.1-.2 1.5-.7z" fill="#ffffff"/>
+                <text x="35" y="16" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="7" font-weight="normal">Download on the</text>
+                <text x="35" y="27" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="bold">App Store</text>
+              </svg>
+            </a>
+            <!-- Google Play Badge -->
+            <a href="#" class="app-badge-link" aria-label="Get it on Google Play">
+              <svg viewBox="0 0 135 40" class="app-badge-svg">
+                <rect width="135" height="40" rx="6" fill="#000000" stroke="#333333" stroke-width="1"/>
+                <path d="M16 12v16l12-8-12-8z" fill="#d4ff59"/>
+                <text x="34" y="16" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="6" font-weight="normal">GET IT ON</text>
+                <text x="34" y="28" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="bold">Google Play</text>
+              </svg>
+            </a>
+          </div>
+          
+          <div class="footer-legal-links">
+            <a href="#/privacy">Privacy Policy</a>
+            <a href="#/terms">Terms of Service</a>
+          </div>
+          <div class="footer-copyright">
+            © 2026 Syncraft Inc. All rights reserved.
+          </div>
+        </div>
+      </div>
+      
+      <!-- Massive Giant Logo at the bottom -->
+      <div class="footer-massive-logo-container">
+        <svg class="syncraft-logo-svg" viewBox="0 0 764.6 136.8" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path fill="currentColor" d="M0,136.1v-38.8h34.2c21.2,0,41.1-10.2,53.5-27.4l5.2-7.2L0,87.5V.2h106.8c0,8.4-.1,16.9-.2,25.3-5,3.3-23.5,14.6-48.6,11.5-20.4-2.5-33.8-13.2-38.7-17.6,3.3,4.9,10.6,14.5,23.7,21.5,9.4,5,20.1,7.8,31.1,7.8h32.7c0,48.2-39.1,87.4-87.4,87.4H0Z"/>
+          <g fill="currentColor">
+            <path d="M482.3,85h12.9c-3,11.9-9.1,23.1-18.6,32.2l-.2.2c-27.1,26-70,25.4-96.2-1.5-26-27.1-25.6-70.2,1.3-96.4,27.1-26,70-25.4,96.2,1.5.2.2.4.4.6.6,8.2,8.5,13.7,18.6,16.5,29.3h-21.5c-11.5-20.7-32.8-36.9-55.3-38.4-23.5-1.6-40.9,13.9-42.7,37.4-2.4,35.6,29.4,72,64.1,74.1,23.5,1.6,41-13.2,42.8-37,0-.7,0-1.4,0-2.1h0Z"/>
+            <path d="M564.1,108.2v28h-2.3c-18.5,0-34.3-12.2-40.9-29.5v11.3c0,4.6,1.3,9.1,3.6,13l3.2,5.3h-33.5l3.2-5.3c2.4-3.9,3.6-8.4,3.6-13V18.4c0-4.6-1.3-9.1-3.6-13l-3.2-5.3h16.8s10,0,10,0h0c.2,0,.3,0,.4,0,26.4-.4,42.3,21.9,42.7,49.5.2,26.9-15.5,49.4-40.9,51,6,8,14.6,13.1,24.2,13.1s9.4-1.3,13.5-3.5c.3-.2,3.2-2,3.2-2ZM521.4,95.6c6.7-.2,9.5-3.7,13.4-10,11.6-18.4,11.2-53.9-.9-71.9-3.5-5.2-6.9-8.3-12.7-8.6,0,0-.2,0-.3,0v90.5c.2,0,.3,0,.5,0Z"/>
+            <path d="M643.7,136.2h-33.5s1.7-2.2,3.2-5.3c1-2,1.5-4,1.7-6.1l-8.1-44.7h-12.8l-9.3,41c-.5,3.3-.1,6.7,1.6,9.6,0,0,0,0,0,0l3.2,5.3h-23.6l3.2-5.3c.6-1,1.2-2.1,1.9-3.7,2-4.6,5.1-14.2,5.9-16.7l18.5-81.3c.8-3.6,1.2-7.2,1.2-10.9s-1.2-8.4-3.6-13c-2.4-4.6-3.2-5.3-3.2-5.3h22.7l20.1,110.5h0s0,.1,0,.2v.4c.5,2.2,2.3,10.5,7.8,19.7,1.1,1.9,3.2,5.3,3.2,5.3ZM605.1,70.2l-3.9-21.4-4.9,21.4h8.8Z"/>
+            <path d="M694.2.1v29.2l-5.8-9.6c-3.6-6-10.1-9.7-17.2-9.7h-.2v52.2c3.3-1.2,6.2-3.4,7.9-6.6l5-9.3v43.5l-5-9.3c-1.7-3.2-4.6-5.4-7.9-6.6v43.9c0,4.6,1.3,9.1,3.6,13l3.2,5.3h-33.5l3.2-5.3c2.4-3.9,3.6-8.4,3.6-13V18.4c0-4.6-1.3-9.1-3.6-13l-3.2-5.3h49.8Z"/>
+            <path d="M764.6.3v29.3l-5.8-9.6c-3.6-6-10.1-9.7-17.2-9.7h-.2v107.8c0,4.6,1.3,9.1,3.6,13l3.2,5.3h-33.5l3.2-5.3c2.4-3.9,3.6-8.4,3.6-13V10.2h-.1c-7,0-13.5,3.7-17.2,9.7l-5.8,9.6V.3h66.1Z"/>
+            <path d="M240.6,135.9V0h38.8l29.1,58.2V0h38.8v135.9h-38.8l-47.1-90.7,18,90.7h-38.8Z"/>
+            <path d="M146.7,93.4L117.4.5h54.5l1.4,46.3h5.3l1.4-46.3h54.5l-15,20.2c-24.7,33.3-32,76.5-19.7,116.1h0s-53.1,0-53.1,0v-43.5Z"/>
+          </g>
+        </svg>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 1.5 AUTHENTICATION VIEW                    -->
+  <!-- ========================================== -->
+  <div id="auth-view" class="hidden"></div>
+
+  <!-- ========================================== -->
+  <!-- 2. PROJECTS DASHBOARD VIEW                 -->
+  <!-- ========================================== -->
+  <div id="dashboard-view" class="hidden">
+    <!-- Dashboard Header (Removed in favor of unified global-header) -->
+
+    <!-- Dashboard Body -->
+    <main class="db-main">
+      <!-- Projects Card -->
+      <div class="db-card">
+        <!-- Card Header -->
+        <div class="db-card-header">
+          <h1 class="db-card-title">Recent Projects</h1>
+          <button class="db-new-btn" id="db-new-project-btn">
+            <i class="icon fi fi-br-plus" style="font-size:16px;"></i>
+            New Project
+          </button>
+        </div>
+
+        <!-- Count row -->
+        <div class="db-count-row">
+          <span class="db-project-count" id="db-project-count">0 projects</span>
+        </div>
+
+        <!-- Project List -->
+        <div class="db-project-list" id="db-project-list">
+          <!-- Injected by dashboard.js -->
+          <div class="db-empty-state" id="db-empty-state">
+            <i class="icon fi fi-br-folder-open" style="font-size:48px;color:rgba(255,255,255,0.12);"></i>
+            <p class="db-empty-label">No projects yet</p>
+            <p class="db-empty-hint">Click &ldquo;New Project&rdquo; to get started</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 3. AI WORKSPACE VIEW                       -->
+  <!-- ========================================== -->
+  <div id="workspace-view" class="hidden">
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- RECRAFT STYLE CREATIVE CANVAS LAYOUT       -->
+    <!-- ═══════════════════════════════════════════ -->
+    <main class="workspace-main gw-layout">
+
+      <!-- LEFT: Floating Tool Rail -->
+      <aside class="gw-tool-rail" aria-label="Editor Tools">
+        <button class="gw-tool-btn active" id="tool-select" title="Select (V)">
+          <i class="icon fi fi-br-cursor"></i>
+        </button>
+        <button class="gw-tool-btn" id="tool-pan" title="Pan (H)">
+          <i class="icon fi fi-br-pan"></i>
+        </button>
+        <button class="gw-tool-btn" id="prompt-upload-btn-floating" title="Upload Reference">
+          <i class="icon fi fi-br-picture"></i>
+        </button>
+        <div class="tool-rail-divider"></div>
+        <button class="gw-tool-btn" id="tool-undo" title="Undo (Ctrl+Z)">
+          <i class="icon fi fi-br-undo"></i>
+        </button>
+        <button class="gw-tool-btn" id="tool-redo" title="Redo (Ctrl+Y)">
+          <i class="icon fi fi-br-redo"></i>
+        </button>
+      </aside>
+
+      <!-- CENTER: Infinite Canvas Viewport -->
+      <section class="gw-result-area">
+        <!-- Canvas Viewport Panel -->
+        <div class="result-display state-idle" id="result-display">
+          <!-- Dot Field Interactive Background Canvas -->
+          <canvas id="workspace-dot-field-canvas"></canvas>
+          <div class="result-noise"></div>
+
+          <!-- Status badge: top-left -->
+          <div class="result-status-badge" id="result-status-badge">
+            <div class="live-pulse-dot"></div>
+            <span id="result-status-text">Ready</span>
+          </div>
+
+          <!-- Result meta: top-right -->
+          <div class="result-meta-badge" id="result-meta-badge"></div>
+
+          <!-- Floating Annotation Banner (Overlay) -->
+          <div class="annotation-banner" id="annotation-banner" style="display: none;">
+            <div class="annotation-banner-dot"></div>
+            <span>Annotation Mode Active &bull; Drag on image to select area</span>
+            <button class="annotation-banner-close" id="annotation-banner-close" title="Exit Annotation Mode">
+              <i class="icon fi fi-br-cross"></i>
+            </button>
+          </div>
+
+          <!-- Inner result content -->
+          <div class="result-inner" id="result-inner">
+
+            <!-- IDLE STATE: empty canvas frame -->
+            <div class="result-idle" id="result-idle">
+              <div class="canvas-frame empty" id="canvas-frame-empty">
+                <div class="canvas-frame-label">Square &bull; 300 DPI</div>
+                <div class="result-idle-content">
+                  <div class="result-idle-icon">
+                    <i class="icon fi fi-br-paint-brush" style="font-size:48px;color:rgba(255,255,255,0.06);"></i>
+                  </div>
+                  <p class="result-idle-label">AWAITING GENERATION</p>
+                  <p class="result-idle-hint">Type a prompt below and press Generate</p>
+                </div>
+                <!-- Sizing handles -->
+                <div class="frame-handle tl"></div>
+                <div class="frame-handle tr"></div>
+                <div class="frame-handle bl"></div>
+                <div class="frame-handle br"></div>
+              </div>
+            </div>
+
+            <!-- GENERATING STATE: progress frame -->
+            <div class="result-generating" id="result-generating">
+              <div class="canvas-frame generating" id="canvas-frame-generating">
+                <div class="canvas-frame-label">Generating...</div>
+                <div class="result-generating-content" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+                  <div class="gen-logo-loader-container">
+                    <img class="gen-logo-loader" src="brand%20logos/Syncraft%20Logo-11.svg" alt="Syncraft" />
+                  </div>
+                </div>
+                <!-- Sizing handles -->
+                <div class="frame-handle tl"></div>
+                <div class="frame-handle tr"></div>
+                <div class="frame-handle bl"></div>
+                <div class="frame-handle br"></div>
+              </div>
+            </div>
+
+            <!-- OUTPUT STATE: active vector frame -->
+            <div class="result-output" id="result-output" style="position: relative;">
+              <div class="canvas-frame output" id="canvas-frame">
+                <div class="canvas-frame-label" id="canvas-frame-label">Vector &bull; 300 DPI</div>
+                <div class="result-svg-wrap" id="result-svg-wrap">
+                  <!-- Generated SVG injected here by JS -->
+                </div>
+                <!-- Sizing handles -->
+                <div class="frame-handle tl"></div>
+                <div class="frame-handle tr"></div>
+                <div class="frame-handle bl"></div>
+                <div class="frame-handle br"></div>
+              </div>
+              <!-- Annotation Overlay -->
+              <div class="annotation-overlay" id="annotation-overlay" style="display: none;"></div>
+              <!-- Output prompt label -->
+              <div class="result-prompt-label" id="result-prompt-label" style="display:none;"></div>
+            </div>
+
+          </div>
+
+          <!-- Loading overlay -->
+          <div class="canvas-loading-overlay" id="result-loading-overlay">
+            <div class="gen-logo-loader-container">
+              <img class="gen-logo-loader" src="brand%20logos/Syncraft%20Logo-11.svg" alt="Syncraft" />
+            </div>
+          </div>
+        </div>
+
+        <!-- BOTTOM: Floating Generation Panel -->
+        <div class="gw-bottom-bar">
+          <!-- AI Model Selector Dropdown -->
+          <div class="model-selector-dropdown" id="model-selector-dropdown" style="display: none; width: 100%; background: rgba(24, 24, 27, 0.95); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 6px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); backdrop-filter: blur(12px); flex-direction: column; gap: 2px;">
+            <button class="model-select-item active" data-model="syncraft-vector" style="display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; padding: 10px 12px; border-radius: 8px; color: #fff; cursor: pointer; text-align: left; transition: background 0.15s;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span style="font-size: 12px; font-weight: 700; color: var(--color-primary);">Syncraft Vector (SVG)</span>
+                <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5);">Clean scalable vector design layout.</span>
+              </div>
+              <span style="font-size: 11px; font-weight: 700; color: var(--color-primary); background: rgba(212, 255, 89, 0.1); padding: 2px 8px; border-radius: 99px;">4 Tokens</span>
+            </button>
+            <button class="model-select-item" data-model="syncraft-pro-vector" style="display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; padding: 10px 12px; border-radius: 8px; color: rgba(255,255,255,0.7); cursor: pointer; text-align: left; transition: background 0.15s;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span style="font-size: 12px; font-weight: 700;">Syncraft Pro Vector (SVG)</span>
+                <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5);">Highly detailed vector print layout.</span>
+              </div>
+              <span style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); background: rgba(255, 255, 255, 0.05); padding: 2px 8px; border-radius: 99px;">12 Tokens</span>
+            </button>
+            <button class="model-select-item" data-model="syncraft-lite" style="display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; padding: 10px 12px; border-radius: 8px; color: rgba(255,255,255,0.7); cursor: pointer; text-align: left; transition: background 0.15s;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span style="font-size: 12px; font-weight: 700;">Syncraft Lite (Raster)</span>
+                <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5);">Simple raster background pattern (PNG).</span>
+              </div>
+              <span style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); background: rgba(255, 255, 255, 0.05); padding: 2px 8px; border-radius: 99px;">2 Tokens</span>
+            </button>
+            <button class="model-select-item" data-model="syncraft-pro" style="display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; padding: 10px 12px; border-radius: 8px; color: rgba(255,255,255,0.7); cursor: pointer; text-align: left; transition: background 0.15s;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span style="font-size: 12px; font-weight: 700;">Syncraft Pro (Raster)</span>
+                <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5);">High-fidelity photorealistic layout (PNG).</span>
+              </div>
+              <span style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); background: rgba(255, 255, 255, 0.05); padding: 2px 8px; border-radius: 99px;">10 Tokens</span>
+            </button>
+            <button class="model-select-item" data-model="syncraft-ultra" style="display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; padding: 10px 12px; border-radius: 8px; color: rgba(255,255,255,0.7); cursor: pointer; text-align: left; transition: background 0.15s;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span style="font-size: 12px; font-weight: 700;">Syncraft Ultra (Creative)</span>
+                <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5);">Advanced creative AI graphic generator.</span>
+              </div>
+              <span style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); background: rgba(255, 255, 255, 0.05); padding: 2px 8px; border-radius: 99px;">20 Tokens</span>
+            </button>
+          </div>
+
+          <!-- Syncraft Actions Dropdown -->
+          <div class="model-selector-dropdown" id="syncraft-selector-dropdown" style="display: none; width: 100%; background: rgba(24, 24, 27, 0.95); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 6px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); backdrop-filter: blur(12px); flex-direction: column; gap: 2px;">
+            <button class="model-select-item" id="tool-extract-pattern" style="display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; padding: 10px 12px; border-radius: 8px; color: #fff; cursor: pointer; text-align: left; transition: background 0.15s;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span class="action-item-name" style="font-size: 12px; font-weight: 700; color: var(--color-primary);">Syncraft (Vectorized)</span>
+                <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5);">Extract and vectorize design pattern from reference image.</span>
+              </div>
+              <span style="font-size: 11px; font-weight: 700; color: var(--color-primary); background: rgba(212, 255, 89, 0.1); padding: 2px 8px; border-radius: 99px;">4 Tokens</span>
+            </button>
+            <button class="model-select-item" id="tool-extract-raster" style="display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; padding: 10px 12px; border-radius: 8px; color: #fff; cursor: pointer; text-align: left; transition: background 0.15s;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span class="action-item-name" style="font-size: 12px; font-weight: 700;">Syncraft (Design Only)</span>
+                <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5);">Extract high-quality raster design layout.</span>
+              </div>
+              <span style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); background: rgba(255, 255, 255, 0.05); padding: 2px 8px; border-radius: 99px;">4 Tokens</span>
+            </button>
+          </div>
+
+          <div class="bottom-bar-inner">
+
+            <!-- Horizontal Config Tab Row -->
+            <div class="bottom-config-row">
+              <div class="bottom-tabs-left">
+                <div class="bottom-tab-btn active" id="tab-model" title="Select AI Model">
+                  <span>Model: Syncraft Vector (SVG)</span>
+                  <i class="icon fi fi-br-angle-down" id="tab-model-chevron" style="margin-left: 6px; font-size: 10px;"></i>
+                </div>
+                
+                <div class="bottom-tab-btn needs-image" id="tab-syncraft" title="Select Syncraft Action">
+                  <span>Syncraft</span>
+                  <i class="icon fi fi-br-angle-down" id="tab-syncraft-chevron" style="margin-left: 6px; font-size: 10px;"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Input area -->
+            <div class="prompt-input-wrapper" id="prompt-input-wrapper">
+              <textarea class="prompt-input" id="prompt-input" rows="1" placeholder="Describe your vision…"></textarea>
+              
+              <div class="prompt-actions-row">
+                <div class="prompt-actions-left">
+                  <button class="prompt-upload-btn" id="prompt-upload-btn" title="Upload reference image">
+                    <i class="icon fi fi-br-clip"></i>
+                  </button>
+                  <input type="file" id="prompt-file-input" accept="image/*" style="display: none;">
+                  
+                  <!-- Left Reference Preview -->
+                  <div class="prompt-attachment-preview" id="prompt-attachment-preview">
+                    <img class="prompt-attachment-thumb" id="prompt-attachment-thumb" src="" alt="Reference image">
+                    <span class="prompt-attachment-badge">1</span>
+                    <button class="prompt-attachment-remove" id="prompt-attachment-remove" title="Remove reference image">
+                      <i class="icon fi fi-br-cross"></i>
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="prompt-actions-right">
+                  <button class="prompt-btn-generate" id="btn-generate">
+                    <i class="icon fi fi-br-arrow-small-up" id="btn-generate-icon"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Prompt Tip — shown always, subtle contextual guide -->
+          <div class="prompt-tip" id="prompt-tip">
+            <i class="icon fi fi-br-bulb" style="font-size:10px; color:rgba(212,255,89,0.5); flex-shrink:0;"></i>
+            <span><strong>Tip:</strong> For best results, use clear, high-contrast images — Syncraft reads image details more accurately when the subject is well-lit and uncluttered.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: Settings & Actions Sidebar -->
+      <aside class="gw-sidebar" id="gw-toolbox">
+        <!-- Section: Dimensions -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <span class="sidebar-section-title">Dimensions</span>
+          </div>
+          <div class="dimensions-inputs">
+            <div class="dim-field">
+              <span class="dim-prefix">W</span>
+              <input type="number" id="canvas-width" class="dim-input" value="1024" min="256" max="4096">
+            </div>
+            <div class="dim-field">
+              <span class="dim-prefix">H</span>
+              <input type="number" id="canvas-height" class="dim-input" value="1024" min="256" max="4096">
+            </div>
+          </div>
+          <div class="preset-dropdown-wrap">
+            <select id="canvas-preset" class="sidebar-select">
+              <option value="Square" selected>Square (1024 x 1024 px)</option>
+              <option value="A4 Portrait">A4 Portrait (210 x 297 mm)</option>
+              <option value="A4 Landscape">A4 Landscape (297 x 210 mm)</option>
+              <option value="A3 Portrait">A3 Portrait (297 x 420 mm)</option>
+              <option value="A3 Landscape">A3 Landscape (420 x 297 mm)</option>
+              <option value="Letter Portrait">US Letter Portrait (8.5 x 11 in)</option>
+              <option value="Letter Landscape">US Letter Landscape (11 x 8.5 in)</option>
+              <option value="Custom">Custom Dimensions...</option>
+            </select>
+          </div>
+          <div class="dpi-dropdown-wrap">
+            <select id="canvas-dpi" class="sidebar-select">
+              <option value="72">72 DPI (Standard Web)</option>
+              <option value="120">120 DPI (High-Res Web)</option>
+              <option value="150">150 DPI (Print Draft)</option>
+              <option value="300" selected>300 DPI (High-Quality Print)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sidebar-divider"></div>
+
+
+
+        <!-- Section: Actions -->
+        <div class="sidebar-section">
+          <span class="sidebar-section-title">Actions</span>
+          <div class="actions-list">
+            <button class="action-item-btn" id="tool-remove-bg" disabled>
+              <i class="icon fi fi-br-magic-wand"></i>
+              <span class="action-item-name">Remove Background</span>
+            </button>
+            <button class="action-item-btn" id="tool-annotate" disabled>
+              <i class="icon fi fi-br-pen-clip"></i>
+              <span class="action-item-name">Edit Area (Annotate)</span>
+            </button>
+            <button class="action-item-btn" id="tool-vectorize-upscale" disabled>
+              <i class="icon fi fi-br-diamond"></i>
+              <span class="action-item-name">Vectorize / Upscale</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Section: Export -->
+        <div class="sidebar-section export-section">
+          <span class="sidebar-section-title">Export Settings</span>
+          <!-- Format chips -->
+          <div class="toolbox-format-chips" id="toolbox-format-chips">
+            <button class="format-chip active" data-format="svg">SVG</button>
+            <button class="format-chip" data-format="png">PNG</button>
+            <button class="format-chip" data-format="jpeg">JPEG</button>
+            <button class="format-chip" data-format="pdf">PDF</button>
+          </div>
+          
+          <button class="sidebar-export-btn" id="tool-export" disabled>
+            Export
+          </button>
+        </div>
+      </aside>
+
+    </main>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 4. ACCOUNT & SETTINGS DASHBOARD VIEW       -->
+  <!-- ========================================== -->
+  <div id="settings-view" class="hidden"></div>
+
+  <!-- GSAP for Card Swap Animation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <!-- Bootstrapping Router Script -->
+  <script type="module" src="js/app.js?v=3.3.19"></script>
+
+</body>
+</html>

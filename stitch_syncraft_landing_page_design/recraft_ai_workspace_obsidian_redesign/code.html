@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Recraft | AI Creative Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&amp;family=Geist:wght@400;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "primary": "#d4ff59",
+            "on-primary": "#000000",
+            "background": "#000000",
+            "surface": "#131313",
+            "surface-variant": "#e5e2e1", // Light gray for the workspace background
+            "on-surface": "#ffffff",
+            "on-surface-variant": "#000000",
+            "outline": "#333333",
+            "outline-variant": "#444936",
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "base": "4px",
+            "margin-desktop": "40px",
+            "gutter": "16px",
+            "margin-mobile": "20px",
+            "container-max": "1440px"
+          },
+          "fontFamily": {
+            "headline-xl": ["Sora"],
+            "label-sm": ["Geist"],
+            "display-lg-mobile": ["Sora"],
+            "body-lg": ["Geist"],
+            "headline-md": ["Sora"],
+            "display-lg": ["Sora"],
+            "body-md": ["Geist"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      line-height: 1;
+    }
+    
+    .canvas-noise {
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+      opacity: 0.03;
+      pointer-events: none;
+    }
+
+    .obsidian-border {
+      border: 1px solid #222222;
+    }
+
+    .pill-shadow {
+      box-shadow: 4px 4px 0px rgba(0,0,0,1);
+    }
+    
+    .workspace-gradient {
+        background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+    }
+
+    body {
+        font-family: 'Sora', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen overflow-hidden selection:bg-primary selection:text-on-primary">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-background border-b border-white/10 flex justify-between items-center w-full px-margin-desktop py-4 h-20">
+<div class="flex items-center gap-12">
+<h1 class="font-display-lg text-2xl font-extrabold uppercase tracking-tight text-on-surface">RECRAFT</h1>
+<nav class="hidden md:flex gap-8">
+<a class="text-sm font-semibold text-primary border-b-2 border-primary pb-1" href="#">Projects</a>
+<a class="text-sm font-semibold text-white/50 hover:text-white transition-colors" href="#">Assets</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-white/10 px-6 py-2 rounded-full text-sm font-bold text-white hover:bg-white/20 transition-all uppercase tracking-wider">Share</button>
+<button class="bg-primary text-on-primary px-6 py-2 rounded-full text-sm font-extrabold hover:brightness-110 transition-all uppercase tracking-wider pill-shadow">Export</button>
+<div class="flex items-center gap-5 ml-6 text-white/60">
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">settings</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">help</span>
+</div>
+</div>
+</header>
+<main class="relative h-screen w-full flex pt-20">
+<!-- SideNavBar - Floating Vertical Toolbar -->
+<aside class="fixed left-8 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center bg-zinc-900 obsidian-border rounded-full py-8 w-16 gap-6 shadow-2xl">
+<div class="group relative flex items-center justify-center">
+<button class="bg-primary text-on-primary rounded-full p-3 transition-all active:scale-95" title="Select">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">near_me</span>
+</button>
+</div>
+<div class="group relative flex items-center justify-center">
+<button class="text-white/60 p-3 hover:bg-white/10 rounded-full transition-all" title="Pen">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+<div class="group relative flex items-center justify-center">
+<button class="text-white/60 p-3 hover:bg-white/10 rounded-full transition-all" title="Vector">
+<span class="material-symbols-outlined">pentagon</span>
+</button>
+</div>
+<div class="group relative flex items-center justify-center">
+<button class="text-white/60 p-3 hover:bg-white/10 rounded-full transition-all" title="Shape">
+<span class="material-symbols-outlined">category</span>
+</button>
+</div>
+<div class="group relative flex items-center justify-center">
+<button class="text-white/60 p-3 hover:bg-white/10 rounded-full transition-all" title="Image">
+<span class="material-symbols-outlined">image</span>
+</button>
+</div>
+<div class="group relative flex items-center justify-center">
+<button class="text-white/60 p-3 hover:bg-white/10 rounded-full transition-all" title="AI Edit">
+<span class="material-symbols-outlined text-primary">auto_fix_high</span>
+</button>
+</div>
+<div class="h-px w-8 bg-white/10 my-2"></div>
+<div class="group relative flex items-center justify-center">
+<button class="text-white/60 p-3 hover:bg-white/10 rounded-full transition-all" title="History">
+<span class="material-symbols-outlined">history</span>
+</button>
+</div>
+</aside>
+<!-- Main Workspace Canvas Area -->
+<section class="flex-1 flex flex-col items-center justify-center p-12 workspace-gradient relative">
+<!-- Canvas Container with high contrast background -->
+<div class="relative z-10 w-full max-w-[900px] aspect-[4/3] bg-surface-variant rounded-3xl shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col items-center justify-center group obsidian-border">
+<div class="canvas-noise absolute inset-0"></div>
+<!-- Canvas Content Placeholder -->
+<div class="relative flex flex-col items-center gap-6 text-black/10">
+<span class="material-symbols-outlined text-9xl font-thin select-none">draw</span>
+<p class="font-display-lg text-6xl font-black tracking-tighter uppercase select-none">CREATIVE</p>
+</div>
+<!-- Canvas Overlays -->
+<div class="absolute top-8 left-8">
+<div class="bg-black text-white px-4 py-1.5 rounded-full flex items-center gap-3 border border-white/20">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_#d4ff59]"></div>
+<span class="text-[11px] font-bold uppercase tracking-widest">Live Engine</span>
+</div>
+</div>
+<div class="absolute bottom-8 right-8">
+<div class="bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-xl flex items-center gap-2 border border-white/10">
+<span class="text-[11px] font-bold uppercase tracking-widest opacity-60">Scale: 1:1</span>
+</div>
+</div>
+</div>
+<!-- Bottom Prompt Input -->
+<div class="mt-12 w-full max-w-[800px] z-20">
+<div class="relative flex items-center group">
+<div class="absolute left-6 text-primary">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<input class="w-full bg-zinc-900 border-2 border-white/5 focus:border-primary rounded-full py-6 pl-16 pr-44 font-body-md text-white placeholder:text-white/20 outline-none transition-all shadow-2xl" placeholder="Describe your vision..." type="text"/>
+<div class="absolute right-4">
+<button class="bg-white text-black h-12 px-8 rounded-full font-bold uppercase tracking-widest hover:bg-primary transition-all active:scale-95 flex items-center gap-2 pill-shadow">
+              Generate
+              <span class="material-symbols-outlined text-lg">rocket_launch</span>
+</button>
+</div>
+</div>
+<!-- Prompt Suggestions / Chips -->
+<div class="flex flex-wrap justify-center gap-3 mt-8">
+<span class="px-5 py-2 bg-zinc-800 rounded-full border border-white/5 text-[10px] uppercase font-black text-white/50 cursor-pointer hover:bg-primary hover:text-black hover:border-primary transition-all">Studio Lighting</span>
+<span class="px-5 py-2 bg-zinc-800 rounded-full border border-white/5 text-[10px] uppercase font-black text-white/50 cursor-pointer hover:bg-primary hover:text-black hover:border-primary transition-all">Vector Art</span>
+<span class="px-5 py-2 bg-zinc-800 rounded-full border border-white/5 text-[10px] uppercase font-black text-white/50 cursor-pointer hover:bg-primary hover:text-black hover:border-primary transition-all">Cyberpunk Noir</span>
+<span class="px-5 py-2 bg-zinc-800 rounded-full border border-white/5 text-[10px] uppercase font-black text-white/50 cursor-pointer hover:bg-primary hover:text-black hover:border-primary transition-all">Brutalist SVG</span>
+</div>
+</div>
+</section>
+</main>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const input = document.querySelector('input');
+      const canvas = document.querySelector('.aspect-[4/3]');
+      
+      input.addEventListener('focus', () => {
+        canvas.style.transform = 'scale(1.02)';
+        canvas.style.transition = 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
+        canvas.style.boxShadow = '0 60px 120px rgba(212, 255, 89, 0.1)';
+      });
+
+      input.addEventListener('blur', () => {
+        canvas.style.transform = 'scale(1)';
+        canvas.style.boxShadow = '0 40px 100px rgba(0,0,0,0.8)';
+      });
+    });
+  </script>
+</body></html>
