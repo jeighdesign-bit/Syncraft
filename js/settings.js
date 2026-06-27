@@ -8,7 +8,7 @@ export function initSettingsPage(router, hash) {
   // ── Parse Tab Query Param ────────────────────────────────
   const urlParams = new URLSearchParams(hash.includes('?') ? hash.substring(hash.indexOf('?')) : '');
   let activeTab = urlParams.get('tab') || 'profile';
-  let initialProBudget = parseInt(urlParams.get('pro_budget') || '899');
+  let initialProBudget = parseInt(urlParams.get('pro_budget') || '150');
 
   // Validate activeTab
   const validTabs = ['profile', 'preferences', 'subscription'];
@@ -378,17 +378,6 @@ export function initSettingsPage(router, hash) {
                     : `<button class="settings-btn settings-btn-primary btn-plan-upgrade" data-plan="Professional" style="width:100%;">Upgrade</button>`
                   }
                 </div>
-
-                <!-- Enterprise Plan -->
-                <div class="settings-plan-card ${user.plan === 'Enterprise' ? 'active' : ''}">
-                  <div class="settings-plan-name">Enterprise</div>
-                  <div class="settings-plan-price">₱2,000<span class="settings-plan-price-period">/mo</span></div>
-                  <p class="settings-plan-limit">1,800 vector tokens / mo<br>Dedicated queues</p>
-                  ${user.plan === 'Enterprise' 
-                    ? `<button class="settings-btn settings-btn-secondary" style="width:100%;cursor:default;" disabled>Current Plan</button>` 
-                    : `<button class="settings-btn settings-btn-primary btn-plan-upgrade" data-plan="Enterprise" style="width:100%;">Upgrade</button>`
-                  }
-                </div>
               </div>
             </div>
           </div>
@@ -419,22 +408,49 @@ export function initSettingsPage(router, hash) {
           e.target.disabled = true;
           e.target.textContent = 'Upgrading...';
 
-          // Simulate payment routing delay (1.2s)
-          setTimeout(async () => {
-            try {
-              let chosenCreditsMax = null;
-              if (plan === 'Professional') {
-                chosenCreditsMax = Math.round(100 + (selectedProPrice - 150) * 0.868);
+          if (plan === 'Professional') {
+            const tokens = Math.round(100 + (selectedProPrice - 150) * 0.868);
+            
+            // Call serverless API to create PayMongo checkout session
+            fetch('/api/create-checkout', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                userId: user.id,
+                price: selectedProPrice,
+                tokens: tokens
+              })
+            })
+            .then(async (res) => {
+              const data = await res.json();
+              if (!res.ok) {
+                throw new Error(data.error || 'Failed to initiate checkout session');
               }
-              await authService.upgradeSubscription(plan, chosenCreditsMax);
-              showToast(`Plan upgraded to ${plan} successfully!`);
-              renderTabContent();
-            } catch (err) {
+              // Redirect to PayMongo Hosted Checkout Page
+              window.location.href = data.checkoutUrl;
+            })
+            .catch((err) => {
+              console.error('PayMongo checkout error:', err);
               showToast('Billing error: ' + err.message, true);
               e.target.disabled = false;
               e.target.textContent = 'Upgrade';
-            }
-          }, 1200);
+            });
+          } else {
+            // Starter Plan downgrade (free)
+            setTimeout(async () => {
+              try {
+                await authService.upgradeSubscription(plan, null);
+                showToast(`Plan changed to ${plan} successfully!`);
+                renderTabContent();
+              } catch (err) {
+                showToast('Billing error: ' + err.message, true);
+                e.target.disabled = false;
+                e.target.textContent = 'Upgrade';
+              }
+            }, 1000);
+          }
         });
       });
     }

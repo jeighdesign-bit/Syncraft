@@ -755,7 +755,10 @@
 
 @media (min-width: 768px) {
   .pricing-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 860px;
+    margin-left: auto;
+    margin-right: auto;
   }
 }
 
@@ -2005,4 +2008,79 @@ details[open] .faq-answer {
   .mock-prompt-options {
     display: none;
   }
+}
+
+/* Pricing Calculator Custom Styling (21st.dev style) */
+.pricing-calculator-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-surface-bright);
+}
+
+.calculator-slider-wrap {
+  background: var(--color-surface-container-high);
+  border-radius: var(--rounded-2xl);
+  padding: 24px;
+  margin: 24px 0;
+  border: 1px solid var(--color-outline-dim);
+}
+
+.calculator-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: var(--color-on-surface-variant);
+  font-weight: 700;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.calculator-slider-labels .highlight-val {
+  color: var(--color-primary);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.calc-slider {
+  width: 100%;
+  accent-color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.1);
+  height: 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  outline: none;
+  border: none;
+  margin: 8px 0;
+}
+
+.calculator-slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.calculator-footer {
+  margin-top: auto;
+  padding-top: 16px;
+  font-size: 13px;
+  color: var(--color-on-surface-variant);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--color-outline-dim);
+}
+
+.calculator-footer a {
+  color: var(--color-primary);
+  font-weight: 700;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.calculator-footer a:hover {
+  opacity: 0.8;
 }

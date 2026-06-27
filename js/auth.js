@@ -435,9 +435,8 @@ export function showSettingsModal(initialTab = 'general', showGeneral = true) {
 
     if (activeTab === 'billing') {
       const plans = [
-        { name: 'Starter', price: '₱0', desc: 'Essential operators', limit: '3 credits/mo' },
-        { name: 'Professional', price: '₱899', desc: 'Active environments', limit: '60 credits/mo' },
-        { name: 'Enterprise', price: '₱2,000', desc: 'Bespoke scaling', limit: '200 credits/mo' }
+        { name: 'Starter', price: '₱0', desc: 'Essential operators', limit: '25 credits (free trial)' },
+        { name: 'Professional', price: '₱150+', desc: 'Active environments', limit: '100 - 750 credits/mo' }
       ];
 
       const cardsHTML = plans.map(p => {

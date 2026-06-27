@@ -1007,17 +1007,18 @@ const ProjectService = {
 
         return project;
       } else {
-        console.log('[ProjectService] Local project has no SVG — fetching from Supabase...');
+        console.log('[ProjectService] Local project has no SVG — opening immediately, fetching from Supabase in background...');
+        // Open the local project instantly so the user sees the workspace immediately
+        const recents = upsertRecent(project);
+        store.setState({ currentProject: project, recentProjects: recents, isDirty: false, lastSavedAt: project.lastModified });
+        document.dispatchEvent(new CustomEvent('syncraft:projectOpened', { detail: project }));
+
+        // Background-fetch the remote version and hot-swap if newer
         if (supabaseClient) {
-          const fetchPromise = supabaseClient
+          supabaseClient
             .from('projects').select('*').eq('id', id).single()
             .then(({ data, error }) => {
-              if (error || !data) {
-                const recents = upsertRecent(project);
-                store.setState({ currentProject: project, recentProjects: recents, isDirty: false, lastSavedAt: project.lastModified });
-                document.dispatchEvent(new CustomEvent('syncraft:projectOpened', { detail: project }));
-                return project;
-              }
+              if (error || !data || !data.canvas_data) return;
               const fresh = {
                 id:           data.id,
                 name:         data.name,
@@ -1027,24 +1028,13 @@ const ProjectService = {
                 lastModified: data.last_modified,
               };
               writeProject(fresh);
-              const recents = upsertRecent(fresh);
-              store.setState({ currentProject: fresh, recentProjects: recents, isDirty: false, lastSavedAt: fresh.lastModified });
-              document.dispatchEvent(new CustomEvent('syncraft:projectOpened', { detail: fresh }));
-              return fresh;
-            });
-          const timeout = new Promise(resolve => setTimeout(() => {
-            const recents = upsertRecent(project);
-            store.setState({ currentProject: project, recentProjects: recents, isDirty: false, lastSavedAt: project.lastModified });
-            document.dispatchEvent(new CustomEvent('syncraft:projectOpened', { detail: project }));
-            resolve(project);
-          }, 5000));
-          return Promise.race([fetchPromise, timeout]);
-        } else {
-          const recents = upsertRecent(project);
-          store.setState({ currentProject: project, recentProjects: recents, isDirty: false, lastSavedAt: project.lastModified });
-          document.dispatchEvent(new CustomEvent('syncraft:projectOpened', { detail: project }));
-          return project;
+              if (store.getState().currentProject?.id === id) {
+                store.setState({ currentProject: fresh });
+                document.dispatchEvent(new CustomEvent('syncraft:projectOpened', { detail: fresh }));
+              }
+            }).catch(() => {});
         }
+        return project;
       }
     }
 
@@ -1073,7 +1063,7 @@ const ProjectService = {
           return p;
         });
 
-      const timeout = new Promise(resolve => setTimeout(() => resolve(null), 5000));
+      const timeout = new Promise(resolve => setTimeout(() => resolve(null), 2000));
       return Promise.race([fetchPromise, timeout]);
     }
 

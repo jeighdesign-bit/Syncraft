@@ -1,5 +1,6 @@
 import authService from './authService.js?v=2.0.5';
 import { showToast, openModal, SYNCRAFT_LOGO_SVG } from './utils.js';
+import { initOnboarding } from './onboarding.js';
 
 class MainLayout {
   constructor() {
@@ -306,7 +307,7 @@ class MainLayout {
       });
 
       document.getElementById('btn-header-help')?.addEventListener('click', () => {
-        alert('Syncraft Generation Workspace Shortcuts:\n\nCtrl + G: Generate\nCtrl + S: Save Project\nCtrl + E: Open Export Panel\nEsc: Close Panels');
+        initOnboarding(true);
       });
 
     } else if (route === 'settings') {

@@ -336,109 +336,55 @@
             <p class="section-subtitle">Select the protocol designation that aligns with your infrastructural requirements.</p>
           </div>
           <div class="pricing-grid">
-            <!-- Free Tier -->
-            <div class="pricing-card" id="pricing-card-starter">
-              <h3>Starter</h3>
-              <p class="pricing-card-desc">Essential tools for individual operators.</p>
-              <div class="pricing-price-box">
-                <span class="pricing-price">₱0</span>
-                <span class="pricing-period">/mo</span>
-              </div>
-              <ul class="pricing-features">
-                <li class="pricing-feature-item">
-                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
-                  25 free trial tokens
-                </li>
-                <li class="pricing-feature-item">
-                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
-                  Standard response speed
-                </li>
-                <li class="pricing-feature-item">
-                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
-                  Basic de-mockup tools
-                </li>
-              </ul>
-              <button class="pricing-btn" id="landing-starter-btn">Initialize Free</button>
-            </div>
-            <!-- Pro Tier -->
-            <div class="pricing-card pricing-card-pro">
-              <div class="pricing-badge">Optimal Deployment</div>
-              <h3>Professional</h3>
-              <p class="pricing-card-desc">Advanced capabilities for active environments.</p>
-              <div class="pricing-price-box">
-                <span class="pricing-price" id="landing-pro-price">₱899</span>
-                <span class="pricing-period">/mo</span>
-              </div>
-
-              <!-- Slider Wrapper -->
-              <div style="margin: 20px 0; display: flex; flex-direction: column; gap: 8px;">
-                <div style="display: flex; justify-content: space-between; font-size: 12px; color: #131313; font-weight: 700;">
-                  <span>Adjust Budget</span>
-                  <span id="landing-pro-slider-val" style="color: #000000; font-weight: 800;">₱899</span>
+            <!-- Left Card: Calculator -->
+            <div class="pricing-card pricing-calculator-card">
+              <h3>Calculate your pricing</h3>
+              <p class="pricing-card-desc">Slide to scale your monthly vector budget to match your workflow requirements.</p>
+              
+              <div class="calculator-slider-wrap">
+                <div class="calculator-slider-labels">
+                  <span>Selected Budget</span>
+                  <span id="calc-slider-val" class="highlight-val">₱150</span>
                 </div>
-                <input type="range" id="landing-pro-slider" min="150" max="899" step="1" value="899" style="
+                <input type="range" id="landing-pro-slider" min="0" max="11" step="1" value="1" class="calc-slider" style="
                   width: 100%;
-                  accent-color: #000000;
-                  background: rgba(0, 0, 0, 0.15);
-                  height: 6px;
+                  accent-color: var(--color-primary);
+                  background: rgba(255, 255, 255, 0.1);
+                  height: 8px;
                   border-radius: 999px;
                   cursor: pointer;
                   outline: none;
+                  border: none;
+                  margin: 8px 0;
                 ">
-                <div style="display: flex; justify-content: space-between; font-size: 10px; color: rgba(0, 0, 0, 0.6); font-weight: 600;">
+                <div class="calculator-slider-ticks" style="display: flex; justify-content: space-between; font-size: 11px; color: rgba(255, 255, 255, 0.4); font-weight: 600; margin-top: 8px;">
+                  <span>₱0 (Starter)</span>
                   <span>₱150</span>
                   <span>₱899</span>
                 </div>
               </div>
-
-
-              <ul class="pricing-features">
-                <li class="pricing-feature-item">
-                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
-                  <span id="landing-pro-tokens-text">750 vector tokens / mo</span>
-                </li>
-                <li class="pricing-feature-item">
-                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
-                  Priority queue routing
-                </li>
-                <li class="pricing-feature-item">
-                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
-                  Clean background patterns
-                </li>
-                <li class="pricing-feature-item">
-                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
-                  Unlimited downloads
-                </li>
-              </ul>
-              <button class="pricing-btn" id="landing-pro-btn">Deploy Pro</button>
+              
+              <div class="calculator-footer" style="margin-top: auto; padding-top: 16px; font-size: 13px; color: var(--color-on-surface-variant); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--color-outline-dim);">
+                <span>Need a custom solution?</span>
+                <a href="#" id="landing-enterprise-btn" style="color: var(--color-primary); font-weight: 700; text-decoration: none;">Contact Sales</a>
+              </div>
             </div>
-            <!-- Enterprise Tier -->
-            <div class="pricing-card" id="pricing-card-enterprise">
-              <h3>Enterprise</h3>
-              <p class="pricing-card-desc">Bespoke architecture for massive scale.</p>
+
+            <!-- Right Card: Dynamic Selected Plan Display -->
+            <div class="pricing-card pricing-card-pro pricing-result-card" id="pricing-result-card">
+              <div class="pricing-badge" id="result-badge">Optimal Deployment</div>
+              <h3 id="result-plan-title">Professional</h3>
+              <p class="pricing-card-desc" id="result-plan-desc">Advanced capabilities for active environments.</p>
               <div class="pricing-price-box">
-                <span class="pricing-price">₱2,000</span>
+                <span class="pricing-price" id="result-price">₱150</span>
                 <span class="pricing-period">/mo</span>
               </div>
-              <ul class="pricing-features">
-                <li class="pricing-feature-item">
-                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
-                  1,800 vector tokens / mo
-                </li>
-                <li class="pricing-feature-item">
-                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
-                  Dedicated processing queues
-                </li>
-                <li class="pricing-feature-item">
-                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
-                  Advanced pattern extraction
-                </li>
-                <li class="pricing-feature-item">
-                  <i class="icon fi fi-br-check-circle pricing-feature-icon"></i>
-                  Unlimited downloads & sharing
-                </li>
+
+              <ul class="pricing-features" id="result-features" style="list-style: none; display: flex; flex-direction: column; gap: 16px; margin: 0 0 32px 0; padding: 0;">
+                <!-- Will be dynamically populated via JS -->
               </ul>
-              <button class="pricing-btn" id="landing-enterprise-btn">Contact Sales</button>
+              
+              <button class="pricing-btn" id="result-action-btn">Deploy Pro</button>
             </div>
           </div>
         </div>

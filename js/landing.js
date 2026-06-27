@@ -164,52 +164,121 @@ export function initLandingPage(router) {
   // ── 8. CAPABILITY CARDS ─────────────────────
   // (Removed click handler to make capability card buttons display-only)
 
-  // ── 9. PRICING SLIDER & BUTTONS ─────────────
+  // ── 9. PRICING SLIDER & BUTTONS (21st.dev Style) ──
   const landingSlider = document.getElementById('landing-pro-slider');
-  const landingPriceText = document.getElementById('landing-pro-price');
-  const landingSliderVal = document.getElementById('landing-pro-slider-val');
-  const landingTokensText = document.getElementById('landing-pro-tokens-text');
+  const calcSliderVal = document.getElementById('calc-slider-val');
+  
+  const resultCard = document.getElementById('pricing-result-card');
+  const resultBadge = document.getElementById('result-badge');
+  const resultPlanTitle = document.getElementById('result-plan-title');
+  const resultPlanDesc = document.getElementById('result-plan-desc');
+  const resultPrice = document.getElementById('result-price');
+  const resultFeatures = document.getElementById('result-features');
+  const resultActionBtn = document.getElementById('result-action-btn');
+
+  const sliderSteps = [
+    { price: 0, tokens: 25, plan: 'Starter', badge: 'Free Trial', desc: 'Essential tools for individual operators.', btnText: 'Initialize Free' },
+    { price: 150, tokens: 100, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 225, tokens: 165, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 300, tokens: 230, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 375, tokens: 295, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 450, tokens: 360, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 525, tokens: 425, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 600, tokens: 490, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 675, tokens: 555, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 750, tokens: 620, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 825, tokens: 685, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 899, tokens: 750, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' }
+  ];
 
   if (landingSlider) {
-    const updateLandingProDetails = () => {
-      const price = parseInt(landingSlider.value);
-      const tokens = Math.round(100 + (price - 150) * 0.868);
+    const updatePricingDisplay = () => {
+      const stepIndex = parseInt(landingSlider.value);
+      const step = sliderSteps[stepIndex];
       
-      if (landingPriceText) landingPriceText.textContent = `₱${price}`;
-      if (landingSliderVal) landingSliderVal.textContent = `₱${price}`;
-      if (landingTokensText) landingTokensText.textContent = `${tokens.toLocaleString()} vector tokens / mo`;
+      // Update selected budget display
+      if (calcSliderVal) calcSliderVal.textContent = `₱${step.price}`;
+      
+      // Update card details
+      if (resultBadge) resultBadge.textContent = step.badge;
+      if (resultPlanTitle) resultPlanTitle.textContent = step.plan;
+      if (resultPlanDesc) resultPlanDesc.textContent = step.desc;
+      if (resultPrice) resultPrice.textContent = `₱${step.price}`;
+      if (resultActionBtn) resultActionBtn.textContent = step.btnText;
+
+      // Toggle lime-green highlight based on plan
+      if (resultCard) {
+        if (step.plan === 'Professional') {
+          resultCard.classList.add('pricing-card-pro');
+        } else {
+          resultCard.classList.remove('pricing-card-pro');
+        }
+      }
+
+      // Populate features dynamically
+      if (resultFeatures) {
+        if (step.plan === 'Starter') {
+          resultFeatures.innerHTML = `
+            <li class="pricing-feature-item" style="display:flex; align-items:center; gap:8px;">
+              <i class="icon fi fi-br-check-circle pricing-feature-icon" style="color:var(--color-primary);"></i>
+              25 free trial tokens
+            </li>
+            <li class="pricing-feature-item" style="display:flex; align-items:center; gap:8px;">
+              <i class="icon fi fi-br-check-circle pricing-feature-icon" style="color:var(--color-primary);"></i>
+              Standard response speed
+            </li>
+            <li class="pricing-feature-item" style="display:flex; align-items:center; gap:8px;">
+              <i class="icon fi fi-br-check-circle pricing-feature-icon" style="color:var(--color-primary);"></i>
+              Basic de-mockup tools
+            </li>
+          `;
+        } else {
+          resultFeatures.innerHTML = `
+            <li class="pricing-feature-item" style="display:flex; align-items:center; gap:8px;">
+              <i class="icon fi fi-br-check-circle pricing-feature-icon" style="color:currentColor;"></i>
+              <span><strong>${step.tokens.toLocaleString()}</strong> vector tokens / mo</span>
+            </li>
+            <li class="pricing-feature-item" style="display:flex; align-items:center; gap:8px;">
+              <i class="icon fi fi-br-check-circle pricing-feature-icon" style="color:currentColor;"></i>
+              Priority queue routing
+            </li>
+            <li class="pricing-feature-item" style="display:flex; align-items:center; gap:8px;">
+              <i class="icon fi fi-br-check-circle pricing-feature-icon" style="color:currentColor;"></i>
+              Clean background patterns
+            </li>
+            <li class="pricing-feature-item" style="display:flex; align-items:center; gap:8px;">
+              <i class="icon fi fi-br-check-circle pricing-feature-icon" style="color:currentColor;"></i>
+              Unlimited downloads
+            </li>
+          `;
+        }
+      }
     };
-    
-    landingSlider.addEventListener('input', updateLandingProDetails);
-    updateLandingProDetails(); // initial sync
+
+    landingSlider.addEventListener('input', updatePricingDisplay);
+    updatePricingDisplay(); // initial sync
+
+    // Bind action button click
+    if (resultActionBtn) {
+      resultActionBtn.addEventListener('click', () => {
+        const stepIndex = parseInt(landingSlider.value);
+        const step = sliderSteps[stepIndex];
+        
+        if (authService.isAuthenticated()) {
+          if (step.plan === 'Starter') {
+            router.navigate('dashboard');
+          } else {
+            router.navigate(`settings?tab=subscription&pro_budget=${step.price}`);
+          }
+        } else {
+          router.navigate('auth/signup');
+        }
+      });
+    }
   }
 
-  // Interactive Pricing card action buttons
-  const starterBtn = document.getElementById('landing-starter-btn');
-  const proBtn = document.getElementById('landing-pro-btn');
+  // Bind Enterprise contact button
   const enterpriseBtn = document.getElementById('landing-enterprise-btn');
-
-  if (starterBtn) {
-    starterBtn.addEventListener('click', () => {
-      if (authService.isAuthenticated()) {
-        router.navigate('dashboard');
-      } else {
-        router.navigate('auth/signup');
-      }
-    });
-  }
-
-  if (proBtn) {
-    proBtn.addEventListener('click', () => {
-      if (authService.isAuthenticated()) {
-        const sliderValue = landingSlider ? landingSlider.value : '899';
-        router.navigate(`settings?tab=subscription&pro_budget=${sliderValue}`);
-      } else {
-        router.navigate('auth/signup');
-      }
-    });
-  }
-
   if (enterpriseBtn) {
     enterpriseBtn.addEventListener('click', (e) => {
       e.preventDefault();
