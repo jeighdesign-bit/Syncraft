@@ -170,9 +170,10 @@ export function initSettingsPage(router, hash) {
       });
 
       // Bind Log Out action
-      document.getElementById('btn-settings-logout')?.addEventListener('click', async () => {
+      document.getElementById('btn-settings-logout')?.addEventListener('click', (e) => {
+        if (e) e.preventDefault();
         try {
-          await authService.logout();
+          authService.logout();
           showToast('Logged out successfully');
           router.navigate('');
         } catch (err) {
