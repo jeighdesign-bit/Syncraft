@@ -329,6 +329,50 @@ function dataURLtoBlob(dataurl) {
 }
 
 /**
+ * Compresses an image Blob if it exceeds a safe file size for API uploads.
+ * Recraft's Vectorize API has a ~10MB limit, so we compress to stay under it.
+ *
+ * @param {Blob} blob - The image Blob to check/compress.
+ * @param {number} [maxBytes=8388608] - Max size in bytes (default 8MB).
+ * @returns {Promise<Blob>} The original blob if under limit, or a compressed version.
+ */
+async function compressBlobForApi(blob, maxBytes = 8 * 1024 * 1024) {
+  if (blob.size <= maxBytes) return blob;
+  console.log(`[compressBlobForApi] Blob size ${blob.size} exceeds ${maxBytes}. Compressing...`);
+
+  const bitmapSource = await createImageBitmap(blob);
+  let { width, height } = bitmapSource;
+
+  // Scale down to max 4096px on longest side if needed
+  const MAX_DIM = 4096;
+  if (width > MAX_DIM || height > MAX_DIM) {
+    const scale = MAX_DIM / Math.max(width, height);
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmapSource, 0, 0, width, height);
+  bitmapSource.close();
+
+  // Try JPEG at decreasing quality until under limit
+  for (const quality of [0.92, 0.85, 0.75, 0.6]) {
+    const compressed = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+    console.log(`[compressBlobForApi] quality=${quality} → ${compressed.size} bytes`);
+    if (compressed.size <= maxBytes) return compressed;
+  }
+
+  // Last resort: scale down further
+  canvas.width = Math.round(width * 0.6);
+  canvas.height = Math.round(height * 0.6);
+  ctx.drawImage(bitmapSource.close ? await createImageBitmap(blob) : bitmapSource, 0, 0, canvas.width, canvas.height);
+  return await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.7));
+}
+
+/**
  * Calls the direct Recraft.ai imageToImage API.
  * 
  * @param {string} apiKey - The Recraft.ai API Key.
@@ -395,8 +439,11 @@ async function callRecraftVectorizeApi(apiKey, imageBlob) {
     throw new Error("Recraft.ai API Key is missing.");
   }
 
+  // Auto-compress if blob exceeds Recraft's ~10MB limit
+  const safeBlob = await compressBlobForApi(imageBlob);
+
   const formData = new FormData();
-  formData.append('file', imageBlob, 'pattern.png');
+  formData.append('file', safeBlob, 'pattern.png');
 
   const response = await fetch('https://external.api.recraft.ai/v1/images/vectorize', {
     method: 'POST',
@@ -3043,7 +3090,7 @@ export function initWorkspace(router) {
       try {
         let processedImage = referenceImage;
         if (referenceImage) {
-          updateProgress(20, 'Optimizing reference image...');
+          updateProgress(15, 'Optimizing reference image...');
           try {
             processedImage = await resizeImage(referenceImage, 800, 0.7);
             console.log("[Workspace] SYNCRAFT Extraction: Reference image resized. Original length:", referenceImage.length, "Resized length:", processedImage.length);
@@ -3053,7 +3100,7 @@ export function initWorkspace(router) {
         }
 
         // ── Hybrid Pipeline: Nano Banana Pro (Gemini 3 Pro Image) + Recraft Vectorize ──
-        updateProgress(45, 'Generating design layout with Nano Banana Pro...');
+        updateProgress(35, 'Generating design layout with Nano Banana Pro...');
         
         const recraftApiKey = localStorage.getItem('syncraft_recraft_api_key') || DEFAULT_RECRAFT_API_KEY;
         if (!recraftApiKey) {
@@ -3073,12 +3120,18 @@ CRITICAL CONSTRAINTS:
           // Step 1: Call Nano Banana Pro (gemini-3-pro-image)
           const generatedBlob = await callGeminiImageGenerationApi(apiKey, extractPrompt, processedImage);
 
+          // Step 1.5: Upscale the generated image for cleaner vectorization
+          updateProgress(60, 'Upscaling design for sharper vectorization...');
+          const upscaledUrl = await callRecraftUpscaleApi(recraftApiKey, generatedBlob);
+          const upscaledRes = await fetch(upscaledUrl);
+          const upscaledBlob = await upscaledRes.blob();
+
           // Step 2: Call Recraft Vectorize API
-          updateProgress(75, 'Vectorizing design pattern with Recraft...');
-          const imgUrl = await callRecraftVectorizeApi(recraftApiKey, generatedBlob);
+          updateProgress(80, 'Vectorizing design pattern with Recraft...');
+          const imgUrl = await callRecraftVectorizeApi(recraftApiKey, upscaledBlob);
 
           // 3. Load and clean the Recraft SVG
-          updateProgress(90, 'Loading generated vector pattern...');
+          updateProgress(92, 'Loading generated vector pattern...');
           const fetchRes = await fetch(imgUrl);
           const recraftSvgRaw = await fetchRes.text();
           if (recraftSvgRaw.includes('<svg') || recraftSvgRaw.includes('<?xml')) {
@@ -4015,8 +4068,13 @@ CRITICAL CONSTRAINTS:
             updateCanvasProgress(targetId, 60, 'Extracting background pattern with Syncraft Ultra...');
             const generatedBlob = await callGeminiImageGenerationApi(geminiApiKey, ultraExtractPrompt, processedImage, closestRatio);
 
-            updateCanvasProgress(targetId, 80, 'Vectorizing design layout with Recraft...');
-            const vectorImgUrl = await callRecraftVectorizeApi(recraftApiKey, generatedBlob);
+            updateCanvasProgress(targetId, 70, 'Upscaling design for sharper vectorization...');
+            const upscaledUrl = await callRecraftUpscaleApi(recraftApiKey, generatedBlob);
+            const upscaledRes = await fetch(upscaledUrl);
+            const upscaledBlob = await upscaledRes.blob();
+
+            updateCanvasProgress(targetId, 85, 'Vectorizing design layout with Recraft...');
+            const vectorImgUrl = await callRecraftVectorizeApi(recraftApiKey, upscaledBlob);
             
             updateCanvasProgress(targetId, 90, 'Loading generated vector pattern...');
             const fetchRes = await fetch(vectorImgUrl);
