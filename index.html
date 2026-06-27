@@ -939,12 +939,12 @@
         <div class="gw-bottom-bar">
           <!-- AI Model Selector Dropdown -->
           <div class="model-selector-dropdown" id="model-selector-dropdown" style="display: none; width: 100%; background: rgba(24, 24, 27, 0.95); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 6px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); backdrop-filter: blur(12px); flex-direction: column; gap: 2px;">
-            <button class="model-select-item active" data-model="syncraft-vector" style="display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; padding: 10px 12px; border-radius: 8px; color: #fff; cursor: pointer; text-align: left; transition: background 0.15s;">
+            <button class="model-select-item" data-model="syncraft-vector" style="display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; padding: 10px 12px; border-radius: 8px; color: rgba(255,255,255,0.7); cursor: pointer; text-align: left; transition: background 0.15s;">
               <div style="display: flex; flex-direction: column; gap: 2px;">
-                <span style="font-size: 12px; font-weight: 700; color: var(--color-primary);">Syncraft Vector (SVG)</span>
+                <span style="font-size: 12px; font-weight: 700;">Syncraft Vector (SVG)</span>
                 <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5);">Clean scalable vector design layout.</span>
               </div>
-              <span style="font-size: 11px; font-weight: 700; color: var(--color-primary); background: rgba(212, 255, 89, 0.1); padding: 2px 8px; border-radius: 99px;">4 Tokens</span>
+              <span style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); background: rgba(255, 255, 255, 0.05); padding: 2px 8px; border-radius: 99px;">4 Tokens</span>
             </button>
             <button class="model-select-item" data-model="syncraft-pro-vector" style="display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; padding: 10px 12px; border-radius: 8px; color: rgba(255,255,255,0.7); cursor: pointer; text-align: left; transition: background 0.15s;">
               <div style="display: flex; flex-direction: column; gap: 2px;">
@@ -967,12 +967,12 @@
               </div>
               <span style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); background: rgba(255, 255, 255, 0.05); padding: 2px 8px; border-radius: 99px;">10 Tokens</span>
             </button>
-            <button class="model-select-item" data-model="syncraft-ultra" style="display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; padding: 10px 12px; border-radius: 8px; color: rgba(255,255,255,0.7); cursor: pointer; text-align: left; transition: background 0.15s;">
+            <button class="model-select-item active" data-model="syncraft-ultra" style="display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; padding: 10px 12px; border-radius: 8px; color: #fff; cursor: pointer; text-align: left; transition: background 0.15s;">
               <div style="display: flex; flex-direction: column; gap: 2px;">
-                <span style="font-size: 12px; font-weight: 700;">Syncraft Ultra (Creative)</span>
+                <span style="font-size: 12px; font-weight: 700; color: var(--color-primary);">Syncraft Ultra (Creative)</span>
                 <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5);">Advanced creative AI graphic generator.</span>
               </div>
-              <span style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); background: rgba(255, 255, 255, 0.05); padding: 2px 8px; border-radius: 99px;">20 Tokens</span>
+              <span style="font-size: 11px; font-weight: 700; color: var(--color-primary); background: rgba(212, 255, 89, 0.1); padding: 2px 8px; border-radius: 99px;">20 Tokens</span>
             </button>
           </div>
 
@@ -1103,9 +1103,13 @@
               <i class="icon fi fi-br-pen-clip"></i>
               <span class="action-item-name">Edit Area (Annotate)</span>
             </button>
-            <button class="action-item-btn" id="tool-vectorize-upscale" disabled>
+            <button class="action-item-btn" id="tool-vectorize" disabled>
               <i class="icon fi fi-br-diamond"></i>
-              <span class="action-item-name">Vectorize / Upscale</span>
+              <span class="action-item-name">Vectorize Design</span>
+            </button>
+            <button class="action-item-btn" id="tool-upscale" disabled>
+              <i class="icon fi fi-br-expand"></i>
+              <span class="action-item-name">Upscale Design</span>
             </button>
           </div>
         </div>
@@ -1124,6 +1128,10 @@
           <button class="sidebar-export-btn" id="tool-export" disabled>
             Export
           </button>
+          <div class="export-compat-tip" style="margin-top: 12px; font-size: 10px; color: rgba(255, 255, 255, 0.4); line-height: 1.4; display: flex; gap: 6px; align-items: flex-start; padding: 8px 10px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.04);">
+            <i class="icon fi fi-br-info" style="font-size: 12px; color: var(--color-primary); margin-top: 1px;"></i>
+            <span>SVGs and PDFs exported from Syncraft are fully editable vector paths natively compatible with Adobe Illustrator and Figma.</span>
+          </div>
         </div>
       </aside>
 

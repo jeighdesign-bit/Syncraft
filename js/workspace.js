@@ -7,6 +7,7 @@ import ProjectService from './projectService.js?v=2.0.5';
 import store          from './projectStore.js';
 import authService         from './authService.js?v=2.0.5';
 import { initDotField }    from './dotField.js';
+import { initOnboarding }  from './onboarding.js';
 let appRouter = null;
 
 /**
@@ -424,6 +425,49 @@ async function callRecraftVectorizeApi(apiKey, imageBlob) {
 }
 
 /**
+ * Calls the Recraft.ai Crisp Upscale API.
+ *
+ * @param {string} apiKey - The Recraft.ai API Key.
+ * @param {Blob} imageBlob - The original image blob to upscale.
+ * @returns {Promise<string>} The URL of the upscaled image.
+ */
+async function callRecraftUpscaleApi(apiKey, imageBlob) {
+  console.log("[Recraft Upscale API] Request started.");
+  if (!apiKey) {
+    throw new Error("Recraft.ai API Key is missing.");
+  }
+
+  const formData = new FormData();
+  formData.append('file', imageBlob, 'image.png');
+
+  const response = await fetch('https://external.api.recraft.ai/v1/images/crispUpscale', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+    body: formData
+  });
+
+  console.log("[Recraft Upscale API] Response status:", response.status, response.statusText);
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    if (errData?.code === 'not_enough_credits') {
+      throw new Error("Recraft.ai API key has no credits left. Please top up your Recraft account or check your billing.");
+    }
+    throw new Error(errData?.error?.message || errData?.message || `Recraft Upscale failed: ${response.statusText}`);
+  }
+
+  const result = await response.json();
+  const imgUrl = result?.data?.[0]?.url || result?.image?.url;
+  if (!imgUrl) {
+    throw new Error("Recraft Upscale API did not return an image URL.");
+  }
+
+  console.log("[Recraft Upscale API] Done, URL:", imgUrl);
+  return imgUrl;
+}
+
+
+/**
  * Calls the Recraft.ai Inpainting API to edit a selected region of an image.
  *
  * @param {string} apiKey - The Recraft.ai API Key.
@@ -579,32 +623,43 @@ function removeVectorBackground(svgCode) {
   w = w || 1024;
   h = h || 1024;
 
-  const children = Array.from(svg.children);
-  for (let i = 0; i < Math.min(children.length, 3); i++) {
-    const child = children[i];
-    const tagName = child.tagName.toLowerCase();
-    if (tagName === 'rect' || tagName === 'path') {
-      const fill = child.getAttribute('fill');
+  const rects = doc.querySelectorAll('rect, path');
+  for (let i = 0; i < rects.length; i++) {
+    const el = rects[i];
+    const tagName = el.tagName.toLowerCase();
+    
+    if (tagName === 'rect') {
+      const rectW = el.getAttribute('width');
+      const rectH = el.getAttribute('height');
+      const fill = el.getAttribute('fill');
+      
       if (fill && fill !== 'none' && fill !== 'transparent') {
-        if (tagName === 'rect') {
-          const rectW = child.getAttribute('width');
-          const rectH = child.getAttribute('height');
-          if (rectW === '100%' || parseFloat(rectW) >= w * 0.95) {
-            child.setAttribute('fill', 'none');
-          }
-        } else if (tagName === 'path') {
-          // If first element is a big path that has a fill covering most dimensions
-          // we can set its fill to none, but let's be careful not to hide design lines.
-          // Usually background layers in SVGs are rectangular bounds
-          const bounds = child.getBoundingClientRect ? child.getBoundingClientRect() : null;
-          if (i === 0) {
-            // Setting the very first background shape to none
-            child.setAttribute('fill', 'none');
-          }
+        const isFullWidth = rectW === '100%' || parseFloat(rectW) >= w * 0.95;
+        const isFullHeight = rectH === '100%' || parseFloat(rectH) >= h * 0.95;
+        if (isFullWidth && isFullHeight) {
+          el.setAttribute('fill', 'none');
+          el.style.fill = 'none';
         }
       }
     }
+    
+    if (tagName === 'path' && i === 0) {
+      const fill = el.getAttribute('fill');
+      if (fill && fill !== 'none' && fill !== 'transparent') {
+        el.setAttribute('fill', 'none');
+        el.style.fill = 'none';
+      }
+    }
   }
+
+  const styles = doc.querySelectorAll('style');
+  styles.forEach(styleEl => {
+    let cssText = styleEl.textContent;
+    cssText = cssText.replace(/svg\s*\{\s*background-color\s*:[^}]+}/gi, 'svg { background-color: transparent; }');
+    cssText = cssText.replace(/svg\s*\{\s*background\s*:[^}]+}/gi, 'svg { background: transparent; }');
+    styleEl.textContent = cssText;
+  });
+
   return new XMLSerializer().serializeToString(doc);
 }
 
@@ -878,7 +933,8 @@ export function initWorkspace(router) {
   const toolExport            = $('tool-export');
   const toolExtractPattern    = $('tool-extract-pattern');
   const toolExtractRaster     = $('tool-extract-raster');
-  const toolVectorizeUpscale  = $('tool-vectorize-upscale');
+  const toolVectorize         = $('tool-vectorize');
+  const toolUpscale           = $('tool-upscale');
   const infoFormat   = $('info-format');
   const infoSize     = $('info-size');
   const infoPrompt   = $('info-prompt');
@@ -901,6 +957,8 @@ export function initWorkspace(router) {
   // ── Multi-canvas State ────────────────────────
   let canvases = [];
   let selectedCanvasId = null;
+  let undoStack = [];
+  let redoStack = [];
 
   // Select resultInner element
   const resultInner = $('result-inner');
@@ -933,6 +991,106 @@ export function initWorkspace(router) {
     if (selCanvas && selCanvas.svgContent) {
       ProjectService.updateThumbnail(selCanvas.svgContent);
     }
+  }
+
+  function pushHistory() {
+    const state = {
+      canvases: JSON.parse(JSON.stringify(canvases)),
+      selectedCanvasId: selectedCanvasId,
+      currentSVG: currentSVG,
+      annotations: JSON.parse(JSON.stringify(annotations))
+    };
+    undoStack.push(state);
+    redoStack = [];
+    if (undoStack.length > 50) {
+      undoStack.shift();
+    }
+  }
+
+  function undo() {
+    if (undoStack.length === 0) {
+      showToast('Undo — history stack is empty');
+      return;
+    }
+    const currentState = {
+      canvases: JSON.parse(JSON.stringify(canvases)),
+      selectedCanvasId: selectedCanvasId,
+      currentSVG: currentSVG,
+      annotations: JSON.parse(JSON.stringify(annotations))
+    };
+    redoStack.push(currentState);
+
+    const prevState = undoStack.pop();
+    canvases = prevState.canvases;
+    selectedCanvasId = prevState.selectedCanvasId;
+    currentSVG = prevState.currentSVG;
+    annotations = prevState.annotations;
+
+    const selCanvas = canvases.find(c => c.id === selectedCanvasId);
+    ProjectService.updateCanvasData({
+      canvases,
+      selectedCanvasId,
+      svgContent: currentSVG,
+      annotations
+    });
+
+    syncSelectedCanvasToSidebar();
+    renderCanvases();
+    renderAnnotations();
+    resizeAnnotationOverlay();
+
+    if (currentSVG) {
+      renderOutput(currentSVG, selCanvas ? selCanvas.prompt : '');
+      setDisplayState('output');
+      unlockToolbox();
+    } else {
+      setDisplayState('idle');
+      lockToolbox();
+    }
+    showToast('Undo applied');
+  }
+
+  function redo() {
+    if (redoStack.length === 0) {
+      showToast('Redo — history stack is empty');
+      return;
+    }
+    const currentState = {
+      canvases: JSON.parse(JSON.stringify(canvases)),
+      selectedCanvasId: selectedCanvasId,
+      currentSVG: currentSVG,
+      annotations: JSON.parse(JSON.stringify(annotations))
+    };
+    undoStack.push(currentState);
+
+    const nextState = redoStack.pop();
+    canvases = nextState.canvases;
+    selectedCanvasId = nextState.selectedCanvasId;
+    currentSVG = nextState.currentSVG;
+    annotations = nextState.annotations;
+
+    const selCanvas = canvases.find(c => c.id === selectedCanvasId);
+    ProjectService.updateCanvasData({
+      canvases,
+      selectedCanvasId,
+      svgContent: currentSVG,
+      annotations
+    });
+
+    syncSelectedCanvasToSidebar();
+    renderCanvases();
+    renderAnnotations();
+    resizeAnnotationOverlay();
+
+    if (currentSVG) {
+      renderOutput(currentSVG, selCanvas ? selCanvas.prompt : '');
+      setDisplayState('output');
+      unlockToolbox();
+    } else {
+      setDisplayState('idle');
+      lockToolbox();
+    }
+    showToast('Redo applied');
   }
 
   // Update global sidebar settings from the selected canvas
@@ -972,8 +1130,8 @@ export function initWorkspace(router) {
   function renderCanvases() {
     if (!resultInner) return;
 
-    if (annotationOverlay && annotationOverlay.parentNode) {
-      resultDisplay.appendChild(annotationOverlay);
+    if (annotationOverlay) {
+      annotationOverlay.remove();
     }
 
     resultInner.innerHTML = '';
@@ -1054,6 +1212,10 @@ export function initWorkspace(router) {
           svgEl.setAttribute('width', '100%');
           svgEl.setAttribute('height', '100%');
           svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        }
+
+        if (isSelected && annotationOverlay) {
+          svgWrap.appendChild(annotationOverlay);
         }
 
         frame.appendChild(svgWrap);
@@ -1167,6 +1329,7 @@ export function initWorkspace(router) {
             if (canvases.length <= 1) {
               showToast('Cannot delete the last canvas frame', true);
             } else {
+              pushHistory();
               canvases = canvases.filter(c => c.id !== canvas.id);
               selectedCanvasId = canvases[0].id;
               syncSelectedCanvasToSidebar();
@@ -1216,7 +1379,7 @@ export function initWorkspace(router) {
     'syncraft-pro': { name: 'Syncraft Pro (Raster)', cost: 6, apiId: 'recraftv4_1_pro', type: 'raster' },
     'syncraft-ultra': { name: 'Syncraft Ultra (Creative)', cost: 12, apiId: 'gemini-3-pro-image', type: 'ultra' }
   };
-  let selectedModel = 'syncraft-vector';
+  let selectedModel = 'syncraft-ultra';
 
   // ── Zooming & Panning State ──────────────────
   let zoomLevel = 1.0;
@@ -1421,6 +1584,7 @@ export function initWorkspace(router) {
   }
 
   function deleteAnnotation(id) {
+    pushHistory();
     annotations = annotations.filter(a => a.id !== id);
     ProjectService.updateCanvasData({ annotations });
     renderAnnotations();
@@ -1635,6 +1799,8 @@ export function initWorkspace(router) {
           renderAnnotations();
           return;
         }
+
+        pushHistory();
 
         // Start processing state
         if (toolAnnotate) {
@@ -1916,6 +2082,7 @@ export function initWorkspace(router) {
     // Center the active canvas in the viewport at 100% zoom level on load
     setTimeout(() => {
       centerCanvas();
+      initOnboarding();
     }, 50);
   }
 
@@ -2233,12 +2400,12 @@ export function initWorkspace(router) {
   const toolRedo = $('tool-redo');
   if (toolUndo) {
     toolUndo.addEventListener('click', () => {
-      showToast('Undo — history stack is empty');
+      undo();
     });
   }
   if (toolRedo) {
     toolRedo.addEventListener('click', () => {
-      showToast('Redo — history stack is empty');
+      redo();
     });
   }
 
@@ -2603,6 +2770,8 @@ export function initWorkspace(router) {
         return;
       }
 
+      pushHistory();
+
       // 1. Exit annotation mode if open
       if (isAnnotationMode) exitAnnotationMode();
 
@@ -2790,6 +2959,7 @@ export function initWorkspace(router) {
 
       // Lock global generation
       isGenerating = true;
+      pushHistory();
 
       // Set button to processing state
       toolExtractPattern.classList.add('processing');
@@ -3076,6 +3246,7 @@ Output ONLY the clean background graphic design layout.`;
 
       if (isAnnotationMode) exitAnnotationMode();
       isGenerating = true;
+      pushHistory();
 
       // Button processing state
       toolExtractRaster.classList.add('processing');
@@ -3208,7 +3379,8 @@ Output ONLY the clean background graphic design layout.`;
         setStatusBadge('ready', 'Ready');
 
         // Enable Vectorize/Upscale now that we have a raster image in SVG
-        if (toolVectorizeUpscale) toolVectorizeUpscale.disabled = false;
+        if (toolVectorize) toolVectorize.disabled = false;
+        if (toolUpscale) toolUpscale.disabled = false;
 
         ProjectService.updateCanvasData({
           svgContent: currentSVG,
@@ -3258,11 +3430,14 @@ Output ONLY the clean background graphic design layout.`;
   // ────────────────────────────────────────────────────────────────
   // VECTORIZE / UPSCALE — Send raster canvas through Recraft Vectorize
   // ────────────────────────────────────────────────────────────────
-  if (toolVectorizeUpscale) {
-    toolVectorizeUpscale.addEventListener('click', async () => {
-      if (!currentSVG || toolVectorizeUpscale.disabled || toolVectorizeUpscale.classList.contains('processing')) return;
+  // ────────────────────────────────────────────────────────────────
+  // VECTORIZE — Send raster canvas through Recraft Vectorize API
+  // ────────────────────────────────────────────────────────────────
+  if (toolVectorize) {
+    toolVectorize.addEventListener('click', async () => {
+      if (!currentSVG || toolVectorize.disabled || toolVectorize.classList.contains('processing')) return;
       if (!isRasterSvg(currentSVG)) {
-        showToast('No raster image found. Generate a design first using Syncraft (Design Only).', true);
+        showToast('No raster image found. Generate a design first using Syncraft.', true);
         return;
       }
 
@@ -3278,11 +3453,13 @@ Output ONLY the clean background graphic design layout.`;
         return;
       }
 
+      if (typeof pushHistory === 'function') pushHistory();
+
       // Button processing state
-      toolVectorizeUpscale.classList.add('processing');
-      const nameEl = toolVectorizeUpscale.querySelector('.action-item-name');
-      const iconEl = toolVectorizeUpscale.querySelector('.icon');
-      const origName = nameEl?.textContent || 'Vectorize / Upscale';
+      toolVectorize.classList.add('processing');
+      const nameEl = toolVectorize.querySelector('.action-item-name');
+      const iconEl = toolVectorize.querySelector('.icon');
+      const origName = nameEl?.textContent || 'Vectorize Design';
       const origIconClass = iconEl?.className || 'icon fi fi-br-diamond';
       if (nameEl) nameEl.textContent = 'Vectorizing...';
       if (iconEl) iconEl.className = 'icon fi fi-br-hourglass';
@@ -3303,7 +3480,6 @@ Output ONLY the clean background graphic design layout.`;
         if (imgHref.startsWith('data:')) {
           imageBlob = dataURLtoBlob(imgHref);
         } else {
-          // Remote URL — fetch and convert
           const fetchRes = await fetch(imgHref);
           imageBlob = await fetchRes.blob();
         }
@@ -3326,7 +3502,7 @@ Output ONLY the clean background graphic design layout.`;
           targetCanvas.bgRemoved = false;
         }
 
-        authService.consumeCredit('Action', 'Vectorize / Upscale', 2).catch(e => console.warn('Credit error:', e));
+        authService.consumeCredit('Action', 'Vectorize', 2).catch(e => console.warn('Credit error:', e));
 
         renderOutput(currentSVG, targetCanvas?.prompt || 'Vectorized Design');
         syncCanvasState();
@@ -3342,12 +3518,12 @@ Output ONLY the clean background graphic design layout.`;
 
         showToast('Design vectorized successfully!');
 
-        toolVectorizeUpscale.classList.remove('processing');
-        toolVectorizeUpscale.classList.add('done');
+        toolVectorize.classList.remove('processing');
+        toolVectorize.classList.add('done');
         if (nameEl) nameEl.textContent = '✓ Vectorized!';
         if (iconEl) iconEl.className = 'icon fi fi-br-check-circle';
         setTimeout(() => {
-          toolVectorizeUpscale.classList.remove('done');
+          toolVectorize.classList.remove('done');
           if (nameEl) nameEl.textContent = origName;
           if (iconEl) iconEl.className = origIconClass;
         }, 3000);
@@ -3355,7 +3531,123 @@ Output ONLY the clean background graphic design layout.`;
       } catch (err) {
         console.error(err);
         showToast('Vectorize failed: ' + (err.message || ''), true);
-        toolVectorizeUpscale.classList.remove('processing');
+        toolVectorize.classList.remove('processing');
+        if (nameEl) nameEl.textContent = origName;
+        if (iconEl) iconEl.className = 'icon fi fi-br-exclamation';
+        setTimeout(() => { if (iconEl) iconEl.className = origIconClass; }, 3000);
+        setStatusBadge('ready', 'Ready');
+      } finally {
+        unlockToolbox();
+      }
+    });
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // UPSCALE — Send raster canvas through Recraft Crisp Upscale API
+  // ────────────────────────────────────────────────────────────────
+  if (toolUpscale) {
+    toolUpscale.addEventListener('click', async () => {
+      if (!currentSVG || toolUpscale.disabled || toolUpscale.classList.contains('processing')) return;
+      if (!isRasterSvg(currentSVG)) {
+        showToast('No raster image found. Generate a design first using Syncraft.', true);
+        return;
+      }
+
+      const recraftApiKey = localStorage.getItem('syncraft_recraft_api_key') || DEFAULT_RECRAFT_API_KEY;
+      if (!recraftApiKey) {
+        showToast('Please configure your Recraft API Key in preferences.', true);
+        return;
+      }
+
+      if (!authService.hasEnoughCredits(2)) {
+        showToast('Quota exceeded. Upscale requires 2 tokens. Please upgrade your subscription plan.', true);
+        showSettingsModal('billing', true);
+        return;
+      }
+
+      if (typeof pushHistory === 'function') pushHistory();
+
+      // Button processing state
+      toolUpscale.classList.add('processing');
+      const nameEl = toolUpscale.querySelector('.action-item-name');
+      const iconEl = toolUpscale.querySelector('.icon');
+      const origName = nameEl?.textContent || 'Upscale Design';
+      const origIconClass = iconEl?.className || 'icon fi fi-br-expand';
+      if (nameEl) nameEl.textContent = 'Upscaling...';
+      if (iconEl) iconEl.className = 'icon fi fi-br-hourglass';
+
+      lockToolbox();
+      setStatusBadge('generating', 'Upscaling…');
+
+      try {
+        // Extract the raster image data-URL from the current SVG
+        const parser = new DOMParser();
+        const svgDoc = parser.parseFromString(currentSVG, 'image/svg+xml');
+        const imgEl = svgDoc.querySelector('image');
+        const imgHref = imgEl?.getAttribute('href') || imgEl?.getAttribute('xlink:href') || '';
+        if (!imgHref) throw new Error('Could not extract raster image from the current canvas.');
+
+        // Convert data-URL to Blob
+        let imageBlob;
+        if (imgHref.startsWith('data:')) {
+          imageBlob = dataURLtoBlob(imgHref);
+        } else {
+          const fetchRes = await fetch(imgHref);
+          imageBlob = await fetchRes.blob();
+        }
+
+        // Call Recraft Upscale API
+        const upscaledUrl = await callRecraftUpscaleApi(recraftApiKey, imageBlob);
+
+        // Fetch upscaled image, convert to Base64
+        const fetchRes = await fetch(upscaledUrl);
+        const upscaledBlob = await fetchRes.blob();
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(upscaledBlob);
+        });
+
+        // Set base64 back to the image tag href inside the SVG
+        imgEl.setAttribute('href', base64Data);
+        currentSVG = new XMLSerializer().serializeToString(svgDoc);
+
+        // Update the active canvas
+        const targetCanvas = canvases.find(c => c.id === selectedCanvasId);
+        if (targetCanvas) {
+          targetCanvas.svgContent = currentSVG;
+        }
+
+        authService.consumeCredit('Action', 'Upscale', 2).catch(e => console.warn('Credit error:', e));
+
+        renderOutput(currentSVG, targetCanvas?.prompt || 'Upscaled Design');
+        syncCanvasState();
+        renderCanvases();
+        setDisplayState('output');
+        setStatusBadge('ready', 'Ready');
+
+        ProjectService.updateCanvasData({
+          svgContent: currentSVG
+        });
+        ProjectService.updateThumbnail(currentSVG);
+
+        showToast('Design upscaled successfully!');
+
+        toolUpscale.classList.remove('processing');
+        toolUpscale.classList.add('done');
+        if (nameEl) nameEl.textContent = '✓ Upscaled!';
+        if (iconEl) iconEl.className = 'icon fi fi-br-check-circle';
+        setTimeout(() => {
+          toolUpscale.classList.remove('done');
+          if (nameEl) nameEl.textContent = origName;
+          if (iconEl) iconEl.className = origIconClass;
+        }, 3000);
+
+      } catch (err) {
+        console.error(err);
+        showToast('Upscale failed: ' + (err.message || ''), true);
+        toolUpscale.classList.remove('processing');
         if (nameEl) nameEl.textContent = origName;
         if (iconEl) iconEl.className = 'icon fi fi-br-exclamation';
         setTimeout(() => { if (iconEl) iconEl.className = origIconClass; }, 3000);
@@ -3540,6 +3832,7 @@ Output ONLY the clean background graphic design layout.`;
     }
 
     isGenerating = true;
+    pushHistory();
 
     // ── Calculate new canvas position ────────────────
     let targetCanvas = canvases.find(c => c.id === selectedCanvasId);
@@ -4110,11 +4403,13 @@ Output ONLY the clean background graphic design layout.`;
       }
     }
     // Vectorize/Upscale is only enabled when the canvas holds a raster image
-    if (toolVectorizeUpscale) toolVectorizeUpscale.disabled = !isRasterSvg(currentSVG);
+    // Vectorize and Upscale are only enabled when the canvas holds a raster image
+    if (toolVectorize) toolVectorize.disabled = !isRasterSvg(currentSVG);
+    if (toolUpscale) toolUpscale.disabled = !isRasterSvg(currentSVG);
   }
 
   function lockToolbox() {
-    [toolRemoveBg, toolAnnotate, toolExport, toolExtractPattern, toolExtractRaster, toolVectorizeUpscale].forEach((btn) => {
+    [toolRemoveBg, toolAnnotate, toolExport, toolExtractPattern, toolExtractRaster, toolVectorize, toolUpscale].forEach((btn) => {
       if (btn) btn.disabled = true;
     });
   }
@@ -4322,26 +4617,82 @@ Output ONLY the clean background graphic design layout.`;
       });
     }
 
-    // PDF — open SVG in new tab for now (real PDF needs a lib)
-    showToast('PDF export coming soon — opening SVG in new tab');
+    if (format === 'pdf') {
+      showToast('Preparing PDF document...');
+      return new Promise(async (resolve, reject) => {
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(svgString, 'image/svg+xml');
+          const svgRoot = doc.querySelector('svg');
+          if (svgRoot) {
+            if (!svgRoot.getAttribute('viewBox')) {
+              const origW = svgRoot.getAttribute('width') || wVal;
+              const origH = svgRoot.getAttribute('height') || hVal;
+              svgRoot.setAttribute('viewBox', `0 0 ${origW} ${origH}`);
+            }
+            svgRoot.setAttribute('width', targetPixelWidth);
+            svgRoot.setAttribute('height', targetPixelHeight);
+            svgString = new XMLSerializer().serializeToString(doc);
+          }
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(svgString, 'image/svg+xml');
-    const svgRoot = doc.querySelector('svg');
-    if (svgRoot) {
-      if (!svgRoot.getAttribute('viewBox')) {
-        const origW = svgRoot.getAttribute('width') || wVal;
-        const origH = svgRoot.getAttribute('height') || hVal;
-        svgRoot.setAttribute('viewBox', `0 0 ${origW} ${origH}`);
-      }
-      svgRoot.setAttribute('width', targetPixelWidth);
-      svgRoot.setAttribute('height', targetPixelHeight);
-      svgString = new XMLSerializer().serializeToString(doc);
+          const img = new Image();
+          const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+          const url  = URL.createObjectURL(blob);
+          
+          img.onload = async () => {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width  = targetPixelWidth;
+              canvas.height = targetPixelHeight;
+              const ctx = canvas.getContext('2d');
+              
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              
+              ctx.drawImage(img, 0, 0, targetPixelWidth, targetPixelHeight);
+              const imgData = canvas.toDataURL('image/jpeg', 0.95);
+              
+              let jspdfObj = window.jspdf;
+              if (!jspdfObj) {
+                await new Promise((res, rej) => {
+                  const script = document.createElement('script');
+                  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                  script.onload = () => res();
+                  script.onerror = () => rej(new Error('Failed to load jsPDF library.'));
+                  document.head.appendChild(script);
+                });
+                jspdfObj = window.jspdf;
+              }
+
+              const { jsPDF } = jspdfObj;
+              const orientation = targetPixelWidth >= targetPixelHeight ? 'l' : 'p';
+              const pdf = new jsPDF({
+                orientation: orientation,
+                unit: 'px',
+                format: [targetPixelWidth, targetPixelHeight]
+              });
+              
+              pdf.addImage(imgData, 'JPEG', 0, 0, targetPixelWidth, targetPixelHeight);
+              pdf.save(`${baseName}.pdf`);
+              
+              URL.revokeObjectURL(url);
+              showToast('PDF downloaded successfully!');
+              resolve();
+            } catch (err) {
+              URL.revokeObjectURL(url);
+              reject(err);
+            }
+          };
+          img.onerror = (err) => {
+            URL.revokeObjectURL(url);
+            reject(new Error('Failed to render SVG image for PDF export'));
+          };
+          img.src = url;
+        } catch (err) {
+          reject(err);
+        }
+      });
     }
-
-    const url = URL.createObjectURL(new Blob([svgString], { type: 'image/svg+xml' }));
-    window.open(url, '_blank');
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
 
   function triggerDownload(blob, filename) {
@@ -4746,6 +5097,8 @@ Output ONLY the clean background graphic design layout.`;
         cleanup();
         return;
       }
+      
+      pushHistory();
       
       const apiKey = localStorage.getItem('syncraft_gemini_api_key') || DEFAULT_GEMINI_API_KEY;
       if (!apiKey) {
