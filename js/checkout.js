@@ -1,0 +1,372 @@
+import authService from './authService.js?v=2.0.5';
+import { showToast, SYNCRAFT_LOGO_SVG } from './utils.js';
+
+export function initCheckoutPage(router, hash) {
+  const container = document.getElementById('checkout-view');
+  if (!container) return;
+
+  const user = authService.getCurrentUser();
+  if (!user) {
+    showToast('Please log in to proceed to checkout', true);
+    router.navigate('auth/login');
+    return;
+  }
+
+  // ── Parse Query Parameters ────────────────────────────────
+  const urlParams = new URLSearchParams(hash.includes('?') ? hash.substring(hash.indexOf('?')) : '');
+  const price = parseInt(urlParams.get('price') || '150');
+  const tokens = parseInt(urlParams.get('tokens') || '100');
+
+  renderLayout(container, router, user, price, tokens);
+}
+
+function renderLayout(container, router, user, price, tokens) {
+  container.innerHTML = `
+    <div class="checkout-page" style="
+      min-height: 100vh;
+      background-color: #080808;
+      color: #e5e2e1;
+      font-family: var(--font-family-body);
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+    ">
+      <!-- Minimal Checkout Header -->
+      <header style="
+        height: 80px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 40px;
+      ">
+        <button id="btn-checkout-back" style="
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: #fff;
+          padding: 10px 18px;
+          border-radius: var(--rounded-full);
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          transition: all var(--transition-fast);
+        ">
+          <i class="icon fi fi-br-arrow-left" style="font-size: 12px; display: flex; align-items: center;"></i>
+          Back to settings
+        </button>
+        <span style="height: 36px; display: flex; align-items: center; opacity: 0.9;">
+          ${SYNCRAFT_LOGO_SVG}
+        </span>
+      </header>
+
+      <!-- Main Layout Body -->
+      <main style="
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        box-sizing: border-box;
+      ">
+        <div class="checkout-grid" style="
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 40px;
+          max-width: 1000px;
+          width: 100%;
+        ">
+          <!-- Left Column: Summary Card -->
+          <div class="checkout-summary-card" style="
+            background: #111111;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 1.5rem;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+          ">
+            <div>
+              <span style="
+                color: var(--color-primary);
+                font-family: var(--font-family-display);
+                font-size: 11px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                display: inline-block;
+                margin-bottom: 12px;
+              ">Upgrade Plan</span>
+              <h2 style="
+                font-family: var(--font-family-display);
+                font-size: 28px;
+                font-weight: 800;
+                color: #fff;
+                margin: 0 0 8px 0;
+                letter-spacing: -0.02em;
+              ">Professional</h2>
+              <p style="
+                font-size: 14px;
+                color: rgba(255,255,255,0.4);
+                margin: 0 0 32px 0;
+              ">Unlock unlimited vector graphics and enhanced limits.</p>
+
+              <!-- Included Features -->
+              <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div style="
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    background: rgba(212, 255, 89, 0.08);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--color-primary);
+                  ">
+                    <i class="icon fi fi-br-check" style="font-size: 10px; display: flex; align-items: center;"></i>
+                  </div>
+                  <span style="font-size: 14px; font-weight: 600; color: #fff;">
+                    ${tokens} vector generation tokens / mo
+                  </span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div style="
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    background: rgba(212, 255, 89, 0.08);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--color-primary);
+                  ">
+                    <i class="icon fi fi-br-check" style="font-size: 10px; display: flex; align-items: center;"></i>
+                  </div>
+                  <span style="font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.8);">
+                    Priority processing queue (Standard speed + 2x boost)
+                  </span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div style="
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    background: rgba(212, 255, 89, 0.08);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--color-primary);
+                  ">
+                    <i class="icon fi fi-br-check" style="font-size: 10px; display: flex; align-items: center;"></i>
+                  </div>
+                  <span style="font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.8);">
+                    Full vector SVG, high-res PNG, JPEG & PDF export
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Receipt Breakdown -->
+            <div style="
+              border-top: 1px solid rgba(255, 255, 255, 0.06);
+              padding-top: 24px;
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+            ">
+              <div style="display: flex; justify-content: space-between; font-size: 14px; color: rgba(255,255,255,0.5);">
+                <span>Subtotal</span>
+                <span>₱${price}.00</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 14px; color: rgba(255,255,255,0.5);">
+                <span>Tax</span>
+                <span>₱0.00</span>
+              </div>
+              <div style="
+                display: flex;
+                justify-content: space-between;
+                font-size: 18px;
+                font-weight: 700;
+                color: #fff;
+                border-top: 1px solid rgba(255, 255, 255, 0.06);
+                padding-top: 16px;
+                margin-top: 8px;
+              ">
+                <span>Total Due</span>
+                <span style="color: var(--color-primary);">₱${price}.00</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: GCash / Maya Payment Method Details Directly -->
+          <div class="checkout-method-card" style="
+            background: #111111;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 1.5rem;
+            padding: 40px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+          ">
+            <div>
+              <h3 style="
+                font-family: var(--font-family-display);
+                font-size: 20px;
+                font-weight: 800;
+                color: #fff;
+                margin: 0 0 6px 0;
+                letter-spacing: -0.01em;
+              ">Payment Method</h3>
+              <p style="
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.4);
+                margin: 0;
+              ">GCash / Maya Manual Payment</p>
+            </div>
+
+            <!-- Steps & Wallet Details -->
+            <div style="
+              background: rgba(255,255,255,0.02);
+              border: 1px solid rgba(255, 255, 255, 0.05);
+              border-radius: 1rem;
+              padding: 24px;
+              box-sizing: border-box;
+              display: flex;
+              flex-direction: column;
+              gap: 20px;
+            ">
+              <div>
+                <h4 style="font-size: 13px; font-weight: 700; color: #fff; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.05em;">Manual Transfer Details</h4>
+                <p style="font-size: 13px; color: rgba(255,255,255,0.4); margin: 0; line-height: 1.5;">
+                  Please send exactly <strong style="color: #fff;">₱${price}.00</strong> to the GCash/Maya wallet below, then enter your transaction reference number.
+                </p>
+              </div>
+
+              <div style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 16px; border: 1px solid rgba(255,255,255,0.03); font-size: 13px;">
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <div style="display: flex; justify-content: space-between;"><span style="color: rgba(255,255,255,0.4);">Network:</span><strong style="color:#fff;">GCash / Maya</strong></div>
+                  <div style="display: flex; justify-content: space-between;"><span style="color: rgba(255,255,255,0.4);">Account Holder:</span><strong style="color:#fff;">JAY LUIS DONDIEGO CAÑO</strong></div>
+                  <div style="display: flex; justify-content: space-between;"><span style="color: rgba(255,255,255,0.4);">Phone Number:</span><strong style="color:var(--color-primary);">0991 835 5995</strong></div>
+                </div>
+              </div>
+
+              <!-- Name Verification Reference Image -->
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <span style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.05em;">Name Verification Reference:</span>
+                <div style="border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); background: #000; text-align: center; padding: 4px;">
+                  <img src="gcash-verify.jfif" alt="GCash name verification" style="max-width: 100%; height: auto; display: block; border-radius: 4px;" />
+                </div>
+              </div>
+
+              <!-- Input Reference Field -->
+              <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 16px;">
+                <label style="font-size: 11px; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.05em;">GCash/Maya Reference Number:</label>
+                <input type="text" id="checkout-gcash-ref" placeholder="e.g. 5012 3456 7890 1" style="
+                  width: 100%;
+                  background: rgba(0, 0, 0, 0.3);
+                  border: 1px solid rgba(255,255,255,0.08);
+                  border-radius: 8px;
+                  color: #fff;
+                  padding: 14px;
+                  font-size: 14px;
+                  box-sizing: border-box;
+                  outline: none;
+                  transition: border-color var(--transition-fast);
+                ">
+                <button id="checkout-gcash-submit" style="
+                  width: 100%;
+                  background: var(--color-primary);
+                  color: #000;
+                  border: none;
+                  padding: 14px;
+                  border-radius: var(--rounded-full);
+                  font-weight: 700;
+                  cursor: pointer;
+                  font-size: 13px;
+                  text-transform: uppercase;
+                  letter-spacing: 0.05em;
+                  margin-top: 8px;
+                  transition: all var(--transition-fast);
+                ">Submit Payment Reference</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  `;
+
+  // Media Query Layout updates & CSS declarations
+  const styleEl = document.createElement('style');
+  styleEl.innerHTML = `
+    @media (min-width: 768px) {
+      .checkout-grid {
+        grid-template-columns: 420px 1fr !important;
+      }
+    }
+    #checkout-gcash-ref:focus {
+      border-color: var(--color-primary) !important;
+    }
+    #checkout-gcash-submit:hover {
+      background: var(--color-primary-light) !important;
+      transform: translateY(-1px);
+    }
+    #checkout-gcash-submit:active {
+      transform: translateY(0);
+    }
+  `;
+  container.appendChild(styleEl);
+
+  // Bind Back Button
+  document.getElementById('btn-checkout-back').addEventListener('click', () => {
+    router.navigate('settings?tab=subscription');
+  });
+
+  // Bind GCash Manual Submit Action
+  const btnSubmitGcash = document.getElementById('checkout-gcash-submit');
+  btnSubmitGcash.addEventListener('click', async () => {
+    const refInput = document.getElementById('checkout-gcash-ref');
+    const refNumber = refInput.value.trim().replace(/\s+/g, '');
+    
+    if (!refNumber) {
+      showToast('Please enter the GCash/Maya reference number', true);
+      return;
+    }
+    if (refNumber.length < 8) {
+      showToast('Please enter a valid reference number', true);
+      return;
+    }
+
+    btnSubmitGcash.disabled = true;
+    btnSubmitGcash.textContent = 'Submitting...';
+
+    if (!user.history) {
+      user.history = [];
+    }
+
+    user.history.unshift({
+      date: new Date().toISOString(),
+      type: 'Billing',
+      desc: `Payment Pending Verification: GCash Reference #${refNumber} for ₱${price} (${tokens} tokens)`,
+      status: 'pending_verification',
+      refNumber: refNumber,
+      tokens: tokens,
+      price: price
+    });
+
+    try {
+      await authService.saveCurrentUserState(user);
+      showToast('Reference number submitted! Pending manual verification.');
+      router.navigate('settings?tab=subscription');
+    } catch (err) {
+      showToast('Error saving reference: ' + err.message, true);
+      btnSubmitGcash.disabled = false;
+      btnSubmitGcash.textContent = 'Submit Payment Reference';
+    }
+  });
+}

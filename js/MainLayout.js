@@ -35,8 +35,8 @@ class MainLayout {
     // Default class list
     this.headerEl.className = 'global-header';
 
-    // Hide header on authentication views (login, signup, recovery)
-    if (route && route.startsWith('auth/')) {
+    // Hide header on authentication views (login, signup, recovery) and checkout page
+    if (route && (route.startsWith('auth/') || route === 'checkout')) {
       this.headerEl.classList.add('hidden');
       return;
     } else {

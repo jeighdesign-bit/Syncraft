@@ -4,7 +4,8 @@ const path = require('path');
 const assets = [
   '2222.jpg',
   'auth-hero.png',
-  'brand logos'
+  'brand logos',
+  'gcash-verify.jfif'
 ];
 
 const destDir = path.join(__dirname, 'dist');

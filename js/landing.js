@@ -268,7 +268,7 @@ export function initLandingPage(router) {
           if (step.plan === 'Starter') {
             router.navigate('dashboard');
           } else {
-            router.navigate(`settings?tab=subscription&pro_budget=${step.price}`);
+            router.navigate(`checkout?price=${step.price}&tokens=${step.tokens}`);
           }
         } else {
           router.navigate('auth/signup');

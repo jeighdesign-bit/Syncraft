@@ -6,6 +6,7 @@ import { initDashboard }   from './dashboard.js?v=2.0.3';
 import { initWorkspace }   from './workspace.js?v=2.2.1';
 import { initAuthView }    from './auth.js?v=2.0.2';
 import { initSettingsPage } from './settings.js?v=2.0.2';
+import { initCheckoutPage } from './checkout.js?v=2.0.0';
 import mainLayout          from './MainLayout.js?v=1.0.5';
 import ProjectService      from './projectService.js?v=2.0.5';
 import authService         from './authService.js?v=2.0.5';
@@ -23,6 +24,7 @@ class AppRouter {
       'auth/signup':    'auth-view',
       'auth/recovery':  'auth-view',
       'settings':       'settings-view',
+      'checkout':       'checkout-view',
     };
 
     this.currentRoute = '';
@@ -34,6 +36,7 @@ class AppRouter {
       'workspace-view': document.getElementById('workspace-view'),
       'auth-view':      document.getElementById('auth-view'),
       'settings-view':  document.getElementById('settings-view'),
+      'checkout-view':  document.getElementById('checkout-view'),
     };
 
     this.landingInitialized   = false;
@@ -41,6 +44,7 @@ class AppRouter {
     this.workspaceInitialized = false;
     this.authInitialized      = false;
     this.settingsInitialized   = false;
+    this.checkoutInitialized   = false;
 
     // ── Bootstrap persisted state ────────────
     ProjectService.bootstrap();
@@ -161,6 +165,10 @@ class AppRouter {
       // Always re-init settings so current user data/keys are fresh
       initSettingsPage(this, hash);
       this.settingsInitialized = true;
+    } else if (viewKey === 'checkout-view') {
+      // Always re-init checkout so current parameters are fresh
+      initCheckoutPage(this, hash);
+      this.checkoutInitialized = true;
     }
   }
 }
