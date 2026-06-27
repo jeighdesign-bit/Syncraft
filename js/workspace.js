@@ -3060,13 +3060,13 @@ export function initWorkspace(router) {
           throw new Error("Recraft.ai API Key is missing. Please configure 'syncraft_recraft_api_key' in your browser localStorage or js/aiConfig.js");
         }
 
-        const extractPrompt = `Analyze the reference image. 
-If the reference image shows both the front and back views of a garment side-by-side, extract and re-generate the background design for both the front and back layouts, rendering them side-by-side in a single image. 
-If the reference image shows only a single view or single design, generate only that single design layout.
-Preserve the full depth, 3D texture, style, colors, gradients, and artistic details. 
-Completely remove the garment templates themselves (the t-shirt outline, sleeves, collars, stitching, fabric wrinkles, folds, shadows, and mannequin details). 
-Also remove all logos, text, brand names, numbers, or team names. 
-Output ONLY the clean background graphic design layout.`;
+        const extractPrompt = `Analyze the reference image.
+Generate ONLY the flat, clean 2D background graphic design layout.
+CRITICAL CONSTRAINTS:
+1. NEVER output any garment template outlines (do not draw t-shirt shapes, singlet/tank-top silhouettes, armhole cuts, collar cuts, curved vest borders, stitching, fabric folds, fabric wrinkles, or mannequin details). The final image must be a flat, continuous rectangular design canvas (like a digital wallpaper or poster).
+2. DO NOT duplicate design components. If the reference image has sleeves, side panels, or collars with duplicate elements, do NOT render them as separate floating vertical columns, bands, or pillars on the canvas. Flatten and integrate the main artwork (e.g. subject, background landscape, patterns) seamlessly into one unified, single continuous layout.
+3. Completely remove all logos, watermarks, text, numbers, brand names, and team labels from the design.
+4. Preserve the full artistic style, color palette, gradients, and detailed textures of the original background artwork, but flatten it entirely into a single continuous 2D design.`;
 
         let cleanRecraftSvg = '';
         try {
@@ -3320,12 +3320,12 @@ Output ONLY the clean background graphic design layout.`;
         } catch (e) { console.warn('Resize failed, using original', e); }
 
         const extractPrompt = `Analyze the reference image.
-If the reference image shows both the front and back views of a garment side-by-side, extract and re-generate the background design for both the front and back layouts, rendering them side-by-side in a single image.
-If the reference image shows only a single view or single design, generate only that single design layout.
-Preserve the full depth, 3D texture, style, colors, gradients, and artistic details.
-Completely remove the garment templates themselves (the t-shirt outline, sleeves, collars, stitching, fabric wrinkles, folds, shadows, and mannequin details).
-Also remove all logos, text, brand names, numbers, or team names.
-Output ONLY the clean background graphic design layout.`;
+Generate ONLY the flat, clean 2D background graphic design layout.
+CRITICAL CONSTRAINTS:
+1. NEVER output any garment template outlines (do not draw t-shirt shapes, singlet/tank-top silhouettes, armhole cuts, collar cuts, curved vest borders, stitching, fabric folds, fabric wrinkles, or mannequin details). The final image must be a flat, continuous rectangular design canvas (like a digital wallpaper or poster).
+2. DO NOT duplicate design components. If the reference image has sleeves, side panels, or collars with duplicate elements, do NOT render them as separate floating vertical columns, bands, or pillars on the canvas. Flatten and integrate the main artwork (e.g. subject, background landscape, patterns) seamlessly into one unified, single continuous layout.
+3. Completely remove all logos, watermarks, text, numbers, brand names, and team labels from the design.
+4. Preserve the full artistic style, color palette, gradients, and detailed textures of the original background artwork, but flatten it entirely into a single continuous 2D design.`;
 
         // Detect the reference image's natural aspect ratio so the
         // Gemini API output matches the source proportions instead of
@@ -4001,13 +4001,13 @@ Output ONLY the clean background graphic design layout.`;
           if (selectedModel === 'syncraft-ultra') {
             // ── ULTRA (GEMINI 3 IMAGE) FLOW FOR DE-MOCKUP ──
             updateCanvasProgress(targetId, 30, 'Analyzing design layers with Syncraft Ultra...');
-            let ultraExtractPrompt = `Analyze the reference image. 
-If the reference image shows both the front and back views of a garment side-by-side, extract and re-generate the background design for both the front and back layouts, rendering them side-by-side in a single image. 
-If the reference image shows only a single view or single design, generate only that single design layout.
-Preserve the full depth, 3D texture, style, colors, gradients, and artistic details. 
-Completely remove the garment templates themselves (the t-shirt outline, sleeves, collars, stitching, fabric wrinkles, folds, shadows, and mannequin details). 
-Also remove all logos, text, brand names, numbers, or team names. 
-Output ONLY the clean background graphic design layout.`;
+            let ultraExtractPrompt = `Analyze the reference image.
+Generate ONLY the flat, clean 2D background graphic design layout.
+CRITICAL CONSTRAINTS:
+1. NEVER output any garment template outlines (do not draw t-shirt shapes, singlet/tank-top silhouettes, armhole cuts, collar cuts, curved vest borders, stitching, fabric folds, fabric wrinkles, or mannequin details). The final image must be a flat, continuous rectangular design canvas (like a digital wallpaper or poster).
+2. DO NOT duplicate design components. If the reference image has sleeves, side panels, or collars with duplicate elements, do NOT render them as separate floating vertical columns, bands, or pillars on the canvas. Flatten and integrate the main artwork (e.g. subject, background landscape, patterns) seamlessly into one unified, single continuous layout.
+3. Completely remove all logos, watermarks, text, numbers, brand names, and team labels from the design.
+4. Preserve the full artistic style, color palette, gradients, and detailed textures of the original background artwork, but flatten it entirely into a single continuous 2D design.`;
             if (prompt && prompt.trim() && !/mockup|jersey|shirt|garment|clothing|flatten|de-mockup|template/i.test(prompt)) {
               ultraExtractPrompt += ` Incorporate the user request: ${prompt}`;
             }
@@ -4037,7 +4037,7 @@ Output ONLY the clean background graphic design layout.`;
             const imageBlob = dataURLtoBlob(processedImage);
 
             updateCanvasProgress(targetId, 60, 'Extracting clean background pattern with Recraft V4.1...');
-            let extractPrompt = 'RE GENERATE THE BACKGROUND DESIGN DONT INCLUDE THE MOCKUP, EFFECT, OR WHATEVER AROUND THAT ONLY THE BACKGROUND DESIG';
+            let extractPrompt = 'REGENERATE ONLY THE FLAT 2D BACKGROUND DESIGN. REMOVE ALL SHIRT MOCKUPS, TEMPLATES, SLEEVES, NECK COLLARS, SHADOWS AND TEXT. OUTPUT A FLAT RECTANGULAR DESIGN WITHOUT APPAREL OUTLINES OR DUPLICATE SIDE PANELS.';
             if (prompt && prompt.trim() && !/mockup|jersey|shirt|garment|clothing|flatten|de-mockup|template/i.test(prompt)) {
               extractPrompt += ` Incorporate the user request: ${prompt}`;
             }
