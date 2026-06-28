@@ -138,10 +138,11 @@ class AuthService {
           if (error) console.warn('[AuthService] Re-sync credits to Supabase failed:', error.message);
           else console.log('[AuthService] Successfully re-synced credits to Supabase.');
         });
-    } catch (err) {
-      console.error('[AuthService] Error in syncProfile:', err);
     }
+  } catch (err) {
+    console.error('[AuthService] Error in syncProfile:', err);
   }
+}
 
   getUsers() {
     return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
