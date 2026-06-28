@@ -60,10 +60,11 @@ class AuthService {
   }
 
   async syncProfile(supabaseUser) {
-    if (!supabaseClient || !supabaseUser) return;
-    
-    // Fetch profile from public.profiles
-    let { data: profile, error } = await supabaseClient
+    try {
+      if (!supabaseClient || !supabaseUser) return;
+      
+      // Fetch profile from public.profiles
+      let { data: profile, error } = await supabaseClient
       .from('profiles')
       .select('*')
       .eq('id', supabaseUser.id)
@@ -137,6 +138,8 @@ class AuthService {
           if (error) console.warn('[AuthService] Re-sync credits to Supabase failed:', error.message);
           else console.log('[AuthService] Successfully re-synced credits to Supabase.');
         });
+    } catch (err) {
+      console.error('[AuthService] Error in syncProfile:', err);
     }
   }
 
@@ -218,8 +221,8 @@ class AuthService {
 
       if (error) {
         console.error('[AuthService] Supabase profile update failed (credits may be out of sync):', error.message);
-        // Don't throw — cache and localStorage backup are already updated.
-        // The credits will be re-synced on next successful write.
+      } else {
+        console.log('[AuthService] Successfully updated profile in Supabase. Used:', user.creditsUsed, 'Max:', user.creditsMax);
       }
     } else {
       const users = this.getUsers();
@@ -410,6 +413,7 @@ class AuthService {
   }
 
   async consumeCredit(type, desc, cost = 1) {
+    console.log('[AuthService] consumeCredit called. Type:', type, 'Desc:', desc, 'Cost:', cost);
     const user = this.getCurrentUser();
     if (!user) throw new Error('No active user session');
 
