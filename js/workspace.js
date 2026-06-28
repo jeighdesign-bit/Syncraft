@@ -936,6 +936,67 @@ export function initWorkspace(router) {
   const q = (sel) => document.querySelector(sel);
   const WS = '#workspace-view';
 
+  function showUpgradeModal() {
+    const modalHTML = `
+      <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 10px 0;">
+        <!-- Crown Icon Badge -->
+        <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(168, 85, 247, 0.15); color: #c084fc; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; border: 1px solid rgba(168, 85, 247, 0.3);">
+          <i class="icon fi fi-br-crown" style="font-size: 24px;"></i>
+        </div>
+        
+        <h3 style="font-family: var(--font-family-display); font-size: 20px; font-weight: 800; color: #fff; margin: 0; letter-spacing: -0.01em; text-transform: uppercase;">Unlock Professional Features</h3>
+        <p style="font-size: 14px; color: rgba(255, 255, 255, 0.6); margin: 0 0 8px 0; line-height: 1.6; max-width: 380px;">
+          Get access to high-fidelity printing models, SVG vector layouts, and signature de-mockup extraction tools.
+        </p>
+
+        <!-- Premium Features List -->
+        <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; text-align: left; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 12px; padding: 16px; box-sizing: border-box; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: rgba(255,255,255,0.9); font-weight: 600;">
+            <i class="icon fi fi-br-diamond" style="color: var(--color-primary); font-size: 10px;"></i>
+            <span>Syncraft Pro Vector (SVG) generation (12t)</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: rgba(255,255,255,0.9); font-weight: 600;">
+            <i class="icon fi fi-br-diamond" style="color: var(--color-primary); font-size: 10px;"></i>
+            <span>Syncraft (Vectorized) extraction (6t)</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: rgba(255,255,255,0.9); font-weight: 600;">
+            <i class="icon fi fi-br-diamond" style="color: var(--color-primary); font-size: 10px;"></i>
+            <span>Syncraft Pro (Raster) generation (10t)</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: rgba(255,255,255,0.9); font-weight: 600;">
+            <i class="icon fi fi-br-diamond" style="color: var(--color-primary); font-size: 10px;"></i>
+            <span>Priority queue (Standard speed + 2x boost)</span>
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <button id="btn-upgrade-modal-action" style="
+          width: 100%;
+          background: var(--color-primary);
+          color: #000;
+          border: none;
+          padding: 14px;
+          border-radius: 9999px;
+          font-weight: 700;
+          cursor: pointer;
+          font-size: 13px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          transition: all 0.2s ease;
+        ">Upgrade Plan</button>
+      </div>
+    `;
+
+    const { el, close } = openModal('Upgrade Required', modalHTML);
+    const actionBtn = el.querySelector('#btn-upgrade-modal-action');
+    if (actionBtn) {
+      actionBtn.addEventListener('click', () => {
+        close();
+        router.navigate('settings?tab=subscription');
+      });
+    }
+  }
+
   // ── Result Display elements ──────────────────
   const resultDisplay    = $('result-display');
   const resultStatusText = $('result-status-text');
@@ -2299,8 +2360,7 @@ export function initWorkspace(router) {
         const user = authService.getCurrentUser();
         const isPremiumModel = ['syncraft-pro-vector', 'syncraft-pro'].includes(modelKey);
         if (isPremiumModel && user && user.plan === 'Starter') {
-          showToast('This model is premium. Please upgrade to the Professional plan to unlock it.', true);
-          showSettingsModal('billing', true);
+          showUpgradeModal();
           return;
         }
         if (models[modelKey]) {
@@ -2982,8 +3042,7 @@ export function initWorkspace(router) {
       
       const user = authService.getCurrentUser();
       if (user && user.plan === 'Starter') {
-        showToast('Syncraft (Vectorized) is a premium feature. Please upgrade to the Professional plan to unlock it.', true);
-        showSettingsModal('billing', true);
+        showUpgradeModal();
         return;
       }
 
