@@ -92,6 +92,20 @@ class AuthService {
       profile = insertedProfile;
     }
 
+    // Ensure new/stale Starter accounts get the correct default tokens limit (e.g. 30)
+    if (profile && profile.plan === 'Starter' && profile.credits_used === 0 && (!profile.credits_max || profile.credits_max < PLAN_LIMITS['Starter'])) {
+      console.log(`[AuthService] Aligning Starter account credits_max from ${profile.credits_max || 0} to ${PLAN_LIMITS['Starter']}`);
+      profile.credits_max = PLAN_LIMITS['Starter'];
+      
+      supabaseClient
+        .from('profiles')
+        .update({ credits_max: PLAN_LIMITS['Starter'] })
+        .eq('id', supabaseUser.id)
+        .then(({ error }) => {
+          if (error) console.warn('[AuthService] Aligning credits_max failed:', error.message);
+        });
+    }
+
     console.log('[AuthService] Supabase User metadata:', supabaseUser.user_metadata);
     const avatarUrl = supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture || null;
     console.log('[AuthService] Resolved avatar URL:', avatarUrl);
