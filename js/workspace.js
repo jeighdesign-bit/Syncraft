@@ -2961,7 +2961,7 @@ export function initWorkspace(router) {
         currentSVG = cleanAndValidateSvg(cleanSvg);
         
         // Consume credit
-        authService.consumeCredit('Background Removal', 'Removed vector background').catch(creditErr => {
+        authService.consumeCredit('Background Removal', 'Removed vector background').then(() => updateWorkspaceCredits()).catch(creditErr => {
           console.warn('Credit consume error:', creditErr);
         });
 
@@ -3245,7 +3245,7 @@ CRITICAL CONSTRAINTS:
         }
 
         // Consume credit
-        authService.consumeCredit('Generation', 'SYNCRAFT background pattern extraction', 6).catch(creditErr => {
+        authService.consumeCredit('Generation', 'SYNCRAFT background pattern extraction', 6).then(() => updateWorkspaceCredits()).catch(creditErr => {
           console.warn('Credit consume error:', creditErr);
         });
 
@@ -3485,7 +3485,7 @@ CRITICAL CONSTRAINTS:
         const svgCode = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${wVal} ${hVal}" width="${wVal}" height="${hVal}"><rect width="100%" height="100%" fill="none"/><image href="${base64Data}" width="${wVal}" height="${hVal}" preserveAspectRatio="xMidYMid meet" /></svg>`;
         const rawSvg = cleanAndValidateSvg(svgCode);
 
-        authService.consumeCredit('Generation', 'SYNCRAFT Design Only extraction', 4).catch(e => console.warn('Credit error:', e));
+        authService.consumeCredit('Generation', 'SYNCRAFT Design Only extraction', 4).then(() => updateWorkspaceCredits()).catch(e => console.warn('Credit error:', e));
 
         updateProgress(100, 'Rendering complete!');
         await new Promise(r => setTimeout(r, 400));
@@ -3628,7 +3628,7 @@ CRITICAL CONSTRAINTS:
           targetCanvas.bgRemoved = false;
         }
 
-        authService.consumeCredit('Action', 'Vectorize', 2).catch(e => console.warn('Credit error:', e));
+        authService.consumeCredit('Action', 'Vectorize', 2).then(() => updateWorkspaceCredits()).catch(e => console.warn('Credit error:', e));
 
         renderOutput(currentSVG, targetCanvas?.prompt || 'Vectorized Design');
         syncCanvasState();
@@ -3745,7 +3745,7 @@ CRITICAL CONSTRAINTS:
           targetCanvas.svgContent = currentSVG;
         }
 
-        authService.consumeCredit('Action', 'Upscale', 2).catch(e => console.warn('Credit error:', e));
+        authService.consumeCredit('Action', 'Upscale', 10).then(() => updateWorkspaceCredits()).catch(e => console.warn('Credit error:', e));
 
         renderOutput(currentSVG, targetCanvas?.prompt || 'Upscaled Design');
         syncCanvasState();
@@ -4195,7 +4195,7 @@ CRITICAL CONSTRAINTS:
           updateCanvasProgress(targetId, 95, 'Rendering vector pattern...');
           await new Promise(r => setTimeout(r, 200));
 
-          authService.consumeCredit('Generation', `De-mockup: "${prompt.slice(0, 30)}..."`, modelCost).catch(creditErr => {
+          authService.consumeCredit('Generation', `De-mockup: "${prompt.slice(0, 30)}..."`, modelCost).then(() => updateWorkspaceCredits()).catch(creditErr => {
             console.warn('Credit consume error:', creditErr);
           });
 
@@ -4241,7 +4241,7 @@ CRITICAL CONSTRAINTS:
             
             updateCanvasProgress(targetId, 100, 'Rendering complete!');
             
-            authService.consumeCredit('Generation', `Ultra Generation: "${prompt.slice(0, 30)}..."`, modelCost).catch(creditErr => {
+            authService.consumeCredit('Generation', `Ultra Generation: "${prompt.slice(0, 30)}..."`, modelCost).then(() => updateWorkspaceCredits()).catch(creditErr => {
               console.warn('Credit consume error:', creditErr);
             });
             
@@ -4310,7 +4310,7 @@ CRITICAL CONSTRAINTS:
               `;
             }
 
-            authService.consumeCredit('Generation', `Prompt: "${prompt.slice(0, 30)}..."`, modelCost).catch(creditErr => {
+            authService.consumeCredit('Generation', `Prompt: "${prompt.slice(0, 30)}..."`, modelCost).then(() => updateWorkspaceCredits()).catch(creditErr => {
               console.warn('Credit consume error:', creditErr);
             });
 
@@ -5631,7 +5631,7 @@ Here is the SVG:\n\n${currentSVG}`;
       textEl.textContent = newText;
 
       if (oldText && oldText !== newText) {
-        const badge = $('ws-credits-badge');
+        const badge = $('btn-header-credits');
         if (badge) {
           badge.classList.remove('pulse-glow');
           void badge.offsetWidth; // Trigger reflow to restart animation
