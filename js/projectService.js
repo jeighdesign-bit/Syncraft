@@ -309,11 +309,20 @@ async function getSessionUser() {
     const sessionPromise = supabaseClient.auth.getSession();
     const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 3000));
     const result = await Promise.race([sessionPromise, timeoutPromise]);
-    if (!result) return null;
-    return result.data?.session?.user ?? null;
-  } catch {
-    return null;
+    if (result && result.data?.session?.user) {
+      return result.data.session.user;
+    }
+  } catch (err) {
+    console.warn('[ProjectService] getSessionUser error:', err);
   }
+
+  // Fallback: use localStorage session info if Supabase SDK fails to respond in time
+  const userId = localStorage.getItem('syncraft_current_user_id');
+  const userEmail = localStorage.getItem('syncraft_current_user');
+  if (userId) {
+    return { id: userId, email: userEmail || '' };
+  }
+  return null;
 }
 
 /** Fire-and-forget: insert a new project row into Supabase */
