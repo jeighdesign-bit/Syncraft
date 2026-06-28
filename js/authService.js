@@ -11,6 +11,7 @@ import { supabaseClient } from './supabaseConfig.js';
 
 const USERS_KEY = 'syncraft_users';
 const SESSION_KEY = 'syncraft_current_user';
+const CREDITS_BACKUP_KEY = 'syncraft_credits_backup';
 
 const PLAN_LIMITS = {
   'Starter': 25,
@@ -104,6 +105,25 @@ class AuthService {
       avatarUrl: avatarUrl,
       history: profile.history || []
     };
+
+    // Reconcile with localStorage backup: if a local backup has higher
+    // creditsUsed, Supabase writes likely failed previously — use the
+    // local value so tokens don't appear to "reset" to 0.
+    const backup = this._getCreditsBackup(supabaseUser.id);
+    if (backup && backup.creditsUsed > this.currentUserCache.creditsUsed) {
+      console.warn(`[AuthService] Local credit backup (${backup.creditsUsed}) is higher than Supabase (${this.currentUserCache.creditsUsed}). Using local value and re-syncing.`);
+      this.currentUserCache.creditsUsed = backup.creditsUsed;
+
+      // Attempt to re-sync the correct value back to Supabase
+      supabaseClient
+        .from('profiles')
+        .update({ credits_used: backup.creditsUsed })
+        .eq('id', supabaseUser.id)
+        .then(({ error }) => {
+          if (error) console.warn('[AuthService] Re-sync credits to Supabase failed:', error.message);
+          else console.log('[AuthService] Successfully re-synced credits to Supabase.');
+        });
+    }
   }
 
   getUsers() {
@@ -165,6 +185,11 @@ class AuthService {
   }
 
   async saveCurrentUserState(user) {
+    // Always update in-memory cache and localStorage backup FIRST,
+    // so UI reflects changes immediately even if Supabase write fails.
+    this.currentUserCache = user;
+    this._saveCreditsBackup(user);
+
     if (supabaseClient && user.id) {
       // Sync update to Supabase
       const { error } = await supabaseClient
@@ -177,8 +202,11 @@ class AuthService {
         })
         .eq('id', user.id);
 
-      if (error) throw error;
-      this.currentUserCache = user;
+      if (error) {
+        console.error('[AuthService] Supabase profile update failed (credits may be out of sync):', error.message);
+        // Don't throw — cache and localStorage backup are already updated.
+        // The credits will be re-synced on next successful write.
+      }
     } else {
       const users = this.getUsers();
       const idx = users.findIndex(u => u.email.toLowerCase() === user.email.toLowerCase());
@@ -187,6 +215,39 @@ class AuthService {
         this.saveUsers(users);
       }
     }
+  }
+
+  /**
+   * Saves a lightweight credit snapshot to localStorage so that
+   * token counts survive page reloads even when Supabase writes fail.
+   */
+  _saveCreditsBackup(user) {
+    if (!user || !user.id) return;
+    try {
+      const backup = {
+        id: user.id,
+        creditsUsed: user.creditsUsed,
+        creditsMax: user.creditsMax,
+        updatedAt: Date.now()
+      };
+      localStorage.setItem(CREDITS_BACKUP_KEY, JSON.stringify(backup));
+    } catch (e) {
+      // localStorage full — non-critical
+    }
+  }
+
+  /**
+   * Returns the localStorage credit backup if it belongs to the given user
+   * and is more recent than the Supabase profile data.
+   */
+  _getCreditsBackup(userId) {
+    try {
+      const raw = localStorage.getItem(CREDITS_BACKUP_KEY);
+      if (!raw) return null;
+      const backup = JSON.parse(raw);
+      if (backup.id === userId) return backup;
+    } catch (e) { /* ignore */ }
+    return null;
   }
 
   isAuthenticated() {
@@ -281,6 +342,7 @@ class AuthService {
     // 1. Explicitly clear authentication tokens and session keys from LocalStorage
     localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem('syncraft_current_user_id');
+    localStorage.removeItem(CREDITS_BACKUP_KEY);
     this.currentUserCache = null;
 
     // 2. Clear all Supabase auth storage items
@@ -362,8 +424,14 @@ class AuthService {
       cost: cost
     });
 
-    await this.saveCurrentUserState(user);
-    document.dispatchEvent(new CustomEvent('syncraft:authChange', { detail: { event: 'CREDIT_CONSUMED', session: null } }));
+    try {
+      await this.saveCurrentUserState(user);
+    } catch (saveErr) {
+      console.warn('[AuthService] consumeCredit: save failed but credits are tracked locally:', saveErr);
+    } finally {
+      // ALWAYS fire the UI update event, even if Supabase write failed.
+      document.dispatchEvent(new CustomEvent('syncraft:authChange', { detail: { event: 'CREDIT_CONSUMED', session: null } }));
+    }
     return user;
   }
 
