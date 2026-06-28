@@ -288,12 +288,14 @@ export function initSettingsPage(router, hash) {
       });
 
     } else if (activeTab === 'subscription') {
-      const pct = (user.creditsUsed / user.creditsMax) * 100;
+      const pct = ((user.creditsMax - user.creditsUsed) / user.creditsMax) * 100;
 
       let selectedProPrice = initialProBudget;
       if (user.plan === 'Professional') {
-        selectedProPrice = Math.round(150 + (user.creditsMax - 100) / 0.868);
-        selectedProPrice = Math.max(150, Math.min(899, selectedProPrice));
+        selectedProPrice = Math.round(250 + (user.creditsMax - 100) / 0.462);
+        selectedProPrice = Math.max(250, Math.min(899, selectedProPrice));
+      } else {
+        selectedProPrice = Math.max(250, Math.min(899, selectedProPrice));
       }
 
       const pendingPayment = user.history && user.history.find(h => h.type === 'Billing' && h.status === 'pending_verification');
@@ -330,8 +332,8 @@ export function initSettingsPage(router, hash) {
 
                 <div class="billing-quota-wrap">
                   <div class="billing-quota-labels">
-                    <span class="billing-quota-used">${user.creditsUsed} / ${user.creditsMax} Tokens Consumed</span>
-                    <span class="billing-quota-total">${Math.max(0, user.creditsMax - user.creditsUsed)} Tokens Left</span>
+                    <span class="billing-quota-used">${Math.max(0, user.creditsMax - user.creditsUsed)} Tokens Available</span>
+                    <span class="billing-quota-total">Out of ${user.creditsMax} Tokens</span>
                   </div>
                   <div class="billing-progress-bar">
                     <div class="billing-progress-fill" style="width: ${Math.min(pct, 100)}%;"></div>
@@ -353,7 +355,7 @@ export function initSettingsPage(router, hash) {
                 <div class="settings-plan-card ${user.plan === 'Starter' ? 'active' : ''}">
                   <div class="settings-plan-name">Starter</div>
                   <div class="settings-plan-price">₱0<span class="settings-plan-price-period">/mo</span></div>
-                  <p class="settings-plan-limit">25 free trial tokens<br>Standard speed</p>
+                  <p class="settings-plan-limit">30 free trial tokens<br>Standard speed</p>
                   ${user.plan === 'Starter' 
                     ? `<button class="settings-btn settings-btn-secondary" style="width:100%;cursor:default;" disabled>Current Plan</button>` 
                     : `<button class="settings-btn settings-btn-primary btn-plan-upgrade" data-plan="Starter" style="width:100%;">Downgrade</button>`
@@ -372,7 +374,7 @@ export function initSettingsPage(router, hash) {
                       <span>Budget</span>
                       <span id="settings-pro-slider-val" style="color: var(--color-primary); font-weight: 700;">₱${selectedProPrice}</span>
                     </div>
-                    <input type="range" id="settings-pro-slider" min="150" max="899" step="1" value="${selectedProPrice}" style="
+                    <input type="range" id="settings-pro-slider" min="250" max="899" step="1" value="${selectedProPrice}" style="
                       width: 100%;
                       accent-color: var(--color-primary);
                       background: var(--color-surface-container-highest);
@@ -382,13 +384,13 @@ export function initSettingsPage(router, hash) {
                       outline: none;
                     ">
                     <div style="display: flex; justify-content: space-between; font-size: 9px; color: rgba(255,255,255,0.4);">
-                      <span>₱150</span>
+                      <span>₱250</span>
                       <span>₱899</span>
                     </div>
                   </div>
 
                   <p class="settings-plan-limit">
-                    <span id="settings-pro-tokens-text">${Math.round(100 + (selectedProPrice - 150) * 0.868)} tokens / mo</span><br>
+                    <span id="settings-pro-tokens-text">${Math.round(100 + (selectedProPrice - 250) * 0.462)} tokens / mo</span><br>
                     Priority queue
                   </p>
                   ${user.plan === 'Professional' 
@@ -407,7 +409,7 @@ export function initSettingsPage(router, hash) {
       if (slider) {
         slider.addEventListener('input', (e) => {
           selectedProPrice = parseInt(e.target.value);
-          const tokens = Math.round(100 + (selectedProPrice - 150) * 0.868);
+          const tokens = Math.round(100 + (selectedProPrice - 250) * 0.462);
           
           const priceText = document.getElementById('settings-pro-price');
           const sliderVal = document.getElementById('settings-pro-slider-val');
@@ -427,7 +429,7 @@ export function initSettingsPage(router, hash) {
           e.target.textContent = 'Upgrading...';
 
           if (plan === 'Professional') {
-            const tokens = Math.round(100 + (selectedProPrice - 150) * 0.868);
+            const tokens = Math.round(100 + (selectedProPrice - 250) * 0.462);
             router.navigate(`checkout?price=${selectedProPrice}&tokens=${tokens}`);
           } else {
             // Starter Plan downgrade (free)

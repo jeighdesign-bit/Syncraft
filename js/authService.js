@@ -14,8 +14,8 @@ const SESSION_KEY = 'syncraft_current_user';
 const CREDITS_BACKUP_KEY = 'syncraft_credits_backup';
 
 const PLAN_LIMITS = {
-  'Starter': 25,
-  'Professional': 750,
+  'Starter': 30,
+  'Professional': 400,
   'Enterprise': 1800
 };
 

@@ -213,8 +213,9 @@ class MainLayout {
 
     } else if (route === 'workspace') {
       // 3. WORKSPACE STATE
-      const creditsMax = user ? user.creditsMax : '—';
-      const creditsUsed = user ? user.creditsUsed : '—';
+      const remainingTokens = (user && typeof user.creditsMax === 'number' && typeof user.creditsUsed === 'number')
+        ? Math.max(0, user.creditsMax - user.creditsUsed)
+        : '—';
 
       this.headerEl.innerHTML = `
         <div class="global-header-left">
@@ -225,8 +226,8 @@ class MainLayout {
         </div>
         <div class="global-header-right" style="display:flex;align-items:center;gap:10px;">
           <div class="ws-credits-badge" id="btn-header-credits" style="background:var(--color-surface-container-high); border:1px solid var(--color-outline-dim); border-radius:999px; padding:7px 14px; font-size:11px; font-weight:700; color:var(--color-primary); display:inline-flex; align-items:center; gap:6px; cursor:pointer; height:34px; box-sizing:border-box;" title="View Tokens & Billing">
-            <i class="icon fi fi-br-bolt" style="font-size:11px;color:var(--color-primary);"></i>
-            <span id="ws-credits-text">${creditsUsed} / ${creditsMax} Tokens</span>
+            <i class="icon fi fi-br-diamond" style="font-size:11px;color:var(--color-primary);"></i>
+            <span id="ws-credits-text">${remainingTokens}</span>
           </div>
           <div class="ws-zoom-dropdown-container" style="position:relative; display:inline-block;">
             <button class="workspace-header-btn-zoom" id="btn-header-zoom" style="background:var(--color-surface-container-high);border:1px solid var(--color-outline-dim);color:#fff;padding:0 12px;border-radius:999px;font-size:12px;font-weight:700;height:34px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;min-width:70px;justify-content:center;">

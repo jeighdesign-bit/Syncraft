@@ -177,18 +177,18 @@ export function initLandingPage(router) {
   const resultActionBtn = document.getElementById('result-action-btn');
 
   const sliderSteps = [
-    { price: 0, tokens: 25, plan: 'Starter', badge: 'Free Trial', desc: 'Essential tools for individual operators.', btnText: 'Initialize Free' },
-    { price: 150, tokens: 100, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
-    { price: 225, tokens: 165, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
-    { price: 300, tokens: 230, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
-    { price: 375, tokens: 295, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
-    { price: 450, tokens: 360, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
-    { price: 525, tokens: 425, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
-    { price: 600, tokens: 490, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
-    { price: 675, tokens: 555, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
-    { price: 750, tokens: 620, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
-    { price: 825, tokens: 685, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
-    { price: 899, tokens: 750, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' }
+    { price: 0, tokens: 30, plan: 'Starter', badge: 'Free Trial', desc: 'Essential tools for individual operators.', btnText: 'Initialize Free' },
+    { price: 250, tokens: 100, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 315, tokens: 130, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 380, tokens: 160, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 445, tokens: 190, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 510, tokens: 220, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 575, tokens: 250, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 640, tokens: 280, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 705, tokens: 310, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 770, tokens: 340, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 835, tokens: 370, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
+    { price: 899, tokens: 400, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' }
   ];
 
   if (landingSlider) {
@@ -221,7 +221,7 @@ export function initLandingPage(router) {
           resultFeatures.innerHTML = `
             <li class="pricing-feature-item" style="display:flex; align-items:center; gap:8px;">
               <i class="icon fi fi-br-check-circle pricing-feature-icon" style="color:var(--color-primary);"></i>
-              25 free trial tokens
+              30 free trial tokens
             </li>
             <li class="pricing-feature-item" style="display:flex; align-items:center; gap:8px;">
               <i class="icon fi fi-br-check-circle pricing-feature-icon" style="color:var(--color-primary);"></i>

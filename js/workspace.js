@@ -1421,10 +1421,10 @@ export function initWorkspace(router) {
   // ── AI Model Configuration & Selection State ──
   const models = {
     'syncraft-vector': { name: 'Syncraft Vector (SVG)', cost: 4, apiId: 'recraftv4_1_vector', type: 'vector' },
-    'syncraft-pro-vector': { name: 'Syncraft Pro Vector (SVG)', cost: 8, apiId: 'recraftv4_1_pro_vector', type: 'vector' },
+    'syncraft-pro-vector': { name: 'Syncraft Pro Vector (SVG)', cost: 12, apiId: 'recraftv4_1_pro_vector', type: 'vector' },
     'syncraft-lite': { name: 'Syncraft Lite (Raster)', cost: 2, apiId: 'recraftv4_1', type: 'raster' },
-    'syncraft-pro': { name: 'Syncraft Pro (Raster)', cost: 6, apiId: 'recraftv4_1_pro', type: 'raster' },
-    'syncraft-ultra': { name: 'Syncraft Ultra (Creative)', cost: 12, apiId: 'gemini-3-pro-image', type: 'ultra' }
+    'syncraft-pro': { name: 'Syncraft Pro (Raster)', cost: 10, apiId: 'recraftv4_1_pro', type: 'raster' },
+    'syncraft-ultra': { name: 'Syncraft Ultra (Creative)', cost: 20, apiId: 'gemini-3-pro-image', type: 'ultra' }
   };
   let selectedModel = 'syncraft-ultra';
 
@@ -2296,6 +2296,13 @@ export function initWorkspace(router) {
     modelItems.forEach(item => {
       item.addEventListener('click', () => {
         const modelKey = item.getAttribute('data-model');
+        const user = authService.getCurrentUser();
+        const isPremiumModel = ['syncraft-pro-vector', 'syncraft-pro'].includes(modelKey);
+        if (isPremiumModel && user && user.plan === 'Starter') {
+          showToast('This model is premium. Please upgrade to the Professional plan to unlock it.', true);
+          showSettingsModal('billing', true);
+          return;
+        }
         if (models[modelKey]) {
           selectedModel = modelKey;
           
@@ -2973,6 +2980,13 @@ export function initWorkspace(router) {
 
       if (toolExtractPattern.disabled || toolExtractPattern.classList.contains('processing')) return;
       
+      const user = authService.getCurrentUser();
+      if (user && user.plan === 'Starter') {
+        showToast('Syncraft (Vectorized) is a premium feature. Please upgrade to the Professional plan to unlock it.', true);
+        showSettingsModal('billing', true);
+        return;
+      }
+
       if (!referenceImage) {
         showToast('Please upload a reference image to run Syncraft (Vectorized).', false);
         const uploadBtn = $('prompt-upload-btn');
@@ -2994,8 +3008,8 @@ export function initWorkspace(router) {
         return;
       }
 
-      if (!authService.hasEnoughCredits(4)) {
-        showToast('Quota exceeded. This action requires 4 tokens. Please upgrade your subscription plan.', true);
+      if (!authService.hasEnoughCredits(6)) {
+        showToast('Quota exceeded. This action requires 6 tokens. Please upgrade your subscription plan.', true);
         showSettingsModal('billing', true);
         setDisplayState(currentSVG ? 'output' : 'idle');
         setStatusBadge('ready', 'Ready');
@@ -3172,7 +3186,7 @@ CRITICAL CONSTRAINTS:
         }
 
         // Consume credit
-        authService.consumeCredit('Generation', 'SYNCRAFT background pattern extraction', 4).catch(creditErr => {
+        authService.consumeCredit('Generation', 'SYNCRAFT background pattern extraction', 6).catch(creditErr => {
           console.warn('Credit consume error:', creditErr);
         });
 
@@ -3612,8 +3626,8 @@ CRITICAL CONSTRAINTS:
         return;
       }
 
-      if (!authService.hasEnoughCredits(2)) {
-        showToast('Quota exceeded. Upscale requires 2 tokens. Please upgrade your subscription plan.', true);
+      if (!authService.hasEnoughCredits(10)) {
+        showToast('Quota exceeded. Creative Upscale requires 10 tokens. Please upgrade your subscription plan.', true);
         showSettingsModal('billing', true);
         return;
       }
@@ -5553,7 +5567,8 @@ Here is the SVG:\n\n${currentSVG}`;
     const textEl = $('ws-credits-text');
     if (textEl && user) {
       const oldText = textEl.textContent;
-      const newText = `${user.creditsUsed} / ${user.creditsMax} Tokens`;
+      const remaining = Math.max(0, user.creditsMax - user.creditsUsed);
+      const newText = `${remaining}`;
       textEl.textContent = newText;
 
       if (oldText && oldText !== newText) {
