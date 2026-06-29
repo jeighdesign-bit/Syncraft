@@ -2,7 +2,7 @@
 // WORKSPACE CONTROLLER  –  Generative Workflow
 // ─────────────────────────────────────────────
 import vectors        from './vectors.js';
-import { showToast, openModal, resizeImage } from './utils.js';
+import { showToast, openModal, resizeImage, changeDpiBlob } from './utils.js';
 import ProjectService from './projectService.js?v=2.0.5';
 import store          from './projectStore.js';
 import authService         from './authService.js?v=2.0.5';
@@ -4693,9 +4693,16 @@ CRITICAL CONSTRAINTS:
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, targetPixelWidth, targetPixelHeight);
           canvas.toBlob((pngBlob) => {
-            triggerDownload(pngBlob, `${baseName}.png`);
-            URL.revokeObjectURL(url);
-            resolve();
+            changeDpiBlob(pngBlob, dpiVal).then((newBlob) => {
+              triggerDownload(newBlob, `${baseName}.png`);
+              URL.revokeObjectURL(url);
+              resolve();
+            }).catch((err) => {
+              console.error('Failed to set PNG DPI:', err);
+              triggerDownload(pngBlob, `${baseName}.png`);
+              URL.revokeObjectURL(url);
+              resolve();
+            });
           }, 'image/png');
         };
         img.onerror = (err) => {
@@ -4735,9 +4742,16 @@ CRITICAL CONSTRAINTS:
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(imgJ, 0, 0, targetPixelWidth, targetPixelHeight);
           canvas.toBlob((jpegBlob) => {
-            triggerDownload(jpegBlob, `${baseName}.jpg`);
-            URL.revokeObjectURL(urlJ);
-            resolve();
+            changeDpiBlob(jpegBlob, dpiVal).then((newBlob) => {
+              triggerDownload(newBlob, `${baseName}.jpg`);
+              URL.revokeObjectURL(urlJ);
+              resolve();
+            }).catch((err) => {
+              console.error('Failed to set JPEG DPI:', err);
+              triggerDownload(jpegBlob, `${baseName}.jpg`);
+              URL.revokeObjectURL(urlJ);
+              resolve();
+            });
           }, 'image/jpeg', 0.95);
         };
         imgJ.onerror = (err) => {

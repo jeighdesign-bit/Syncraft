@@ -274,3 +274,120 @@ export function resizeImage(base64Str, maxDim = 800, quality = 0.7) {
   });
 }
 
+// ─────────────────────────────────────────────
+// DPI METADATA INJECTION UTILITIES
+// ─────────────────────────────────────────────
+
+let pngDataTable = null;
+
+function createPngDataTable() {
+  const crcTable = new Int32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) {
+      c = (c & 1) ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
+    crcTable[n] = c;
+  }
+  return crcTable;
+}
+
+function calcCrc(buf) {
+  let c = -1;
+  if (!pngDataTable) pngDataTable = createPngDataTable();
+  for (let n = 0; n < buf.length; n++) {
+    c = pngDataTable[(c ^ buf[n]) & 0xFF] ^ (c >>> 8);
+  }
+  return c ^ -1;
+}
+
+const PNG = 'image/png';
+const JPEG = 'image/jpeg';
+
+const _P = 'p'.charCodeAt(0);
+const _H = 'H'.charCodeAt(0);
+const _Y = 'Y'.charCodeAt(0);
+const _S = 's'.charCodeAt(0);
+
+function changeDpiOnArray(dataArray, dpi, format) {
+  if (format === JPEG) {
+    if (dataArray.length >= 18) {
+      dataArray[13] = 1; // 1 pixel per inch (DPI)
+      dataArray[14] = dpi >> 8; // dpiX high byte
+      dataArray[15] = dpi & 0xff; // dpiX low byte
+      dataArray[16] = dpi >> 8; // dpiY high byte
+      dataArray[17] = dpi & 0xff; // dpiY low byte
+    }
+    return dataArray;
+  }
+  if (format === PNG) {
+    const physChunk = new Uint8Array(13);
+    // dpi to dots per meter conversion: 1 inch = 0.0254 meters, so dpi * (1 / 0.0254) = dpi * 39.3700787...
+    const dpm = Math.round(dpi * 39.37007874);
+    physChunk[0] = _P;
+    physChunk[1] = _H;
+    physChunk[2] = _Y;
+    physChunk[3] = _S;
+    physChunk[4] = dpm >>> 24; // dpiX highest byte
+    physChunk[5] = dpm >>> 16; // dpiX veryhigh byte
+    physChunk[6] = dpm >>> 8; // dpiX high byte
+    physChunk[7] = dpm & 0xff; // dpiX low byte
+    physChunk[8] = physChunk[4]; // dpiY highest byte
+    physChunk[9] = physChunk[5]; // dpiY veryhigh byte
+    physChunk[10] = physChunk[6]; // dpiY high byte
+    physChunk[11] = physChunk[7]; // dpiY low byte
+    physChunk[12] = 1; // dot per meter unit indicator
+
+    const crc = calcCrc(physChunk);
+
+    const crcChunk = new Uint8Array(4);
+    crcChunk[0] = crc >>> 24;
+    crcChunk[1] = crc >>> 16;
+    crcChunk[2] = crc >>> 8;
+    crcChunk[3] = crc & 0xff;
+
+    // A standard PNG always has IHDR length = 33 bytes.
+    // We insert the pHYs chunk immediately after the IHDR chunk (at byte offset 33).
+    const chunkLength = new Uint8Array(4);
+    chunkLength[0] = 0;
+    chunkLength[1] = 0;
+    chunkLength[2] = 0;
+    chunkLength[3] = 9; // pHYs chunk has 9 bytes of data
+
+    const finalHeader = new Uint8Array(54);
+    finalHeader.set(dataArray, 0);
+    finalHeader.set(chunkLength, 33);
+    finalHeader.set(physChunk, 37);
+    finalHeader.set(crcChunk, 50);
+    return finalHeader;
+  }
+  return dataArray;
+}
+
+/**
+ * Changes the DPI metadata of a JPEG or PNG blob.
+ * @param {Blob} blob - The input image blob.
+ * @param {number} dpi - The target DPI resolution (e.g. 300).
+ * @returns {Promise<Blob>} A promise that resolves to the modified Blob.
+ */
+export function changeDpiBlob(blob, dpi) {
+  // We only need the first 33 bytes to perform/verify header structure modification
+  const headerChunk = blob.slice(0, 33);
+  return new Promise((resolve, reject) => {
+    const fileReader = new FileReader();
+    fileReader.onload = () => {
+      try {
+        const dataArray = new Uint8Array(fileReader.result);
+        const tail = blob.slice(33);
+        const changedArray = changeDpiOnArray(dataArray, dpi, blob.type);
+        resolve(new Blob([changedArray, tail], { type: blob.type }));
+      } catch (err) {
+        reject(err);
+      }
+    };
+    fileReader.onerror = () => reject(fileReader.error);
+    fileReader.readAsArrayBuffer(headerChunk);
+  });
+}
+
+
