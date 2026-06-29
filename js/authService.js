@@ -71,26 +71,34 @@ class AuthService {
       .single();
 
     if (error) {
-      console.warn('Profile not found or sync failed, attempting to create profile on-the-fly:', error);
-      const fallbackProfile = {
-        id: supabaseUser.id,
-        plan: 'Starter',
-        credits_used: 0,
-        credits_max: PLAN_LIMITS['Starter'],
-        history: []
-      };
+      console.warn('Profile not found or sync failed, checking error code:', error);
+      
+      // ONLY create/upsert a fallback profile if the error is PGRST116 (meaning the profile row doesn't exist yet)
+      if (error.code === 'PGRST116') {
+        const fallbackProfile = {
+          id: supabaseUser.id,
+          plan: 'Starter',
+          credits_used: 0,
+          credits_max: PLAN_LIMITS['Starter'],
+          history: []
+        };
 
-      const { data: insertedProfile, error: insertError } = await supabaseClient
-        .from('profiles')
-        .upsert(fallbackProfile)
-        .select()
-        .single();
+        const { data: insertedProfile, error: insertError } = await supabaseClient
+          .from('profiles')
+          .upsert(fallbackProfile)
+          .select()
+          .single();
 
-      if (insertError) {
-        console.error('Failed to create user profile on the fly:', insertError);
+        if (insertError) {
+          console.error('Failed to create user profile on the fly:', insertError);
+          return;
+        }
+        profile = insertedProfile;
+      } else {
+        // It's a temporary connection or database error, don't overwrite!
+        console.error('[AuthService] Supabase profile read failed with database error. Using local fallback cache, won\'t overwrite DB:', error.message);
         return;
       }
-      profile = insertedProfile;
     }
 
     // Ensure new/stale Starter accounts get the correct default tokens limit (e.g. 30)
@@ -208,6 +216,17 @@ class AuthService {
     this.currentUserCache = user;
     this._saveCreditsBackup(user);
 
+    // Sync to local storage users list as well to ensure page-load consistency
+    const users = this.getUsers();
+    const idx = users.findIndex(u => u.email.toLowerCase() === user.email.toLowerCase());
+    if (idx !== -1) {
+      users[idx] = user;
+      this.saveUsers(users);
+    } else {
+      users.push(user);
+      this.saveUsers(users);
+    }
+
     if (supabaseClient && user.id) {
       // Sync update to Supabase
       const { error } = await supabaseClient
@@ -224,13 +243,6 @@ class AuthService {
         console.error('[AuthService] Supabase profile update failed (credits may be out of sync):', error.message);
       } else {
         console.log('[AuthService] Successfully updated profile in Supabase. Used:', user.creditsUsed, 'Max:', user.creditsMax);
-      }
-    } else {
-      const users = this.getUsers();
-      const idx = users.findIndex(u => u.email.toLowerCase() === user.email.toLowerCase());
-      if (idx !== -1) {
-        users[idx] = user;
-        this.saveUsers(users);
       }
     }
   }
