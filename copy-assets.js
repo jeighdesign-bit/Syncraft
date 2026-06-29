@@ -5,7 +5,9 @@ const assets = [
   '2222.jpg',
   'auth-hero.png',
   'brand logos',
-  'gcash-verify.jfif'
+  'gcash-verify.jfif',
+  'robots.txt',
+  'sitemap.xml'
 ];
 
 const destDir = path.join(__dirname, 'dist');

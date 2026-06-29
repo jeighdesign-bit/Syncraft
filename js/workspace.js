@@ -505,7 +505,7 @@ async function callRecraftUpscaleApi(apiKey, imageBlob, type = 'crisp') {
   }
 
   const result = await response.json();
-  const imgUrl = result?.data?.[0]?.url || result?.image?.url;
+  const imgUrl = result?.image?.url || result?.data?.[0]?.url || result?.url;
   if (!imgUrl) {
     throw new Error("Recraft Upscale API did not return an image URL.");
   }
@@ -3198,8 +3198,13 @@ CRITICAL CONSTRAINTS:
           // Step 1.5: Upscale the generated image for cleaner vectorization
           updateProgress(60, 'Upscaling design for sharper vectorization...');
           const upscaledUrl = await callRecraftUpscaleApi(recraftApiKey, generatedBlob);
-          const upscaledRes = await fetch(upscaledUrl);
-          const upscaledBlob = await upscaledRes.blob();
+          let upscaledBlob;
+          if (upscaledUrl.startsWith('data:')) {
+            upscaledBlob = dataURLtoBlob(upscaledUrl);
+          } else {
+            const upscaledRes = await fetch(upscaledUrl + '?t=' + Date.now(), { cache: 'no-cache' });
+            upscaledBlob = await upscaledRes.blob();
+          }
 
           // Step 2: Call Recraft Vectorize API
           updateProgress(80, 'Vectorizing design pattern with Recraft...');
@@ -3596,6 +3601,16 @@ CRITICAL CONSTRAINTS:
       lockToolbox();
       setStatusBadge('generating', 'Vectorizing…');
 
+      // Show canvas loading overlay
+      const canvasLoader = $('result-loading-overlay');
+      const canvasLoaderText = $('result-loading-text');
+      const activeFrame = document.getElementById(`canvas-frame-${selectedCanvasId}`) || document.getElementById('canvas-frame');
+      if (activeFrame && canvasLoader) {
+        activeFrame.appendChild(canvasLoader);
+      }
+      if (canvasLoader) canvasLoader.classList.add('active');
+      if (canvasLoaderText) canvasLoaderText.textContent = 'Vectorizing Design...';
+
       try {
         // Extract the raster image data-URL from the current SVG
         const parser = new DOMParser();
@@ -3666,6 +3681,8 @@ CRITICAL CONSTRAINTS:
         setTimeout(() => { if (iconEl) iconEl.className = origIconClass; }, 3000);
         setStatusBadge('ready', 'Ready');
       } finally {
+        const canvasLoader = $('result-loading-overlay');
+        if (canvasLoader) canvasLoader.classList.remove('active');
         unlockToolbox();
       }
     });
@@ -3687,14 +3704,7 @@ CRITICAL CONSTRAINTS:
       return;
     }
 
-    // Lock Creative Upscale for Starter plan users
-    if (type === 'creative') {
-      const user = authService.getCurrentUser();
-      if (user && user.plan === 'Starter') {
-        showUpgradeModal();
-        return;
-      }
-    }
+
 
     if (!authService.hasEnoughCredits(cost)) {
       showToast(`Quota exceeded. This action requires ${cost} tokens. Please upgrade your subscription plan.`, true);
@@ -3716,6 +3726,16 @@ CRITICAL CONSTRAINTS:
     lockToolbox();
     setStatusBadge('generating', 'Upscaling…');
 
+    // Show canvas loading overlay
+    const canvasLoader = $('result-loading-overlay');
+    const canvasLoaderText = $('result-loading-text');
+    const activeFrame = document.getElementById(`canvas-frame-${selectedCanvasId}`) || document.getElementById('canvas-frame');
+    if (activeFrame && canvasLoader) {
+      activeFrame.appendChild(canvasLoader);
+    }
+    if (canvasLoader) canvasLoader.classList.add('active');
+    if (canvasLoaderText) canvasLoaderText.textContent = type === 'creative' ? 'AI Running Creative Upscale (HD)...' : 'AI Running Crisp Upscale...';
+
     try {
       // Extract the raster image data-URL from the current SVG
       const parser = new DOMParser();
@@ -3736,8 +3756,8 @@ CRITICAL CONSTRAINTS:
       // Call Recraft Upscale API
       const upscaledUrl = await callRecraftUpscaleApi(recraftApiKey, imageBlob, type);
 
-      // Fetch upscaled image, convert to Base64
-      const fetchRes = await fetch(upscaledUrl);
+      // Fetch upscaled image (with cache-busting), convert to Base64
+      const fetchRes = await fetch(upscaledUrl + '?t=' + Date.now(), { cache: 'no-cache' });
       const upscaledBlob = await fetchRes.blob();
       const base64Data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -3767,6 +3787,8 @@ CRITICAL CONSTRAINTS:
       setStatusBadge('ready', 'Ready');
 
       ProjectService.updateCanvasData({
+        canvases,
+        selectedCanvasId,
         svgContent: currentSVG
       });
       ProjectService.updateThumbnail(currentSVG);
@@ -3792,6 +3814,8 @@ CRITICAL CONSTRAINTS:
       setTimeout(() => { if (iconEl) iconEl.className = origIconClass; }, 3000);
       setStatusBadge('ready', 'Ready');
     } finally {
+      const canvasLoader = $('result-loading-overlay');
+      if (canvasLoader) canvasLoader.classList.remove('active');
       unlockToolbox();
     }
   }
@@ -4162,8 +4186,13 @@ CRITICAL CONSTRAINTS:
 
             updateCanvasProgress(targetId, 70, 'Upscaling design for sharper vectorization...');
             const upscaledUrl = await callRecraftUpscaleApi(recraftApiKey, generatedBlob);
-            const upscaledRes = await fetch(upscaledUrl);
-            const upscaledBlob = await upscaledRes.blob();
+            let upscaledBlob;
+            if (upscaledUrl.startsWith('data:')) {
+              upscaledBlob = dataURLtoBlob(upscaledUrl);
+            } else {
+              const upscaledRes = await fetch(upscaledUrl + '?t=' + Date.now(), { cache: 'no-cache' });
+              upscaledBlob = await upscaledRes.blob();
+            }
 
             updateCanvasProgress(targetId, 85, 'Vectorizing design layout with Recraft...');
             const vectorImgUrl = await callRecraftVectorizeApi(recraftApiKey, upscaledBlob);
@@ -5127,16 +5156,12 @@ CRITICAL CONSTRAINTS:
 
   function applyViewportTransform() {
     const resultInner = document.getElementById('result-inner');
-    const resultDisplay = document.getElementById('result-display');
     if (resultInner) {
-      resultInner.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
-    }
-    if (resultDisplay) {
-      resultDisplay.style.backgroundPosition = `calc(50% + ${panX}px) calc(50% + ${panY}px)`;
-      resultDisplay.style.backgroundSize = `${20 * zoomLevel}px ${20 * zoomLevel}px`;
+      resultInner.style.transform = `translate3d(${panX}px, ${panY}px, 0) scale(${zoomLevel})`;
     }
     document.dispatchEvent(new CustomEvent('syncraft:zoomLevelChanged', { detail: { zoom: zoomLevel } }));
   }
+
 
   function updateCursorClass() {
     if (!resultDisplay) return;
