@@ -478,8 +478,8 @@ async function callRecraftVectorizeApi(apiKey, imageBlob) {
  * @param {Blob} imageBlob - The original image blob to upscale.
  * @returns {Promise<string>} The URL of the upscaled image.
  */
-async function callRecraftUpscaleApi(apiKey, imageBlob) {
-  console.log("[Recraft Upscale API] Request started.");
+async function callRecraftUpscaleApi(apiKey, imageBlob, type = 'crisp') {
+  console.log(`[Recraft Upscale API] Request started. Type: ${type}`);
   if (!apiKey) {
     throw new Error("Recraft.ai API Key is missing.");
   }
@@ -487,7 +487,8 @@ async function callRecraftUpscaleApi(apiKey, imageBlob) {
   const formData = new FormData();
   formData.append('file', imageBlob, 'image.png');
 
-  const response = await fetch('https://external.api.recraft.ai/v1/images/crispUpscale', {
+  const path = type === 'creative' ? 'creativeUpscale' : 'crispUpscale';
+  const response = await fetch(`https://external.api.recraft.ai/v1/images/${path}`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${apiKey}` },
     body: formData
@@ -1042,7 +1043,8 @@ export function initWorkspace(router) {
   const toolExtractPattern    = $('tool-extract-pattern');
   const toolExtractRaster     = $('tool-extract-raster');
   const toolVectorize         = $('tool-vectorize');
-  const toolUpscale           = $('tool-upscale');
+  const toolUpscaleCrisp      = $('tool-upscale-crisp');
+  const toolUpscaleCreative   = $('tool-upscale-creative');
   const infoFormat   = $('info-format');
   const infoSize     = $('info-size');
   const infoPrompt   = $('info-prompt');
@@ -3506,7 +3508,8 @@ CRITICAL CONSTRAINTS:
 
         // Enable Vectorize/Upscale now that we have a raster image in SVG
         if (toolVectorize) toolVectorize.disabled = false;
-        if (toolUpscale) toolUpscale.disabled = false;
+        if (toolUpscaleCrisp) toolUpscaleCrisp.disabled = false;
+        if (toolUpscaleCreative) toolUpscaleCreative.disabled = false;
 
         ProjectService.updateCanvasData({
           svgContent: currentSVG,
@@ -3669,119 +3672,135 @@ CRITICAL CONSTRAINTS:
   }
 
   // ────────────────────────────────────────────────────────────────
-  // UPSCALE — Send raster canvas through Recraft Crisp Upscale API
+  // UPSCALE — Send raster canvas through Recraft Upscale APIs
   // ────────────────────────────────────────────────────────────────
-  if (toolUpscale) {
-    toolUpscale.addEventListener('click', async () => {
-      if (!currentSVG || toolUpscale.disabled || toolUpscale.classList.contains('processing')) return;
-      if (!isRasterSvg(currentSVG)) {
-        showToast('No raster image found. Generate a design first using Syncraft.', true);
+  async function executeUpscale(btn, type, cost) {
+    if (!currentSVG || btn.disabled || btn.classList.contains('processing')) return;
+    if (!isRasterSvg(currentSVG)) {
+      showToast('No raster image found. Generate a design first using Syncraft.', true);
+      return;
+    }
+
+    const recraftApiKey = localStorage.getItem('syncraft_recraft_api_key') || DEFAULT_RECRAFT_API_KEY;
+    if (!recraftApiKey) {
+      showToast('Please configure your Recraft API Key in preferences.', true);
+      return;
+    }
+
+    // Lock Creative Upscale for Starter plan users
+    if (type === 'creative') {
+      const user = authService.getCurrentUser();
+      if (user && user.plan === 'Starter') {
+        showUpgradeModal();
         return;
       }
+    }
 
-      const recraftApiKey = localStorage.getItem('syncraft_recraft_api_key') || DEFAULT_RECRAFT_API_KEY;
-      if (!recraftApiKey) {
-        showToast('Please configure your Recraft API Key in preferences.', true);
-        return;
+    if (!authService.hasEnoughCredits(cost)) {
+      showToast(`Quota exceeded. This action requires ${cost} tokens. Please upgrade your subscription plan.`, true);
+      showSettingsModal('billing', true);
+      return;
+    }
+
+    if (typeof pushHistory === 'function') pushHistory();
+
+    // Button processing state
+    btn.classList.add('processing');
+    const nameEl = btn.querySelector('.action-item-name');
+    const iconEl = btn.querySelector('.icon');
+    const origName = nameEl?.textContent || (type === 'creative' ? 'Creative Upscale (HD)' : 'Normal Upscale (Crisp)');
+    const origIconClass = iconEl?.className || (type === 'creative' ? 'icon fi fi-br-expand-arrows' : 'icon fi fi-br-expand');
+    if (nameEl) nameEl.textContent = 'Upscaling...';
+    if (iconEl) iconEl.className = 'icon fi fi-br-hourglass';
+
+    lockToolbox();
+    setStatusBadge('generating', 'Upscaling…');
+
+    try {
+      // Extract the raster image data-URL from the current SVG
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(currentSVG, 'image/svg+xml');
+      const imgEl = svgDoc.querySelector('image');
+      const imgHref = imgEl?.getAttribute('href') || imgEl?.getAttribute('xlink:href') || '';
+      if (!imgHref) throw new Error('Could not extract raster image from the current canvas.');
+
+      // Convert data-URL to Blob
+      let imageBlob;
+      if (imgHref.startsWith('data:')) {
+        imageBlob = dataURLtoBlob(imgHref);
+      } else {
+        const fetchRes = await fetch(imgHref);
+        imageBlob = await fetchRes.blob();
       }
 
-      if (!authService.hasEnoughCredits(10)) {
-        showToast('Quota exceeded. Creative Upscale requires 10 tokens. Please upgrade your subscription plan.', true);
-        showSettingsModal('billing', true);
-        return;
+      // Call Recraft Upscale API
+      const upscaledUrl = await callRecraftUpscaleApi(recraftApiKey, imageBlob, type);
+
+      // Fetch upscaled image, convert to Base64
+      const fetchRes = await fetch(upscaledUrl);
+      const upscaledBlob = await fetchRes.blob();
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(upscaledBlob);
+      });
+
+      // Set base64 back to the image tag href inside the SVG
+      imgEl.setAttribute('href', base64Data);
+      currentSVG = new XMLSerializer().serializeToString(svgDoc);
+
+      // Update the active canvas
+      const targetCanvas = canvases.find(c => c.id === selectedCanvasId);
+      if (targetCanvas) {
+        targetCanvas.svgContent = currentSVG;
       }
 
-      if (typeof pushHistory === 'function') pushHistory();
+      authService.consumeCredit('Action', type === 'creative' ? 'Creative Upscale' : 'Crisp Upscale', cost)
+        .then(() => updateWorkspaceCredits())
+        .catch(e => console.warn('Credit error:', e));
 
-      // Button processing state
-      toolUpscale.classList.add('processing');
-      const nameEl = toolUpscale.querySelector('.action-item-name');
-      const iconEl = toolUpscale.querySelector('.icon');
-      const origName = nameEl?.textContent || 'Upscale Design';
-      const origIconClass = iconEl?.className || 'icon fi fi-br-expand';
-      if (nameEl) nameEl.textContent = 'Upscaling...';
-      if (iconEl) iconEl.className = 'icon fi fi-br-hourglass';
+      renderOutput(currentSVG, targetCanvas?.prompt || 'Upscaled Design');
+      syncCanvasState();
+      renderCanvases();
+      setDisplayState('output');
+      setStatusBadge('ready', 'Ready');
 
-      lockToolbox();
-      setStatusBadge('generating', 'Upscaling…');
+      ProjectService.updateCanvasData({
+        svgContent: currentSVG
+      });
+      ProjectService.updateThumbnail(currentSVG);
 
-      try {
-        // Extract the raster image data-URL from the current SVG
-        const parser = new DOMParser();
-        const svgDoc = parser.parseFromString(currentSVG, 'image/svg+xml');
-        const imgEl = svgDoc.querySelector('image');
-        const imgHref = imgEl?.getAttribute('href') || imgEl?.getAttribute('xlink:href') || '';
-        if (!imgHref) throw new Error('Could not extract raster image from the current canvas.');
+      showToast('Design upscaled successfully!');
 
-        // Convert data-URL to Blob
-        let imageBlob;
-        if (imgHref.startsWith('data:')) {
-          imageBlob = dataURLtoBlob(imgHref);
-        } else {
-          const fetchRes = await fetch(imgHref);
-          imageBlob = await fetchRes.blob();
-        }
-
-        // Call Recraft Upscale API
-        const upscaledUrl = await callRecraftUpscaleApi(recraftApiKey, imageBlob);
-
-        // Fetch upscaled image, convert to Base64
-        const fetchRes = await fetch(upscaledUrl);
-        const upscaledBlob = await fetchRes.blob();
-        const base64Data = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(upscaledBlob);
-        });
-
-        // Set base64 back to the image tag href inside the SVG
-        imgEl.setAttribute('href', base64Data);
-        currentSVG = new XMLSerializer().serializeToString(svgDoc);
-
-        // Update the active canvas
-        const targetCanvas = canvases.find(c => c.id === selectedCanvasId);
-        if (targetCanvas) {
-          targetCanvas.svgContent = currentSVG;
-        }
-
-        authService.consumeCredit('Action', 'Upscale', 10).then(() => updateWorkspaceCredits()).catch(e => console.warn('Credit error:', e));
-
-        renderOutput(currentSVG, targetCanvas?.prompt || 'Upscaled Design');
-        syncCanvasState();
-        renderCanvases();
-        setDisplayState('output');
-        setStatusBadge('ready', 'Ready');
-
-        ProjectService.updateCanvasData({
-          svgContent: currentSVG
-        });
-        ProjectService.updateThumbnail(currentSVG);
-
-        showToast('Design upscaled successfully!');
-
-        toolUpscale.classList.remove('processing');
-        toolUpscale.classList.add('done');
-        if (nameEl) nameEl.textContent = '✓ Upscaled!';
-        if (iconEl) iconEl.className = 'icon fi fi-br-check-circle';
-        setTimeout(() => {
-          toolUpscale.classList.remove('done');
-          if (nameEl) nameEl.textContent = origName;
-          if (iconEl) iconEl.className = origIconClass;
-        }, 3000);
-
-      } catch (err) {
-        console.error(err);
-        showToast('Upscale failed: ' + (err.message || ''), true);
-        toolUpscale.classList.remove('processing');
+      btn.classList.remove('processing');
+      btn.classList.add('done');
+      if (nameEl) nameEl.textContent = '✓ Upscaled!';
+      if (iconEl) iconEl.className = 'icon fi fi-br-check-circle';
+      setTimeout(() => {
+        btn.classList.remove('done');
         if (nameEl) nameEl.textContent = origName;
-        if (iconEl) iconEl.className = 'icon fi fi-br-exclamation';
-        setTimeout(() => { if (iconEl) iconEl.className = origIconClass; }, 3000);
-        setStatusBadge('ready', 'Ready');
-      } finally {
-        unlockToolbox();
-      }
-    });
+        if (iconEl) iconEl.className = origIconClass;
+      }, 3000);
+
+    } catch (err) {
+      console.error(err);
+      showToast('Upscale failed: ' + (err.message || ''), true);
+      btn.classList.remove('processing');
+      if (nameEl) nameEl.textContent = origName;
+      if (iconEl) iconEl.className = 'icon fi fi-br-exclamation';
+      setTimeout(() => { if (iconEl) iconEl.className = origIconClass; }, 3000);
+      setStatusBadge('ready', 'Ready');
+    } finally {
+      unlockToolbox();
+    }
+  }
+
+  if (toolUpscaleCrisp) {
+    toolUpscaleCrisp.addEventListener('click', () => executeUpscale(toolUpscaleCrisp, 'crisp', 2));
+  }
+  if (toolUpscaleCreative) {
+    toolUpscaleCreative.addEventListener('click', () => executeUpscale(toolUpscaleCreative, 'creative', 10));
   }
 
   if (toolExport) {
@@ -4536,11 +4555,12 @@ CRITICAL CONSTRAINTS:
     // Vectorize/Upscale is only enabled when the canvas holds a raster image
     // Vectorize and Upscale are only enabled when the canvas holds a raster image
     if (toolVectorize) toolVectorize.disabled = !isRasterSvg(currentSVG);
-    if (toolUpscale) toolUpscale.disabled = !isRasterSvg(currentSVG);
+    if (toolUpscaleCrisp) toolUpscaleCrisp.disabled = !isRasterSvg(currentSVG);
+    if (toolUpscaleCreative) toolUpscaleCreative.disabled = !isRasterSvg(currentSVG);
   }
 
   function lockToolbox() {
-    [toolRemoveBg, toolAnnotate, toolExport, toolExtractPattern, toolExtractRaster, toolVectorize, toolUpscale].forEach((btn) => {
+    [toolRemoveBg, toolAnnotate, toolExport, toolExtractPattern, toolExtractRaster, toolVectorize, toolUpscaleCrisp, toolUpscaleCreative].forEach((btn) => {
       if (btn) btn.disabled = true;
     });
   }
