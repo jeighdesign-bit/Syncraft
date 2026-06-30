@@ -655,7 +655,9 @@ async function renderAdminPanel(panelContainer) {
               e.target.disabled = false;
               e.target.textContent = 'Approve';
             }
-          }
+          },
+          'Approve',
+          false
         );
       });
     });
