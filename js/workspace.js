@@ -119,7 +119,7 @@ import { UpstashService } from './upstashService.js';
 
 // Fallback keys embedded locally (base64 obfuscated to prevent GitHub Push Protection triggers)
 const FALLBACK_GEMINI_API_KEY = atob('c2stb3ItdjEtZTBkMTIzMGMwNDNmNjE4OGQ5MGNmMTIxY2IzMTY5OTczNjU2ZDkzZTViZjllNjJkN2ZkM2UyZmJmMjRlNTczYg==');
-const FALLBACK_RECRAFT_API_KEY = atob('Z2RvQ0hBODAzelBOS01MQU1LMG95aXJmVGpDVERKMHZIOFhaNHd5N3VCTVVoR0pETjJ1dlRGNFd0a3VHN3BDQQ==');
+const FALLBACK_RECRAFT_API_KEY = atob('WmYyTnVuSG51R2p1REVSeDZlOGpETEFUajZoM0hiWjNES25KTmpXd1dTSGc1WFF0MGJFRUViM1lNbExxVVl1Qw==');
 
 // Robust helper functions to get active API keys with reliable fallbacks
 export function getGeminiApiKey() {
@@ -139,7 +139,7 @@ export function getRecraftApiKey() {
 }
 
 // Force overwrite cached default keys if the version is updated
-const CURRENT_KEYS_VERSION = '2';
+const CURRENT_KEYS_VERSION = '3';
 const storedKeysVersion = localStorage.getItem('syncraft_keys_version');
 if (storedKeysVersion !== CURRENT_KEYS_VERSION) {
   console.log('[API Key migration] Clearing old cached default keys for version', CURRENT_KEYS_VERSION);
