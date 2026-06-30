@@ -138,6 +138,16 @@ export function getRecraftApiKey() {
   return FALLBACK_RECRAFT_API_KEY;
 }
 
+// Force overwrite cached default keys if the version is updated
+const CURRENT_KEYS_VERSION = '2';
+const storedKeysVersion = localStorage.getItem('syncraft_keys_version');
+if (storedKeysVersion !== CURRENT_KEYS_VERSION) {
+  console.log('[API Key migration] Clearing old cached default keys for version', CURRENT_KEYS_VERSION);
+  localStorage.removeItem('syncraft_gemini_api_key');
+  localStorage.removeItem('syncraft_recraft_api_key');
+  localStorage.setItem('syncraft_keys_version', CURRENT_KEYS_VERSION);
+}
+
 // Automatically migrate/initialize localStorage key if it still contains the old depleted Google API key or is invalid
 const storedKey = localStorage.getItem('syncraft_gemini_api_key');
 if (!storedKey || !storedKey.startsWith('sk-or-v1-')) {
