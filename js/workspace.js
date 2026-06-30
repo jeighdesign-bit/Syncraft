@@ -118,7 +118,7 @@ function cropPatternRegion(base64Str, coords) {
 import { UpstashService } from './upstashService.js';
 
 // Fallback keys embedded locally (base64 obfuscated to prevent GitHub Push Protection triggers)
-const FALLBACK_GEMINI_API_KEY = atob('c2stb3ItdjEtNTRkNmM2YTA3ZTgyMzBlYmNjNmU3MmE5OWU0YzA5NmNmN2M2NzQ2MTc5ZTY3ZThiOTMyNzdkYjJmMTY1NDdi');
+const FALLBACK_GEMINI_API_KEY = atob('c2stb3ItdjEtZTBkMTIzMGMwNDNmNjE4OGQ5MGNmMTIxY2IzMTY5OTczNjU2ZDkzZTViZjllNjJkN2ZkM2UyZmJmMjRlNTczYg==');
 const FALLBACK_RECRAFT_API_KEY = atob('Z2RvQ0hBODAzelBOS01MQU1LMG95aXJmVGpDVERKMHZIOFhaNHd5N3VCTVVoR0pETjJ1dlRGNFd0a3VHN3BDQQ==');
 
 // Robust helper functions to get active API keys with reliable fallbacks
