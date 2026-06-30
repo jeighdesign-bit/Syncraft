@@ -278,6 +278,34 @@ function renderLayout(container, router, user, price, tokens) {
                   outline: none;
                   transition: border-color var(--transition-fast);
                 ">
+              </div>
+
+              <!-- Upload Payment Receipt -->
+              <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 16px;">
+                <label style="font-size: 11px; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.05em;">Upload Payment Receipt screenshot:</label>
+                <div id="receipt-upload-zone" style="
+                  border: 2px dashed rgba(255, 255, 255, 0.15);
+                  border-radius: 12px;
+                  padding: 24px;
+                  text-align: center;
+                  background: rgba(255, 255, 255, 0.01);
+                  cursor: pointer;
+                  transition: all var(--transition-fast);
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  gap: 8px;
+                ">
+                  <input type="file" id="checkout-gcash-receipt" accept="image/*" style="display: none;" />
+                  <i class="icon fi fi-br-document" id="receipt-upload-icon" style="font-size: 24px; color: rgba(255,255,255,0.4);"></i>
+                  <span id="receipt-upload-text" style="font-size: 12px; color: rgba(255,255,255,0.5);">Click or drag receipt screenshot here</span>
+                  <div id="receipt-preview-container" style="display: none; width: 100%; margin-top: 8px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); background: #000; padding: 4px; box-sizing: border-box;">
+                    <img id="receipt-preview" style="max-width: 100%; height: auto; max-height: 200px; display: block; margin: 0 auto; border-radius: 4px;" />
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top: 8px;">
                 <button id="checkout-gcash-submit" style="
                   width: 100%;
                   background: var(--color-primary);
@@ -290,7 +318,6 @@ function renderLayout(container, router, user, price, tokens) {
                   font-size: 13px;
                   text-transform: uppercase;
                   letter-spacing: 0.05em;
-                  margin-top: 8px;
                   transition: all var(--transition-fast);
                 ">Submit Payment Reference</button>
               </div>
@@ -312,6 +339,10 @@ function renderLayout(container, router, user, price, tokens) {
     #checkout-gcash-ref:focus {
       border-color: var(--color-primary) !important;
     }
+    #receipt-upload-zone:hover {
+      border-color: var(--color-primary) !important;
+      background: rgba(212, 255, 89, 0.02) !important;
+    }
     #checkout-gcash-submit:hover {
       background: var(--color-primary-light) !important;
       transform: translateY(-1px);
@@ -327,6 +358,86 @@ function renderLayout(container, router, user, price, tokens) {
     router.navigate('settings?tab=subscription');
   });
 
+  // Local state for image upload
+  let selectedReceiptBase64 = null;
+  const uploadZone = document.getElementById('receipt-upload-zone');
+  const fileInput = document.getElementById('checkout-gcash-receipt');
+  const uploadText = document.getElementById('receipt-upload-text');
+  const uploadIcon = document.getElementById('receipt-upload-icon');
+  const previewContainer = document.getElementById('receipt-preview-container');
+  const previewImg = document.getElementById('receipt-preview');
+
+  uploadZone.addEventListener('click', () => fileInput.click());
+
+  uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.style.borderColor = 'var(--color-primary)';
+  });
+  uploadZone.addEventListener('dragleave', () => {
+    uploadZone.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+  });
+  uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      fileInput.files = e.dataTransfer.files;
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0]);
+    }
+  });
+
+  function handleFile(file) {
+    if (!file.type.startsWith('image/')) {
+      showToast('Please upload an image file (PNG/JPG)', true);
+      return;
+    }
+    
+    uploadText.textContent = 'Processing receipt...';
+    
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const img = new Image();
+      img.onload = function() {
+        // Compress image using canvas
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        const MAX_WIDTH = 800;
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convert to low-quality JPEG base64 (compressed to ~30-50kb)
+        selectedReceiptBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        
+        // Update UI preview
+        previewImg.src = selectedReceiptBase64;
+        previewContainer.style.display = 'block';
+        uploadIcon.style.color = 'var(--color-primary)';
+        uploadText.textContent = file.name + ' (Loaded)';
+      };
+      img.onerror = function() {
+        showToast('Failed to load image', true);
+        uploadText.textContent = 'Click or drag receipt screenshot here';
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
   // Bind GCash Manual Submit Action
   const btnSubmitGcash = document.getElementById('checkout-gcash-submit');
   btnSubmitGcash.addEventListener('click', async () => {
@@ -339,6 +450,10 @@ function renderLayout(container, router, user, price, tokens) {
     }
     if (refNumber.length < 8) {
       showToast('Please enter a valid reference number', true);
+      return;
+    }
+    if (!selectedReceiptBase64) {
+      showToast('Please upload a screenshot of your payment receipt', true);
       return;
     }
 
@@ -355,16 +470,18 @@ function renderLayout(container, router, user, price, tokens) {
       desc: `Payment Pending Verification: GCash Reference #${refNumber} for ₱${price} (${tokens} tokens)`,
       status: 'pending_verification',
       refNumber: refNumber,
+      receiptImage: selectedReceiptBase64,
       tokens: tokens,
-      price: price
+      price: price,
+      email: user.email
     });
 
     try {
       await authService.saveCurrentUserState(user);
-      showToast('Reference number submitted! Pending manual verification.');
+      showToast('Reference and receipt submitted! Pending manual verification.');
       router.navigate('settings?tab=subscription');
     } catch (err) {
-      showToast('Error saving reference: ' + err.message, true);
+      showToast('Error saving payment details: ' + err.message, true);
       btnSubmitGcash.disabled = false;
       btnSubmitGcash.textContent = 'Submit Payment Reference';
     }

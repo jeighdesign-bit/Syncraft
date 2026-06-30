@@ -1,9 +1,13 @@
 import authService from './authService.js?v=2.0.5';
 import { showToast, showConfirmModal, openModal } from './utils.js';
+import { supabaseClient } from './supabaseConfig.js';
 
 export function initSettingsPage(router, hash) {
   const container = document.getElementById('settings-view');
   if (!container) return;
+
+  const user = authService.getCurrentUser();
+  const isAdmin = user && user.email && user.email.toLowerCase() === 'jeighdesign@gmail.com';
 
   // ── Parse Tab Query Param ────────────────────────────────
   const urlParams = new URLSearchParams(hash.includes('?') ? hash.substring(hash.indexOf('?')) : '');
@@ -12,6 +16,9 @@ export function initSettingsPage(router, hash) {
 
   // Validate activeTab
   const validTabs = ['profile', 'preferences', 'subscription'];
+  if (isAdmin) {
+    validTabs.push('admin');
+  }
   if (!validTabs.includes(activeTab)) {
     activeTab = 'profile';
   }
@@ -29,6 +36,12 @@ export function initSettingsPage(router, hash) {
       return;
     }
 
+    const adminTabBtn = isAdmin ? `
+      <button class="settings-tab-btn ${activeTab === 'admin' ? 'active' : ''}" data-tab="admin">
+        Admin Panel
+      </button>
+    ` : '';
+
     container.innerHTML = `
       <div class="settings-page">
         <!-- 2. Nav tabs -->
@@ -43,6 +56,7 @@ export function initSettingsPage(router, hash) {
             <button class="settings-tab-btn ${activeTab === 'subscription' ? 'active' : ''}" data-tab="subscription">
               Subscription
             </button>
+            ${adminTabBtn}
           </div>
         </div>
 
@@ -447,6 +461,302 @@ export function initSettingsPage(router, hash) {
           }
         });
       });
+    } else if (activeTab === 'admin' && isAdmin) {
+      renderAdminPanel(panelContainer);
     }
   }
 }
+
+async function renderAdminPanel(panelContainer) {
+  // Inject custom CSS styling for spinner and image hover
+  if (!document.getElementById('admin-panel-styles')) {
+    const adminStyle = document.createElement('style');
+    adminStyle.id = 'admin-panel-styles';
+    adminStyle.innerHTML = `
+      @keyframes admin-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      .admin-receipt-preview:hover {
+        transform: scale(1.08);
+      }
+    `;
+    document.head.appendChild(adminStyle);
+  }
+
+  panelContainer.innerHTML = `
+    <div class="settings-tab-panel">
+      <div class="settings-card" style="width: 100%; box-sizing: border-box;">
+        <div class="settings-card-info">
+          <h2 class="settings-card-title">GCash/Maya Verification Panel</h2>
+          <p class="settings-card-desc">Review pending payment reference numbers and receipt uploads. Approving will credit tokens and upgrade the user.</p>
+        </div>
+        <div class="settings-card-body" id="admin-panel-body" style="padding: 24px; min-height: 200px; box-sizing: border-box;">
+          <div style="text-align: center; padding: 40px; color: rgba(255,255,255,0.4);">
+            <i class="icon fi fi-br-spinner" style="font-size: 20px; display: inline-block; margin-right: 8px; vertical-align: middle; animation: admin-spin 1s linear infinite;"></i>
+            Loading pending verification profiles...
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const bodyEl = document.getElementById('admin-panel-body');
+  if (!bodyEl) return;
+
+  try {
+    if (!supabaseClient) {
+      bodyEl.innerHTML = `<div style="color: var(--color-error); text-align: center; padding: 20px;">Supabase is not configured yet. Live verification is disabled.</div>`;
+      return;
+    }
+
+    const { data: profiles, error } = await supabaseClient
+      .from('profiles')
+      .select('*');
+
+    if (error) {
+      console.error('[AdminPanel] Error fetching profiles:', error);
+      bodyEl.innerHTML = `<div style="color: var(--color-error); text-align: center; padding: 20px;">Error loading profiles: ${error.message}</div>`;
+      return;
+    }
+
+    // Filter profiles that have a pending verification record
+    const pendingItems = [];
+    profiles.forEach(profile => {
+      if (Array.isArray(profile.history)) {
+        profile.history.forEach((h, idx) => {
+          if (h.type === 'Billing' && h.status === 'pending_verification') {
+            pendingItems.push({
+              profile: profile,
+              payment: h,
+              historyIndex: idx
+            });
+          }
+        });
+      }
+    });
+
+    if (pendingItems.length === 0) {
+      bodyEl.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: rgba(255,255,255,0.4); font-size: 13px;">
+          <i class="icon fi fi-br-check-circle" style="font-size: 28px; display: block; margin-bottom: 12px; color: var(--color-primary);"></i>
+          No pending manual payments to verify. All caught up!
+        </div>
+      `;
+      return;
+    }
+
+    bodyEl.innerHTML = `
+      <div style="overflow-x: auto; width: 100%; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; background: rgba(0,0,0,0.15);">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; min-width: 700px;">
+          <thead>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); color: rgba(255,255,255,0.4); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">
+              <th style="padding: 14px 16px;">User Email</th>
+              <th style="padding: 14px 16px;">Date Submitted</th>
+              <th style="padding: 14px 16px;">Reference #</th>
+              <th style="padding: 14px 16px;">Details</th>
+              <th style="padding: 14px 16px; text-align: center;">Receipt Screenshot</th>
+              <th style="padding: 14px 16px; text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody style="color: rgba(255,255,255,0.85);">
+            ${pendingItems.map((item, index) => {
+              const p = item.payment;
+              const dateStr = new Date(p.date).toLocaleString();
+              const userEmail = p.email || 'Unknown User';
+              
+              return `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                  <td style="padding: 14px 16px; font-weight: 600; color: #fff;">${userEmail}</td>
+                  <td style="padding: 14px 16px; font-size: 12px; color: rgba(255,255,255,0.5);">${dateStr}</td>
+                  <td style="padding: 14px 16px; font-family: monospace; font-size: 14px; font-weight: 700; color: var(--color-primary);">${p.refNumber}</td>
+                  <td style="padding: 14px 16px;">
+                    <span style="font-weight: 600; color: #fff;">₱${p.price}</span>
+                    <span style="font-size: 11px; color: rgba(255,255,255,0.4); display: block;">${p.tokens} tokens</span>
+                  </td>
+                  <td style="padding: 14px 16px; text-align: center;">
+                    ${p.receiptImage ? `
+                      <img class="admin-receipt-preview" src="${p.receiptImage}" data-index="${index}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); cursor: zoom-in; transition: transform var(--transition-fast);" />
+                    ` : '<span style="color: rgba(255,255,255,0.3);">No Image</span>'}
+                  </td>
+                  <td style="padding: 14px 16px; text-align: right; white-space: nowrap;">
+                    <button class="btn-admin-approve settings-btn settings-btn-primary" data-index="${index}" style="padding: 6px 12px; font-size: 11px; margin-right: 6px;">Approve</button>
+                    <button class="btn-admin-reject settings-btn" data-index="${index}" style="padding: 6px 12px; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171;">Reject</button>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // Bind Image Click (Lightbox modal preview)
+    bodyEl.querySelectorAll('.admin-receipt-preview').forEach(img => {
+      img.addEventListener('click', (e) => {
+        const idx = parseInt(e.target.getAttribute('data-index'));
+        const item = pendingItems[idx];
+        showReceiptLightbox(item.payment.receiptImage, item.payment.refNumber);
+      });
+    });
+
+    // Bind Approve Action
+    bodyEl.querySelectorAll('.btn-admin-approve').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const idx = parseInt(e.target.getAttribute('data-index'));
+        const item = pendingItems[idx];
+        
+        showConfirmModal(
+          `Approve GCash Payment?`,
+          `This will credit ${item.payment.tokens} tokens to ${item.payment.email || 'the user'} and set their plan to Professional. Proceed?`,
+          async () => {
+            e.target.disabled = true;
+            e.target.textContent = 'Processing...';
+            try {
+              // Update payment log entry in history
+              const updatedHistory = [...item.profile.history];
+              updatedHistory[item.historyIndex].status = 'verified';
+              updatedHistory[item.historyIndex].verifiedAt = new Date().toISOString();
+              
+              // Unshift a new verified transaction record
+              updatedHistory.unshift({
+                date: new Date().toISOString(),
+                type: 'Billing',
+                desc: `Upgraded subscription to Professional (limit: ${item.payment.tokens} tokens)`
+              });
+
+              const { error: updateErr } = await supabaseClient
+                .from('profiles')
+                .update({
+                  plan: 'Professional',
+                  credits_max: item.payment.tokens,
+                  credits_used: 0,
+                  history: updatedHistory
+                })
+                .eq('id', item.profile.id);
+
+              if (updateErr) throw updateErr;
+
+              showToast(`Successfully verified payment and upgraded user account.`);
+              renderAdminPanel(panelContainer);
+            } catch (err) {
+              console.error('Approve failed:', err);
+              showToast('Error approving payment: ' + err.message, true);
+              e.target.disabled = false;
+              e.target.textContent = 'Approve';
+            }
+          }
+        );
+      });
+    });
+
+    // Bind Reject Action
+    bodyEl.querySelectorAll('.btn-admin-reject').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const idx = parseInt(e.target.getAttribute('data-index'));
+        const item = pendingItems[idx];
+        
+        const reason = prompt("Enter rejection reason (visible to user):", "Invalid reference number or transaction not found.");
+        if (reason === null) return; // User cancelled prompt
+
+        e.target.disabled = true;
+        e.target.textContent = 'Processing...';
+
+        try {
+          const updatedHistory = [...item.profile.history];
+          updatedHistory[item.historyIndex].status = 'rejected';
+          updatedHistory[item.historyIndex].rejectedAt = new Date().toISOString();
+          updatedHistory[item.historyIndex].rejectionReason = reason;
+
+          const { error: updateErr } = await supabaseClient
+            .from('profiles')
+            .update({
+              history: updatedHistory
+            })
+            .eq('id', item.profile.id);
+
+          if (updateErr) throw updateErr;
+
+          showToast(`Manual payment rejected. User notified in history.`);
+          renderAdminPanel(panelContainer);
+        } catch (err) {
+          console.error('Rejection failed:', err);
+          showToast('Error rejecting payment: ' + err.message, true);
+          e.target.disabled = false;
+          e.target.textContent = 'Reject';
+        }
+      });
+    });
+
+  } catch (err) {
+    console.error('Admin Panel loading failed:', err);
+    bodyEl.innerHTML = `<div style="color: var(--color-error); text-align: center; padding: 20px;">Failed to load Admin Panel: ${err.message}</div>`;
+  }
+}
+
+// Lightbox Modal for Receipt image
+function showReceiptLightbox(imageSrc, refNum) {
+  // Create modal container
+  const lightbox = document.createElement('div');
+  lightbox.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+  `;
+
+  // Image element
+  const img = document.createElement('img');
+  img.src = imageSrc;
+  img.style.cssText = `
+    max-width: 100%;
+    max-height: 80vh;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.1);
+  `;
+
+  // Info header
+  const info = document.createElement('div');
+  info.style.cssText = `
+    color: #fff;
+    margin-bottom: 20px;
+    text-align: center;
+    font-family: var(--font-family-display);
+  `;
+  info.innerHTML = `
+    <h3 style="margin:0 0 6px 0; font-size:18px;">GCash/Maya Receipt screenshot</h3>
+    <p style="margin:0; font-size:13px; color:var(--color-primary); font-family:monospace; font-weight:700;">Ref: #${refNum}</p>
+  `;
+
+  // Close instructions
+  const closeTip = document.createElement('div');
+  closeTip.style.cssText = `
+    color: rgba(255,255,255,0.4);
+    margin-top: 20px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  `;
+  closeTip.textContent = "Click anywhere to close preview";
+
+  lightbox.appendChild(info);
+  lightbox.appendChild(img);
+  lightbox.appendChild(closeTip);
+  document.body.appendChild(lightbox);
+
+  // Close event listener
+  lightbox.addEventListener('click', () => {
+    lightbox.remove();
+  });
+}
+
