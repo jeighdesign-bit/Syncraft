@@ -118,11 +118,34 @@ function cropPatternRegion(base64Str, coords) {
 import { DEFAULT_GEMINI_API_KEY, DEFAULT_RECRAFT_API_KEY } from './aiConfig.js';
 import { UpstashService } from './upstashService.js';
 
-// Automatically migrate localStorage key if it still contains the old depleted Google API key
+// Robust helper functions to get active API keys with reliable fallbacks
+export function getGeminiApiKey() {
+  const key = localStorage.getItem('syncraft_gemini_api_key');
+  if (key && typeof key === 'string' && key.trim() !== '' && key !== 'null' && key !== 'undefined' && key.startsWith('sk-or-v1-')) {
+    return key.trim();
+  }
+  return DEFAULT_GEMINI_API_KEY;
+}
+
+export function getRecraftApiKey() {
+  const key = localStorage.getItem('syncraft_recraft_api_key');
+  if (key && typeof key === 'string' && key.trim() !== '' && key !== 'null' && key !== 'undefined' && key.length > 10) {
+    return key.trim();
+  }
+  return DEFAULT_RECRAFT_API_KEY;
+}
+
+// Automatically migrate/initialize localStorage key if it still contains the old depleted Google API key or is invalid
 const storedKey = localStorage.getItem('syncraft_gemini_api_key');
-if (storedKey && !storedKey.startsWith('sk-or-v1-')) {
-  console.log('[API Key migration] Migrating old Google API Key in localStorage to OpenRouter key.');
+if (!storedKey || !storedKey.startsWith('sk-or-v1-')) {
+  console.log('[API Key migration] Migrating/initializing Gemini API Key in localStorage to OpenRouter key.');
   localStorage.setItem('syncraft_gemini_api_key', DEFAULT_GEMINI_API_KEY);
+}
+
+const storedRecraftKey = localStorage.getItem('syncraft_recraft_api_key');
+if (!storedRecraftKey || storedRecraftKey.trim() === '' || storedRecraftKey === 'null' || storedRecraftKey === 'undefined') {
+  console.log('[API Key migration] Initializing Recraft API Key in localStorage to default key.');
+  localStorage.setItem('syncraft_recraft_api_key', DEFAULT_RECRAFT_API_KEY);
 }
 
 /**
@@ -1951,7 +1974,7 @@ export function initWorkspace(router) {
         }
 
         try {
-          const recraftApiKey = localStorage.getItem('syncraft_recraft_api_key') || DEFAULT_RECRAFT_API_KEY;
+          const recraftApiKey = getRecraftApiKey();
           if (!recraftApiKey) {
             throw new Error("Recraft.ai API Key is missing. Please configure it in preferences.");
           }
@@ -2874,7 +2897,7 @@ export function initWorkspace(router) {
     toolRemoveBg.addEventListener('click', async () => {
       if (!currentSVG || toolRemoveBg.disabled || toolRemoveBg.classList.contains('processing')) return;
 
-      const recraftApiKey = localStorage.getItem('syncraft_recraft_api_key') || DEFAULT_RECRAFT_API_KEY;
+      const recraftApiKey = getRecraftApiKey();
       if (!recraftApiKey) {
         showToast('Please configure your Recraft API Key in preferences.', true);
         return;
@@ -3060,7 +3083,7 @@ export function initWorkspace(router) {
         return;
       }
 
-      const apiKey = localStorage.getItem('syncraft_gemini_api_key') || DEFAULT_GEMINI_API_KEY;
+      const apiKey = getGeminiApiKey();
       if (!apiKey) {
         console.error('SYNCRAFT API Error: OpenRouter API key is missing. Please configure DEFAULT_GEMINI_API_KEY in aiConfig.js or syncraft_gemini_api_key in localStorage');
         showToast('Please configure your Gemini API Key in preferences.', true);
@@ -3177,7 +3200,7 @@ export function initWorkspace(router) {
         // ── Hybrid Pipeline: Nano Banana Pro (Gemini 3 Pro Image) + Recraft Vectorize ──
         updateProgress(35, 'Generating design layout with Nano Banana Pro...');
         
-        const recraftApiKey = localStorage.getItem('syncraft_recraft_api_key') || DEFAULT_RECRAFT_API_KEY;
+        const recraftApiKey = getRecraftApiKey();
         if (!recraftApiKey) {
           throw new Error("Recraft.ai API Key is missing. Please configure 'syncraft_recraft_api_key' in your browser localStorage or js/aiConfig.js");
         }
@@ -3365,7 +3388,7 @@ CRITICAL CONSTRAINTS:
         return;
       }
 
-      const apiKey = localStorage.getItem('syncraft_gemini_api_key') || DEFAULT_GEMINI_API_KEY;
+      const apiKey = getGeminiApiKey();
       if (!apiKey) {
         showToast('Please configure your Gemini API Key in preferences.', true);
         return;
@@ -3575,7 +3598,7 @@ CRITICAL CONSTRAINTS:
         return;
       }
 
-      const recraftApiKey = localStorage.getItem('syncraft_recraft_api_key') || DEFAULT_RECRAFT_API_KEY;
+      const recraftApiKey = getRecraftApiKey();
       if (!recraftApiKey) {
         showToast('Please configure your Recraft API Key in preferences.', true);
         return;
@@ -3698,7 +3721,7 @@ CRITICAL CONSTRAINTS:
       return;
     }
 
-    const recraftApiKey = localStorage.getItem('syncraft_recraft_api_key') || DEFAULT_RECRAFT_API_KEY;
+    const recraftApiKey = getRecraftApiKey();
     if (!recraftApiKey) {
       showToast('Please configure your Recraft API Key in preferences.', true);
       return;
@@ -3979,8 +4002,8 @@ CRITICAL CONSTRAINTS:
     if (isGenerating) return;
     const prompt = promptInput?.value.trim() ?? '';
 
-    const geminiApiKey = localStorage.getItem('syncraft_gemini_api_key') || DEFAULT_GEMINI_API_KEY;
-    const recraftApiKey = localStorage.getItem('syncraft_recraft_api_key') || DEFAULT_RECRAFT_API_KEY;
+    const geminiApiKey = getGeminiApiKey();
+    const recraftApiKey = getRecraftApiKey();
 
     if (!geminiApiKey) {
       console.error('SYNCRAFT API Error: OpenRouter API key is missing. Please configure DEFAULT_GEMINI_API_KEY in aiConfig.js or syncraft_gemini_api_key in localStorage');
@@ -5290,7 +5313,7 @@ CRITICAL CONSTRAINTS:
       
       pushHistory();
       
-      const apiKey = localStorage.getItem('syncraft_gemini_api_key') || DEFAULT_GEMINI_API_KEY;
+      const apiKey = getGeminiApiKey();
       if (!apiKey) {
         showToast('Please configure your Gemini API Key in preferences.', true);
         cleanup();
@@ -5497,7 +5520,7 @@ Here is the SVG:\n\n${currentSVG}`;
           return;
         }
         
-        const apiKey = localStorage.getItem('syncraft_gemini_api_key') || DEFAULT_GEMINI_API_KEY;
+        const apiKey = getGeminiApiKey();
         if (!apiKey) {
           showToast('Please configure your Gemini API Key in preferences.', true);
           cleanup();
