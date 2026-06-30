@@ -1,6 +1,5 @@
 import authService from './authService.js?v=2.0.5';
 import { showToast, showConfirmModal, openModal } from './utils.js';
-import { DEFAULT_GEMINI_API_KEY, DEFAULT_RECRAFT_API_KEY } from './aiConfig.js';
 
 export function initSettingsPage(router, hash) {
   const container = document.getElementById('settings-view');
@@ -243,16 +242,6 @@ export function initSettingsPage(router, hash) {
                 </select>
               </div>
 
-              <div class="settings-input-group">
-                <label class="settings-label" for="pref-gemini-key">Gemini / OpenRouter API Key</label>
-                <input class="settings-input" id="pref-gemini-key" type="password" placeholder="sk-or-v1-..." />
-              </div>
-
-              <div class="settings-input-group">
-                <label class="settings-label" for="pref-recraft-key">Recraft.ai API Key</label>
-                <input class="settings-input" id="pref-recraft-key" type="password" placeholder="Enter Recraft API Key" />
-              </div>
-
               <div class="settings-btn-row">
                 <button class="settings-btn settings-btn-primary" id="btn-save-preferences">Save Preferences</button>
               </div>
@@ -265,14 +254,10 @@ export function initSettingsPage(router, hash) {
       const prefModel = document.getElementById('pref-model');
       const prefFormat = document.getElementById('pref-format');
       const prefAutosave = document.getElementById('pref-autosave');
-      const prefGeminiKey = document.getElementById('pref-gemini-key');
-      const prefRecraftKey = document.getElementById('pref-recraft-key');
 
       if (prefModel) prefModel.value = localStorage.getItem('syncraft_opt_model') || 'Syncraft v1 (Fast)';
       if (prefFormat) prefFormat.value = localStorage.getItem('syncraft_opt_format') || 'SVG';
       if (prefAutosave) prefAutosave.value = localStorage.getItem('syncraft_opt_autosave') || '2 seconds';
-      if (prefGeminiKey) prefGeminiKey.value = localStorage.getItem('syncraft_gemini_api_key') || DEFAULT_GEMINI_API_KEY;
-      if (prefRecraftKey) prefRecraftKey.value = localStorage.getItem('syncraft_recraft_api_key') || DEFAULT_RECRAFT_API_KEY;
 
       // Bind Preferences save action
       document.getElementById('btn-save-preferences')?.addEventListener('click', (e) => {
@@ -280,8 +265,6 @@ export function initSettingsPage(router, hash) {
         const modelVal = prefModel.value;
         const formatVal = prefFormat.value;
         const autosaveVal = prefAutosave.value;
-        const geminiKeyVal = prefGeminiKey ? prefGeminiKey.value.trim() : '';
-        const recraftKeyVal = prefRecraftKey ? prefRecraftKey.value.trim() : '';
 
         btn.disabled = true;
         btn.textContent = 'Saving...';
@@ -290,18 +273,6 @@ export function initSettingsPage(router, hash) {
           localStorage.setItem('syncraft_opt_model', modelVal);
           localStorage.setItem('syncraft_opt_format', formatVal);
           localStorage.setItem('syncraft_opt_autosave', autosaveVal);
-
-          if (geminiKeyVal) {
-            localStorage.setItem('syncraft_gemini_api_key', geminiKeyVal);
-          } else {
-            localStorage.setItem('syncraft_gemini_api_key', DEFAULT_GEMINI_API_KEY);
-          }
-
-          if (recraftKeyVal) {
-            localStorage.setItem('syncraft_recraft_api_key', recraftKeyVal);
-          } else {
-            localStorage.setItem('syncraft_recraft_api_key', DEFAULT_RECRAFT_API_KEY);
-          }
 
           // Dispatch setting updates to workspace dynamically
           document.dispatchEvent(new CustomEvent('syncraft:settingChanged', { detail: { key: 'format', val: formatVal } }));
