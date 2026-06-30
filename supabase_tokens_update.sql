@@ -2,20 +2,20 @@
 -- SYNCRAFT SUPABASE DATABASE MIGRATION – STARTER TOKENS UPDATE
 -- =====================================================================
 -- Run this script in your Supabase SQL Editor to set the default free 
--- tokens for new users to 25 tokens and update existing free users.
+-- tokens for new users to 30 tokens and update existing free users.
 
--- 1. Alter the default value for the credits_max column to 25
+-- 1. Alter the default value for the credits_max column to 30
 ALTER TABLE public.profiles 
-  ALTER COLUMN credits_max SET DEFAULT 25;
+  ALTER COLUMN credits_max SET DEFAULT 30;
 
--- 2. Update existing users who have 10 max tokens to 25
+-- 2. Update existing users who have 10 or 25 max tokens to 30
 UPDATE public.profiles 
-  SET credits_max = 25 
-  WHERE credits_max = 10;
+  SET credits_max = 30 
+  WHERE credits_max = 10 OR credits_max = 25 OR credits_max = 20;
 
 -- 3. Redefine or update the trigger function (if exists) that inserts new profiles.
 -- Typically in Supabase, there is a trigger on auth.users to insert into public.profiles.
--- Run the query below to update the insert parameters to default to 25.
+-- Run the query below to update the insert parameters to default to 30.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
@@ -24,7 +24,7 @@ BEGIN
     new.id, 
     'Starter', 
     0, 
-    25, 
+    30, 
     '[]'::jsonb
   )
   ON CONFLICT (id) DO UPDATE

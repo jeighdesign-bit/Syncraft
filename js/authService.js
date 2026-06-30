@@ -102,7 +102,7 @@ class AuthService {
     }
 
     // Ensure new/stale Starter accounts get the correct default tokens limit (e.g. 30)
-    if (profile && profile.plan === 'Starter' && profile.credits_used === 0 && (!profile.credits_max || profile.credits_max < PLAN_LIMITS['Starter'])) {
+    if (profile && profile.plan === 'Starter' && (!profile.credits_max || profile.credits_max < PLAN_LIMITS['Starter'])) {
       console.log(`[AuthService] Aligning Starter account credits_max from ${profile.credits_max || 0} to ${PLAN_LIMITS['Starter']}`);
       profile.credits_max = PLAN_LIMITS['Starter'];
       
