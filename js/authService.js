@@ -211,24 +211,33 @@ class AuthService {
   }
 
   async saveCurrentUserState(user) {
-    // Always update in-memory cache and localStorage backup FIRST,
-    // so UI reflects changes immediately even if Supabase write fails.
+    console.log('[AuthService] saveCurrentUserState started');
     this.currentUserCache = user;
-    this._saveCreditsBackup(user);
+    
+    try {
+      this._saveCreditsBackup(user);
+    } catch (e) {
+      console.warn('[AuthService] Backup save failed:', e);
+    }
 
     // Sync to local storage users list as well to ensure page-load consistency
-    const users = this.getUsers();
-    const idx = users.findIndex(u => u.email.toLowerCase() === user.email.toLowerCase());
-    if (idx !== -1) {
-      users[idx] = user;
-      this.saveUsers(users);
-    } else {
-      users.push(user);
-      this.saveUsers(users);
+    try {
+      const users = this.getUsers();
+      const idx = users.findIndex(u => u.email && u.email.toLowerCase() === user.email.toLowerCase());
+      if (idx !== -1) {
+        users[idx] = user;
+        this.saveUsers(users);
+      } else {
+        users.push(user);
+        this.saveUsers(users);
+      }
+      console.log('[AuthService] Local users sync complete');
+    } catch (err) {
+      console.warn('[AuthService] Local users sync failed (possibly QuotaExceededError):', err);
     }
 
     if (supabaseClient && user.id) {
-      // Sync update to Supabase
+      console.log('[AuthService] Writing profile to Supabase...');
       const { error } = await supabaseClient
         .from('profiles')
         .update({
@@ -240,10 +249,13 @@ class AuthService {
         .eq('id', user.id);
 
       if (error) {
-        console.error('[AuthService] Supabase profile update failed (credits may be out of sync):', error.message);
+        console.error('[AuthService] Supabase profile update failed:', error.message);
+        throw new Error(error.message);
       } else {
         console.log('[AuthService] Successfully updated profile in Supabase. Used:', user.creditsUsed, 'Max:', user.creditsMax);
       }
+    } else {
+      console.log('[AuthService] Supabase sync skipped (no client or no user.id)');
     }
   }
 
