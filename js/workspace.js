@@ -19,7 +19,7 @@ let appRouter = null;
  * @returns {string} The cleaned, valid SVG string.
  * @throws {Error} User-friendly error if extraction or parsing fails.
  */
-function cleanAndValidateSvg(rawResponse) {
+function cleanAndValidateSvg(rawResponse, targetW = null, targetH = null) {
   if (!rawResponse) {
     throw new Error("The AI model returned an empty design response. Please try adjusting your prompt.");
   }
@@ -48,6 +48,34 @@ function cleanAndValidateSvg(rawResponse) {
     .replace(/<desc>[\s\S]*?<\/desc>/gi, '')
     .replace(/>\s+</g, '><')
     .trim();
+
+  // 3.5. If target dimensions are provided, ensure the SVG root matches them and preserves aspect ratio
+  if (targetW && targetH) {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+      const svgEl = doc.documentElement;
+      if (svgEl && svgEl.tagName.toLowerCase() === 'svg') {
+        const currentViewBox = svgEl.getAttribute('viewBox');
+        const currentWidth = svgEl.getAttribute('width');
+        const currentHeight = svgEl.getAttribute('height');
+
+        if (!currentViewBox) {
+          const vw = parseFloat(currentWidth) || targetW;
+          const vh = parseFloat(currentHeight) || targetH;
+          svgEl.setAttribute('viewBox', `0 0 ${vw} ${vh}`);
+        }
+
+        svgEl.setAttribute('width', targetW.toString());
+        svgEl.setAttribute('height', targetH.toString());
+        svgEl.setAttribute('preserveAspectRatio', 'none');
+
+        svgContent = new XMLSerializer().serializeToString(doc);
+      }
+    } catch (err) {
+      console.warn("Failed to apply target dimensions to SVG:", err);
+    }
+  }
 
   // 4. Robust XML validation using DOMParser
   try {
@@ -1357,7 +1385,10 @@ export function initWorkspace(router) {
           }
           svgEl.setAttribute('width', '100%');
           svgEl.setAttribute('height', '100%');
-          svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+          const existingPreserve = svgEl.getAttribute('preserveAspectRatio');
+          if (!existingPreserve || existingPreserve !== 'none') {
+            svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+          }
         }
 
         if (isSelected && annotationOverlay) {
@@ -3251,7 +3282,7 @@ CRITICAL CONSTRAINTS:
           const fetchRes = await fetch(imgUrl);
           const recraftSvgRaw = await fetchRes.text();
           if (recraftSvgRaw.includes('<svg') || recraftSvgRaw.includes('<?xml')) {
-            cleanRecraftSvg = cleanAndValidateSvg(recraftSvgRaw);
+            cleanRecraftSvg = cleanAndValidateSvg(recraftSvgRaw, canvasWidth, canvasHeight);
           } else {
             console.warn("[Hybrid Pipeline] Recraft returned raster instead of SVG. Wrapping in SVG image tag.");
             cleanRecraftSvg = `
@@ -3275,7 +3306,7 @@ CRITICAL CONSTRAINTS:
           const fallbackFetchRes = await fetch(fallbackImgUrl);
           const fallbackRecraftSvgRaw = await fallbackFetchRes.text();
           if (fallbackRecraftSvgRaw.includes('<svg') || fallbackRecraftSvgRaw.includes('<?xml')) {
-            cleanRecraftSvg = cleanAndValidateSvg(fallbackRecraftSvgRaw);
+            cleanRecraftSvg = cleanAndValidateSvg(fallbackRecraftSvgRaw, canvasWidth, canvasHeight);
           } else {
             console.warn("[Recraft Fallback] Recraft returned raster. Wrapping in SVG image tag.");
             cleanRecraftSvg = `
@@ -3670,12 +3701,15 @@ CRITICAL CONSTRAINTS:
         // Fetch and clean the resulting SVG
         const fetchRes = await fetch(svgUrl);
         const rawSvg = await fetchRes.text();
-        const cleanSvg = cleanAndValidateSvg(rawSvg);
+
+        const targetCanvas = canvases.find(c => c.id === selectedCanvasId);
+        const wVal = targetCanvas ? (parseFloat(targetCanvas.canvasWidth) || 1024) : (parseFloat(canvasWidth) || 1024);
+        const hVal = targetCanvas ? (parseFloat(targetCanvas.canvasHeight) || 1024) : (parseFloat(canvasHeight) || 1024);
+        const cleanSvg = cleanAndValidateSvg(rawSvg, wVal, hVal);
 
         currentSVG = cleanSvg;
 
         // Update the active canvas
-        const targetCanvas = canvases.find(c => c.id === selectedCanvasId);
         if (targetCanvas) {
           targetCanvas.svgContent = currentSVG;
           targetCanvas.annotations = [];
@@ -4237,7 +4271,7 @@ CRITICAL CONSTRAINTS:
             const fetchRes = await fetch(vectorImgUrl);
             const recraftSvgRaw = await fetchRes.text();
             if (recraftSvgRaw.includes('<svg') || recraftSvgRaw.includes('<?xml')) {
-              svgCode = cleanAndValidateSvg(recraftSvgRaw);
+              svgCode = cleanAndValidateSvg(recraftSvgRaw, wVal, hVal);
             } else {
               svgCode = `
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${wVal} ${hVal}" width="100%" height="100%">
@@ -4264,7 +4298,7 @@ CRITICAL CONSTRAINTS:
             const fetchRes = await fetch(imgUrl);
             const recraftSvgRaw = await fetchRes.text();
             if (recraftSvgRaw.includes('<svg') || recraftSvgRaw.includes('<?xml')) {
-              svgCode = cleanAndValidateSvg(recraftSvgRaw);
+              svgCode = cleanAndValidateSvg(recraftSvgRaw, wVal, hVal);
             } else {
               console.warn("[De-mockup] Recraft returned raster. Wrapping in SVG image tag.");
               svgCode = `
@@ -4401,7 +4435,7 @@ CRITICAL CONSTRAINTS:
             updateCanvasProgress(targetId, 100, 'Rendering complete!');
             await new Promise(r => setTimeout(r, 400));
 
-            targetCanvas.svgContent = cleanAndValidateSvg(svgCode);
+            targetCanvas.svgContent = cleanAndValidateSvg(svgCode, wVal, hVal);
             targetCanvas.isGenerating = false;
             targetCanvas.prompt = prompt;
             targetCanvas.annotations = [];
