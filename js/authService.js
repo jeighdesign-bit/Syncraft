@@ -212,6 +212,17 @@ class AuthService {
 
   async saveCurrentUserState(user) {
     console.log('[AuthService] saveCurrentUserState started');
+    
+    // Sanitize user history to strip any heavy receipt image data that was cached locally
+    if (user && Array.isArray(user.history)) {
+      user.history.forEach(h => {
+        if (h.receiptImage) {
+          console.log('[AuthService] Stripped receiptImage from user history log entry');
+          delete h.receiptImage;
+        }
+      });
+    }
+
     this.currentUserCache = user;
     
     try {
