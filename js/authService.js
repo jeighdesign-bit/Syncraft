@@ -48,7 +48,13 @@ class AuthService {
         if (session) {
           localStorage.setItem(SESSION_KEY, session.user.email);
           localStorage.setItem('syncraft_current_user_id', session.user.id);
-          await this.syncProfile(session.user);
+          
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || !this.currentUserCache) {
+            console.log('[AuthService] Syncing profile on event:', event);
+            await this.syncProfile(session.user);
+          } else {
+            console.log('[AuthService] Skipping profile sync for event:', event);
+          }
         } else {
           localStorage.removeItem(SESSION_KEY);
           localStorage.removeItem('syncraft_current_user_id');
