@@ -504,16 +504,21 @@ async function renderAdminPanel(panelContainer) {
   const bodyEl = document.getElementById('admin-panel-body');
   if (!bodyEl) return;
 
+  console.log('[AdminPanel] renderAdminPanel started loading');
   try {
     if (!supabaseClient) {
+      console.warn('[AdminPanel] Supabase client is not initialized');
       bodyEl.innerHTML = `<div style="color: var(--color-error); text-align: center; padding: 20px;">Supabase is not configured yet. Live verification is disabled.</div>`;
       return;
     }
 
+    console.log('[AdminPanel] Querying public.payments table for pending transactions...');
     const { data: pendingPayments, error } = await supabaseClient
       .from('payments')
       .select('*')
       .eq('status', 'pending_verification');
+
+    console.log('[AdminPanel] Query result received. Data length:', pendingPayments ? pendingPayments.length : 0, 'Error:', error);
 
     if (error) {
       console.error('[AdminPanel] Error fetching payments:', error);
