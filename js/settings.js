@@ -2,7 +2,36 @@ import authService from './authService.js?v=2.0.5';
 import { showToast, showConfirmModal, openModal } from './utils.js';
 import { supabaseClient } from './supabaseConfig.js';
 
+let activeProfileSubscription = null;
+let activePaymentsSubscription = null;
+
+function clearSettingsSubscriptions() {
+  if (supabaseClient) {
+    try {
+      if (activeProfileSubscription) {
+        supabaseClient.removeChannel(activeProfileSubscription);
+        activeProfileSubscription = null;
+        console.log('[SettingsRealtime] Unsubscribed from profile updates');
+      }
+    } catch (e) {
+      console.warn('Error removing profile channel:', e);
+    }
+    try {
+      if (activePaymentsSubscription) {
+        supabaseClient.removeChannel(activePaymentsSubscription);
+        activePaymentsSubscription = null;
+        console.log('[SettingsRealtime] Unsubscribed from payments updates');
+      }
+    } catch (e) {
+      console.warn('Error removing payments channel:', e);
+    }
+  }
+}
+
 export function initSettingsPage(router, hash) {
+  // Clear any active real-time channels
+  clearSettingsSubscriptions();
+
   const container = document.getElementById('settings-view');
   if (!container) return;
 
@@ -86,6 +115,7 @@ export function initSettingsPage(router, hash) {
   // RENDER TAB PANEL CONTENT
   // ══════════════════════════════════════════════════════════
   function renderTabContent() {
+    clearSettingsSubscriptions();
     const panelContainer = document.getElementById('settings-panel-container');
     if (!panelContainer) return;
 
@@ -461,8 +491,49 @@ export function initSettingsPage(router, hash) {
           }
         });
       });
+
+      // Set up real-time subscription for profiles table
+      if (supabaseClient && user && user.id) {
+        console.log('[SettingsRealtime] Subscribing to profiles table for user:', user.id);
+        activeProfileSubscription = supabaseClient
+          .channel(`profile-updates-${user.id}`)
+          .on(
+            'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
+            async (payload) => {
+              console.log('[SettingsRealtime] Profile updated in database, re-syncing...', payload.new);
+              const tempUser = authService.getCurrentUser();
+              if (tempUser) {
+                await authService.syncProfile({ id: tempUser.id });
+                // Re-render tab content so updated tokens and plan show up instantly!
+                renderTabContent();
+              }
+            }
+          )
+          .subscribe((status) => {
+            console.log('[SettingsRealtime] Profiles subscription status:', status);
+          });
+      }
     } else if (activeTab === 'admin' && isAdmin) {
       renderAdminPanel(panelContainer);
+
+      // Set up real-time subscription for payments table
+      if (supabaseClient) {
+        console.log('[SettingsRealtime] Subscribing to payments table updates');
+        activePaymentsSubscription = supabaseClient
+          .channel('payments-updates')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'payments' },
+            (payload) => {
+              console.log('[SettingsRealtime] Payments table changed, re-rendering admin panel...');
+              renderAdminPanel(panelContainer);
+            }
+          )
+          .subscribe((status) => {
+            console.log('[SettingsRealtime] Payments subscription status:', status);
+          });
+      }
     }
   }
 }
