@@ -3,9 +3,9 @@
 // ─────────────────────────────────────────────
 import { initLandingPage } from './landing.js?v=3.3.2';
 import { initDashboard }   from './dashboard.js?v=2.0.3';
-import { initWorkspace }   from './workspace.js?v=2.2.1';
+import { initWorkspace }   from './workspace.js?v=2.2.2';
 import { initAuthView }    from './auth.js?v=2.0.2';
-import { initSettingsPage } from './settings.js?v=2.0.2';
+import { initSettingsPage } from './settings.js?v=2.0.3';
 import { initCheckoutPage } from './checkout.js?v=2.0.0';
 import mainLayout          from './MainLayout.js?v=1.0.5';
 import ProjectService      from './projectService.js?v=2.0.5';
