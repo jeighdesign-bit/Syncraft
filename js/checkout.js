@@ -441,8 +441,12 @@ function renderLayout(container, router, user, price, tokens) {
   // Bind GCash Manual Submit Action
   const btnSubmitGcash = document.getElementById('checkout-gcash-submit');
   btnSubmitGcash.addEventListener('click', async () => {
+    console.log('[Checkout] Submit payment reference clicked');
     const refInput = document.getElementById('checkout-gcash-ref');
     const refNumber = refInput.value.trim().replace(/\s+/g, '');
+    
+    console.log('[Checkout] Reference Number:', refNumber);
+    console.log('[Checkout] Selected Receipt length:', selectedReceiptBase64 ? selectedReceiptBase64.length : 0);
     
     if (!refNumber) {
       showToast('Please enter the GCash/Maya reference number', true);
@@ -477,10 +481,13 @@ function renderLayout(container, router, user, price, tokens) {
     });
 
     try {
+      console.log('[Checkout] Calling saveCurrentUserState...');
       await authService.saveCurrentUserState(user);
+      console.log('[Checkout] saveCurrentUserState resolved successfully');
       showToast('Reference and receipt submitted! Pending manual verification.');
       router.navigate('settings?tab=subscription');
     } catch (err) {
+      console.error('[Checkout] saveCurrentUserState caught error:', err);
       showToast('Error saving payment details: ' + err.message, true);
       btnSubmitGcash.disabled = false;
       btnSubmitGcash.textContent = 'Submit Payment Reference';
