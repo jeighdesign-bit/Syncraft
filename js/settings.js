@@ -510,33 +510,18 @@ async function renderAdminPanel(panelContainer) {
       return;
     }
 
-    const { data: profiles, error } = await supabaseClient
-      .from('profiles')
-      .select('*');
+    const { data: pendingPayments, error } = await supabaseClient
+      .from('payments')
+      .select('*')
+      .eq('status', 'pending_verification');
 
     if (error) {
-      console.error('[AdminPanel] Error fetching profiles:', error);
-      bodyEl.innerHTML = `<div style="color: var(--color-error); text-align: center; padding: 20px;">Error loading profiles: ${error.message}</div>`;
+      console.error('[AdminPanel] Error fetching payments:', error);
+      bodyEl.innerHTML = `<div style="color: var(--color-error); text-align: center; padding: 20px;">Error loading payments: ${error.message}</div>`;
       return;
     }
 
-    // Filter profiles that have a pending verification record
-    const pendingItems = [];
-    profiles.forEach(profile => {
-      if (Array.isArray(profile.history)) {
-        profile.history.forEach((h, idx) => {
-          if (h.type === 'Billing' && h.status === 'pending_verification') {
-            pendingItems.push({
-              profile: profile,
-              payment: h,
-              historyIndex: idx
-            });
-          }
-        });
-      }
-    });
-
-    if (pendingItems.length === 0) {
+    if (pendingPayments.length === 0) {
       bodyEl.innerHTML = `
         <div style="text-align: center; padding: 40px; color: rgba(255,255,255,0.4); font-size: 13px;">
           <i class="icon fi fi-br-check-circle" style="font-size: 28px; display: block; margin-bottom: 12px; color: var(--color-primary);"></i>
@@ -560,23 +545,22 @@ async function renderAdminPanel(panelContainer) {
             </tr>
           </thead>
           <tbody style="color: rgba(255,255,255,0.85);">
-            ${pendingItems.map((item, index) => {
-              const p = item.payment;
-              const dateStr = new Date(p.date).toLocaleString();
-              const userEmail = p.email || 'Unknown User';
+            ${pendingPayments.map((item, index) => {
+              const dateStr = new Date(item.created_at).toLocaleString();
+              const userEmail = item.email || 'Unknown User';
               
               return `
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                   <td style="padding: 14px 16px; font-weight: 600; color: #fff;">${userEmail}</td>
                   <td style="padding: 14px 16px; font-size: 12px; color: rgba(255,255,255,0.5);">${dateStr}</td>
-                  <td style="padding: 14px 16px; font-family: monospace; font-size: 14px; font-weight: 700; color: var(--color-primary);">${p.refNumber}</td>
+                  <td style="padding: 14px 16px; font-family: monospace; font-size: 14px; font-weight: 700; color: var(--color-primary);">${item.ref_number}</td>
                   <td style="padding: 14px 16px;">
-                    <span style="font-weight: 600; color: #fff;">₱${p.price}</span>
-                    <span style="font-size: 11px; color: rgba(255,255,255,0.4); display: block;">${p.tokens} tokens</span>
+                    <span style="font-weight: 600; color: #fff;">₱${item.price}</span>
+                    <span style="font-size: 11px; color: rgba(255,255,255,0.4); display: block;">${item.tokens} tokens</span>
                   </td>
                   <td style="padding: 14px 16px; text-align: center;">
-                    ${p.receiptImage ? `
-                      <img class="admin-receipt-preview" src="${p.receiptImage}" data-index="${index}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); cursor: zoom-in; transition: transform var(--transition-fast);" />
+                    ${item.receipt_image ? `
+                      <img class="admin-receipt-preview" src="${item.receipt_image}" data-index="${index}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); cursor: zoom-in; transition: transform var(--transition-fast);" />
                     ` : '<span style="color: rgba(255,255,255,0.3);">No Image</span>'}
                   </td>
                   <td style="padding: 14px 16px; text-align: right; white-space: nowrap;">
@@ -595,8 +579,8 @@ async function renderAdminPanel(panelContainer) {
     bodyEl.querySelectorAll('.admin-receipt-preview').forEach(img => {
       img.addEventListener('click', (e) => {
         const idx = parseInt(e.target.getAttribute('data-index'));
-        const item = pendingItems[idx];
-        showReceiptLightbox(item.payment.receiptImage, item.payment.refNumber);
+        const item = pendingPayments[idx];
+        showReceiptLightbox(item.receipt_image, item.ref_number);
       });
     });
 
@@ -604,38 +588,59 @@ async function renderAdminPanel(panelContainer) {
     bodyEl.querySelectorAll('.btn-admin-approve').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const idx = parseInt(e.target.getAttribute('data-index'));
-        const item = pendingItems[idx];
+        const item = pendingPayments[idx];
         
         showConfirmModal(
           `Approve GCash Payment?`,
-          `This will credit ${item.payment.tokens} tokens to ${item.payment.email || 'the user'} and set their plan to Professional. Proceed?`,
+          `This will credit ${item.tokens} tokens to ${item.email || 'the user'} and set their plan to Professional. Proceed?`,
           async () => {
             e.target.disabled = true;
             e.target.textContent = 'Processing...';
             try {
-              // Update payment log entry in history
-              const updatedHistory = [...item.profile.history];
-              updatedHistory[item.historyIndex].status = 'verified';
-              updatedHistory[item.historyIndex].verifiedAt = new Date().toISOString();
+              // 1. Fetch user profile to update history
+              const { data: profile, error: fetchErr } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('id', item.user_id)
+                .single();
+
+              if (fetchErr) throw fetchErr;
+
+              const updatedHistory = Array.isArray(profile.history) ? [...profile.history] : [];
+              const pendingEntry = updatedHistory.find(
+                h => h.type === 'Billing' && h.status === 'pending_verification' && h.refNumber === item.ref_number
+              );
+              if (pendingEntry) {
+                pendingEntry.status = 'verified';
+                pendingEntry.verifiedAt = new Date().toISOString();
+              }
               
-              // Unshift a new verified transaction record
               updatedHistory.unshift({
                 date: new Date().toISOString(),
                 type: 'Billing',
-                desc: `Upgraded subscription to Professional (limit: ${item.payment.tokens} tokens)`
+                desc: `Upgraded subscription to Professional (limit: ${item.tokens} tokens)`
               });
 
+              // 2. Update user profile
               const { error: updateErr } = await supabaseClient
                 .from('profiles')
                 .update({
                   plan: 'Professional',
-                  credits_max: item.payment.tokens,
+                  credits_max: item.tokens,
                   credits_used: 0,
                   history: updatedHistory
                 })
-                .eq('id', item.profile.id);
+                .eq('id', item.user_id);
 
               if (updateErr) throw updateErr;
+
+              // 3. Update payment status in payments table
+              const { error: payErr } = await supabaseClient
+                .from('payments')
+                .update({ status: 'verified' })
+                .eq('id', item.id);
+
+              if (payErr) throw payErr;
 
               showToast(`Successfully verified payment and upgraded user account.`);
               renderAdminPanel(panelContainer);
@@ -654,7 +659,7 @@ async function renderAdminPanel(panelContainer) {
     bodyEl.querySelectorAll('.btn-admin-reject').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const idx = parseInt(e.target.getAttribute('data-index'));
-        const item = pendingItems[idx];
+        const item = pendingPayments[idx];
         
         const reason = prompt("Enter rejection reason (visible to user):", "Invalid reference number or transaction not found.");
         if (reason === null) return; // User cancelled prompt
@@ -663,19 +668,45 @@ async function renderAdminPanel(panelContainer) {
         e.target.textContent = 'Processing...';
 
         try {
-          const updatedHistory = [...item.profile.history];
-          updatedHistory[item.historyIndex].status = 'rejected';
-          updatedHistory[item.historyIndex].rejectedAt = new Date().toISOString();
-          updatedHistory[item.historyIndex].rejectionReason = reason;
+          // 1. Fetch profile to update history
+          const { data: profile, error: fetchErr } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', item.user_id)
+            .single();
 
+          if (fetchErr) throw fetchErr;
+
+          const updatedHistory = Array.isArray(profile.history) ? [...profile.history] : [];
+          const pendingEntry = updatedHistory.find(
+            h => h.type === 'Billing' && h.status === 'pending_verification' && h.refNumber === item.ref_number
+          );
+          if (pendingEntry) {
+            pendingEntry.status = 'rejected';
+            pendingEntry.rejectedAt = new Date().toISOString();
+            pendingEntry.rejectionReason = reason;
+          }
+
+          // 2. Update profiles history
           const { error: updateErr } = await supabaseClient
             .from('profiles')
             .update({
               history: updatedHistory
             })
-            .eq('id', item.profile.id);
+            .eq('id', item.user_id);
 
           if (updateErr) throw updateErr;
+
+          // 3. Update payments table status
+          const { error: payErr } = await supabaseClient
+            .from('payments')
+            .update({ 
+              status: 'rejected',
+              rejection_reason: reason
+            })
+            .eq('id', item.id);
+
+          if (payErr) throw payErr;
 
           showToast(`Manual payment rejected. User notified in history.`);
           renderAdminPanel(panelContainer);

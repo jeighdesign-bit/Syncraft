@@ -1,5 +1,6 @@
 import authService from './authService.js?v=2.0.5';
 import { showToast, SYNCRAFT_LOGO_SVG } from './utils.js';
+import { supabaseClient } from './supabaseConfig.js';
 
 export function initCheckoutPage(router, hash) {
   const container = document.getElementById('checkout-view');
@@ -468,26 +469,50 @@ function renderLayout(container, router, user, price, tokens) {
       user.history = [];
     }
 
+    // Lightweight log without the heavy image data (prevents LocalStorage/Supabase string overflows)
     user.history.unshift({
       date: new Date().toISOString(),
       type: 'Billing',
       desc: `Payment Pending Verification: GCash Reference #${refNumber} for ₱${price} (${tokens} tokens)`,
       status: 'pending_verification',
       refNumber: refNumber,
-      receiptImage: selectedReceiptBase64,
       tokens: tokens,
       price: price,
       email: user.email
     });
 
     try {
-      console.log('[Checkout] Calling saveCurrentUserState...');
+      console.log('[Checkout] Saving lightweight user state...');
       await authService.saveCurrentUserState(user);
-      console.log('[Checkout] saveCurrentUserState resolved successfully');
+      console.log('[Checkout] saveCurrentUserState succeeded.');
+
+      if (supabaseClient) {
+        console.log('[Checkout] Writing full details to public.payments...');
+        const { error: payErr } = await supabaseClient
+          .from('payments')
+          .insert({
+            user_id: user.id,
+            email: user.email,
+            ref_number: refNumber,
+            price: price,
+            tokens: tokens,
+            receipt_image: selectedReceiptBase64,
+            status: 'pending_verification'
+          });
+
+        if (payErr) {
+          console.error('[Checkout] Supabase payments write failed:', payErr.message);
+          throw new Error('Database write failed: ' + payErr.message);
+        }
+        console.log('[Checkout] Supabase payments write succeeded.');
+      } else {
+        console.log('[Checkout] Supabase skipped (offline mode).');
+      }
+
       showToast('Reference and receipt submitted! Pending manual verification.');
       router.navigate('settings?tab=subscription');
     } catch (err) {
-      console.error('[Checkout] saveCurrentUserState caught error:', err);
+      console.error('[Checkout] Submit payment action failed:', err);
       showToast('Error saving payment details: ' + err.message, true);
       btnSubmitGcash.disabled = false;
       btnSubmitGcash.textContent = 'Submit Payment Reference';
