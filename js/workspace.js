@@ -468,53 +468,27 @@ async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = 
       if (extension === "jpeg") extension = "jpg";
     }
 
-    // 1. Get presigned upload URL via backend proxy
-    const presignedRes = await fetch("/api/leonardo-proxy", {
+    console.log("[Leonardo API] Performing S3 upload via backend proxy...");
+    const uploadRes = await fetch("/api/leonardo-proxy", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        action: "init-image",
+        action: "upload",
         apiKey,
-        data: { extension }
+        data: { base64Image, extension }
       })
     });
 
-    if (!presignedRes.ok) {
-      const err = await presignedRes.json().catch(() => ({}));
-      throw new Error("Leonardo init-image upload request failed: " + (err?.error || presignedRes.statusText));
+    if (!uploadRes.ok) {
+      const err = await uploadRes.json().catch(() => ({}));
+      throw new Error("Leonardo init-image proxy upload failed: " + (err?.error || uploadRes.statusText));
     }
 
-    const presignedData = await presignedRes.json();
-    const uploadUrlInfo = presignedData.uploadInitImage;
-    if (!uploadUrlInfo) {
-      throw new Error("Leonardo API did not return presigned URL fields.");
-    }
-
-    initImageId = uploadUrlInfo.id;
-    const uploadUrl = uploadUrlInfo.url;
-    const fields = JSON.parse(uploadUrlInfo.fields);
-
-    // 2. Upload file binary to S3 presigned URL using FormData
-    const formData = new FormData();
-    for (const [key, value] of Object.entries(fields)) {
-      formData.append(key, value);
-    }
-    
-    const imageBlob = dataURLtoBlob(base64Image);
-    formData.append("file", imageBlob);
-
-    console.log("[Leonardo API] Performing S3 direct upload...");
-    const s3Res = await fetch(uploadUrl, {
-      method: "POST",
-      body: formData
-    });
-
-    if (!s3Res.ok) {
-      throw new Error("Failed to upload image binary to Leonardo storage.");
-    }
-    console.log("[Leonardo API] Reference image uploaded successfully. ID:", initImageId);
+    const uploadData = await uploadRes.json();
+    initImageId = uploadData.id;
+    console.log("[Leonardo API] Reference image uploaded successfully via proxy. ID:", initImageId);
   }
 
   // Step 2: Trigger Generation Job
