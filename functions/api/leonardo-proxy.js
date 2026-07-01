@@ -129,11 +129,7 @@ export async function onRequest(context) {
       url = 'https://cloud.leonardo.ai/api/rest/v1/init-image';
       body = JSON.stringify(data || {});
     } else if (action === 'generations') {
-      if (data && data.model) {
-        url = 'https://cloud.leonardo.ai/api/rest/v2/generations';
-      } else {
-        url = 'https://cloud.leonardo.ai/api/rest/v1/generations';
-      }
+      url = 'https://cloud.leonardo.ai/api/rest/v1/generations';
       body = JSON.stringify(data || {});
     } else if (action === 'status') {
       const generationId = data?.generationId;

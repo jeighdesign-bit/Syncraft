@@ -519,30 +519,14 @@ async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = 
   }
 
   const generationPayload = {
-    model: "nano-banana-2", // Nano Banana 2 (Google Gemini 3.1 Flash Image)
-    parameters: {
-      width: width,
-      height: height,
-      prompt: promptText,
-      quantity: 1,
-      prompt_enhance: "OFF"
-    },
-    public: false
+    modelId: "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3", // Leonardo Phoenix 1.0
+    prompt: promptText,
+    num_images: 1,
+    width: width,
+    height: height,
+    init_image_id: initImageId ? initImageId : undefined,
+    init_strength: initImageId ? 0.2 : undefined
   };
-
-  if (initImageId) {
-    generationPayload.parameters.guidances = {
-      image_reference: [
-        {
-          image: {
-            id: initImageId,
-            type: "UPLOADED"
-          },
-          strength: "MID"
-        }
-      ]
-    };
-  }
 
   const genRes = await fetch("/api/leonardo-proxy", {
     method: "POST",
@@ -562,7 +546,7 @@ async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = 
   }
 
   const genData = await genRes.json();
-  const generationId = genData.sdGenerationJob?.generationId || genData.generate?.generationId;
+  const generationId = genData.sdGenerationJob?.generationId;
   if (!generationId) {
     throw new Error("Leonardo API did not return a valid generationId.");
   }
