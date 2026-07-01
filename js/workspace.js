@@ -524,7 +524,6 @@ async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = 
     num_images: 1,
     width: width,
     height: height,
-    init_generation_image_id: initImageId ? initImageId : undefined,
     init_image_id: initImageId ? initImageId : undefined,
     init_strength: initImageId ? 0.2 : undefined
   };
