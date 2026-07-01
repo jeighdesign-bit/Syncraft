@@ -1837,6 +1837,10 @@ export function initWorkspace(router) {
   };
   let selectedModel = 'syncraft-ultra';
   let selectedSyncraftEngine = localStorage.getItem('syncraft_preferred_extraction_engine') || 'banana2-leo';
+  if (!['banana2-leo', 'bananapro-leo', 'bananapro-or'].includes(selectedSyncraftEngine)) {
+    selectedSyncraftEngine = 'banana2-leo';
+    localStorage.setItem('syncraft_preferred_extraction_engine', 'banana2-leo');
+  }
 
   // ── Zooming & Panning State ──────────────────
   let zoomLevel = 1.0;
