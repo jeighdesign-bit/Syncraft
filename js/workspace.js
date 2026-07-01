@@ -577,9 +577,10 @@ async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = 
   }
 
   const genData = await genRes.json();
+  console.log("[Leonardo API] Trigger Response Data:", genData);
   const generationId = genData.sdGenerationJob?.generationId;
   if (!generationId) {
-    throw new Error("Leonardo API did not return a valid generationId.");
+    throw new Error("Leonardo API did not return a valid generationId. Response: " + JSON.stringify(genData));
   }
 
   // Step 3: Poll status until complete (max 30 attempts, 1.5s interval = 45 seconds total timeout)
