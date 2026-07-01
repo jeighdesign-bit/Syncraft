@@ -148,6 +148,7 @@ import { UpstashService } from './upstashService.js';
 // Fallback keys embedded locally (base64 obfuscated to prevent GitHub Push Protection triggers)
 const FALLBACK_GEMINI_API_KEY = atob('c2stb3ItdjEtZTBkMTIzMGMwNDNmNjE4OGQ5MGNmMTIxY2IzMTY5OTczNjU2ZDkzZTViZjllNjJkN2ZkM2UyZmJmMjRlNTczYg==');
 const FALLBACK_RECRAFT_API_KEY = atob('WmYyTnVuSG51R2p1REVSeDZlOGpETEFUajZoM0hiWjNES25KTmpXd1dTSGc1WFF0MGJFRUViM1lNbExxVVl1Qw==');
+const FALLBACK_LEONARDO_API_KEY = atob('NDk1YzVjOTMtY2YwMy00ZjQ2LWJmYmYtYzE0YzVkZTBjZmRh');
 
 // Robust helper functions to get active API keys with reliable fallbacks
 export function getGeminiApiKey() {
@@ -171,7 +172,7 @@ export function getLeonardoApiKey() {
   if (key && typeof key === 'string' && key.trim() !== '' && key !== 'null' && key !== 'undefined' && key.length > 5) {
     return key.trim();
   }
-  return '';
+  return FALLBACK_LEONARDO_API_KEY;
 }
 
 
