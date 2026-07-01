@@ -534,7 +534,7 @@ async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = 
       }
     };
     if (initImageId) {
-      generationPayload.guidances = {
+      generationPayload.parameters.guidances = {
         image_reference: [
           {
             image: {
