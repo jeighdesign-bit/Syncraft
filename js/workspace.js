@@ -468,14 +468,17 @@ async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = 
       if (extension === "jpeg") extension = "jpg";
     }
 
-    // 1. Get presigned upload URL
-    const presignedRes = await fetch("https://cloud.leonardo.ai/api/rest/v1/init-image", {
+    // 1. Get presigned upload URL via backend proxy
+    const presignedRes = await fetch("/api/leonardo-proxy", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ extension })
+      body: JSON.stringify({
+        action: "init-image",
+        apiKey,
+        data: { extension }
+      })
     });
 
     if (!presignedRes.ok) {
@@ -552,13 +555,16 @@ async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = 
     init_strength: initImageId ? 0.2 : undefined
   };
 
-  const genRes = await fetch("https://cloud.leonardo.ai/api/rest/v1/generations", {
+  const genRes = await fetch("/api/leonardo-proxy", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify(generationPayload)
+    body: JSON.stringify({
+      action: "generations",
+      apiKey,
+      data: generationPayload
+    })
   });
 
   if (!genRes.ok) {
@@ -582,11 +588,16 @@ async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = 
     await new Promise(r => setTimeout(r, 1500));
     
     console.log(`[Leonardo API] Polling attempt ${attempt}/${maxAttempts}...`);
-    const statusRes = await fetch(`https://cloud.leonardo.ai/api/rest/v1/generations/${generationId}`, {
-      method: "GET",
+    const statusRes = await fetch("/api/leonardo-proxy", {
+      method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`
-      }
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "status",
+        apiKey,
+        data: { generationId }
+      })
     });
 
     if (!statusRes.ok) {
