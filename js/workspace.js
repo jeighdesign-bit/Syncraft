@@ -1811,7 +1811,7 @@ export function initWorkspace(router) {
     'syncraft-ultra': { name: 'Syncraft Ultra (Creative)', cost: 20, apiId: 'gemini-3-pro-image', type: 'ultra' }
   };
   let selectedModel = 'syncraft-ultra';
-  let selectedSyncraftEngine = localStorage.getItem('syncraft_preferred_extraction_engine') || 'nano-banana-pro';
+  let selectedSyncraftEngine = localStorage.getItem('syncraft_preferred_extraction_engine') || 'leonardo';
 
   // ── Zooming & Panning State ──────────────────
   let zoomLevel = 1.0;
