@@ -448,7 +448,7 @@ async function callGeminiImageGenerationApi(apiKey, promptText, base64Image = nu
  * @param {string} [aspectRatio] - Optional aspect ratio (default '1:1').
  * @returns {Promise<Blob>} The generated image as a Blob.
  */
-async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = null, aspectRatio = '1:1') {
+async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = null, aspectRatio = '1:1', activeModelId = '7418e71f-4133-4e1b-9895-bee19f48f2ce') {
   console.log("[Leonardo API] Request started.");
   if (!apiKey) {
     throw new Error("Leonardo API Key is missing. Please configure 'syncraft_leonardo_api_key' in your browser localStorage or js/aiConfig.js");
@@ -518,15 +518,46 @@ async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = 
     height = 1024;
   }
 
-  const generationPayload = {
-    modelId: "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3", // Leonardo Phoenix 1.0
-    prompt: promptText,
-    num_images: 1,
-    width: width,
-    height: height,
-    init_image_id: initImageId ? initImageId : undefined,
-    init_strength: initImageId ? 0.2 : undefined
-  };
+  const isV2Model = activeModelId === '7418e71f-4133-4e1b-9895-bee19f48f2ce' || activeModelId === '7c02ef35-3a6b-4df6-b78d-873e5032c3b4';
+  let action = "generations";
+  let generationPayload;
+
+  if (isV2Model) {
+    action = "generations-v2";
+    generationPayload = {
+      model: activeModelId,
+      parameters: {
+        prompt: promptText,
+        width: width,
+        height: height,
+        quantity: 1
+      }
+    };
+    if (initImageId) {
+      generationPayload.guidances = {
+        image_reference: [
+          {
+            image: {
+              id: initImageId,
+              type: "UPLOADED"
+            },
+            strength: "HIGH" // Ensure strong similarity to the reference pattern!
+          }
+        ]
+      };
+    }
+  } else {
+    action = "generations";
+    generationPayload = {
+      modelId: activeModelId,
+      prompt: promptText,
+      num_images: 1,
+      width: width,
+      height: height,
+      init_image_id: initImageId ? initImageId : undefined,
+      init_strength: initImageId ? 0.2 : undefined
+    };
+  }
 
   const genRes = await fetch("/api/leonardo-proxy", {
     method: "POST",
@@ -534,7 +565,7 @@ async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = 
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      action: "generations",
+      action: action,
       apiKey,
       data: generationPayload
     })
@@ -1796,7 +1827,7 @@ export function initWorkspace(router) {
     'syncraft-ultra': { name: 'Syncraft Ultra (Creative)', cost: 20, apiId: 'gemini-3-pro-image', type: 'ultra' }
   };
   let selectedModel = 'syncraft-ultra';
-  let selectedSyncraftEngine = 'nano-banana-pro'; // Temporarily disabled 'leonardo' as requested
+  let selectedSyncraftEngine = localStorage.getItem('syncraft_preferred_extraction_engine') || 'banana2-leo';
 
   // ── Zooming & Panning State ──────────────────
   let zoomLevel = 1.0;
@@ -2651,42 +2682,58 @@ export function initWorkspace(router) {
     }
 
     // Wire Syncraft Engine Selector Tabs
-    const engineBtnNano = $('engine-btn-nano');
-    const engineBtnLeonardo = $('engine-btn-leonardo');
+    const engineBtnBanana2Leo = $('engine-btn-banana2-leo');
+    const engineBtnBananaProLeo = $('engine-btn-bananapro-leo');
+    const engineBtnBananaProOr = $('engine-btn-bananapro-or');
     const tokenCostVectorized = $('token-cost-vectorized');
     const tokenCostRaster = $('token-cost-raster');
 
     function updateSyncraftEngineUI() {
-      if (!engineBtnNano || !engineBtnLeonardo) return;
-      if (selectedSyncraftEngine === 'leonardo') {
-        engineBtnLeonardo.style.background = 'rgba(212, 255, 89, 0.15)';
-        engineBtnLeonardo.style.color = 'var(--color-primary)';
-        engineBtnNano.style.background = 'none';
-        engineBtnNano.style.color = 'rgba(255, 255, 255, 0.5)';
+      if (!engineBtnBanana2Leo || !engineBtnBananaProLeo || !engineBtnBananaProOr) return;
+      
+      // Reset all buttons
+      [engineBtnBanana2Leo, engineBtnBananaProLeo, engineBtnBananaProOr].forEach(btn => {
+        btn.style.background = 'none';
+        btn.style.color = 'rgba(255, 255, 255, 0.5)';
+      });
+
+      if (selectedSyncraftEngine === 'banana2-leo') {
+        engineBtnBanana2Leo.style.background = 'rgba(212, 255, 89, 0.15)';
+        engineBtnBanana2Leo.style.color = 'var(--color-primary)';
+        if (tokenCostVectorized) tokenCostVectorized.textContent = '3 Tokens';
+        if (tokenCostRaster) tokenCostRaster.textContent = '2 Tokens';
+      } else if (selectedSyncraftEngine === 'bananapro-leo') {
+        engineBtnBananaProLeo.style.background = 'rgba(212, 255, 89, 0.15)';
+        engineBtnBananaProLeo.style.color = 'var(--color-primary)';
         if (tokenCostVectorized) tokenCostVectorized.textContent = '5 Tokens';
         if (tokenCostRaster) tokenCostRaster.textContent = '3 Tokens';
       } else {
-        engineBtnNano.style.background = 'rgba(212, 255, 89, 0.15)';
-        engineBtnNano.style.color = 'var(--color-primary)';
-        engineBtnLeonardo.style.background = 'none';
-        engineBtnLeonardo.style.color = 'rgba(255, 255, 255, 0.5)';
+        engineBtnBananaProOr.style.background = 'rgba(212, 255, 89, 0.15)';
+        engineBtnBananaProOr.style.color = 'var(--color-primary)';
         if (tokenCostVectorized) tokenCostVectorized.textContent = '6 Tokens';
         if (tokenCostRaster) tokenCostRaster.textContent = '4 Tokens';
       }
     }
 
-    if (engineBtnNano && engineBtnLeonardo) {
-      engineBtnNano.addEventListener('click', (e) => {
+    if (engineBtnBanana2Leo && engineBtnBananaProLeo && engineBtnBananaProOr) {
+      engineBtnBanana2Leo.addEventListener('click', (e) => {
         e.stopPropagation();
-        selectedSyncraftEngine = 'nano-banana-pro';
-        localStorage.setItem('syncraft_preferred_extraction_engine', 'nano-banana-pro');
+        selectedSyncraftEngine = 'banana2-leo';
+        localStorage.setItem('syncraft_preferred_extraction_engine', 'banana2-leo');
         updateSyncraftEngineUI();
       });
 
-      engineBtnLeonardo.addEventListener('click', (e) => {
+      engineBtnBananaProLeo.addEventListener('click', (e) => {
         e.stopPropagation();
-        selectedSyncraftEngine = 'nano-banana-pro'; // Temporarily disabled 'leonardo'
-        localStorage.setItem('syncraft_preferred_extraction_engine', 'nano-banana-pro');
+        selectedSyncraftEngine = 'bananapro-leo';
+        localStorage.setItem('syncraft_preferred_extraction_engine', 'bananapro-leo');
+        updateSyncraftEngineUI();
+      });
+
+      engineBtnBananaProOr.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectedSyncraftEngine = 'bananapro-or';
+        localStorage.setItem('syncraft_preferred_extraction_engine', 'bananapro-or');
         updateSyncraftEngineUI();
       });
 
@@ -3412,9 +3459,9 @@ export function initWorkspace(router) {
       }
 
       let apiKey;
-      const cost = selectedSyncraftEngine === 'leonardo' ? 5 : 6;
+      const cost = selectedSyncraftEngine === 'banana2-leo' ? 3 : (selectedSyncraftEngine === 'bananapro-leo' ? 5 : 6);
       
-      if (selectedSyncraftEngine === 'leonardo') {
+      if (selectedSyncraftEngine === 'banana2-leo' || selectedSyncraftEngine === 'bananapro-leo') {
         apiKey = getLeonardoApiKey();
         if (!apiKey) {
           showToast('Please configure your Leonardo API Key in preferences.', true);
@@ -3538,9 +3585,11 @@ export function initWorkspace(router) {
           }
         }
 
-        // ── Hybrid Pipeline: Nano Banana Pro / Leonardo AI + Recraft Vectorize ──
-        if (selectedSyncraftEngine === 'leonardo') {
-          updateProgress(35, 'Generating design layout with Leonardo AI...');
+        // ── Hybrid Pipeline: Nano Banana / Leonardo AI + Recraft Vectorize ──
+        if (selectedSyncraftEngine === 'banana2-leo') {
+          updateProgress(35, 'Generating design layout with Nano Banana 2 (Leo)...');
+        } else if (selectedSyncraftEngine === 'bananapro-leo') {
+          updateProgress(35, 'Generating design layout with Nano Banana Pro (Leo)...');
         } else {
           updateProgress(35, 'Generating design layout with Nano Banana Pro...');
         }
@@ -3561,8 +3610,10 @@ CRITICAL CONSTRAINTS:
         let cleanRecraftSvg = '';
         try {
           let generatedBlob;
-          if (selectedSyncraftEngine === 'leonardo') {
-            generatedBlob = await callLeonardoImageGenerationApi(apiKey, extractPrompt, processedImage);
+          if (selectedSyncraftEngine === 'banana2-leo') {
+            generatedBlob = await callLeonardoImageGenerationApi(apiKey, extractPrompt, processedImage, '1:1', '7418e71f-4133-4e1b-9895-bee19f48f2ce');
+          } else if (selectedSyncraftEngine === 'bananapro-leo') {
+            generatedBlob = await callLeonardoImageGenerationApi(apiKey, extractPrompt, processedImage, '1:1', '7c02ef35-3a6b-4df6-b78d-873e5032c3b4');
           } else {
             generatedBlob = await callGeminiImageGenerationApi(apiKey, extractPrompt, processedImage);
           }
@@ -3598,7 +3649,7 @@ CRITICAL CONSTRAINTS:
             `;
           }
         } catch (genErr) {
-          const engineName = selectedSyncraftEngine === 'leonardo' ? 'Leonardo AI' : 'Nano Banana Pro';
+          const engineName = selectedSyncraftEngine === 'banana2-leo' ? 'Nano Banana 2 (Leo)' : (selectedSyncraftEngine === 'bananapro-leo' ? 'Nano Banana Pro (Leo)' : 'Nano Banana Pro');
           console.warn(`[${engineName} failed, checking for credit error]`, genErr);
           
           const errMsg = genErr.message || '';
@@ -3633,7 +3684,8 @@ CRITICAL CONSTRAINTS:
         }
 
         // Consume credit
-        authService.consumeCredit('Generation', `SYNCRAFT background pattern extraction (${selectedSyncraftEngine === 'leonardo' ? 'Leonardo' : 'Gemini'})`, cost).then(() => updateWorkspaceCredits()).catch(creditErr => {
+        const engineLabel = selectedSyncraftEngine === 'banana2-leo' ? 'Leonardo Banana 2' : (selectedSyncraftEngine === 'bananapro-leo' ? 'Leonardo Banana Pro' : 'Gemini');
+        authService.consumeCredit('Generation', `SYNCRAFT background pattern extraction (${engineLabel})`, cost).then(() => updateWorkspaceCredits()).catch(creditErr => {
           console.warn('Credit consume error:', creditErr);
         });
 
@@ -3753,9 +3805,9 @@ CRITICAL CONSTRAINTS:
       }
 
       let apiKey;
-      const cost = selectedSyncraftEngine === 'leonardo' ? 3 : 4;
+      const cost = selectedSyncraftEngine === 'banana2-leo' ? 2 : (selectedSyncraftEngine === 'bananapro-leo' ? 3 : 4);
       
-      if (selectedSyncraftEngine === 'leonardo') {
+      if (selectedSyncraftEngine === 'banana2-leo' || selectedSyncraftEngine === 'bananapro-leo') {
         apiKey = getLeonardoApiKey();
         if (!apiKey) {
           showToast('Please configure your Leonardo API Key in preferences.', true);
@@ -3875,11 +3927,14 @@ CRITICAL CONSTRAINTS:
         } catch (e) { console.warn('Aspect ratio detection failed, using 1:1', e); }
 
         let generatedBlob;
-        if (selectedSyncraftEngine === 'leonardo') {
-          updateProgress(45, 'Generating design with Leonardo AI...');
-          generatedBlob = await callLeonardoImageGenerationApi(apiKey, extractPrompt, processedImage, detectedRatio);
+        if (selectedSyncraftEngine === 'banana2-leo') {
+          updateProgress(45, 'Generating design with Nano Banana 2 (Leo)...');
+          generatedBlob = await callLeonardoImageGenerationApi(apiKey, extractPrompt, processedImage, detectedRatio, '7418e71f-4133-4e1b-9895-bee19f48f2ce');
+        } else if (selectedSyncraftEngine === 'bananapro-leo') {
+          updateProgress(45, 'Generating design with Nano Banana Pro (Leo)...');
+          generatedBlob = await callLeonardoImageGenerationApi(apiKey, extractPrompt, processedImage, detectedRatio, '7c02ef35-3a6b-4df6-b78d-873e5032c3b4');
         } else {
-          updateProgress(45, 'Generating design with Nano Banana Pro...');
+          updateProgress(45, 'Generating design with Nano Banana Pro (OpenRouter)...');
           generatedBlob = await callGeminiImageGenerationApi(apiKey, extractPrompt, processedImage, detectedRatio);
         }
 
@@ -3896,7 +3951,8 @@ CRITICAL CONSTRAINTS:
         const svgCode = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${wVal} ${hVal}" width="${wVal}" height="${hVal}"><rect width="100%" height="100%" fill="none"/><image href="${base64Data}" width="${wVal}" height="${hVal}" preserveAspectRatio="xMidYMid meet" /></svg>`;
         const rawSvg = cleanAndValidateSvg(svgCode);
 
-        authService.consumeCredit('Generation', `SYNCRAFT Design Only extraction (${selectedSyncraftEngine === 'leonardo' ? 'Leonardo' : 'Gemini'})`, cost).then(() => updateWorkspaceCredits()).catch(e => console.warn('Credit error:', e));
+        const engineLabel = selectedSyncraftEngine === 'banana2-leo' ? 'Leonardo Banana 2' : (selectedSyncraftEngine === 'bananapro-leo' ? 'Leonardo Banana Pro' : 'Gemini');
+        authService.consumeCredit('Generation', `SYNCRAFT Design Only extraction (${engineLabel})`, cost).then(() => updateWorkspaceCredits()).catch(e => console.warn('Credit error:', e));
 
         updateProgress(100, 'Rendering complete!');
         await new Promise(r => setTimeout(r, 400));

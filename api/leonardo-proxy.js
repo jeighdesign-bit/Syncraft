@@ -106,6 +106,9 @@ export default async function handler(req, res) {
     } else if (action === 'generations') {
       url = 'https://cloud.leonardo.ai/api/rest/v1/generations';
       body = JSON.stringify(data || {});
+    } else if (action === 'generations-v2') {
+      url = 'https://cloud.leonardo.ai/api/rest/v2/generations';
+      body = JSON.stringify(data || {});
     } else if (action === 'status') {
       const generationId = data?.generationId;
       if (!generationId) {
