@@ -104,7 +104,11 @@ export default async function handler(req, res) {
       url = 'https://cloud.leonardo.ai/api/rest/v1/init-image';
       body = JSON.stringify(data || {});
     } else if (action === 'generations') {
-      url = 'https://cloud.leonardo.ai/api/rest/v1/generations';
+      if (data && data.model) {
+        url = 'https://cloud.leonardo.ai/api/rest/v2/generations';
+      } else {
+        url = 'https://cloud.leonardo.ai/api/rest/v1/generations';
+      }
       body = JSON.stringify(data || {});
     } else if (action === 'status') {
       const generationId = data?.generationId;
