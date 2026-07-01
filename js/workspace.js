@@ -1796,7 +1796,7 @@ export function initWorkspace(router) {
     'syncraft-ultra': { name: 'Syncraft Ultra (Creative)', cost: 20, apiId: 'gemini-3-pro-image', type: 'ultra' }
   };
   let selectedModel = 'syncraft-ultra';
-  let selectedSyncraftEngine = localStorage.getItem('syncraft_preferred_extraction_engine') || 'leonardo';
+  let selectedSyncraftEngine = 'nano-banana-pro'; // Temporarily disabled 'leonardo' as requested
 
   // ── Zooming & Panning State ──────────────────
   let zoomLevel = 1.0;
@@ -2685,8 +2685,8 @@ export function initWorkspace(router) {
 
       engineBtnLeonardo.addEventListener('click', (e) => {
         e.stopPropagation();
-        selectedSyncraftEngine = 'leonardo';
-        localStorage.setItem('syncraft_preferred_extraction_engine', 'leonardo');
+        selectedSyncraftEngine = 'nano-banana-pro'; // Temporarily disabled 'leonardo'
+        localStorage.setItem('syncraft_preferred_extraction_engine', 'nano-banana-pro');
         updateSyncraftEngineUI();
       });
 
