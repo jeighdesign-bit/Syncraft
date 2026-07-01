@@ -524,14 +524,22 @@ async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = 
 
   if (isV2Model) {
     action = "generations-v2";
+    let modelName = activeModelId;
+    if (activeModelId === '7418e71f-4133-4e1b-9895-bee19f48f2ce') {
+      modelName = 'nano-banana-2';
+    } else if (activeModelId === '7c02ef35-3a6b-4df6-b78d-873e5032c3b4') {
+      modelName = 'gemini-image-2';
+    }
+
     generationPayload = {
-      model: activeModelId,
+      model: modelName,
       parameters: {
         prompt: promptText,
         width: width,
         height: height,
         quantity: 1
-      }
+      },
+      public: false
     };
     if (initImageId) {
       generationPayload.parameters.guidances = {
