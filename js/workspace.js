@@ -198,52 +198,85 @@ if (!storedRecraftKey || storedRecraftKey.trim() === '' || storedRecraftKey === 
  * @returns {Promise<string>} The generated text response.
  */
 async function callGeminiApi(apiKey, promptText, base64Image = null) {
-  console.log("[Gemini API via OpenRouter] Request started. Model: google/gemini-3-pro-image");
+  console.log("[Gemini API via OpenRouter] Request started.");
   if (!apiKey) {
     throw new Error("OpenRouter API Key is missing. Please configure 'syncraft_gemini_api_key' in your browser localStorage or js/aiConfig.js");
   }
 
-  const modelId = "google/gemini-3-pro-image"; 
-  const url = "https://openrouter.ai/api/v1/chat/completions";
-
-  const messagesContent = [
-    { type: "text", text: promptText }
+  const modelsToTry = [
+    "google/gemini-3-pro-image",
+    "google/gemini-3.5-flash",
+    "google/gemini-3.1-flash-image"
   ];
+  let response = null;
+  let errorMessages = [];
 
-  if (base64Image) {
-    messagesContent.push({
-      type: "image_url",
-      image_url: {
-        url: base64Image
+  for (const modelId of modelsToTry) {
+    console.log(`[Gemini API via OpenRouter] Trying model: ${modelId}`);
+    const url = "https://openrouter.ai/api/v1/chat/completions";
+
+    const messagesContent = [
+      { type: "text", text: promptText }
+    ];
+
+    if (base64Image) {
+      messagesContent.push({
+        type: "image_url",
+        image_url: {
+          url: base64Image
+        }
+      });
+    }
+
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://syncraft.ai',
+          'X-Title': 'Syncraft'
+        },
+        body: JSON.stringify({
+          model: modelId,
+          messages: [
+            {
+              role: "user",
+              content: messagesContent
+            }
+          ]
+        })
+      });
+
+      console.log(`[Gemini API via OpenRouter] Response status for ${modelId}:`, response.status, response.statusText);
+
+      if (response.ok) {
+        break; // Success! Exit the loop.
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        const errMsg = errData?.error?.message || `Status ${response.status}: ${response.statusText}`;
+        console.warn(`[Gemini API via OpenRouter] Model ${modelId} failed: ${errMsg}`);
+        errorMessages.push(`${modelId}: ${errMsg}`);
+        
+        // If the API key is completely invalid or permission is denied, fail fast
+        if (response.status === 400 && (errMsg.includes('API key') || errMsg.includes('not valid') || errMsg.includes('API_KEY_INVALID') || errMsg.includes('API key not found') || errMsg.includes('invalid_api_key'))) {
+          throw { name: 'UnrecoverableError', message: `Invalid API Key: ${errMsg}` };
+        }
+        if (response.status === 401 || response.status === 403) {
+          throw { name: 'UnrecoverableError', message: `Auth/Permission Denied: ${errMsg}` };
+        }
       }
-    });
+    } catch (err) {
+      if (err.name === 'UnrecoverableError') {
+        throw new Error(err.message);
+      }
+      console.warn(`[Gemini API via OpenRouter] Fetch request failed for model ${modelId}:`, err);
+      errorMessages.push(`${modelId}: ${err.message || err}`);
+    }
   }
 
-  console.log("[Gemini API via OpenRouter] Sending fetch request...");
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://syncraft.ai',
-      'X-Title': 'Syncraft'
-    },
-    body: JSON.stringify({
-      model: modelId,
-      messages: [
-        {
-          role: "user",
-          content: messagesContent
-        }
-      ]
-    })
-  });
-
-  console.log("[Gemini API via OpenRouter] Response status received:", response.status, response.statusText);
-
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    throw new Error(errData?.error?.message || `OpenRouter API call failed: ${response.statusText}`);
+  if (!response || !response.ok) {
+    throw new Error("All text models failed: " + errorMessages.join(" | "));
   }
 
   const result = await response.json();
@@ -271,8 +304,13 @@ async function callGeminiImageGenerationApi(apiKey, promptText, base64Image = nu
   }
 
   const modelsToTry = [
+    "google/gemini-3-pro-image",
+    "google/gemini-3.1-flash-image",
+    "google/gemini-2.5-flash-image",
+    "google/gemini-3.1-flash-lite-image",
     "google/gemini-3-pro-image-preview",
-    "google/gemini-3-pro-image"
+    "google/gemini-3.1-flash-image-preview",
+    "google/gemini-2.5-flash-image-preview"
   ];
   let response = null;
   let errorMessages = [];
