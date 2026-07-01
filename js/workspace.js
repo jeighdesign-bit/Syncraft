@@ -2713,18 +2713,18 @@ export function initWorkspace(router) {
       if (selectedSyncraftEngine === 'banana2-leo') {
         engineBtnBanana2Leo.style.background = 'rgba(212, 255, 89, 0.15)';
         engineBtnBanana2Leo.style.color = 'var(--color-primary)';
-        if (tokenCostVectorized) tokenCostVectorized.textContent = '3 Tokens';
-        if (tokenCostRaster) tokenCostRaster.textContent = '2 Tokens';
+        if (tokenCostVectorized) tokenCostVectorized.textContent = '8 Tokens';
+        if (tokenCostRaster) tokenCostRaster.textContent = '6 Tokens';
       } else if (selectedSyncraftEngine === 'bananapro-leo') {
         engineBtnBananaProLeo.style.background = 'rgba(212, 255, 89, 0.15)';
         engineBtnBananaProLeo.style.color = 'var(--color-primary)';
-        if (tokenCostVectorized) tokenCostVectorized.textContent = '5 Tokens';
-        if (tokenCostRaster) tokenCostRaster.textContent = '3 Tokens';
+        if (tokenCostVectorized) tokenCostVectorized.textContent = '8 Tokens';
+        if (tokenCostRaster) tokenCostRaster.textContent = '7 Tokens';
       } else {
         engineBtnBananaProOr.style.background = 'rgba(212, 255, 89, 0.15)';
         engineBtnBananaProOr.style.color = 'var(--color-primary)';
-        if (tokenCostVectorized) tokenCostVectorized.textContent = '6 Tokens';
-        if (tokenCostRaster) tokenCostRaster.textContent = '4 Tokens';
+        if (tokenCostVectorized) tokenCostVectorized.textContent = '9 Tokens';
+        if (tokenCostRaster) tokenCostRaster.textContent = '8 Tokens';
       }
     }
 
@@ -3472,7 +3472,7 @@ export function initWorkspace(router) {
       }
 
       let apiKey;
-      const cost = selectedSyncraftEngine === 'banana2-leo' ? 3 : (selectedSyncraftEngine === 'bananapro-leo' ? 5 : 6);
+      const cost = selectedSyncraftEngine === 'banana2-leo' ? 8 : (selectedSyncraftEngine === 'bananapro-leo' ? 8 : 9);
       
       if (selectedSyncraftEngine === 'banana2-leo' || selectedSyncraftEngine === 'bananapro-leo') {
         apiKey = getLeonardoApiKey();
@@ -3818,7 +3818,7 @@ CRITICAL CONSTRAINTS:
       }
 
       let apiKey;
-      const cost = selectedSyncraftEngine === 'banana2-leo' ? 2 : (selectedSyncraftEngine === 'bananapro-leo' ? 3 : 4);
+      const cost = selectedSyncraftEngine === 'banana2-leo' ? 6 : (selectedSyncraftEngine === 'bananapro-leo' ? 7 : 8);
       
       if (selectedSyncraftEngine === 'banana2-leo' || selectedSyncraftEngine === 'bananapro-leo') {
         apiKey = getLeonardoApiKey();
