@@ -3599,7 +3599,15 @@ CRITICAL CONSTRAINTS:
           }
         } catch (genErr) {
           const engineName = selectedSyncraftEngine === 'leonardo' ? 'Leonardo AI' : 'Nano Banana Pro';
-          console.warn(`[${engineName} failed, falling back to Recraft Image-to-Image]`, genErr);
+          console.warn(`[${engineName} failed, checking for credit error]`, genErr);
+          
+          const errMsg = genErr.message || '';
+          const isCreditError = errMsg.includes('Unavailable at the moment') || /credit|balance|billing|quota|limit|payment|insufficient|depleted|402/i.test(errMsg);
+          
+          if (isCreditError) {
+            throw genErr; // Stop execution and show "Unavailable at the moment"
+          }
+
           updateProgress(50, `${engineName} unavailable. Falling back to Recraft extraction...`);
           showToast(`${engineName} generation failed. Using Recraft fallback...`, false);
 
