@@ -435,7 +435,7 @@ export function showSettingsModal(initialTab = 'general', showGeneral = true) {
 
     if (activeTab === 'billing') {
       const plans = [
-        { name: 'Starter', price: '₱0', desc: 'Essential operators', limit: '30 credits (free trial)' },
+        { name: 'Starter', price: '₱0', desc: 'Essential operators', limit: '15 credits (free trial)' },
         { name: 'Professional', price: '₱150+', desc: 'Active environments', limit: '100 - 750 credits/mo' }
       ];
 

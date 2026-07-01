@@ -177,7 +177,7 @@ export function initLandingPage(router) {
   const resultActionBtn = document.getElementById('result-action-btn');
 
   const sliderSteps = [
-    { price: 0, tokens: 30, plan: 'Starter', badge: 'Free Trial', desc: 'Essential tools for individual operators.', btnText: 'Initialize Free' },
+    { price: 0, tokens: 15, plan: 'Starter', badge: 'Free Trial', desc: 'Essential tools for individual operators.', btnText: 'Initialize Free' },
     { price: 250, tokens: 100, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
     { price: 315, tokens: 130, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
     { price: 380, tokens: 160, plan: 'Professional', badge: 'Optimal Deployment', desc: 'Advanced capabilities for active environments.', btnText: 'Deploy Pro' },
@@ -221,7 +221,7 @@ export function initLandingPage(router) {
           resultFeatures.innerHTML = `
             <li class="pricing-feature-item" style="display:flex; align-items:center; gap:8px;">
               <i class="icon fi fi-br-check-circle pricing-feature-icon" style="color:var(--color-primary);"></i>
-              30 free trial tokens
+              15 free trial tokens
             </li>
             <li class="pricing-feature-item" style="display:flex; align-items:center; gap:8px;">
               <i class="icon fi fi-br-check-circle pricing-feature-icon" style="color:var(--color-primary);"></i>

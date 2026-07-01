@@ -949,9 +949,19 @@
               <span style="font-size: 11px; font-weight: 700; color: var(--color-primary); background: rgba(212, 255, 89, 0.1); padding: 2px 8px; border-radius: 99px;">20 Tokens</span>
             </button>
           </div>
-
+          
           <!-- Syncraft Actions Dropdown -->
           <div class="model-selector-dropdown" id="syncraft-selector-dropdown" style="display: none; width: 100%; background: rgba(24, 24, 27, 0.95); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 6px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); backdrop-filter: blur(12px); flex-direction: column; gap: 2px;">
+            <!-- Engine Toggle Tabs -->
+            <div style="display: flex; gap: 4px; padding: 4px; margin-bottom: 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: rgba(0, 0, 0, 0.2); border-radius: 8px 8px 0 0;">
+              <button id="engine-btn-nano" style="flex: 1; padding: 6px; border: none; background: rgba(212, 255, 89, 0.15); color: var(--color-primary); border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;" type="button">
+                Nano Banana Pro
+              </button>
+              <button id="engine-btn-leonardo" style="flex: 1; padding: 6px; border: none; background: none; color: rgba(255, 255, 255, 0.5); border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;" type="button">
+                Leonardo AI
+              </button>
+            </div>
+            
             <button class="model-select-item" id="tool-extract-pattern" style="display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; padding: 10px 12px; border-radius: 8px; color: #fff; cursor: pointer; text-align: left; transition: background 0.15s;">
               <div style="display: flex; flex-direction: column; gap: 2px;">
                 <div style="display: flex; align-items: center; gap: 6px;">
@@ -962,14 +972,14 @@
                 </div>
                 <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5);">Extract and vectorize design pattern from reference image.</span>
               </div>
-              <span style="font-size: 11px; font-weight: 700; color: var(--color-primary); background: rgba(212, 255, 89, 0.1); padding: 2px 8px; border-radius: 99px;">6 Tokens</span>
+              <span id="token-cost-vectorized" style="font-size: 11px; font-weight: 700; color: var(--color-primary); background: rgba(212, 255, 89, 0.1); padding: 2px 8px; border-radius: 99px;">6 Tokens</span>
             </button>
             <button class="model-select-item" id="tool-extract-raster" style="display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; padding: 10px 12px; border-radius: 8px; color: #fff; cursor: pointer; text-align: left; transition: background 0.15s;">
               <div style="display: flex; flex-direction: column; gap: 2px;">
                 <span class="action-item-name" style="font-size: 12px; font-weight: 700;">Syncraft (Design Only)</span>
                 <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5);">Extract high-quality raster design layout.</span>
               </div>
-              <span style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); background: rgba(255, 255, 255, 0.05); padding: 2px 8px; border-radius: 99px;">4 Tokens</span>
+              <span id="token-cost-raster" style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); background: rgba(255, 255, 255, 0.05); padding: 2px 8px; border-radius: 99px;">4 Tokens</span>
             </button>
           </div>
 

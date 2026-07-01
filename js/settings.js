@@ -399,7 +399,7 @@ export function initSettingsPage(router, hash) {
                 <div class="settings-plan-card ${user.plan === 'Starter' ? 'active' : ''}">
                   <div class="settings-plan-name">Starter</div>
                   <div class="settings-plan-price">₱0<span class="settings-plan-price-period">/mo</span></div>
-                  <p class="settings-plan-limit">30 free trial tokens<br>Standard speed</p>
+                  <p class="settings-plan-limit">15 free trial tokens<br>Standard speed</p>
                   ${user.plan === 'Starter' 
                     ? `<button class="settings-btn settings-btn-secondary" style="width:100%;cursor:default;" disabled>Current Plan</button>` 
                     : `<button class="settings-btn settings-btn-primary btn-plan-upgrade" data-plan="Starter" style="width:100%;">Downgrade</button>`

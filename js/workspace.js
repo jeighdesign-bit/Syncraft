@@ -166,6 +166,15 @@ export function getRecraftApiKey() {
   return FALLBACK_RECRAFT_API_KEY;
 }
 
+export function getLeonardoApiKey() {
+  const key = localStorage.getItem('syncraft_leonardo_api_key');
+  if (key && typeof key === 'string' && key.trim() !== '' && key !== 'null' && key !== 'undefined' && key.length > 5) {
+    return key.trim();
+  }
+  return '';
+}
+
+
 // Force overwrite cached default keys if the version is updated
 const CURRENT_KEYS_VERSION = '3';
 const storedKeysVersion = localStorage.getItem('syncraft_keys_version');
@@ -265,6 +274,10 @@ async function callGeminiApi(apiKey, promptText, base64Image = null) {
         if (response.status === 401 || response.status === 403) {
           throw { name: 'UnrecoverableError', message: `Auth/Permission Denied: ${errMsg}` };
         }
+        // If the credits are depleted or billing issue, fail fast and throw 'Unavailable at the moment'
+        if (response.status === 402 || (errMsg && /credit|balance|billing|quota|limit|payment|insufficient|depleted/i.test(errMsg))) {
+          throw { name: 'UnrecoverableError', message: 'Unavailable at the moment' };
+        }
       }
     } catch (err) {
       if (err.name === 'UnrecoverableError') {
@@ -276,6 +289,10 @@ async function callGeminiApi(apiKey, promptText, base64Image = null) {
   }
 
   if (!response || !response.ok) {
+    const hasCreditError = errorMessages.some(msg => /credit|balance|billing|quota|limit|payment|insufficient|depleted|402/i.test(msg));
+    if (hasCreditError) {
+      throw new Error("Unavailable at the moment");
+    }
     throw new Error("All text models failed: " + errorMessages.join(" | "));
   }
 
@@ -371,6 +388,10 @@ async function callGeminiImageGenerationApi(apiKey, promptText, base64Image = nu
         if (response.status === 401 || response.status === 403) {
           throw { name: 'UnrecoverableError', message: `Auth/Permission Denied: ${errMsg}` };
         }
+        // If the credits are depleted or billing issue, fail fast and throw 'Unavailable at the moment'
+        if (response.status === 402 || (errMsg && /credit|balance|billing|quota|limit|payment|insufficient|depleted/i.test(errMsg))) {
+          throw { name: 'UnrecoverableError', message: 'Unavailable at the moment' };
+        }
       }
     } catch (err) {
       clearTimeout(timeoutId);
@@ -388,6 +409,10 @@ async function callGeminiImageGenerationApi(apiKey, promptText, base64Image = nu
   }
 
   if (!response || !response.ok) {
+    const hasCreditError = errorMessages.some(msg => /credit|balance|billing|quota|limit|payment|insufficient|depleted|402/i.test(msg));
+    if (hasCreditError) {
+      throw new Error("Unavailable at the moment");
+    }
     throw new Error("All image models failed: " + errorMessages.join(" | "));
   }
 
@@ -410,6 +435,197 @@ async function callGeminiImageGenerationApi(apiKey, promptText, base64Image = nu
   }
   const byteArray = new Uint8Array(byteNumbers);
   return new Blob([byteArray], { type: mimeType });
+}
+
+/**
+ * Calls the Leonardo.ai Image Generation API (using Leonardo Phoenix 1.0) with an optional reference image.
+ * Handles the two-step init-image upload and status polling.
+ * 
+ * @param {string} apiKey - The Leonardo API Key.
+ * @param {string} promptText - The prompt message.
+ * @param {string} [base64Image] - Optional base64-encoded reference image.
+ * @param {string} [aspectRatio] - Optional aspect ratio (default '1:1').
+ * @returns {Promise<Blob>} The generated image as a Blob.
+ */
+async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = null, aspectRatio = '1:1') {
+  console.log("[Leonardo API] Request started.");
+  if (!apiKey) {
+    throw new Error("Leonardo API Key is missing. Please configure 'syncraft_leonardo_api_key' in your browser localStorage or js/aiConfig.js");
+  }
+
+  let initImageId = null;
+
+  // Step 1: Upload reference image if provided
+  if (base64Image) {
+    console.log("[Leonardo API] Uploading reference image...");
+    
+    // Parse base64 header to get extension (e.g. png, jpg, webp)
+    let extension = "png";
+    const extensionMatch = base64Image.match(/data:image\/(.*?);base64/);
+    if (extensionMatch && extensionMatch[1]) {
+      extension = extensionMatch[1];
+      if (extension === "jpeg") extension = "jpg";
+    }
+
+    // 1. Get presigned upload URL
+    const presignedRes = await fetch("https://cloud.leonardo.ai/api/rest/v1/init-image", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ extension })
+    });
+
+    if (!presignedRes.ok) {
+      const err = await presignedRes.json().catch(() => ({}));
+      throw new Error("Leonardo init-image upload request failed: " + (err?.error || presignedRes.statusText));
+    }
+
+    const presignedData = await presignedRes.json();
+    const uploadUrlInfo = presignedData.uploadInitImage;
+    if (!uploadUrlInfo) {
+      throw new Error("Leonardo API did not return presigned URL fields.");
+    }
+
+    initImageId = uploadUrlInfo.id;
+    const uploadUrl = uploadUrlInfo.url;
+    const fields = JSON.parse(uploadUrlInfo.fields);
+
+    // 2. Upload file binary to S3 presigned URL using FormData
+    const formData = new FormData();
+    for (const [key, value] of Object.entries(fields)) {
+      formData.append(key, value);
+    }
+    
+    const imageBlob = dataURLtoBlob(base64Image);
+    formData.append("file", imageBlob);
+
+    console.log("[Leonardo API] Performing S3 direct upload...");
+    const s3Res = await fetch(uploadUrl, {
+      method: "POST",
+      body: formData
+    });
+
+    if (!s3Res.ok) {
+      throw new Error("Failed to upload image binary to Leonardo storage.");
+    }
+    console.log("[Leonardo API] Reference image uploaded successfully. ID:", initImageId);
+  }
+
+  // Step 2: Trigger Generation Job
+  console.log("[Leonardo API] Triggering generation job...");
+  
+  // Map Gemini aspect ratios to Leonardo width/height
+  let width = 1024;
+  let height = 1024;
+  
+  if (aspectRatio === '16:9') {
+    width = 1024;
+    height = 576;
+  } else if (aspectRatio === '9:16') {
+    width = 576;
+    height = 1024;
+  } else if (aspectRatio === '4:3') {
+    width = 1024;
+    height = 768;
+  } else if (aspectRatio === '3:4') {
+    width = 768;
+    height = 1024;
+  } else if (aspectRatio === '3:2') {
+    width = 1024;
+    height = 683;
+  } else if (aspectRatio === '2:3') {
+    width = 683;
+    height = 1024;
+  }
+
+  const generationPayload = {
+    modelId: "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3", // Leonardo Phoenix 1.0
+    prompt: promptText,
+    num_images: 1,
+    width: width,
+    height: height,
+    init_generation_image_id: initImageId ? initImageId : undefined,
+    init_image_id: initImageId ? initImageId : undefined,
+    init_strength: initImageId ? 0.2 : undefined
+  };
+
+  const genRes = await fetch("https://cloud.leonardo.ai/api/rest/v1/generations", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(generationPayload)
+  });
+
+  if (!genRes.ok) {
+    const err = await genRes.json().catch(() => ({}));
+    throw new Error("Leonardo generation failed: " + (err?.error || genRes.statusText));
+  }
+
+  const genData = await genRes.json();
+  const generationId = genData.sdGenerationJob?.generationId;
+  if (!generationId) {
+    throw new Error("Leonardo API did not return a valid generationId.");
+  }
+
+  // Step 3: Poll status until complete (max 30 attempts, 1.5s interval = 45 seconds total timeout)
+  console.log("[Leonardo API] Generation triggered. Job ID:", generationId, "Polling status...");
+  
+  let imageUrl = null;
+  const maxAttempts = 30;
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    await new Promise(r => setTimeout(r, 1500));
+    
+    console.log(`[Leonardo API] Polling attempt ${attempt}/${maxAttempts}...`);
+    const statusRes = await fetch(`https://cloud.leonardo.ai/api/rest/v1/generations/${generationId}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`
+      }
+    });
+
+    if (!statusRes.ok) {
+      console.warn("[Leonardo API] Polling error status:", statusRes.status);
+      continue; 
+    }
+
+    const statusData = await statusRes.json();
+    const generationObj = statusData.generations_by_pk;
+    if (!generationObj) {
+      throw new Error("Failed to retrieve generation status object.");
+    }
+
+    const status = generationObj.status;
+    console.log("[Leonardo API] Job status:", status);
+
+    if (status === "COMPLETE") {
+      const generatedImages = generationObj.generated_images;
+      if (generatedImages && generatedImages.length > 0) {
+        imageUrl = generatedImages[0].url;
+        break;
+      } else {
+        throw new Error("Leonardo generation completed but returned no images.");
+      }
+    } else if (status === "FAILED") {
+      throw new Error("Leonardo image generation job failed on their server.");
+    }
+  }
+
+  if (!imageUrl) {
+    throw new Error("Leonardo generation request timed out. Please try again.");
+  }
+
+  console.log("[Leonardo API] Fetching generated image from CDN:", imageUrl);
+  const imageRes = await fetch(imageUrl + "?t=" + Date.now(), { cache: "no-cache" });
+  if (!imageRes.ok) {
+    throw new Error("Failed to retrieve the generated image from Leonardo's CDN.");
+  }
+  
+  return await imageRes.blob();
 }
 
 /**
@@ -1595,6 +1811,7 @@ export function initWorkspace(router) {
     'syncraft-ultra': { name: 'Syncraft Ultra (Creative)', cost: 20, apiId: 'gemini-3-pro-image', type: 'ultra' }
   };
   let selectedModel = 'syncraft-ultra';
+  let selectedSyncraftEngine = localStorage.getItem('syncraft_preferred_extraction_engine') || 'nano-banana-pro';
 
   // ── Zooming & Panning State ──────────────────
   let zoomLevel = 1.0;
@@ -2448,6 +2665,50 @@ export function initWorkspace(router) {
       });
     }
 
+    // Wire Syncraft Engine Selector Tabs
+    const engineBtnNano = $('engine-btn-nano');
+    const engineBtnLeonardo = $('engine-btn-leonardo');
+    const tokenCostVectorized = $('token-cost-vectorized');
+    const tokenCostRaster = $('token-cost-raster');
+
+    function updateSyncraftEngineUI() {
+      if (!engineBtnNano || !engineBtnLeonardo) return;
+      if (selectedSyncraftEngine === 'leonardo') {
+        engineBtnLeonardo.style.background = 'rgba(212, 255, 89, 0.15)';
+        engineBtnLeonardo.style.color = 'var(--color-primary)';
+        engineBtnNano.style.background = 'none';
+        engineBtnNano.style.color = 'rgba(255, 255, 255, 0.5)';
+        if (tokenCostVectorized) tokenCostVectorized.textContent = '5 Tokens';
+        if (tokenCostRaster) tokenCostRaster.textContent = '3 Tokens';
+      } else {
+        engineBtnNano.style.background = 'rgba(212, 255, 89, 0.15)';
+        engineBtnNano.style.color = 'var(--color-primary)';
+        engineBtnLeonardo.style.background = 'none';
+        engineBtnLeonardo.style.color = 'rgba(255, 255, 255, 0.5)';
+        if (tokenCostVectorized) tokenCostVectorized.textContent = '6 Tokens';
+        if (tokenCostRaster) tokenCostRaster.textContent = '4 Tokens';
+      }
+    }
+
+    if (engineBtnNano && engineBtnLeonardo) {
+      engineBtnNano.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectedSyncraftEngine = 'nano-banana-pro';
+        localStorage.setItem('syncraft_preferred_extraction_engine', 'nano-banana-pro');
+        updateSyncraftEngineUI();
+      });
+
+      engineBtnLeonardo.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectedSyncraftEngine = 'leonardo';
+        localStorage.setItem('syncraft_preferred_extraction_engine', 'leonardo');
+        updateSyncraftEngineUI();
+      });
+
+      // Run initially to match stored preference
+      updateSyncraftEngineUI();
+    }
+
     // Close dropdown on click outside
     document.addEventListener('click', (e) => {
       if (!e.target.closest('#model-selector-dropdown') && !e.target.closest('#tab-model') &&
@@ -3165,17 +3426,30 @@ export function initWorkspace(router) {
         return;
       }
 
-      const apiKey = getGeminiApiKey();
-      if (!apiKey) {
-        console.error('SYNCRAFT API Error: OpenRouter API key is missing. Please configure DEFAULT_GEMINI_API_KEY in aiConfig.js or syncraft_gemini_api_key in localStorage');
-        showToast('Please configure your Gemini API Key in preferences.', true);
-        setDisplayState(currentSVG ? 'output' : 'idle');
-        setStatusBadge('ready', 'Ready');
-        return;
+      let apiKey;
+      const cost = selectedSyncraftEngine === 'leonardo' ? 5 : 6;
+      
+      if (selectedSyncraftEngine === 'leonardo') {
+        apiKey = getLeonardoApiKey();
+        if (!apiKey) {
+          showToast('Please configure your Leonardo API Key in preferences.', true);
+          setDisplayState(currentSVG ? 'output' : 'idle');
+          setStatusBadge('ready', 'Ready');
+          return;
+        }
+      } else {
+        apiKey = getGeminiApiKey();
+        if (!apiKey) {
+          console.error('SYNCRAFT API Error: OpenRouter API key is missing. Please configure DEFAULT_GEMINI_API_KEY in aiConfig.js or syncraft_gemini_api_key in localStorage');
+          showToast('Please configure your Gemini API Key in preferences.', true);
+          setDisplayState(currentSVG ? 'output' : 'idle');
+          setStatusBadge('ready', 'Ready');
+          return;
+        }
       }
 
-      if (!authService.hasEnoughCredits(6)) {
-        showToast('Quota exceeded. This action requires 6 tokens. Please upgrade your subscription plan.', true);
+      if (!authService.hasEnoughCredits(cost)) {
+        showToast(`Quota exceeded. This action requires ${cost} tokens. Please upgrade your subscription plan.`, true);
         showSettingsModal('billing', true);
         setDisplayState(currentSVG ? 'output' : 'idle');
         setStatusBadge('ready', 'Ready');
@@ -3279,8 +3553,12 @@ export function initWorkspace(router) {
           }
         }
 
-        // ── Hybrid Pipeline: Nano Banana Pro (Gemini 3 Pro Image) + Recraft Vectorize ──
-        updateProgress(35, 'Generating design layout with Nano Banana Pro...');
+        // ── Hybrid Pipeline: Nano Banana Pro / Leonardo AI + Recraft Vectorize ──
+        if (selectedSyncraftEngine === 'leonardo') {
+          updateProgress(35, 'Generating design layout with Leonardo AI...');
+        } else {
+          updateProgress(35, 'Generating design layout with Nano Banana Pro...');
+        }
         
         const recraftApiKey = getRecraftApiKey();
         if (!recraftApiKey) {
@@ -3297,8 +3575,12 @@ CRITICAL CONSTRAINTS:
 
         let cleanRecraftSvg = '';
         try {
-          // Step 1: Call Nano Banana Pro (gemini-3-pro-image)
-          const generatedBlob = await callGeminiImageGenerationApi(apiKey, extractPrompt, processedImage);
+          let generatedBlob;
+          if (selectedSyncraftEngine === 'leonardo') {
+            generatedBlob = await callLeonardoImageGenerationApi(apiKey, extractPrompt, processedImage);
+          } else {
+            generatedBlob = await callGeminiImageGenerationApi(apiKey, extractPrompt, processedImage);
+          }
 
           // Step 1.5: Upscale the generated image for cleaner vectorization
           updateProgress(60, 'Upscaling design for sharper vectorization...');
@@ -3330,10 +3612,11 @@ CRITICAL CONSTRAINTS:
               </svg>
             `;
           }
-        } catch (geminiErr) {
-          console.warn("[Nano Banana Pro failed, falling back to Recraft Image-to-Image]", geminiErr);
-          updateProgress(50, 'Nano Banana Pro unavailable. Falling back to Recraft extraction...');
-          showToast('Nano Banana Pro generation failed. Using Recraft fallback...', false);
+        } catch (genErr) {
+          const engineName = selectedSyncraftEngine === 'leonardo' ? 'Leonardo AI' : 'Nano Banana Pro';
+          console.warn(`[${engineName} failed, falling back to Recraft Image-to-Image]`, genErr);
+          updateProgress(50, `${engineName} unavailable. Falling back to Recraft extraction...`);
+          showToast(`${engineName} generation failed. Using Recraft fallback...`, false);
 
           // Fallback: Use Recraft V4.1 imageToImage directly (returns vector SVG directly)
           const imageBlob = dataURLtoBlob(processedImage);
@@ -3357,7 +3640,7 @@ CRITICAL CONSTRAINTS:
         }
 
         // Consume credit
-        authService.consumeCredit('Generation', 'SYNCRAFT background pattern extraction', 6).then(() => updateWorkspaceCredits()).catch(creditErr => {
+        authService.consumeCredit('Generation', `SYNCRAFT background pattern extraction (${selectedSyncraftEngine === 'leonardo' ? 'Leonardo' : 'Gemini'})`, cost).then(() => updateWorkspaceCredits()).catch(creditErr => {
           console.warn('Credit consume error:', creditErr);
         });
 
@@ -3420,7 +3703,13 @@ CRITICAL CONSTRAINTS:
 
       } catch (err) {
         console.error(err);
-        showToast('Background pattern extraction failed: ' + (err.message || ''), true);
+        let errorMsg = err.message || '';
+        if (errorMsg.includes('Unavailable at the moment') || /credit|balance|billing|quota|limit|payment|insufficient|depleted|402/i.test(errorMsg)) {
+          errorMsg = 'Unavailable at the moment';
+        } else {
+          errorMsg = 'Background pattern extraction failed: ' + errorMsg;
+        }
+        showToast(errorMsg, true);
         
         if (targetCanvas) {
           targetCanvas.isGenerating = false;
@@ -3470,14 +3759,25 @@ CRITICAL CONSTRAINTS:
         return;
       }
 
-      const apiKey = getGeminiApiKey();
-      if (!apiKey) {
-        showToast('Please configure your Gemini API Key in preferences.', true);
-        return;
+      let apiKey;
+      const cost = selectedSyncraftEngine === 'leonardo' ? 3 : 4;
+      
+      if (selectedSyncraftEngine === 'leonardo') {
+        apiKey = getLeonardoApiKey();
+        if (!apiKey) {
+          showToast('Please configure your Leonardo API Key in preferences.', true);
+          return;
+        }
+      } else {
+        apiKey = getGeminiApiKey();
+        if (!apiKey) {
+          showToast('Please configure your Gemini API Key in preferences.', true);
+          return;
+        }
       }
 
-      if (!authService.hasEnoughCredits(4)) {
-        showToast('Quota exceeded. This action requires 4 tokens. Please upgrade your subscription plan.', true);
+      if (!authService.hasEnoughCredits(cost)) {
+        showToast(`Quota exceeded. This action requires ${cost} tokens. Please upgrade your subscription plan.`, true);
         showSettingsModal('billing', true);
         return;
       }
@@ -3581,8 +3881,14 @@ CRITICAL CONSTRAINTS:
           }
         } catch (e) { console.warn('Aspect ratio detection failed, using 1:1', e); }
 
-        updateProgress(45, 'Generating design with Nano Banana Pro...');
-        const generatedBlob = await callGeminiImageGenerationApi(apiKey, extractPrompt, processedImage, detectedRatio);
+        let generatedBlob;
+        if (selectedSyncraftEngine === 'leonardo') {
+          updateProgress(45, 'Generating design with Leonardo AI...');
+          generatedBlob = await callLeonardoImageGenerationApi(apiKey, extractPrompt, processedImage, detectedRatio);
+        } else {
+          updateProgress(45, 'Generating design with Nano Banana Pro...');
+          generatedBlob = await callGeminiImageGenerationApi(apiKey, extractPrompt, processedImage, detectedRatio);
+        }
 
         updateProgress(85, 'Finalizing design output...');
         const base64Data = await new Promise((resolve, reject) => {
@@ -3597,7 +3903,7 @@ CRITICAL CONSTRAINTS:
         const svgCode = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${wVal} ${hVal}" width="${wVal}" height="${hVal}"><rect width="100%" height="100%" fill="none"/><image href="${base64Data}" width="${wVal}" height="${hVal}" preserveAspectRatio="xMidYMid meet" /></svg>`;
         const rawSvg = cleanAndValidateSvg(svgCode);
 
-        authService.consumeCredit('Generation', 'SYNCRAFT Design Only extraction', 4).then(() => updateWorkspaceCredits()).catch(e => console.warn('Credit error:', e));
+        authService.consumeCredit('Generation', `SYNCRAFT Design Only extraction (${selectedSyncraftEngine === 'leonardo' ? 'Leonardo' : 'Gemini'})`, cost).then(() => updateWorkspaceCredits()).catch(e => console.warn('Credit error:', e));
 
         updateProgress(100, 'Rendering complete!');
         await new Promise(r => setTimeout(r, 400));
@@ -3650,7 +3956,13 @@ CRITICAL CONSTRAINTS:
 
       } catch (err) {
         console.error(err);
-        showToast('Design generation failed: ' + (err.message || ''), true);
+        let errorMsg = err.message || '';
+        if (errorMsg.includes('Unavailable at the moment') || /credit|balance|billing|quota|limit|payment|insufficient|depleted|402/i.test(errorMsg)) {
+          errorMsg = 'Unavailable at the moment';
+        } else {
+          errorMsg = 'Design generation failed: ' + errorMsg;
+        }
+        showToast(errorMsg, true);
         if (targetCanvas) targetCanvas.isGenerating = false;
         syncCanvasState();
         renderCanvases();
@@ -4528,7 +4840,11 @@ CRITICAL CONSTRAINTS:
 
       } catch (err) {
         console.error(err);
-        showToast(err.message || 'Generation failed', true);
+        let errorMsg = err.message || 'Generation failed';
+        if (errorMsg.includes('Unavailable at the moment') || /credit|balance|billing|quota|limit|payment|insufficient|depleted|402/i.test(errorMsg)) {
+          errorMsg = 'Unavailable at the moment';
+        }
+        showToast(errorMsg, true);
         
         targetCanvas.isGenerating = false;
         if (targetCanvas.svgContent === '') {
@@ -5432,7 +5748,11 @@ Here is the SVG:\n\n${currentSVG}`;
         showToast('Callout updated successfully');
       } catch (err) {
         console.error(err);
-        showToast('AI callout update failed', true);
+        let errorMsg = 'AI callout update failed';
+        if (err.message && (err.message.includes('Unavailable at the moment') || /credit|balance|billing|quota|limit|payment|insufficient|depleted|402/i.test(err.message))) {
+          errorMsg = 'Unavailable at the moment';
+        }
+        showToast(errorMsg, true);
       } finally {
         cleanup();
         if (canvasLoader) {
@@ -5671,7 +5991,11 @@ Here is the SVG:\n\n${currentSVG}`;
           showToast('Callout added successfully');
         } catch (err) {
           console.error(err);
-          showToast('AI callout generation failed', true);
+          let errorMsg = 'AI callout generation failed';
+          if (err.message && (err.message.includes('Unavailable at the moment') || /credit|balance|billing|quota|limit|payment|insufficient|depleted|402/i.test(err.message))) {
+            errorMsg = 'Unavailable at the moment';
+          }
+          showToast(errorMsg, true);
         } finally {
           cleanup();
           if (canvasLoader) {
