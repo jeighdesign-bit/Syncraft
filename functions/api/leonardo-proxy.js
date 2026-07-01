@@ -1,35 +1,45 @@
-// Vercel Serverless Function: functions/api/leonardo-proxy.js
+// Cloudflare Pages Function: functions/api/leonardo-proxy.js
 // Proxies Leonardo.ai REST API calls to bypass browser CORS restrictions.
 
-export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
+export async function onRequest(context) {
+  const { request, env } = context;
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+  // CORS Headers
+  const corsHeaders = {
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,OPTIONS,PATCH,DELETE,POST,PUT',
+    'Access-Control-Allow-Headers': 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+  };
+
+  // Handle preflight request
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders
+    });
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
-
-  const { action, apiKey, data } = req.body;
-
-  if (!action) {
-    return res.status(400).json({ error: 'Missing parameter: action' });
-  }
-
-  // Fallback to default Leonardo key if not provided
-  const activeKey = apiKey || process.env.DEFAULT_LEONARDO_API_KEY || '495c5c93-cf03-4f46-bfbf-c14c5de0cfda';
 
   try {
+    const { action, apiKey, data } = await request.json();
+
+    if (!action) {
+      return new Response(JSON.stringify({ error: 'Missing parameter: action' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Fallback to default Leonardo key from env or constant
+    const activeKey = apiKey || env.DEFAULT_LEONARDO_API_KEY || '495c5c93-cf03-4f46-bfbf-c14c5de0cfda';
+
     let url = '';
     let method = 'POST';
     let body = null;
@@ -43,12 +53,18 @@ export default async function handler(req, res) {
     } else if (action === 'status') {
       const generationId = data?.generationId;
       if (!generationId) {
-        return res.status(400).json({ error: 'Missing generationId for status action' });
+        return new Response(JSON.stringify({ error: 'Missing generationId for status action' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       }
       url = `https://cloud.leonardo.ai/api/rest/v1/generations/${generationId}`;
       method = 'GET';
     } else {
-      return res.status(400).json({ error: `Invalid action: ${action}` });
+      return new Response(JSON.stringify({ error: `Invalid action: ${action}` }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const response = await fetch(url, {
@@ -64,14 +80,23 @@ export default async function handler(req, res) {
     const resData = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      return res.status(response.status).json({
+      return new Response(JSON.stringify({
         error: resData.error || resData.message || response.statusText
+      }), {
+        status: response.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    return res.status(200).json(resData);
+    return new Response(JSON.stringify(resData), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   } catch (error) {
     console.error('Leonardo proxy error:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 }
