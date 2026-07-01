@@ -586,7 +586,7 @@ async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = 
 
   const genData = await genRes.json();
   console.log("[Leonardo API] Trigger Response Data:", genData);
-  const generationId = genData.sdGenerationJob?.generationId;
+  const generationId = genData.generate?.generationId || genData.sdGenerationJob?.generationId;
   if (!generationId) {
     throw new Error("Leonardo API did not return a valid generationId. Response: " + JSON.stringify(genData));
   }
