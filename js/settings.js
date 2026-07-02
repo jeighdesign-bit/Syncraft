@@ -4,6 +4,7 @@ import { supabaseClient } from './supabaseConfig.js';
 
 let activeProfileSubscription = null;
 let activePaymentsSubscription = null;
+let activeAdminView = 'pending';
 
 function clearSettingsSubscriptions() {
   if (supabaseClient) {
@@ -539,7 +540,7 @@ export function initSettingsPage(router, hash) {
 }
 
 async function renderAdminPanel(panelContainer) {
-  // Inject custom CSS styling for spinner and image hover
+  // Inject custom CSS styling for spinner, image hover, and menu buttons
   if (!document.getElementById('admin-panel-styles')) {
     const adminStyle = document.createElement('style');
     adminStyle.id = 'admin-panel-styles';
@@ -551,6 +552,32 @@ async function renderAdminPanel(panelContainer) {
       .admin-receipt-preview:hover {
         transform: scale(1.08);
       }
+      .admin-menu-btn {
+        text-align: left;
+        background: none;
+        border: none;
+        padding: 10px 14px;
+        color: rgba(255,255,255,0.6);
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: var(--rounded-md, 8px);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all var(--transition-fast, 0.2s);
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .admin-menu-btn:hover {
+        background: rgba(255, 255, 255, 0.04);
+        color: #fff;
+      }
+      .admin-menu-btn.active {
+        background: rgba(212, 255, 89, 0.1) !important;
+        color: var(--color-primary) !important;
+      }
     `;
     document.head.appendChild(adminStyle);
   }
@@ -558,248 +585,520 @@ async function renderAdminPanel(panelContainer) {
   panelContainer.innerHTML = `
     <div class="settings-tab-panel">
       <div class="settings-card" style="width: 100%; box-sizing: border-box;">
-        <div class="settings-card-info">
-          <h2 class="settings-card-title">GCash/Maya Verification Panel</h2>
-          <p class="settings-card-desc">Review pending payment reference numbers and receipt uploads. Approving will credit tokens and upgrade the user.</p>
+        <div class="settings-card-info" style="width: 30%; min-width: 250px;">
+          <h2 class="settings-card-title">Admin Console</h2>
+          <p class="settings-card-desc">Review pending payment manual uploads, monitor active subscribers, and review all payments history.</p>
+          
+          <div class="admin-menu" style="display: flex; flex-direction: column; gap: 6px; margin-top: 24px; width: 100%;">
+            <button class="admin-menu-btn ${activeAdminView === 'pending' ? 'active' : ''}" data-view="pending">
+              <i class="icon fi fi-br-time-check" style="font-size: 14px; vertical-align: middle;"></i> Pending Verifications
+            </button>
+            <button class="admin-menu-btn ${activeAdminView === 'active-subscribers' ? 'active' : ''}" data-view="active-subscribers">
+              <i class="icon fi fi-br-users-alt" style="font-size: 14px; vertical-align: middle;"></i> Active Subscribers
+            </button>
+            <button class="admin-menu-btn ${activeAdminView === 'all-payments' ? 'active' : ''}" data-view="all-payments">
+              <i class="icon fi fi-br-receipt" style="font-size: 14px; vertical-align: middle;"></i> Payment History
+            </button>
+          </div>
         </div>
-        <div class="settings-card-body" id="admin-panel-body" style="padding: 24px; min-height: 200px; box-sizing: border-box;">
-          <div style="text-align: center; padding: 40px; color: rgba(255,255,255,0.4);">
+        <div class="settings-card-body" id="admin-panel-body" style="width: 70%; padding: 24px; min-height: 250px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px;">
+          <div style="text-align: center; padding: 60px; color: rgba(255,255,255,0.4);">
             <i class="icon fi fi-br-spinner" style="font-size: 20px; display: inline-block; margin-right: 8px; vertical-align: middle; animation: admin-spin 1s linear infinite;"></i>
-            Loading pending verification profiles...
+            Loading admin details...
           </div>
         </div>
       </div>
     </div>
   `;
 
+  // Bind side menu clicks
+  const menuBtns = panelContainer.querySelectorAll('.admin-menu-btn');
+  menuBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const view = e.currentTarget.getAttribute('data-view');
+      if (view === activeAdminView) return;
+      activeAdminView = view;
+      renderAdminPanel(panelContainer);
+    });
+  });
+
   const bodyEl = document.getElementById('admin-panel-body');
   if (!bodyEl) return;
 
-  console.log('[AdminPanel] renderAdminPanel started loading');
+  const withTimeout = (promise, ms = 10000) => {
+    const timeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database query timed out. Please run the RLS policy SQL script in Supabase.')), ms)
+    );
+    return Promise.race([promise, timeout]);
+  };
+
   try {
     if (!supabaseClient) {
-      console.warn('[AdminPanel] Supabase client is not initialized');
       bodyEl.innerHTML = `<div style="color: var(--color-error); text-align: center; padding: 20px;">Supabase is not configured yet. Live verification is disabled.</div>`;
       return;
     }
 
-    console.log('[AdminPanel] Querying public.payments table for pending transactions...');
-    const { data: pendingPayments, error } = await supabaseClient
-      .from('payments')
-      .select('*')
-      .eq('status', 'pending_verification');
-
-    console.log('[AdminPanel] Query result received. Data length:', pendingPayments ? pendingPayments.length : 0, 'Error:', error);
-
-    if (error) {
-      console.error('[AdminPanel] Error fetching payments:', error);
-      bodyEl.innerHTML = `<div style="color: var(--color-error); text-align: center; padding: 20px;">Error loading payments: ${error.message}</div>`;
-      return;
-    }
-
-    if (pendingPayments.length === 0) {
+    if (activeAdminView === 'pending') {
       bodyEl.innerHTML = `
-        <div style="text-align: center; padding: 40px; color: rgba(255,255,255,0.4); font-size: 13px;">
-          <i class="icon fi fi-br-check-circle" style="font-size: 28px; display: block; margin-bottom: 12px; color: var(--color-primary);"></i>
-          No pending manual payments to verify. All caught up!
+        <div style="text-align: center; padding: 40px; color: rgba(255,255,255,0.4);">
+          <i class="icon fi fi-br-spinner" style="font-size: 20px; display: inline-block; margin-right: 8px; vertical-align: middle; animation: admin-spin 1s linear infinite;"></i>
+          Fetching pending manual payments...
         </div>
       `;
-      return;
-    }
 
-    bodyEl.innerHTML = `
-      <div style="overflow-x: auto; width: 100%; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; background: rgba(0,0,0,0.15);">
-        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; min-width: 700px;">
-          <thead>
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); color: rgba(255,255,255,0.4); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">
-              <th style="padding: 14px 16px;">User Email</th>
-              <th style="padding: 14px 16px;">Date Submitted</th>
-              <th style="padding: 14px 16px;">Reference #</th>
-              <th style="padding: 14px 16px;">Details</th>
-              <th style="padding: 14px 16px; text-align: center;">Receipt Screenshot</th>
-              <th style="padding: 14px 16px; text-align: right;">Actions</th>
-            </tr>
-          </thead>
-          <tbody style="color: rgba(255,255,255,0.85);">
-            ${pendingPayments.map((item, index) => {
-              const dateStr = new Date(item.created_at).toLocaleString();
-              const userEmail = item.email || 'Unknown User';
-              
-              return `
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                  <td style="padding: 14px 16px; font-weight: 600; color: #fff;">${userEmail}</td>
-                  <td style="padding: 14px 16px; font-size: 12px; color: rgba(255,255,255,0.5);">${dateStr}</td>
-                  <td style="padding: 14px 16px; font-family: monospace; font-size: 14px; font-weight: 700; color: var(--color-primary);">${item.ref_number}</td>
-                  <td style="padding: 14px 16px;">
-                    <span style="font-weight: 600; color: #fff;">₱${item.price}</span>
-                    <span style="font-size: 11px; color: rgba(255,255,255,0.4); display: block;">${item.tokens} tokens</span>
-                  </td>
-                  <td style="padding: 14px 16px; text-align: center;">
-                    ${item.receipt_image ? `
-                      <img class="admin-receipt-preview" src="${item.receipt_image}" data-index="${index}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); cursor: zoom-in; transition: transform var(--transition-fast);" />
-                    ` : '<span style="color: rgba(255,255,255,0.3);">No Image</span>'}
-                  </td>
-                  <td style="padding: 14px 16px; text-align: right; white-space: nowrap;">
-                    <button class="btn-admin-approve settings-btn settings-btn-primary" data-index="${index}" style="padding: 6px 12px; font-size: 11px; margin-right: 6px;">Approve</button>
-                    <button class="btn-admin-reject settings-btn" data-index="${index}" style="padding: 6px 12px; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171;">Reject</button>
-                  </td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
+      const { data: pendingPayments, error } = await withTimeout(
+        supabaseClient
+          .from('payments')
+          .select('*')
+          .eq('status', 'pending_verification')
+          .order('created_at', { ascending: false })
+      );
 
-    // Bind Image Click (Lightbox modal preview)
-    bodyEl.querySelectorAll('.admin-receipt-preview').forEach(img => {
-      img.addEventListener('click', (e) => {
-        const idx = parseInt(e.target.getAttribute('data-index'));
-        const item = pendingPayments[idx];
-        showReceiptLightbox(item.receipt_image, item.ref_number);
+      if (error) throw error;
+
+      if (!pendingPayments || pendingPayments.length === 0) {
+        bodyEl.innerHTML = `
+          <div style="text-align: center; padding: 60px; color: rgba(255,255,255,0.4); font-size: 13px;">
+            <i class="icon fi fi-br-check-circle" style="font-size: 28px; display: block; margin-bottom: 12px; color: var(--color-primary);"></i>
+            No pending manual payments to verify. All caught up!
+          </div>
+        `;
+        return;
+      }
+
+      bodyEl.innerHTML = `
+        <h3 style="margin: 0 0 10px 0; font-size: 15px; color: #fff; font-family: var(--font-family-display);">Pending Verifications</h3>
+        <div style="overflow-x: auto; width: 100%; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; background: rgba(0,0,0,0.15);">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; min-width: 600px;">
+            <thead>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); color: rgba(255,255,255,0.4); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">
+                <th style="padding: 14px 16px;">User Email</th>
+                <th style="padding: 14px 16px;">Date Submitted</th>
+                <th style="padding: 14px 16px;">Reference #</th>
+                <th style="padding: 14px 16px;">Details</th>
+                <th style="padding: 14px 16px; text-align: center;">Receipt Screenshot</th>
+                <th style="padding: 14px 16px; text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody style="color: rgba(255,255,255,0.85);">
+              ${pendingPayments.map((item, index) => {
+                const dateStr = new Date(item.created_at).toLocaleString();
+                const userEmail = item.email || 'Unknown User';
+                
+                return `
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 14px 16px; font-weight: 600; color: #fff;">${userEmail}</td>
+                    <td style="padding: 14px 16px; font-size: 12px; color: rgba(255,255,255,0.5);">${dateStr}</td>
+                    <td style="padding: 14px 16px; font-family: monospace; font-size: 13px; font-weight: 700; color: var(--color-primary);">${item.ref_number}</td>
+                    <td style="padding: 14px 16px;">
+                      <span style="font-weight: 600; color: #fff;">₱${item.price}</span>
+                      <span style="font-size: 11px; color: rgba(255,255,255,0.4); display: block;">${item.tokens} tokens</span>
+                    </td>
+                    <td style="padding: 14px 16px; text-align: center;">
+                      ${item.receipt_image ? `
+                        <img class="admin-receipt-preview" src="${item.receipt_image}" data-index="${index}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); cursor: zoom-in; transition: transform var(--transition-fast);" />
+                      ` : '<span style="color: rgba(255,255,255,0.3);">No Image</span>'}
+                    </td>
+                    <td style="padding: 14px 16px; text-align: right; white-space: nowrap;">
+                      <button class="btn-admin-approve settings-btn settings-btn-primary" data-index="${index}" style="padding: 6px 12px; font-size: 11px; margin-right: 6px;">Approve</button>
+                      <button class="btn-admin-reject settings-btn" data-index="${index}" style="padding: 6px 12px; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171;">Reject</button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      // Bind actions for pending view
+      bodyEl.querySelectorAll('.admin-receipt-preview').forEach(img => {
+        img.addEventListener('click', (e) => {
+          const idx = parseInt(e.target.getAttribute('data-index'));
+          const item = pendingPayments[idx];
+          showReceiptLightbox(item.receipt_image, item.ref_number);
+        });
       });
-    });
 
-    // Bind Approve Action
-    bodyEl.querySelectorAll('.btn-admin-approve').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const idx = parseInt(e.target.getAttribute('data-index'));
-        const item = pendingPayments[idx];
-        
-        showConfirmModal(
-          `Approve GCash Payment?`,
-          `This will credit ${item.tokens} tokens to ${item.email || 'the user'} and set their plan to Professional. Proceed?`,
-          async () => {
-            e.target.disabled = true;
-            e.target.textContent = 'Processing...';
-            try {
-              // 1. Fetch user profile to update history
-              const { data: profile, error: fetchErr } = await supabaseClient
+      bodyEl.querySelectorAll('.btn-admin-approve').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const idx = parseInt(e.target.getAttribute('data-index'));
+          const item = pendingPayments[idx];
+          
+          showConfirmModal(
+            `Approve GCash Payment?`,
+            `This will credit ${item.tokens} tokens to ${item.email || 'the user'} and set their plan to Professional. Proceed?`,
+            async () => {
+              e.target.disabled = true;
+              e.target.textContent = 'Processing...';
+              try {
+                const { data: profile, error: fetchErr } = await withTimeout(
+                  supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', item.user_id)
+                    .single()
+                );
+
+                if (fetchErr) throw fetchErr;
+
+                const updatedHistory = Array.isArray(profile.history) ? [...profile.history] : [];
+                const pendingEntry = updatedHistory.find(
+                  h => h.type === 'Billing' && h.status === 'pending_verification' && h.refNumber === item.ref_number
+                );
+                if (pendingEntry) {
+                  pendingEntry.status = 'verified';
+                  pendingEntry.verifiedAt = new Date().toISOString();
+                }
+                
+                updatedHistory.unshift({
+                  date: new Date().toISOString(),
+                  type: 'Billing',
+                  desc: `Upgraded subscription to Professional (limit: ${item.tokens} tokens)`
+                });
+
+                const { error: updateErr } = await withTimeout(
+                  supabaseClient
+                    .from('profiles')
+                    .update({
+                      plan: 'Professional',
+                      credits_max: item.tokens,
+                      credits_used: 0,
+                      history: updatedHistory
+                    })
+                    .eq('id', item.user_id)
+                );
+
+                if (updateErr) throw updateErr;
+
+                const { error: payErr } = await withTimeout(
+                  supabaseClient
+                    .from('payments')
+                    .update({ status: 'verified' })
+                    .eq('id', item.id)
+                );
+
+                if (payErr) throw payErr;
+
+                showToast(`Successfully verified payment and upgraded user account.`);
+                renderAdminPanel(panelContainer);
+              } catch (err) {
+                console.error('Approve failed:', err);
+                showToast('Error approving payment: ' + err.message, true);
+                e.target.disabled = false;
+                e.target.textContent = 'Approve';
+              }
+            },
+            'Approve',
+            false
+          );
+        });
+      });
+
+      bodyEl.querySelectorAll('.btn-admin-reject').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const idx = parseInt(e.target.getAttribute('data-index'));
+          const item = pendingPayments[idx];
+          
+          const reason = prompt("Enter rejection reason (visible to user):", "Invalid reference number or transaction not found.");
+          if (reason === null) return;
+
+          e.target.disabled = true;
+          e.target.textContent = 'Processing...';
+
+          try {
+            const { data: profile, error: fetchErr } = await withTimeout(
+              supabaseClient
                 .from('profiles')
                 .select('*')
                 .eq('id', item.user_id)
-                .single();
+                .single()
+            );
 
-              if (fetchErr) throw fetchErr;
+            if (fetchErr) throw fetchErr;
 
-              const updatedHistory = Array.isArray(profile.history) ? [...profile.history] : [];
-              const pendingEntry = updatedHistory.find(
-                h => h.type === 'Billing' && h.status === 'pending_verification' && h.refNumber === item.ref_number
-              );
-              if (pendingEntry) {
-                pendingEntry.status = 'verified';
-                pendingEntry.verifiedAt = new Date().toISOString();
-              }
-              
-              updatedHistory.unshift({
-                date: new Date().toISOString(),
-                type: 'Billing',
-                desc: `Upgraded subscription to Professional (limit: ${item.tokens} tokens)`
-              });
+            const updatedHistory = Array.isArray(profile.history) ? [...profile.history] : [];
+            const pendingEntry = updatedHistory.find(
+              h => h.type === 'Billing' && h.status === 'pending_verification' && h.refNumber === item.ref_number
+            );
+            if (pendingEntry) {
+              pendingEntry.status = 'rejected';
+              pendingEntry.rejectedAt = new Date().toISOString();
+              pendingEntry.rejectionReason = reason;
+            }
 
-              // 2. Update user profile
-              const { error: updateErr } = await supabaseClient
+            const { error: updateErr } = await withTimeout(
+              supabaseClient
                 .from('profiles')
                 .update({
-                  plan: 'Professional',
-                  credits_max: item.tokens,
-                  credits_used: 0,
                   history: updatedHistory
                 })
-                .eq('id', item.user_id);
+                .eq('id', item.user_id)
+            );
 
-              if (updateErr) throw updateErr;
+            if (updateErr) throw updateErr;
 
-              // 3. Update payment status in payments table
-              const { error: payErr } = await supabaseClient
+            const { error: payErr } = await withTimeout(
+              supabaseClient
                 .from('payments')
-                .update({ status: 'verified' })
-                .eq('id', item.id);
+                .update({ 
+                  status: 'rejected',
+                  rejection_reason: reason
+                })
+                .eq('id', item.id)
+            );
 
-              if (payErr) throw payErr;
+            if (payErr) throw payErr;
 
-              showToast(`Successfully verified payment and upgraded user account.`);
-              renderAdminPanel(panelContainer);
-            } catch (err) {
-              console.error('Approve failed:', err);
-              showToast('Error approving payment: ' + err.message, true);
-              e.target.disabled = false;
-              e.target.textContent = 'Approve';
-            }
-          },
-          'Approve',
-          false
-        );
-      });
-    });
-
-    // Bind Reject Action
-    bodyEl.querySelectorAll('.btn-admin-reject').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const idx = parseInt(e.target.getAttribute('data-index'));
-        const item = pendingPayments[idx];
-        
-        const reason = prompt("Enter rejection reason (visible to user):", "Invalid reference number or transaction not found.");
-        if (reason === null) return; // User cancelled prompt
-
-        e.target.disabled = true;
-        e.target.textContent = 'Processing...';
-
-        try {
-          // 1. Fetch profile to update history
-          const { data: profile, error: fetchErr } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .eq('id', item.user_id)
-            .single();
-
-          if (fetchErr) throw fetchErr;
-
-          const updatedHistory = Array.isArray(profile.history) ? [...profile.history] : [];
-          const pendingEntry = updatedHistory.find(
-            h => h.type === 'Billing' && h.status === 'pending_verification' && h.refNumber === item.ref_number
-          );
-          if (pendingEntry) {
-            pendingEntry.status = 'rejected';
-            pendingEntry.rejectedAt = new Date().toISOString();
-            pendingEntry.rejectionReason = reason;
+            showToast(`Manual payment rejected. User notified in history.`);
+            renderAdminPanel(panelContainer);
+          } catch (err) {
+            console.error('Rejection failed:', err);
+            showToast('Error rejecting payment: ' + err.message, true);
+            e.target.disabled = false;
+            e.target.textContent = 'Reject';
           }
-
-          // 2. Update profiles history
-          const { error: updateErr } = await supabaseClient
-            .from('profiles')
-            .update({
-              history: updatedHistory
-            })
-            .eq('id', item.user_id);
-
-          if (updateErr) throw updateErr;
-
-          // 3. Update payments table status
-          const { error: payErr } = await supabaseClient
-            .from('payments')
-            .update({ 
-              status: 'rejected',
-              rejection_reason: reason
-            })
-            .eq('id', item.id);
-
-          if (payErr) throw payErr;
-
-          showToast(`Manual payment rejected. User notified in history.`);
-          renderAdminPanel(panelContainer);
-        } catch (err) {
-          console.error('Rejection failed:', err);
-          showToast('Error rejecting payment: ' + err.message, true);
-          e.target.disabled = false;
-          e.target.textContent = 'Reject';
-        }
+        });
       });
-    });
+
+    } else if (activeAdminView === 'active-subscribers') {
+      bodyEl.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: rgba(255,255,255,0.4);">
+          <i class="icon fi fi-br-spinner" style="font-size: 20px; display: inline-block; margin-right: 8px; vertical-align: middle; animation: admin-spin 1s linear infinite;"></i>
+          Fetching active subscribers...
+        </div>
+      `;
+
+      // Query profiles that are on Professional plan
+      const { data: subscribers, error } = await withTimeout(
+        supabaseClient
+          .from('profiles')
+          .select('*')
+          .eq('plan', 'Professional')
+      );
+
+      if (error) throw error;
+
+      if (!subscribers || subscribers.length === 0) {
+        bodyEl.innerHTML = `
+          <div style="text-align: center; padding: 60px; color: rgba(255,255,255,0.4); font-size: 13px;">
+            <i class="icon fi fi-br-info" style="font-size: 28px; display: block; margin-bottom: 12px; color: var(--color-on-surface-variant);"></i>
+            No active Professional subscribers found.
+          </div>
+        `;
+        return;
+      }
+
+      bodyEl.innerHTML = `
+        <h3 style="margin: 0 0 10px 0; font-size: 15px; color: #fff; font-family: var(--font-family-display);">Active Subscribers</h3>
+        <div style="overflow-x: auto; width: 100%; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; background: rgba(0,0,0,0.15);">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; min-width: 600px;">
+            <thead>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); color: rgba(255,255,255,0.4); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">
+                <th style="padding: 14px 16px;">User Email / ID</th>
+                <th style="padding: 14px 16px;">Plan</th>
+                <th style="padding: 14px 16px;">Credits Used / Max</th>
+                <th style="padding: 14px 16px; text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody style="color: rgba(255,255,255,0.85);">
+              ${subscribers.map((sub, index) => {
+                let email = 'No Email Recorded';
+                if (sub.history && Array.isArray(sub.history)) {
+                  const billingLog = sub.history.find(h => h.email);
+                  if (billingLog && billingLog.email) email = billingLog.email;
+                }
+                
+                return `
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 14px 16px;">
+                      <span style="font-weight: 600; color: #fff; display: block;">${email}</span>
+                      <span style="font-size: 10px; color: rgba(255,255,255,0.3); font-family: monospace;">ID: ${sub.id}</span>
+                    </td>
+                    <td style="padding: 14px 16px;">
+                      <span style="background: rgba(212, 255, 89, 0.15); color: var(--color-primary); padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em;">
+                        ${sub.plan}
+                      </span>
+                    </td>
+                    <td style="padding: 14px 16px;">
+                      <span style="font-weight: 700; color: #fff;">${sub.credits_used}</span> / <span style="color: rgba(255,255,255,0.5);">${sub.credits_max}</span>
+                    </td>
+                    <td style="padding: 14px 16px; text-align: right;">
+                      <button class="btn-admin-downgrade settings-btn" data-id="${sub.id}" data-email="${email}" style="padding: 6px 12px; font-size: 11px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #f87171;">
+                        Downgrade to Starter
+                      </button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      // Bind Downgrade Action
+      bodyEl.querySelectorAll('.btn-admin-downgrade').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const userId = e.target.getAttribute('data-id');
+          const userEmail = e.target.getAttribute('data-email');
+          
+          showConfirmModal(
+            `Downgrade Subscription?`,
+            `Are you sure you want to downgrade ${userEmail || 'this user'} to the Starter free plan and reset their credit limits?`,
+            async () => {
+              e.target.disabled = true;
+              e.target.textContent = 'Processing...';
+              try {
+                const { data: profile, error: fetchErr } = await withTimeout(
+                  supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', userId)
+                    .single()
+                );
+
+                if (fetchErr) throw fetchErr;
+
+                const updatedHistory = Array.isArray(profile.history) ? [...profile.history] : [];
+                updatedHistory.unshift({
+                  date: new Date().toISOString(),
+                  type: 'Billing',
+                  desc: `Subscription downgraded to Starter by administrator`
+                });
+
+                const { error: updateErr } = await withTimeout(
+                  supabaseClient
+                    .from('profiles')
+                    .update({
+                      plan: 'Starter',
+                      credits_max: 30, // default starter credits limit
+                      credits_used: 0,
+                      history: updatedHistory
+                    })
+                    .eq('id', userId)
+                );
+
+                if (updateErr) throw updateErr;
+
+                showToast(`User downgraded to Starter plan.`);
+                renderAdminPanel(panelContainer);
+              } catch (err) {
+                console.error('Downgrade failed:', err);
+                showToast('Error downgrading subscriber: ' + err.message, true);
+                e.target.disabled = false;
+                e.target.textContent = 'Downgrade to Starter';
+              }
+            },
+            'Downgrade',
+            true
+          );
+        });
+      });
+
+    } else if (activeAdminView === 'all-payments') {
+      bodyEl.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: rgba(255,255,255,0.4);">
+          <i class="icon fi fi-br-spinner" style="font-size: 20px; display: inline-block; margin-right: 8px; vertical-align: middle; animation: admin-spin 1s linear infinite;"></i>
+          Fetching payment history...
+        </div>
+      `;
+
+      // Query all payments
+      const { data: allPayments, error } = await withTimeout(
+        supabaseClient
+          .from('payments')
+          .select('*')
+          .order('created_at', { ascending: false })
+      );
+
+      if (error) throw error;
+
+      if (!allPayments || allPayments.length === 0) {
+        bodyEl.innerHTML = `
+          <div style="text-align: center; padding: 60px; color: rgba(255,255,255,0.4); font-size: 13px;">
+            <i class="icon fi fi-br-receipt" style="font-size: 28px; display: block; margin-bottom: 12px; color: var(--color-on-surface-variant);"></i>
+            No payments records found in the database.
+          </div>
+        `;
+        return;
+      }
+
+      bodyEl.innerHTML = `
+        <h3 style="margin: 0 0 10px 0; font-size: 15px; color: #fff; font-family: var(--font-family-display);">Payment History</h3>
+        <div style="overflow-x: auto; width: 100%; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; background: rgba(0,0,0,0.15);">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; min-width: 650px;">
+            <thead>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); color: rgba(255,255,255,0.4); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">
+                <th style="padding: 14px 16px;">User Email</th>
+                <th style="padding: 14px 16px;">Date Submitted</th>
+                <th style="padding: 14px 16px;">Reference #</th>
+                <th style="padding: 14px 16px;">Details</th>
+                <th style="padding: 14px 16px; text-align: center;">Receipt</th>
+                <th style="padding: 14px 16px; text-align: right;">Status</th>
+              </tr>
+            </thead>
+            <tbody style="color: rgba(255,255,255,0.85);">
+              ${allPayments.map((item, index) => {
+                const dateStr = new Date(item.created_at).toLocaleString();
+                const userEmail = item.email || 'Unknown User';
+                
+                let statusBadge = '';
+                if (item.status === 'verified') {
+                  statusBadge = `<span style="background: rgba(0, 230, 118, 0.15); color: #00e676; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 11px;">Verified</span>`;
+                } else if (item.status === 'rejected') {
+                  const titleTip = item.rejection_reason ? `title="${item.rejection_reason}" style="cursor:help;"` : '';
+                  statusBadge = `<span ${titleTip} style="background: rgba(255, 82, 82, 0.15); color: #ff5252; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: help;">Rejected</span>`;
+                } else {
+                  statusBadge = `<span style="background: rgba(255, 214, 0, 0.15); color: #ffd600; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 11px;">Pending</span>`;
+                }
+
+                return `
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 14px 16px; font-weight: 600; color: #fff;">${userEmail}</td>
+                    <td style="padding: 14px 16px; font-size: 12px; color: rgba(255,255,255,0.5);">${dateStr}</td>
+                    <td style="padding: 14px 16px; font-family: monospace; font-size: 13px; font-weight: 700; color: var(--color-primary);">${item.ref_number}</td>
+                    <td style="padding: 14px 16px;">
+                      <span style="font-weight: 600; color: #fff;">₱${item.price}</span>
+                      <span style="font-size: 11px; color: rgba(255,255,255,0.4); display: block;">${item.tokens} tokens</span>
+                    </td>
+                    <td style="padding: 14px 16px; text-align: center;">
+                      ${item.receipt_image ? `
+                        <img class="admin-history-receipt-preview" src="${item.receipt_image}" data-index="${index}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); cursor: zoom-in;" />
+                      ` : '<span style="color: rgba(255,255,255,0.35);">None</span>'}
+                    </td>
+                    <td style="padding: 14px 16px; text-align: right; white-space: nowrap;">
+                      ${statusBadge}
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      // Bind receipt clicks in history view
+      bodyEl.querySelectorAll('.admin-history-receipt-preview').forEach(img => {
+        img.addEventListener('click', (e) => {
+          const idx = parseInt(e.target.getAttribute('data-index'));
+          const item = allPayments[idx];
+          showReceiptLightbox(item.receipt_image, item.ref_number);
+        });
+      });
+    }
 
   } catch (err) {
     console.error('Admin Panel loading failed:', err);
-    bodyEl.innerHTML = `<div style="color: var(--color-error); text-align: center; padding: 20px;">Failed to load Admin Panel: ${err.message}</div>`;
+    bodyEl.innerHTML = `
+      <div style="color: var(--color-error); text-align: center; padding: 30px; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 12px;">
+        <i class="icon fi fi-br-exclamation" style="font-size: 24px; display: block; margin-bottom: 12px; color: var(--color-error);"></i>
+        <h4 style="margin: 0 0 6px 0; color: #fff;">Failed to Load Admin View</h4>
+        <p style="margin: 0 0 16px 0; font-size: 13px; color: rgba(255,255,255,0.65);">${err.message}</p>
+        <button class="settings-btn settings-btn-primary" onclick="window.location.reload()" style="padding: 8px 16px; font-size: 12px;">
+          Retry / Reload Page
+        </button>
+      </div>
+    `;
   }
 }
 
