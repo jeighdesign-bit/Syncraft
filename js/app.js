@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────
 import { initLandingPage } from './landing.js?v=3.3.2';
 import { initDashboard }   from './dashboard.js?v=2.0.3';
-import { initWorkspace }   from './workspace.js?v=2.2.3';
+import { initWorkspace }   from './workspace.js?v=2.2.4';
 import { initAuthView }    from './auth.js?v=2.0.2';
 import { initSettingsPage } from './settings.js?v=2.1.1';
 import { initCheckoutPage } from './checkout.js?v=2.1.0';
