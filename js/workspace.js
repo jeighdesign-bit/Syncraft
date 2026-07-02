@@ -316,6 +316,7 @@ async function callGeminiApi(apiKey, promptText, base64Image = null) {
  * @returns {Promise<Blob>} The generated image as a Blob.
  */
 async function callGeminiImageGenerationApi(apiKey, promptText, base64Image = null, aspectRatio = '1:1') {
+  throw new Error("Unavailable at the moment");
   console.log("[Gemini Image API via OpenRouter] Request started.");
   if (!apiKey) {
     throw new Error("OpenRouter API Key is missing. Please configure 'syncraft_gemini_api_key' in your browser localStorage or js/aiConfig.js");
@@ -726,6 +727,7 @@ async function compressBlobForApi(blob, maxBytes = 8 * 1024 * 1024) {
  * @returns {Promise<string>} The generated image URL (typically an SVG file).
  */
 async function callRecraftImageToImageApi(apiKey, imageBlob, promptText, strength = 0.5, modelId = 'recraftv4_1_vector') {
+  throw new Error("Unavailable at the moment");
   console.log(`[Recraft ImageToImage API] Request started. Model: ${modelId}`);
   if (!apiKey) {
     throw new Error("Recraft.ai API Key is missing. Please configure 'syncraft_recraft_api_key' in your browser localStorage or js/aiConfig.js");
@@ -778,6 +780,7 @@ async function callRecraftImageToImageApi(apiKey, imageBlob, promptText, strengt
  * @returns {Promise<string>} The generated SVG URL.
  */
 async function callRecraftVectorizeApi(apiKey, imageBlob) {
+  throw new Error("Unavailable at the moment");
   console.log("[Recraft Vectorize API] Request started.");
   if (!apiKey) {
     throw new Error("Recraft.ai API Key is missing.");
@@ -823,6 +826,7 @@ async function callRecraftVectorizeApi(apiKey, imageBlob) {
  * @returns {Promise<string>} The URL of the upscaled image.
  */
 async function callRecraftUpscaleApi(apiKey, imageBlob, type = 'crisp') {
+  throw new Error("Unavailable at the moment");
   console.log(`[Recraft Upscale API] Request started. Type: ${type}`);
   if (!apiKey) {
     throw new Error("Recraft.ai API Key is missing.");
@@ -870,6 +874,7 @@ async function callRecraftUpscaleApi(apiKey, imageBlob, type = 'crisp') {
  * @returns {Promise<string>} The URL of the resulting inpainted image.
  */
 async function callRecraftInpaintApi(apiKey, imageBlob, maskBlob, promptText, modelId = 'recraftv4_1') {
+  throw new Error("Unavailable at the moment");
   console.log(`[Recraft Inpaint API] Request started. Model: ${modelId}`);
   if (!apiKey) {
     throw new Error("Recraft.ai API Key is missing.");
@@ -959,6 +964,7 @@ async function renderSvgToPngBlob(svgString, width = 1024, height = 1024) {
  * @returns {Promise<string>} The generated image URL with background removed.
  */
 async function callRecraftRemoveBackgroundApi(apiKey, imageBlob) {
+  throw new Error("Unavailable at the moment");
   console.log("[Recraft RemoveBackground API] Request started.");
   if (!apiKey) {
     throw new Error("Recraft.ai API Key is missing.");
@@ -1171,6 +1177,7 @@ function addSvgCallout(svgCode, text, x, y, w, h) {
  * @returns {Promise<string>} The generated image URL (typically an SVG file).
  */
 async function callRecraftVectorApi(apiKey, promptText, modelId = 'recraftv4_1_vector', size = '1024x1024') {
+  throw new Error("Unavailable at the moment");
   console.log(`[Recraft API] Request started. Model: ${modelId}`);
   if (!apiKey) {
     throw new Error("Recraft.ai API Key is missing. Please configure 'syncraft_recraft_api_key' in your browser localStorage or js/aiConfig.js");
