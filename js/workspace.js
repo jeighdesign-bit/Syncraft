@@ -449,6 +449,7 @@ async function callGeminiImageGenerationApi(apiKey, promptText, base64Image = nu
  * @returns {Promise<Blob>} The generated image as a Blob.
  */
 async function callLeonardoImageGenerationApi(apiKey, promptText, base64Image = null, aspectRatio = '1:1', activeModelId = '7418e71f-4133-4e1b-9895-bee19f48f2ce') {
+  throw new Error("Unavailable at the moment");
   console.log("[Leonardo API] Request started.");
   if (!apiKey) {
     throw new Error("Leonardo API Key is missing. Please configure 'syncraft_leonardo_api_key' in your browser localStorage or js/aiConfig.js");
@@ -1836,10 +1837,10 @@ export function initWorkspace(router) {
     'syncraft-ultra': { name: 'Syncraft Ultra (Creative)', cost: 20, apiId: 'gemini-3-pro-image', type: 'ultra' }
   };
   let selectedModel = 'syncraft-ultra';
-  let selectedSyncraftEngine = localStorage.getItem('syncraft_preferred_extraction_engine') || 'banana2-leo';
-  if (!['banana2-leo', 'bananapro-leo', 'bananapro-or'].includes(selectedSyncraftEngine)) {
-    selectedSyncraftEngine = 'banana2-leo';
-    localStorage.setItem('syncraft_preferred_extraction_engine', 'banana2-leo');
+  let selectedSyncraftEngine = localStorage.getItem('syncraft_preferred_extraction_engine') || 'bananapro-or';
+  if (selectedSyncraftEngine !== 'bananapro-or') {
+    selectedSyncraftEngine = 'bananapro-or';
+    localStorage.setItem('syncraft_preferred_extraction_engine', 'bananapro-or');
   }
 
   // ── Zooming & Panning State ──────────────────
