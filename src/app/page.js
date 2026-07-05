@@ -79,7 +79,7 @@ export default function StartScreen() {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(6);
+      .limit(50);
     
     if (!error && data) {
       setRecentProjects(data);

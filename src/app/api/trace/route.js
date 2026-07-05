@@ -116,8 +116,8 @@ CRITICAL RULES:
       } else {
         prompt = `You are a master Graphic Pattern Extractor. Your ONLY job is to extract the 2D graphic design/pattern from this image and recreate it as a pure flat canvas.
 CRITICAL RULES (STRICT STRICT STRICT):
-1. DO NOT DRAW A T-SHIRT! DO NOT draw collars, sleeves, armholes, or clothing shapes. If you draw a t-shirt shape, you have FAILED.
-2. Output ONLY a flat, rectangular 2D graphic pattern. 
+1. RECTANGULAR CANVAS ONLY: You must output a perfectly square or rectangular graphic pattern that fills the entire canvas from edge to edge. 
+2. NO CLOTHING SILHOUETTES: The entire canvas must be filled with the continuous background pattern.
 3. NO TEXT OR LOGOS: Erase all letters, words, and team logos. Clone the background pattern over them.
 4. EXACT COLORS: Preserve the exact original color palette and geometric shapes.
 5. NO 3D EFFECTS: Remove all folds, wrinkles, shadows, and fabric textures. Return pure 2D digital artwork.`;

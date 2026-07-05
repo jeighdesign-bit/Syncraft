@@ -302,7 +302,8 @@ export default function Workspace() {
 
       for (const item of urls) {
         try {
-          const res = await fetch(item.url);
+          const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(item.url)}`;
+          const res = await fetch(proxyUrl);
           const blob = await res.blob();
           zip.file(item.name, blob);
         } catch (e) {
