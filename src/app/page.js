@@ -190,7 +190,7 @@ export default function StartScreen() {
       <div className="start-center-box">
         
         <div className="start-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '20px' }}>
-          <h1 style={{fontSize: "4rem", fontWeight: "300", letterSpacing: "-1px", margin: 0}}>DesaynClaw</h1>
+          <img src="/logo.png" alt="DesaynClaw Logo" style={{ width: '400px', maxWidth: '100%', height: 'auto', margin: 0 }} />
           <p style={{fontSize: "14px", color: "#888", margin: "5px 0 0 0"}}>Developed by desaynbro</p>
         </div>
 
