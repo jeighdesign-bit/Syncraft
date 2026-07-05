@@ -244,7 +244,13 @@ export default function Workspace() {
         setUserCredits(0); // sync local state to 0 if backend caught it
         setShowNoCreditsModal(true);
       } else {
-        console.error(error); // Only show overlay for real unexpected errors
+        // Suppress console.error if it's an expected 504 timeout
+        let errorMsg = error.message;
+        const isTimeout = errorMsg.includes("504") || errorMsg.includes("Failed to fetch");
+        
+        if (!isTimeout) {
+          console.error(error); // Only show overlay for real unexpected errors
+        }
         
         // Timeout or failure fallback: Attempt manual refund request to backend
         try {
