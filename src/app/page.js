@@ -215,7 +215,7 @@ export default function StartScreen() {
             </>
           ) : (
             <button onClick={handleLogin} className="start-btn" style={{ background: '#FFD700', color: '#000', borderColor: '#FFD700', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
-              <LogIn size={16} /> Log in to get 2 Free Credits!
+              <LogIn size={16} /> Log in to get 1 Free Credit!
             </button>
           )}
         </div>
@@ -381,7 +381,7 @@ export default function StartScreen() {
                   <Shirt size={32} color="#FFD700" />
                 </div>
               </div>
-              <h2 style={{ margin: '0 0 10px', fontWeight: '800', fontSize: '24px', color: '#fff', letterSpacing: '-0.5px' }}>Congratulations! You received 2 Free Credits.</h2>
+              <h2 style={{ margin: '0 0 10px', fontWeight: '800', fontSize: '24px', color: '#fff', letterSpacing: '-0.5px' }}>Congratulations! You received 1 Free Credit.</h2>
               <p style={{ color: '#888', fontSize: '14px', margin: 0, lineHeight: '1.5' }}>Welcome to DesaynClaw! Before you start, let's quickly go over how it works.</p>
             </div>
 
@@ -419,7 +419,7 @@ export default function StartScreen() {
                 <p style={{ margin: 0, fontWeight: '800', color: '#fff', fontSize: '15px' }}>1 Credit = 1 AI Generation</p>
               </div>
               <p style={{ margin: '0 0 8px', color: '#aaa', fontSize: '13px', textAlign: 'center', lineHeight: '1.5' }}>
-                You have been granted <strong style={{ color: '#FFD700' }}>2 Free Credits</strong> to test the platform.
+                You have been granted <strong style={{ color: '#FFD700' }}>1 Free Credit</strong> to test the platform.
               </p>
               <p style={{ margin: 0, color: '#666', fontSize: '12px', textAlign: 'center' }}>
                 Once depleted, you can top up for as low as ₱35 per credit.

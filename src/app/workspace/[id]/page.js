@@ -715,28 +715,81 @@ export default function Workspace() {
       {/* Cropper Modal */}
       {showCropModal && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '800px', width: '90%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            <h3 style={{ marginBottom: '15px' }}><Scissors size={18} style={{ verticalAlign: 'text-bottom', marginRight: '8px' }} /> Please crop the area to trace (e.g., Front only or Back only)</h3>
-            <div style={{ flex: 1, overflow: 'auto', backgroundColor: '#0f0f0f', border: '1px solid #2a2a2a', borderRadius: '8px', display: 'flex', justifyContent: 'center', padding: '20px' }}>
-              <ReactCrop crop={crop} onChange={c => { setCrop(c); setCropError(""); }} onComplete={c => setCompletedCrop(c)}>
-                <img 
-                  ref={imgRef} 
-                  src={`/api/proxy-image?url=${encodeURIComponent(project.original_image_url)}`} 
-                  alt="Crop source" 
-                  style={{ maxHeight: '50vh', width: 'auto' }}
-                  crossOrigin="anonymous"
-                  onLoad={(e) => {
-                    imgRef.current = e.currentTarget;
-                  }}
-                />
-              </ReactCrop>
+          <div className="modal-content" style={{ maxWidth: '1000px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <h3 style={{ marginBottom: '15px' }}><Scissors size={18} style={{ verticalAlign: 'text-bottom', marginRight: '8px' }} /> Crop Pattern Region</h3>
+            
+            <div style={{ display: 'flex', gap: '20px', flex: 1, minHeight: 0, flexDirection: 'row' }}>
+              
+              {/* Left Column: The Cropper */}
+              <div style={{ flex: '1 1 65%', overflow: 'auto', backgroundColor: '#0f0f0f', border: '1px solid #2a2a2a', borderRadius: '8px', display: 'flex', justifyContent: 'center', padding: '20px', minHeight: '400px' }}>
+                <ReactCrop crop={crop} onChange={c => { setCrop(c); setCropError(""); }} onComplete={c => setCompletedCrop(c)}>
+                  <img 
+                    ref={imgRef} 
+                    src={`/api/proxy-image?url=${encodeURIComponent(project.original_image_url)}`} 
+                    alt="Crop source" 
+                    style={{ maxHeight: '60vh', width: 'auto' }}
+                    crossOrigin="anonymous"
+                    onLoad={(e) => {
+                      imgRef.current = e.currentTarget;
+                    }}
+                  />
+                </ReactCrop>
+              </div>
+
+              {/* Right Column: The Guide */}
+              <div style={{ flex: '0 0 320px', backgroundColor: '#0a0a0a', border: '1px solid #1f1f1f', borderRadius: '8px', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto' }}>
+                <div>
+                  <h4 style={{ margin: '0 0 6px', color: '#fff', fontSize: '14px', fontWeight: '600', letterSpacing: '0.3px' }}>Crop Guide</h4>
+                  <p style={{ fontSize: '12px', color: '#666', margin: 0, lineHeight: 1.5 }}>
+                    Help the AI focus by isolating the pattern correctly.
+                  </p>
+                </div>
+
+                <div>
+                  <div style={{ color: '#ececec', fontWeight: '500', fontSize: '13px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80' }}></div>
+                    DO: Crop Torso Only
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#666', margin: '0 0 12px', lineHeight: 1.5 }}>
+                    Exclude sleeves. Keep the box tight to the main body.
+                  </p>
+                  <svg viewBox="5 5 90 90" width="100%" height="140" style={{ display: 'block', backgroundColor: '#111', borderRadius: '6px', padding: '10px', boxSizing: 'border-box' }}>
+                    <path d="M 20 20 L 40 10 L 60 10 L 80 20 L 90 40 L 75 45 L 70 90 L 30 90 L 25 45 L 10 40 Z" fill="#1a1a1a" stroke="#333" strokeWidth="1" />
+                    <path d="M 35 30 L 65 50 M 35 50 L 65 70 M 35 70 L 65 90" stroke="#222" strokeWidth="1.5" />
+                    <rect x="25" y="10" width="50" height="80" fill="rgba(74, 222, 128, 0.05)" stroke="#4ade80" strokeWidth="1.5" strokeDasharray="3 3" />
+                    <rect x="23" y="8" width="4" height="4" fill="#4ade80" />
+                    <rect x="73" y="8" width="4" height="4" fill="#4ade80" />
+                    <rect x="23" y="88" width="4" height="4" fill="#4ade80" />
+                    <rect x="73" y="88" width="4" height="4" fill="#4ade80" />
+                  </svg>
+                </div>
+
+                <div>
+                  <div style={{ color: '#ececec', fontWeight: '500', fontSize: '13px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ff4444' }}></div>
+                    DON'T: Include Sleeves
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#666', margin: '0 0 12px', lineHeight: 1.5 }}>
+                    If you include sleeves, the AI will draw a shirt.
+                  </p>
+                  <svg viewBox="5 5 90 90" width="100%" height="140" style={{ display: 'block', backgroundColor: '#111', borderRadius: '6px', padding: '10px', boxSizing: 'border-box' }}>
+                    <path d="M 20 20 L 40 10 L 60 10 L 80 20 L 90 40 L 75 45 L 70 90 L 30 90 L 25 45 L 10 40 Z" fill="#1a1a1a" stroke="#333" strokeWidth="1" />
+                    <rect x="5" y="5" width="90" height="90" fill="rgba(255, 68, 68, 0.05)" stroke="#ff4444" strokeWidth="1.5" strokeDasharray="3 3" />
+                    <rect x="3" y="3" width="4" height="4" fill="#ff4444" />
+                    <rect x="93" y="3" width="4" height="4" fill="#ff4444" />
+                    <rect x="3" y="93" width="4" height="4" fill="#ff4444" />
+                    <rect x="93" y="93" width="4" height="4" fill="#ff4444" />
+                  </svg>
+                </div>
+              </div>
             </div>
+
             {cropError && <div style={{ color: '#ff4444', fontSize: '13px', marginTop: '12px', textAlign: 'center', fontWeight: 'bold' }}>{cropError}</div>}
             <div className="modal-actions" style={{ marginTop: '20px' }}>
               {project?.generated_image_url && (
                 <button className="btn-secondary" onClick={() => setShowCropModal(false)}>Cancel</button>
               )}
-              <button className="btn-primary" onClick={generateCrop}>Apply Crop</button>
+              <button className="btn-primary" onClick={generateCrop}>Apply Crop & Extract</button>
             </div>
           </div>
         </div>

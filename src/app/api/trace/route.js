@@ -236,17 +236,17 @@ CRITICAL DIRECTIVES (YOU MUST OBEY EVERY SINGLE RULE WITHOUT EXCEPTION):
       if (!rasterImgRes.ok) throw new Error("Failed to fetch upscaled image from R2");
       const rawBuffer = Buffer.from(await rasterImgRes.arrayBuffer());
 
-      // Compress image to stay under Recraft's ~8MB size limit
+      // Convert image to lossless PNG to prevent JPEG compression artifacts during vectorization
       const sharp = (await import('sharp')).default;
       const compressedBuffer = await sharp(rawBuffer)
-        .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85 })
+        .resize({ width: 1536, height: 1536, fit: 'inside', withoutEnlargement: true })
+        .png({ effort: 7 })
         .toBuffer();
-      console.log(`[API Step 3] Original: ${rawBuffer.length} bytes → Compressed: ${compressedBuffer.length} bytes`);
+      console.log(`[API Step 3] Original: ${rawBuffer.length} bytes → PNG Compressed: ${compressedBuffer.length} bytes`);
 
       const vectorizeFormData = new FormData();
-      const blob = new Blob([compressedBuffer], { type: 'image/jpeg' });
-      vectorizeFormData.append('image', blob, 'image.jpg');
+      const blob = new Blob([compressedBuffer], { type: 'image/png' });
+      vectorizeFormData.append('image', blob, 'image.png');
       vectorizeFormData.append('model', 'recraftv4_1_pro_vector');
 
       const recraftVectorRes = await fetch("https://external.api.recraft.ai/v1/images/vectorize", {
