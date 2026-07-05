@@ -176,6 +176,10 @@ export default function StartScreen() {
 
   const handleDrop = (e) => {
     e.preventDefault();
+    if (!user) {
+      handleLogin();
+      return;
+    }
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFileUpload(e.dataTransfer.files[0]);
     }
@@ -217,10 +221,18 @@ export default function StartScreen() {
         </div>
 
         <div className="start-buttons">
-          <button className="start-btn" onClick={(e) => { e.stopPropagation(); setShowModal(true); }} disabled={isUploading || !user} style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+          <button className="start-btn" onClick={(e) => { 
+            e.stopPropagation(); 
+            if (!user) { handleLogin(); return; }
+            setShowModal(true); 
+          }} disabled={isUploading} style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
             {isUploading ? <><Monitor size={16} className="animate-pulse" /> Creating...</> : <><FilePlus size={16} /> New Project</>}
           </button>
-          <button className="start-btn" onClick={(e) => { e.stopPropagation(); fileInputRef.current.click(); }} disabled={isUploading || !user} style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+          <button className="start-btn" onClick={(e) => { 
+            e.stopPropagation(); 
+            if (!user) { handleLogin(); return; }
+            fileInputRef.current.click(); 
+          }} disabled={isUploading} style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
             {isUploading ? <><Monitor size={16} className="animate-pulse" /> Uploading...</> : <><Monitor size={16} /> Open From Computer</>}
           </button>
         </div>

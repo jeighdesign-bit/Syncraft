@@ -116,11 +116,11 @@ CRITICAL RULES:
       } else {
         prompt = `You are a master Sublimation & Graphic Pattern Extractor. Extract the EXACT flat graphic from the t-shirt mockup.
 CRITICAL RULES (FOLLOW STRICTLY):
-1. PIXEL-PERFECT CLONING: Copy every texture, honeycomb, splatter, or intricate geometric pattern exactly. DO NOT simplify.
-2. TEXT & WATERMARK ERASURE: Remove ALL typography, watermarks, and logos. Seamlessly clone the surrounding pattern to fill the gaps.
-3. ABSOLUTE FLATTENING: Remove all folds, wrinkles, highlights, and fabric textures. Return ONLY the pure 2D digital artwork.
-4. CMYK OPTIMIZED: Enhance the colors to be vibrant, rich, and ready for sublimation printing. Ensure edges are anti-aliased and clean.
-Output the purest, highest-quality flattened design possible.`;
+1. NO TEXT OR LOGOS (EXTREMELY IMPORTANT): YOU MUST DELETE AND ERASE ALL LETTERS, NUMBERS, WORDS, TYPOGRAPHY, "TEAM NAME", "00", LOGOS, OR WATERMARKS. IF THERE IS TEXT IN THE ORIGINAL IMAGE, DO NOT DRAW IT. SEAMLESSLY CLONE THE SURROUNDING BACKGROUND/PATTERN INSTEAD. FAILURE TO REMOVE TEXT IS UNACCEPTABLE.
+2. EXACT COLOR MATCHING (CRITICAL): You MUST preserve the EXACT original colors, hues, and gradients. Do NOT change the color palette. If the original image has bright orange/yellow gradients, your output MUST have those exact same colors. Do not grayscale or alter the vibrancy.
+3. PIXEL-PERFECT CLONING: Copy every texture, honeycomb, splatter, or intricate geometric pattern exactly. DO NOT simplify.
+4. ABSOLUTE FLATTENING: Remove all folds, wrinkles, highlights, shadows, and fabric textures. Return ONLY the pure 2D digital artwork.
+Output the purest, highest-quality flattened design possible with ZERO TEXT and EXACT ORIGINAL COLORS.`;
       }
 
       const result = await model.generateContent({
