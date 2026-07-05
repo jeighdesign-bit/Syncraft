@@ -274,7 +274,6 @@ export default function Workspace() {
           console.error("Refund request failed", refundErr);
         }
 
-        let errorMsg = error.message;
         if (errorMsg.includes("504") || errorMsg.includes("Failed to fetch")) {
           errorMsg = "Request Timed Out. Please crop the image to make it simpler and try again.";
         }
