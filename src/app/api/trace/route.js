@@ -88,22 +88,38 @@ export async function POST(request) {
       // STAGE 1: GEMINI 3 PRO IMAGE -> RASTER PNG
       // ==========================================
       console.log(`[API Step 1] Generating Image with Gemini 3 Pro for Project ${projectId}...`);
-      const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image" });
-
+      
       let base64Image;
       let mimeType = "image/png";
 
       if (croppedBase64) {
-        const split = croppedBase64.split(",");
-        base64Image = split[1];
-        mimeType = split[0].split(":")[1].split(";")[0];
-      } else {
+        console.log(`[API Step 1] Bypassing Gemini! Image is already cropped. Fetching cropped image...`);
+        // BYPASS GEMINI! If it's cropped, we just pass the cropped image as the output
         const imageResponse = await fetch(project.original_image_url);
         if (!imageResponse.ok) throw new Error("Failed to fetch image from URL");
+        
         const arrayBuffer = await imageResponse.arrayBuffer();
-        base64Image = Buffer.from(arrayBuffer).toString("base64");
-        mimeType = imageResponse.headers.get("content-type") || "image/png";
+        const generatedImageBuffer = Buffer.from(arrayBuffer);
+        let generatedMimeType = imageResponse.headers.get("content-type") || "image/png";
+        let generatedExt = generatedMimeType.split("/")[1] || "png";
+        if (generatedExt === "jpeg") generatedExt = "jpg";
+
+        const cfRasterFileName = `projects/${projectId}/generated_flat_${Date.now()}.${generatedExt}`;
+        const finalRasterUrl = await uploadToR2(generatedImageBuffer, cfRasterFileName, generatedMimeType);
+
+        await adminSupabase.from('projects').update({ generated_image_url: finalRasterUrl, ai_prompt: null }).eq('id', projectId);
+
+        return NextResponse.json({ success: true, step: 1, generated_image_url: finalRasterUrl });
       }
+
+      // If NOT cropped, we must use Gemini
+      const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image" });
+
+      const imageResponse = await fetch(project.original_image_url);
+      if (!imageResponse.ok) throw new Error("Failed to fetch image from URL");
+      const arrayBuffer = await imageResponse.arrayBuffer();
+      base64Image = Buffer.from(arrayBuffer).toString("base64");
+      mimeType = imageResponse.headers.get("content-type") || "image/png";
 
       let prompt = "";
       if (project.trace_type === 'logo') {
