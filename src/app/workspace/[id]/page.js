@@ -30,6 +30,7 @@ export default function Workspace() {
   const [crop, setCrop] = useState();
   const [completedCrop, setCompletedCrop] = useState(null);
   const [cropError, setCropError] = useState("");
+  const [isSavingCrop, setIsSavingCrop] = useState(false);
   const imgRef = useRef(null);
   
   // Compare Slider State
@@ -130,6 +131,7 @@ export default function Workspace() {
     const base64 = canvas.toDataURL("image/jpeg", 0.85);
     
     setShowCropModal(false);
+    setIsSavingCrop(true);
     logMsg("[System] Saving cropped image permanently...");
     
     try {
@@ -151,6 +153,8 @@ export default function Workspace() {
       logMsg("[Success] Crop applied and saved! You can now re-trace.", "success");
     } catch (err) {
       logMsg(`[Error] Failed to save crop: ${err.message}`, "error");
+    } finally {
+      setIsSavingCrop(false);
     }
   };
 
@@ -543,6 +547,8 @@ export default function Workspace() {
                   )}
                   {project.generated_image_url ? (
                     <img src={`/api/proxy?url=${encodeURIComponent(project.generated_image_url)}`} alt="Generated Raster" style={{width: '100%', height: '100%', objectFit: 'contain'}} referrerPolicy="no-referrer" />
+                  ) : traceState === "step1" && project.original_image_url ? (
+                    <img src={`/api/proxy?url=${encodeURIComponent(project.original_image_url)}`} alt="Preview" style={{width: '100%', height: '100%', objectFit: 'contain', filter: 'grayscale(100%)'}} referrerPolicy="no-referrer" />
                   ) : (
                     <div className="placeholder-node">Awaiting Execution</div>
                   )}
@@ -572,6 +578,8 @@ export default function Workspace() {
                   )}
                   {project.upscaled_image_url ? (
                     <img src={`/api/proxy?url=${encodeURIComponent(project.upscaled_image_url)}`} alt="Upscaled Raster" style={{width: '100%', height: '100%', objectFit: 'contain'}} referrerPolicy="no-referrer" />
+                  ) : traceState === "step2" && project.generated_image_url ? (
+                    <img src={`/api/proxy?url=${encodeURIComponent(project.generated_image_url)}`} alt="Preview" style={{width: '100%', height: '100%', objectFit: 'contain', filter: 'grayscale(100%)'}} referrerPolicy="no-referrer" />
                   ) : (
                     <div className="placeholder-node">Awaiting Execution</div>
                   )}
@@ -601,6 +609,8 @@ export default function Workspace() {
                   )}
                   {project.svg_url ? (
                     <img src={`/api/proxy?url=${encodeURIComponent(project.svg_url)}`} alt="Vector" style={{width: '100%', height: '100%', objectFit: 'contain'}} referrerPolicy="no-referrer" />
+                  ) : traceState === "step3" && project.upscaled_image_url ? (
+                    <img src={`/api/proxy?url=${encodeURIComponent(project.upscaled_image_url)}`} alt="Preview" style={{width: '100%', height: '100%', objectFit: 'contain', filter: 'grayscale(100%)'}} referrerPolicy="no-referrer" />
                   ) : (
                     <div className="placeholder-node">Awaiting Execution</div>
                   )}
@@ -651,15 +661,15 @@ export default function Workspace() {
                     background: (userCredits !== null && userCredits <= 0) ? '#444' : 'linear-gradient(90deg, #FFD700, #FFA500)', 
                     color: (userCredits !== null && userCredits <= 0) ? '#888' : '#000',
                     border: 'none',
-                    cursor: (userCredits !== null && userCredits <= 0) ? 'not-allowed' : (traceState !== "idle" ? 'not-allowed' : 'pointer'),
-                    opacity: traceState !== "idle" ? 0.7 : 1
+                    cursor: (userCredits !== null && userCredits <= 0) ? 'not-allowed' : ((traceState !== "idle" || isSavingCrop) ? 'not-allowed' : 'pointer'),
+                    opacity: (traceState !== "idle" || isSavingCrop) ? 0.7 : 1
                   }} 
                   onClick={handleExecuteTrace}
-                  disabled={traceState !== "idle"}
+                  disabled={traceState !== "idle" || isSavingCrop}
                 >
-                  {traceState !== "idle" ? "Processing..." : (
+                  {isSavingCrop ? "Saving Crop..." : (traceState !== "idle" ? "Processing..." : (
                     (userCredits !== null && userCredits <= 0) ? "No Credits Remaining" : "Run Auto-Trace (-1 Credit)"
-                  )}
+                  ))}
                 </button>
               )}
 
