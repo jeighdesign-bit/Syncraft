@@ -169,7 +169,7 @@ export default function Workspace() {
       // Step 1: Gemini
       setTraceState("step1");
       setConsoleLogs([{ text: "[Step 1] Analyzing Image with DesaynVision™...", type: "info" }]);
-      const res1 = await fetch("/api/trace", {
+      const res1 = await fetch("/api/trace/step1", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId: project.id, step: 1 })
