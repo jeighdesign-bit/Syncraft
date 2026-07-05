@@ -123,14 +123,25 @@ CRITICAL RULES (FOLLOW STRICTLY):
 Output the purest, highest-quality flattened design possible with ZERO TEXT and EXACT ORIGINAL COLORS.`;
       }
 
-      const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { data: base64Image, mimeType } }] }],
-        generationConfig: {
-          temperature: 0.1, // Near zero temperature for strict instruction adherence and zero hallucinations
-          topP: 0.8,
-          topK: 10
+      let result;
+      let retries = 3;
+      for (let i = 0; i < retries; i++) {
+        try {
+          result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { data: base64Image, mimeType } }] }],
+            generationConfig: {
+              temperature: 0.1, // Near zero temperature for strict instruction adherence and zero hallucinations
+              topP: 0.8,
+              topK: 10
+            }
+          });
+          break; // Success, exit retry loop
+        } catch (genErr) {
+          if (i === retries - 1) throw genErr; // Throw if last retry fails
+          console.warn(`[Gemini API] Attempt ${i + 1} failed, retrying...`, genErr.message);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // 1s, 2s backoff
         }
-      });
+      }
       
       // Extract the generated image
       const parts = result.response.candidates[0].content.parts;
