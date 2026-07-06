@@ -759,7 +759,7 @@ export default function Workspace() {
                   )}
                 </div>
                 <div className="node-footer" style={{ padding: '8px 12px', borderTop: '1px solid #222', fontSize: '11px', color: '#555', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Gemini 3.1 Flash</span>
+                  <span>Gemini 3 Pro</span>
                   <span className={traceState === 'step1' ? 'param-active-pulse' : ''} style={{ color: traceState === 'step1' ? '#FFD700' : project.generated_image_url ? '#4ade80' : '#555' }}>
                     {traceState === 'step1' ? '▶ Processing...' : project.generated_image_url ? '✓ Complete' : '○ Pending'}
                   </span>

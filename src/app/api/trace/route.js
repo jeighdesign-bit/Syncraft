@@ -115,20 +115,14 @@ CRITICAL RULES:
 3. GEOMETRY: Ensure perfect symmetry and smooth curves. Use solid flat colors only. 
 4. SVG-READY: The output must look like a perfectly finished, professional digital vector logo.`;
       } else {
-        prompt = `You are a master Graphic Pattern Extractor AI (DesaynVision Core). Your ONLY job is to extract the pure, underlying 2D graphic background design/texture from the provided image and recreate it as a flawless, continuous flat canvas.
+        prompt = `You are an elite 'Magic Eraser' and 'Content-Aware Fill' AI. Do NOT redraw, recreate, or reimagine the image. Your ONLY job is to erase the foreground elements and seamlessly patch the holes.
 
-CRITICAL DIRECTIVES (YOU MUST OBEY EVERY SINGLE RULE WITHOUT EXCEPTION):
-
-1. ABSOLUTELY NO TYPOGRAPHY OR TEXT (CRITICAL): You are STRICTLY FORBIDDEN from generating or reproducing any words, letters, numbers, fonts, typography, team names, or character symbols. If you see text in the original image (like team names or numbers), you MUST ERASE IT completely.
-2. PAINT OVER ALL LOGOS: If there is a main chest logo, sponsor logo, or brand emblem, do NOT draw it. You MUST seamlessly paint over the area using the surrounding abstract background texture.
-3. SEAMLESS BACKGROUND TEXTURE ONLY: Your final output must be 100% pure background texture/pattern. No foreground elements whatsoever. If the background has scratch marks, scales, waves, or honeycombs, extrapolate and fill the entire canvas with those background elements only.
-4. RECTANGULAR CANVAS FORMAT: Do not draw a t-shirt, jersey, or clothing shape. Output a perfectly rectangular or square graphic pattern. The pattern must extend fully to all 4 edges of the image.
-5. NO CLOTHING SILHOUETTES (ZERO TOLERANCE): Do NOT draw collars, necklines, sleeves, armholes, or seams. If your output resembles a piece of apparel, you have failed the objective. 
-6. DESTROY ALL 3D ARTIFACTS: Eliminate all fabric folds, wrinkles, lighting shadows, highlights, and cloth textures. The output must look like a flat, digital 2D vector graphic before it was ever printed on a shirt.
-7. EXACT COLOR MATCHING: You must perfectly preserve the exact color palette, gradients, and contrast of the original background pattern.
-8. GEOMETRIC CONTINUITY: If there are lines, stripes, or repeating shapes in the background, ensure they flow continuously across the space where the text/logos used to be.
-9. NO WATERMARKS: Do not generate any watermarks, signatures, or AI artifacts.
-10. FINAL VERIFICATION: If the output contains even a single letter, number, or a shirt collar, you have FAILED completely. It must be a pure, flat, text-free texture.`;
+CRITICAL DIRECTIVES:
+1. PRESERVE THE ORIGINAL EXACTLY: You MUST keep 95% of the image exactly, 100% identical to the original. Do not move, resize, or alter the existing paint splatters, gradients, or background graphics.
+2. ERASE ALL TEXT AND LOGOS: Identify all text, typography, letters, numbers, and chest logos in the image. You must erase them completely.
+3. INPAINT / CONTENT-AWARE FILL: Where you erased the text/logos, seamlessly fill in those blank spots by extending the surrounding background texture (e.g., paint splatters, halftone dots, solid colors).
+4. NO APPAREL SHAPES: Erase the collar, sleeves, and necklines. Fill those edges with the background pattern so the final output is a perfect rectangle graphic.
+5. NO REDRAWING: I repeat, do not generate a "similar" background. It must be the EXACT SAME background, just with the text removed and the holes patched.`;
       }
 
       let result;
