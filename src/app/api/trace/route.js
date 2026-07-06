@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { uploadToR2 } from "@/lib/cloudflare";
 import { supabase, adminSupabase } from "@/lib/supabase";
 
-export const maxDuration = 60; 
+export const runtime = 'edge';
 
 const RECRAFT_API_KEY = process.env.RECRAFT_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -85,10 +84,10 @@ export async function POST(request) {
 
     if (step === 1) {
       // ==========================================
-      // STAGE 1: GEMINI 3.1 FLASH IMAGE -> RASTER PNG
+      // STAGE 1: GEMINI 3 PRO IMAGE -> RASTER PNG (EDGE RUNTIME)
       // ==========================================
-      console.log(`[API Step 1] Generating Image with Gemini 3.1 Flash Image for Project ${projectId}...`);
-      const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-image" });
+      console.log(`[API Step 1] Generating Image with Gemini 3 Pro Image for Project ${projectId}...`);
+      const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image" });
 
       let base64Image;
       let mimeType = "image/png";
@@ -179,12 +178,8 @@ CRITICAL DIRECTIVES (YOU MUST OBEY EVERY SINGLE RULE WITHOUT EXCEPTION):
         }
       }
 
-      const cfRasterFileName = `projects/${projectId}/generated_flat_${Date.now()}.${generatedExt}`;
-      const finalRasterUrl = await uploadToR2(generatedImageBuffer, cfRasterFileName, generatedMimeType);
-
-      await adminSupabase.from('projects').update({ generated_image_url: finalRasterUrl, ai_prompt: null }).eq('id', projectId);
-
-      return NextResponse.json({ success: true, step: 1, generated_image_url: finalRasterUrl });
+      // Return raw base64 back to client to save via Node route
+      return NextResponse.json({ success: true, step: 1, base64: generatedImageBuffer.toString('base64'), mimeType: generatedMimeType });
     }
 
 
@@ -220,65 +215,8 @@ CRITICAL DIRECTIVES (YOU MUST OBEY EVERY SINGLE RULE WITHOUT EXCEPTION):
       const upscaleData = await recraftUpscaleRes.json();
       const upscaledUrl = upscaleData.image.url;
 
-      // Download and save to R2
-      const upscaledImgRes = await fetch(upscaledUrl);
-      const upscaledImgBuffer = Buffer.from(await upscaledImgRes.arrayBuffer());
-      const cfUpscaledFileName = `projects/${projectId}/upscaled_${Date.now()}.${ext}`;
-      const finalUpscaledUrl = await uploadToR2(upscaledImgBuffer, cfUpscaledFileName, mime);
-
-      await supabase.from('projects').update({ upscaled_image_url: finalUpscaledUrl }).eq('id', projectId);
-
-      return NextResponse.json({ success: true, step: 2, upscaled_image_url: finalUpscaledUrl });
-    }
-
-    if (step === 3) {
-      // ==========================================
-      // STAGE 3: VECTORIZE THE UPSCALED IMAGE (RECRAFT)
-      // ==========================================
-      console.log(`[API Step 3] Running Recraft Vectorizer for Project ${projectId}...`);
-      if (!project.upscaled_image_url) throw new Error("No upscaled image found for Step 3");
-
-      const rasterImgRes = await fetch(project.upscaled_image_url);
-      if (!rasterImgRes.ok) throw new Error("Failed to fetch upscaled image from R2");
-      const rawBuffer = Buffer.from(await rasterImgRes.arrayBuffer());
-
-      // Convert image to lossless PNG to prevent JPEG compression artifacts during vectorization
-      const sharp = (await import('sharp')).default;
-      const compressedBuffer = await sharp(rawBuffer)
-        .resize({ width: 1536, height: 1536, fit: 'inside', withoutEnlargement: true })
-        .png({ effort: 7 })
-        .toBuffer();
-      console.log(`[API Step 3] Original: ${rawBuffer.length} bytes → PNG Compressed: ${compressedBuffer.length} bytes`);
-
-      const vectorizeFormData = new FormData();
-      const blob = new Blob([compressedBuffer], { type: 'image/png' });
-      vectorizeFormData.append('image', blob, 'image.png');
-
-      const recraftVectorRes = await fetch("https://external.api.recraft.ai/v1/images/vectorize", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${RECRAFT_API_KEY}` },
-        body: vectorizeFormData,
-        signal: AbortSignal.timeout(55000)
-      });
-
-      if (!recraftVectorRes.ok) {
-        const errText = await recraftVectorRes.text();
-        throw new Error(`Vectorization failed: ${errText}`);
-      }
-
-      const vectorData = await recraftVectorRes.json();
-      const vectorUrl = vectorData.image.url;
-
-      const svgRes = await fetch(vectorUrl);
-      const svgBuffer = Buffer.from(await svgRes.arrayBuffer());
-      const cfSvgFileName = `projects/${projectId}/vector_${Date.now()}.svg`;
-      const finalSvgUrl = await uploadToR2(svgBuffer, cfSvgFileName, "image/svg+xml");
-
-      await supabase.from('projects').update({ svg_url: finalSvgUrl }).eq('id', projectId);
-
-      console.log(`[Billing] Step 3 complete. Credit was already deducted in Step 1.`);
-
-      return NextResponse.json({ success: true, step: 3, svg_url: finalSvgUrl });
+      // Return raw recraft url back to client to save via Node route
+      return NextResponse.json({ success: true, step: 2, fileUrl: upscaledUrl, mimeType: mime });
     }
 
     return NextResponse.json({ error: "Invalid step parameter" }, { status: 400 });

@@ -332,7 +332,17 @@ export default function Workspace() {
       }
       const data1 = await res1.json();
       
-      setProject(prev => ({ ...prev, generated_image_url: data1.generated_image_url }));
+      // Step 1.5: Save to R2
+      setConsoleLogs(prev => [...prev, { text: "[Step 1.5] Saving extracted image...", type: "info" }]);
+      const save1 = await fetch("/api/save-asset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id, step: 1, base64: data1.base64, mimeType: data1.mimeType })
+      });
+      if (!save1.ok) throw new Error("Failed to save image");
+      const saveData1 = await save1.json();
+      
+      setProject(prev => ({ ...prev, generated_image_url: saveData1.url }));
       setConsoleLogs(prev => [...prev, { text: "[Success] Image Extracted by DesaynVision™!", type: "success" }]);
 
       // Step 2: Upscale
@@ -354,16 +364,26 @@ export default function Workspace() {
       }
       const data2 = await res2.json();
 
-      setProject(prev => ({ ...prev, upscaled_image_url: data2.upscaled_image_url }));
+      // Step 2.5: Save Upscaled to R2
+      setConsoleLogs(prev => [...prev, { text: "[Step 2.5] Saving upscaled image...", type: "info" }]);
+      const save2 = await fetch("/api/save-asset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id, step: 2, fileUrl: data2.fileUrl, mimeType: data2.mimeType })
+      });
+      if (!save2.ok) throw new Error("Failed to save upscaled image");
+      const saveData2 = await save2.json();
+
+      setProject(prev => ({ ...prev, upscaled_image_url: saveData2.url }));
       setConsoleLogs(prev => [...prev, { text: "[Success] Upscale Complete!", type: "success" }]);
 
       // Step 3: Vectorize
       setTraceState("step3");
       setConsoleLogs(prev => [...prev, { text: "[Step 3] Vectorizing with TrueVector™ Core...", type: "info" }]);
-      const res3 = await fetch("/api/trace", {
+      const res3 = await fetch("/api/trace-step3", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: project.id, step: 3 })
+        body: JSON.stringify({ projectId: project.id })
       });
       if (!res3.ok) {
         const isJson = res3.headers.get("content-type")?.includes("application/json");
