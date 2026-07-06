@@ -634,6 +634,24 @@ export default function Workspace() {
         >
           <ZoomIn size={11} /> Fit
         </button>
+        {project?.svg_url && (
+          <button
+            onClick={handleDownload}
+            title="Download Vector (SVG)"
+            style={{ marginRight: '8px', background: '#FFD700', border: '1px solid #FFD700', color: '#000', borderRadius: '4px', padding: '3px 10px', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold' }}
+          >
+            <Download size={11} /> Download SVG
+          </button>
+        )}
+        {project?.upscaled_image_url && (
+          <button
+            onClick={handleDownloadRaster}
+            title="Download High-Res PNG"
+            style={{ marginRight: '8px', background: 'transparent', border: '1px solid #4ade80', color: '#4ade80', borderRadius: '4px', padding: '3px 10px', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px' }}
+          >
+            <Download size={11} /> Download HD PNG
+          </button>
+        )}
       </div>
 
       <main className="main-workspace">
