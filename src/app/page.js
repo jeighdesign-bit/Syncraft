@@ -3,11 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { FilePlus, Monitor, Image as ImageIcon, Trash2, Edit3, MoreVertical, Check, X, Shirt, PenTool, LogIn, User, Coins, CreditCard, Package, Tag, Mail, Smartphone, CheckCircle } from "lucide-react";
+import { ImageIcon, Monitor, LogIn, FilePlus, User, Edit3, Trash2, MoreVertical, X, Check, Shirt, Smartphone, ArrowRight, CheckCircle, Package, Tag, Mail } from "lucide-react";
+import { toast } from "@/components/Toast";
 import "./globals.css";
 
 export default function StartScreen() {
   const [recentProjects, setRecentProjects] = useState([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   
   // States for New Project Modal
@@ -21,6 +23,10 @@ export default function StartScreen() {
   const [credits, setCredits] = useState(0);
   const [showTopUpModal, setShowTopUpModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showSamplesModal, setShowSamplesModal] = useState(false);
+  const [sampleSliderPos, setSampleSliderPos] = useState(50);
+  const [sampleSliderPos2, setSampleSliderPos2] = useState(50);
+  const [isDraggingGlobal, setIsDraggingGlobal] = useState(false);
   const [topUpStep, setTopUpStep] = useState(1); // 1=pick plan, 2=submit proof
   const [topUpForm, setTopUpForm] = useState({ plan: 'pro', txnRef: '', screenshotName: '', screenshotFile: null });
   const [topUpSubmitted, setTopUpSubmitted] = useState(false);
@@ -34,6 +40,17 @@ export default function StartScreen() {
 
   useEffect(() => {
     fetchSession();
+    
+    const handleGlobalDragOver = (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.types.includes('Files')) {
+        setIsDraggingGlobal(true);
+      }
+    };
+    window.addEventListener("dragover", handleGlobalDragOver);
+    return () => {
+      window.removeEventListener("dragover", handleGlobalDragOver);
+    };
   }, []);
 
   const fetchSession = async () => {
@@ -42,6 +59,8 @@ export default function StartScreen() {
       setUser(session.user);
       fetchRecentProjects(session.user.id);
       fetchCredits(session.user.id);
+    } else {
+      setIsLoadingProjects(false);
     }
   };
 
@@ -74,6 +93,7 @@ export default function StartScreen() {
   };
 
   const fetchRecentProjects = async (userId) => {
+    setIsLoadingProjects(true);
     const { data, error } = await supabase
       .from('projects')
       .select('*')
@@ -84,6 +104,7 @@ export default function StartScreen() {
     if (!error && data) {
       setRecentProjects(data);
     }
+    setIsLoadingProjects(false);
   };
 
   const startEditing = (e, proj) => {
@@ -146,25 +167,59 @@ export default function StartScreen() {
     
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("image", file);
-      // Send the modal selections or defaults
-      formData.append("projectName", modalProjectName);
-      formData.append("traceType", modalTraceType);
-      if (user) formData.append("userId", user.id);
+      // 1. Get presigned URL
+      const sessionRes = await supabase.auth.getSession();
+      const token = sessionRes.data.session?.access_token;
+      
+      if (!token) {
+        setIsUploading(false);
+        handleLogin();
+        return;
+      }
 
+      const urlRes = await fetch("/api/upload-url", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ fileName: file.name, contentType: file.type })
+      });
+      
+      const urlData = await urlRes.json();
+      if (!urlRes.ok || !urlData.uploadUrl) {
+        throw new Error(urlData.error || "Failed to get upload URL from server");
+      }
+      const { uploadUrl, publicUrl } = urlData;
+
+      // 2. Upload directly to Cloudflare R2
+      const putRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file
+      });
+      
+      if (!putRes.ok) throw new Error("Failed to upload image to storage");
+
+      // 3. Create project in Database
       const response = await fetch("/api/upload", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrl: publicUrl,
+          projectName: modalProjectName || file.name,
+          traceType: modalTraceType,
+          userId: user.id
+        })
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.details || "Upload failed");
+      if (!response.ok) throw new Error(data.details || "Project creation failed");
 
       router.push(`/workspace/${data.projectId}`);
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Failed to create project: " + error.message);
+      toast.error("Failed to create project: " + error.message);
       setIsUploading(false);
     }
   };
@@ -187,6 +242,28 @@ export default function StartScreen() {
 
   return (
     <div className="start-screen-container" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} onClick={() => setOpenMenuId(null)}>
+      {isDraggingGlobal && (
+        <div 
+           style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(26,26,26,0.95)', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '4px dashed #FFD700', borderRadius: '0' }}
+           onDragOver={(e) => e.preventDefault()}
+           onDragLeave={() => setIsDraggingGlobal(false)}
+           onDrop={(e) => {
+              e.preventDefault();
+              setIsDraggingGlobal(false);
+              if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                if (!user) { handleLogin(); return; }
+                handleFileUpload(e.dataTransfer.files[0]);
+              }
+           }}
+        >
+          <div style={{ background: '#FFD700', padding: '24px', borderRadius: '50%', marginBottom: '24px' }}>
+            <ImageIcon size={48} color="#000" />
+          </div>
+          <h2 style={{ color: '#FFD700', fontSize: '32px', margin: 0, fontWeight: '800' }}>Drop your image anywhere</h2>
+          <p style={{ color: '#aaa', fontSize: '16px', marginTop: '12px' }}>Release to start tracing instantly.</p>
+        </div>
+      )}
+
       <div className="start-center-box">
         
         <div className="start-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '20px' }}>
@@ -235,13 +312,33 @@ export default function StartScreen() {
           }} disabled={isUploading} style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
             {isUploading ? <><Monitor size={16} className="animate-pulse" /> Uploading...</> : <><Monitor size={16} /> Open From Computer</>}
           </button>
+          <button className="start-btn" onClick={(e) => { 
+            e.stopPropagation(); 
+            setShowSamplesModal(true); 
+          }} disabled={isUploading} style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+            <ImageIcon size={16} /> View Samples
+          </button>
         </div>
 
         <div className="start-drop-zone">
           Drop any image files here
         </div>
 
-        {recentProjects.length > 0 && (
+        {isLoadingProjects ? (
+          <div className="recent-projects">
+            <h3>Recent Projects</h3>
+            <div className="recent-grid">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className="recent-card skeleton-card">
+                  <div className="skeleton-thumb"></div>
+                  <div className="skeleton-info">
+                    <div className="skeleton-text"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : recentProjects.length > 0 ? (
           <div className="recent-projects">
             <h3>Recent Projects</h3>
             <div className="recent-grid">
@@ -282,6 +379,17 @@ export default function StartScreen() {
               ))}
             </div>
           </div>
+        ) : (
+          user && (
+            <div className="recent-projects" style={{ textAlign: 'center', padding: '40px 0', background: '#1a1a1a', border: '1px dashed #333', marginTop: '24px' }}>
+               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+                 <div style={{ background: '#222', padding: '16px', borderRadius: '50%', border: '1px solid #333' }}>
+                    <ImageIcon size={32} color="#555" />
+                 </div>
+               </div>
+               <p style={{ color: '#888', fontSize: '14px', margin: 0 }}>No projects yet. Upload a design above to start your first trace.</p>
+            </div>
+          )
         )}
 
         {/* HOW TO USE / DEMO VIDEO SECTION */}
@@ -293,8 +401,43 @@ export default function StartScreen() {
             muted 
             loop 
             playsInline 
-            style={{ width: '100%', maxWidth: '600px', borderRadius: '12px', border: '1px solid #222', boxShadow: '0 8px 30px rgba(0,0,0,0.5)' }} 
+            style={{ width: '100%', maxWidth: '600px', borderRadius: '0', border: '1px solid #333' }} 
           />
+        </div>
+
+        {/* EDUCATIONAL SECTION */}
+        <div className="edu-section" style={{ marginTop: '80px', width: '100%', borderTop: '1px solid #222', paddingTop: '60px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', textAlign: 'left' }}>
+            
+            {/* Col 1 */}
+            <div style={{ background: '#111', border: '1px solid #333', padding: '32px', display: 'flex', flexDirection: 'column' }}>
+              <h3 style={{ fontSize: '20px', color: '#FFD700', marginBottom: '16px', fontWeight: 'bold' }}>How does it work</h3>
+              <p style={{ color: '#aaa', fontSize: '14px', lineHeight: '1.6', flex: 1 }}>
+                Vectorization of raster images is done by converting pixel color information into simple geometric objects. The most common variant is looking over edge detection areas of the same or similar brightness or color, which are then expressed as graphic primitives like lines, circles, and curves.
+              </p>
+            </div>
+
+            {/* Col 2 */}
+            <div style={{ background: '#111', border: '1px solid #333', padding: '32px', display: 'flex', flexDirection: 'column' }}>
+              <h3 style={{ fontSize: '20px', color: '#fff', marginBottom: '16px', fontWeight: 'bold' }}>Raster Graphics</h3>
+              <p style={{ color: '#aaa', fontSize: '14px', lineHeight: '1.6', flex: 1 }}>
+                A Raster graphics image is a rectangular grid of pixels, in which each pixel (or point) has an associated color value. Changing the size of the raster image mostly results in loss of apparent quality.
+                <br/><br/>
+                <i style={{ color: '#888' }}>examples: photos</i>
+              </p>
+            </div>
+
+            {/* Col 3 */}
+            <div style={{ background: '#111', border: '1px solid #333', padding: '32px', display: 'flex', flexDirection: 'column' }}>
+              <h3 style={{ fontSize: '20px', color: '#fff', marginBottom: '16px', fontWeight: 'bold' }}>Vector Graphics</h3>
+              <p style={{ color: '#aaa', fontSize: '14px', lineHeight: '1.6', flex: 1 }}>
+                Vector graphics are not based on pixels but on primitives such as points, lines, curves which are represented by mathematical expressions. Without a loss in quality, vector graphics are easily scalable and rotatable.
+                <br/><br/>
+                <i style={{ color: '#888' }}>examples: cliparts, logos, tattoos, decals, stickers, t-shirt designs</i>
+              </p>
+            </div>
+
+          </div>
         </div>
 
       </div>
@@ -372,7 +515,7 @@ export default function StartScreen() {
       {/* ===== ONBOARDING MODAL (shown once for new users) ===== */}
       {showOnboarding && (
         <div className="modal-overlay" style={{ zIndex: 9999 }}>
-          <div className="modal-content" style={{ maxWidth: '500px', padding: '40px', textAlign: 'center', background: '#0a0a0a', border: '1px solid #222', borderRadius: '16px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" style={{ maxWidth: '500px', padding: '40px', textAlign: 'center', background: '#0a0a0a', border: '1px solid #222', borderRadius: '0' }} onClick={(e) => e.stopPropagation()}>
             
             {/* Header */}
             <div style={{ marginBottom: '32px' }}>
@@ -386,7 +529,7 @@ export default function StartScreen() {
             </div>
 
             {/* How it works */}
-            <div style={{ background: '#111', border: '1px solid #222', borderRadius: '12px', padding: '24px', textAlign: 'left', marginBottom: '24px' }}>
+            <div style={{ background: '#111', border: '1px solid #222', borderRadius: '0', padding: '24px', textAlign: 'left', marginBottom: '24px' }}>
               <p style={{ margin: '0 0 20px', fontWeight: '700', color: '#FFD700', fontSize: '12px', letterSpacing: '1px', textTransform: 'uppercase' }}>How DesaynClaw Works</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
@@ -414,7 +557,7 @@ export default function StartScreen() {
             </div>
 
             {/* Credit explainer */}
-            <div style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '12px', padding: '24px', marginBottom: '32px' }}>
+            <div style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '0', padding: '24px', marginBottom: '32px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '12px' }}>
                 <p style={{ margin: 0, fontWeight: '800', color: '#fff', fontSize: '15px' }}>1 Credit = 1 AI Generation</p>
               </div>
@@ -429,7 +572,7 @@ export default function StartScreen() {
             <button 
               className="start-btn" 
               onClick={() => setShowOnboarding(false)}
-              style={{ width: '100%', padding: '16px', fontSize: '15px', fontWeight: '800', background: '#FFD700', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', transition: 'opacity 0.2s' }}
+              style={{ width: '100%', padding: '16px', fontSize: '15px', fontWeight: '800', background: '#FFD700', color: '#000', border: 'none', borderRadius: '0', cursor: 'pointer', transition: 'opacity 0.2s' }}
               onMouseOver={e => e.target.style.opacity = '0.9'}
               onMouseOut={e => e.target.style.opacity = '1'}
             >
@@ -442,28 +585,24 @@ export default function StartScreen() {
       {/* Top Up Modal */}
       {showTopUpModal && (
         <div className="modal-overlay" onClick={() => { setShowTopUpModal(false); setTopUpStep(1); setTopUpSubmitted(false); }}>
-          <div className="modal-content" style={{ maxWidth: '800px', width: '100%', padding: '0', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" style={{ maxWidth: '960px', width: '100%', padding: '0', overflow: 'hidden', borderRadius: '0', border: '1px solid #444', background: '#262626' }} onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
-            <div style={{ background: 'linear-gradient(135deg, #111, #1a1a1a)', borderBottom: '1px solid #2a2a2a', padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ background: '#2a2a2a', borderBottom: '1px solid #444', padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Shirt size={18} color="#FFD700" />
-                <span style={{ fontWeight: '700', fontSize: '15px', color: '#fff' }}>Get More Traces</span>
+                <Shirt size={18} color="#fff" />
+                <span style={{ fontWeight: '600', fontSize: '15px', color: '#fff' }}>Get More Traces</span>
               </div>
-              {/* Step Indicator */}
               {!topUpSubmitted && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {[1, 2].map(s => (
-                    <div key={s} style={{ width: '24px', height: '24px', borderRadius: '50%', background: topUpStep >= s ? '#FFD700' : '#333', border: topUpStep >= s ? 'none' : '1px solid #555', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', color: topUpStep >= s ? '#000' : '#666', transition: 'all 0.2s' }}>{s}</div>
+                    <div key={s} style={{ width: '24px', height: '24px', borderRadius: '50%', background: topUpStep >= s ? '#fff' : '#27272a', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '600', color: topUpStep >= s ? '#000' : '#888', transition: 'all 0.2s' }}>{s}</div>
                   ))}
                 </div>
               )}
-              <button onClick={() => { setShowTopUpModal(false); setTopUpStep(1); setTopUpSubmitted(false); }} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: '4px' }}>
-                <X size={16} />
-              </button>
+              <button onClick={() => { setShowTopUpModal(false); setTopUpStep(1); setTopUpSubmitted(false); }} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px' }}><X size={16} /></button>
             </div>
-
-            <div style={{ padding: '24px' }}>
+            <div style={{ background: '#262626', padding: '24px' }}>
 
               {/* ===== SUBMITTED SUCCESS ===== */}
               {topUpSubmitted ? (
@@ -484,137 +623,144 @@ export default function StartScreen() {
               ) : topUpStep === 1 ? (
                 /* ===== STEP 1: CHOOSE PLAN ===== */
                 <>
-                  <p style={{ margin: '0 0 16px', color: '#888', fontSize: '12px' }}>Piliin ang package na gusto mo:</p>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                  <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                    <div style={{ display: 'inline-block', border: '1px solid #555', padding: '4px 12px', fontSize: '11px', fontWeight: '600', color: '#ccc', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '16px', borderRadius: '4px' }}>Pricing Plan</div>
+                    <h2 style={{ margin: '0 0 8px', fontSize: '28px', fontWeight: '700', color: '#fff' }}>Affordable pricing</h2>
+                    <p style={{ margin: 0, color: '#aaa', fontSize: '14px', maxWidth: '500px', marginLeft: 'auto', marginRight: 'auto' }}>Piliin ang credit package na sakto sa pangangailangan mo.</p>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
                     {[
-                      { key: 'starter', label: 'Starter', traces: 10, price: '₱350', desc: 'Para sa paminsan-minsang paggamit' },
-                      { key: 'pro',     label: 'Pro',     traces: 30, price: '₱900', desc: 'Best value · Pinaka-popular', best: true },
-                      { key: 'studio',  label: 'Studio',  traces: 100, price: '₱2,800', desc: 'Para sa madalas na gumagamit' },
+                      { 
+                        key: 'starter', label: 'Starter', traces: 10, price: '₱350', 
+                        desc: 'Ideal for occasional users taking their first steps.',
+                        features: ['10 AI Vector Traces', 'Standard Processing', '7-day storage', 'Email support'] 
+                      },
+                      { 
+                        key: 'pro', label: 'Pro', traces: 30, price: '₱900', 
+                        desc: 'Perfect for growing businesses needing flexibility.',
+                        best: true,
+                        features: ['30 AI Vector Traces', 'Priority Processing', '30-day storage', 'Priority support', 'Early access to models'] 
+                      },
+                      { 
+                        key: 'studio', label: 'Studio', traces: 100, price: '₱2,800', 
+                        desc: 'Best suited for established businesses & heavy users.',
+                        features: ['100 AI Vector Traces', 'Highest Priority Queue', 'Unlimited storage', 'Dedicated support', 'Custom integrations'] 
+                      },
                     ].map(p => (
                       <div 
                         key={p.key} 
-                        onClick={() => setTopUpForm(f => ({ ...f, plan: p.key }))} 
                         style={{ 
-                          background: topUpForm.plan === p.key ? '#1a1a1a' : '#0a0a0a', 
-                          border: `1px solid ${topUpForm.plan === p.key ? '#FFD700' : '#222'}`, 
-                          borderRadius: '12px', padding: '18px 20px', cursor: 'pointer', 
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                          transition: 'all 0.2s ease', position: 'relative',
-                          boxShadow: topUpForm.plan === p.key ? '0 0 20px rgba(255,215,0,0.08)' : 'none'
+                          background: p.best ? '#333' : '#2a2a2a', 
+                          border: `1px solid ${p.best ? '#FFD700' : '#444'}`, 
+                          padding: '32px 24px', 
+                          display: 'flex', flexDirection: 'column', 
+                          position: 'relative',
+                          borderRadius: '6px'
                         }}
                       >
-                        {p.best && <div style={{ position: 'absolute', top: '-10px', right: '20px', background: '#FFD700', color: '#000', fontSize: '10px', fontWeight: '800', padding: '4px 10px', borderRadius: '12px', letterSpacing: '0.5px' }}>POPULAR</div>}
-                        
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                          <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: `2px solid ${topUpForm.plan === p.key ? '#FFD700' : '#444'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {topUpForm.plan === p.key && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FFD700' }} />}
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: '800', fontSize: '18px', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              {p.traces} <span style={{ color: topUpForm.plan === p.key ? '#FFD700' : '#888', fontWeight: '600', fontSize: '15px' }}>Credits</span>
-                            </div>
-                            <div style={{ color: '#666', fontSize: '12px', marginTop: '2px' }}>{p.label} Plan</div>
-                          </div>
+                        {/* Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                          <div style={{ fontSize: '16px', fontWeight: '500', color: '#fff' }}>{p.label}</div>
+                          {p.best && <div style={{ background: '#FFD700', color: '#000', fontSize: '11px', fontWeight: '800', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '4px' }}><CheckCircle size={12} /> Most popular</div>}
                         </div>
 
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '20px', fontWeight: '800', color: topUpForm.plan === p.key ? '#FFD700' : '#fff' }}>{p.price}</div>
-                          <div style={{ display: 'inline-block', background: '#222', color: '#aaa', fontSize: '10px', padding: '3px 8px', borderRadius: '6px', marginTop: '4px', fontWeight: '600' }}>
-                            ₱{(parseInt(p.price.replace(/[^0-9]/g,'')) / p.traces).toFixed(0)} / credit
-                          </div>
+                        {/* Price */}
+                        <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                          <span style={{ fontSize: '36px', fontWeight: '700', color: '#fff', letterSpacing: '-1px' }}>{p.price}</span>
+                          <span style={{ fontSize: '12px', color: '#888' }}>/ {p.traces} credits</span>
+                        </div>
+                        
+                        <p style={{ color: '#aaa', fontSize: '13px', lineHeight: '1.5', margin: '0 0 24px', minHeight: '40px' }}>{p.desc}</p>
+
+                        {/* Button */}
+                        <button 
+                          onClick={() => {
+                            setTopUpForm(f => ({ ...f, plan: p.key }));
+                            setTopUpStep(2);
+                          }}
+                          style={{ 
+                            width: '100%', padding: '12px', 
+                            background: p.best ? '#FFD700' : 'transparent', 
+                            color: p.best ? '#000' : '#d5d5d5', 
+                            border: p.best ? 'none' : '1px solid #555', 
+                            fontWeight: '600', fontSize: '14px', 
+                            cursor: 'pointer', transition: 'all 0.2s',
+                            display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px',
+                            marginBottom: '32px', borderRadius: '4px'
+                          }} 
+                          onMouseOver={e => {
+                            e.target.style.opacity = '0.9';
+                            if (!p.best) { e.target.style.background = '#3a3a3a'; e.target.style.borderColor = '#777'; }
+                          }} 
+                          onMouseOut={e => {
+                            e.target.style.opacity = '1';
+                            if (!p.best) { e.target.style.background = 'transparent'; e.target.style.borderColor = '#555'; }
+                          }}
+                        >
+                          Select Plan <ArrowRight size={14} />
+                        </button>
+
+                        <div style={{ borderTop: '1px solid #444', margin: '0 -24px 24px' }}></div>
+
+                        {/* Features */}
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#888', marginBottom: '16px' }}>What's Included:</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                          {p.features.map((feat, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#d5d5d5', fontSize: '13px' }}>
+                              <Check size={14} color={p.best ? "#FFD700" : "#888"} strokeWidth={3} />
+                              {feat}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))}
                   </div>
-
-                  <button
-                    onClick={() => setTopUpStep(2)}
-                    style={{ width: '100%', padding: '14px', background: '#FFD700', color: '#000', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', transition: 'opacity 0.2s' }}
-                    onMouseOver={e => e.target.style.opacity = '0.9'}
-                    onMouseOut={e => e.target.style.opacity = '1'}
-                  >
-                    Continue to Payment →
-                  </button>
                 </>
               ) : (
                 /* ===== STEP 2: PAY & SUBMIT ===== */
                 <>
-                  {/* Selected plan summary */}
-                  <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#aaa', fontSize: '12px' }}>Selected: <strong style={{ color: '#fff' }}>
-                      {topUpForm.plan === 'starter' ? 'Starter — 10 Credits' : topUpForm.plan === 'pro' ? 'Pro — 30 Credits' : 'Studio — 100 Credits'}
-                    </strong></span>
-                    <span style={{ color: '#FFD700', fontWeight: '800', fontSize: '16px' }}>
-                      {topUpForm.plan === 'starter' ? '₱350' : topUpForm.plan === 'pro' ? '₱900' : '₱2,800'}
-                    </span>
+                  <div style={{ background: '#2a2a2a', border: '1px solid #444', borderRadius: '8px', padding: '12px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#aaa', fontSize: '13px' }}>Selected: <strong style={{ color: '#fff' }}>{topUpForm.plan === 'starter' ? 'Starter — 10 Credits' : topUpForm.plan === 'pro' ? 'Pro — 30 Credits' : 'Studio — 100 Credits'}</strong></span>
+                    <span style={{ color: '#FFD700', fontWeight: '600', fontSize: '15px' }}>{topUpForm.plan === 'starter' ? '₱350' : topUpForm.plan === 'pro' ? '₱900' : '₱2,800'}</span>
                   </div>
-
-                  {/* QR + instructions */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', marginBottom: '24px', alignItems: 'start' }}>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ background: '#fff', borderRadius: '16px', padding: '16px', display: 'inline-block', marginBottom: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
                         <img src="/gcash_qr.png" alt="GCash QR" style={{ width: '100%', maxWidth: '280px', height: 'auto', objectFit: 'contain', display: 'block' }} />
                       </div>
-                      <p style={{ color: '#60a5fa', fontSize: '14px', margin: '0 0 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Smartphone size={18} style={{ marginRight: '6px' }} /> Scan with GCash</p>
+                      <p style={{ color: '#FFD700', fontSize: '14px', margin: '0 0 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Smartphone size={18} style={{ marginRight: '6px' }} /> Scan with GCash</p>
                       <p style={{ color: '#aaa', fontSize: '13px', margin: 0 }}>LL**D D. · +63 948 562 ••••</p>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '12px' }}>
                       <div>
                         <label style={{ display: 'block', color: '#aaa', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>GCash Ref. Number *</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. 1234567890"
-                          value={topUpForm.txnRef}
-                          onChange={e => setTopUpForm(f => ({ ...f, txnRef: e.target.value }))}
-                          style={{ width: '100%', background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '16px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
-                          onFocus={e => e.target.style.borderColor = '#FFD700'}
-                          onBlur={e => e.target.style.borderColor = '#333'}
-                        />
+                        <input type="text" placeholder="e.g. 1234567890" value={topUpForm.txnRef} onChange={e => setTopUpForm(f => ({ ...f, txnRef: e.target.value }))} style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '8px', padding: '16px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = '#FFD700'} onBlur={e => e.target.style.borderColor = '#444'} />
                       </div>
                       <div>
                         <label style={{ display: 'block', color: '#aaa', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Upload Proof of Payment *</label>
-                        <input type="file" accept="image/*" onChange={e => { if (e.target.files[0]) setTopUpForm(f => ({ ...f, screenshotName: e.target.files[0].name, screenshotFile: e.target.files[0] })) }} style={{ display: 'none' }} id="proof-upload-home" />
-                        <label htmlFor="proof-upload-home" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: '#111', border: '1px dashed #444', borderRadius: '8px', padding: '14px 16px', color: topUpForm.screenshotName ? '#4ade80' : '#888', fontSize: '15px', cursor: 'pointer', boxSizing: 'border-box', transition: 'all 0.2s' }}>
+                        <input type="file" accept="image/*" onChange={e => { if (e.target.files[0]) setTopUpForm(f => ({ ...f, screenshotName: e.target.files[0].name, screenshotFile: e.target.files[0] })) }} style={{ display: 'none' }} id="proof-upload" />
+                        <label htmlFor="proof-upload" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: '#222', border: '1px dashed #555', borderRadius: '8px', padding: '14px 16px', color: topUpForm.screenshotName ? '#FFD700' : '#888', fontSize: '15px', cursor: 'pointer', boxSizing: 'border-box', transition: 'all 0.2s' }}>
                           <span style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><ImageIcon size={18} /> {topUpForm.screenshotName || 'Select screenshot...'}</span>
-                          <span style={{ fontSize: '12px', background: '#333', color: '#fff', padding: '6px 10px', borderRadius: '4px' }}>Browse</span>
+                          <span style={{ fontSize: '12px', background: '#444', color: '#fff', padding: '6px 10px', borderRadius: '4px' }}>Browse</span>
                         </label>
                       </div>
                       <div>
                         <label style={{ display: 'block', color: '#888', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Your Email (auto-filled)</label>
-                        <input
-                          type="text"
-                          value={user?.email || ''}
-                          readOnly
-                          style={{ width: '100%', background: '#0a0a0a', border: '1px solid #222', borderRadius: '8px', padding: '16px', color: '#666', fontSize: '16px', outline: 'none', boxSizing: 'border-box', cursor: 'not-allowed' }}
-                        />
+                        <input type="text" value={user?.email || ''} readOnly style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', padding: '16px', color: '#666', fontSize: '16px', outline: 'none', boxSizing: 'border-box', cursor: 'not-allowed' }} />
                       </div>
-
-                      <p style={{ margin: '12px 0 0', color: '#aaa', fontSize: '13px', lineHeight: 1.6 }}>
-                        After paying, fill in the reference number, attach your screenshot above and submit. Credits arrive within <strong style={{ color: '#4ade80' }}>10–30 minutes</strong>.
-                      </p>
+                      <p style={{ margin: '12px 0 0', color: '#aaa', fontSize: '13px', lineHeight: 1.6 }}>After paying, fill in the reference number, attach your screenshot above and submit. Credits arrive within <strong style={{ color: '#FFD700' }}>10–30 minutes</strong>.</p>
                     </div>
                   </div>
-
-                  {/* Actions */}
-                  <div style={{ display: 'flex', gap: '16px' }}>
-                    <button
-                      onClick={() => setTopUpStep(1)}
-                      disabled={isSubmittingTopUp}
-                      style={{ padding: '16px 24px', background: 'transparent', color: '#888', border: '1px solid #333', borderRadius: '8px', cursor: isSubmittingTopUp ? 'not-allowed' : 'pointer', fontSize: '16px', fontWeight: '600' }}
-                    >
-                      ← Back
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (!topUpForm.txnRef.trim() || !topUpForm.screenshotFile) { alert('Please enter your GCash reference number and upload proof of payment.'); return; }
-                        if (!user) { alert('You must be logged in.'); return; }
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={() => setTopUpStep(1)} disabled={isSubmittingTopUp} style={{ padding: '12px 24px', background: 'transparent', color: '#d5d5d5', border: '1px solid #555', borderRadius: '6px', cursor: isSubmittingTopUp ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '500' }}>Back</button>
+                    <button 
+                      onClick={async () => { 
+                        if (!topUpForm.txnRef.trim() || !topUpForm.screenshotFile) { toast.error('Please enter your GCash reference number and upload proof of payment.'); return; } 
+                        if (!user) { toast.error('You must be logged in.'); return; }
                         
                         setIsSubmittingTopUp(true);
                         try {
-                          const supabase = createClient();
-                          
-                          // 1. Upload to Supabase Storage
                           const fileExt = topUpForm.screenshotFile.name.split('.').pop();
                           const fileName = `proof_${user.id}_${Date.now()}.${fileExt}`;
                           
@@ -624,9 +770,10 @@ export default function StartScreen() {
                             
                           if (uploadError) throw uploadError;
                           
-                          const proofUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/payment_proofs/${fileName}`;
-                          
-                          // 2. Insert into payment_requests table
+                          const { data: publicData } = supabase.storage
+                            .from('payment_proofs')
+                            .getPublicUrl(fileName);
+                            
                           const { error: dbError } = await supabase
                             .from('payment_requests')
                             .insert({
@@ -634,23 +781,22 @@ export default function StartScreen() {
                               email: user.email,
                               plan: topUpForm.plan,
                               reference_number: topUpForm.txnRef,
-                              proof_url: proofUrl
+                              proof_url: publicData.publicUrl
                             });
                             
                           if (dbError) throw dbError;
                           
                           setTopUpSubmitted(true);
-                        } catch (error) {
-                          console.error("Payment Submission Error:", error);
-                          alert("Failed to submit payment request: " + error.message);
+                        } catch (err) {
+                          toast.error(`Error submitting request: ${err.message}`);
                         } finally {
                           setIsSubmittingTopUp(false);
                         }
-                      }}
-                      disabled={isSubmittingTopUp}
-                      style={{ flex: 1, padding: '16px', background: (topUpForm.txnRef.trim() && topUpForm.screenshotFile) ? '#FFD700' : '#222', color: (topUpForm.txnRef.trim() && topUpForm.screenshotFile) ? '#000' : '#555', border: 'none', borderRadius: '8px', fontWeight: '800', fontSize: '16px', cursor: (topUpForm.txnRef.trim() && topUpForm.screenshotFile && !isSubmittingTopUp) ? 'pointer' : 'not-allowed', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                      }} 
+                      disabled={isSubmittingTopUp} 
+                      style={{ flex: 1, padding: '12px', background: '#fff', color: '#000', border: 'none', borderRadius: '6px', cursor: isSubmittingTopUp ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
-                      {isSubmittingTopUp ? 'Uploading...' : <><Check size={20} /> Submit Payment Request</>}
+                      {isSubmittingTopUp ? 'Submitting...' : 'Submit Payment'}
                     </button>
                   </div>
                 </>
@@ -738,6 +884,24 @@ export default function StartScreen() {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
           gap: 15px;
+          max-height: 400px;
+          overflow-y: auto;
+          padding-right: 8px;
+        }
+        /* Custom scrollbar for recent-grid */
+        .recent-grid::-webkit-scrollbar {
+          width: 6px;
+        }
+        .recent-grid::-webkit-scrollbar-track {
+          background: #1a1a1a;
+          border-radius: 3px;
+        }
+        .recent-grid::-webkit-scrollbar-thumb {
+          background: #444;
+          border-radius: 3px;
+        }
+        .recent-grid::-webkit-scrollbar-thumb:hover {
+          background: #666;
         }
         .recent-card {
           background: #333;
@@ -862,9 +1026,9 @@ export default function StartScreen() {
           z-index: 50;
         }
         .modal-content {
-          background: #2a2a2a;
+          background: #262626;
           border: 1px solid #444;
-          border-radius: 8px;
+          border-radius: 0;
           padding: 24px;
           width: 500px;
           max-width: 90vw;
@@ -890,9 +1054,14 @@ export default function StartScreen() {
           border: 1px solid #444;
           color: #fff;
           padding: 10px;
-          border-radius: 4px;
+          border-radius: 0;
           font-size: 14px;
           box-sizing: border-box;
+          transition: border-color 0.2s;
+        }
+        .modal-input:focus {
+          border-color: #FFD700;
+          outline: none;
         }
         .trace-type-grid {
           display: grid;
@@ -901,8 +1070,8 @@ export default function StartScreen() {
         }
         .trace-card {
           background: #1a1a1a;
-          border: 2px solid #333;
-          border-radius: 6px;
+          border: 1px solid #444;
+          border-radius: 0;
           padding: 15px;
           cursor: pointer;
           transition: all 0.2s;
@@ -945,7 +1114,7 @@ export default function StartScreen() {
           border: 1px solid #555;
           color: #ccc;
           padding: 8px 16px;
-          border-radius: 4px;
+          border-radius: 0;
           cursor: pointer;
         }
         .btn-cancel:hover { background: #333; }
@@ -954,13 +1123,159 @@ export default function StartScreen() {
           color: #000;
           border: none;
           padding: 8px 16px;
-          border-radius: 4px;
+          border-radius: 0;
           font-weight: 600;
           cursor: pointer;
         }
         .btn-primary:hover { background: #E6C200; }
         .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Skeleton Loaders */
+        .skeleton-card {
+          pointer-events: none;
+        }
+        .skeleton-thumb {
+          height: 180px;
+          background: #222;
+          border-bottom: 1px solid #333;
+          position: relative;
+          overflow: hidden;
+        }
+        .skeleton-info {
+          padding: 15px;
+          position: relative;
+          overflow: hidden;
+        }
+        .skeleton-text {
+          height: 14px;
+          background: #333;
+          width: 60%;
+          border-radius: 2px;
+          position: relative;
+          overflow: hidden;
+        }
+        .skeleton-thumb::after, .skeleton-text::after {
+          content: '';
+          position: absolute;
+          top: 0; left: -150%; width: 150%; height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+          animation: shimmer 1.5s infinite ease-in-out;
+        }
+        @keyframes shimmer {
+          0% { left: -150%; }
+          100% { left: 150%; }
+        }
       `}</style>
+      {/* SAMPLES MODAL */}
+      {showSamplesModal && (
+        <div className="modal-overlay" onClick={() => setShowSamplesModal(false)} style={{ zIndex: 9999 }}>
+          <div className="modal-content" style={{ maxWidth: '1200px', width: '95%', maxHeight: '95vh', padding: '32px', background: '#262626', border: '1px solid #444', borderRadius: '0', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ margin: 0, fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><ImageIcon size={24} color="#FFD700" /> Sample AI Extractions</h2>
+              <button onClick={() => setShowSamplesModal(false)} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer' }}><X size={24} /></button>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', textAlign: 'left', overflowY: 'auto', paddingRight: '8px', flex: 1 }}>
+              
+              {/* Sample 1: Interactive Slider */}
+              <div style={{ background: '#1a1a1a', border: '1px solid #333', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ position: 'relative', height: '400px', background: '#000', overflow: 'hidden', border: '1px solid #444' }}>
+                  
+                  {/* Original Image (Background) */}
+                  <img 
+                    src="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/8f085577-22e7-4448-b2ed-fe6d45c50d53/cropped_1783258409642.jpeg" 
+                    alt="Original" 
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
+                  <span style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.7)', padding: '2px 8px', fontSize: '11px', color: '#fff', borderRadius: '4px', zIndex: 1 }}>Original Photo</span>
+                  
+                  {/* Vectorized SVG (Clipped Foreground) */}
+                  <img 
+                    src="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/8f085577-22e7-4448-b2ed-fe6d45c50d53/vector_1783258451276.svg" 
+                    alt="Vector" 
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', clipPath: `polygon(0 0, ${sampleSliderPos}% 0, ${sampleSliderPos}% 100%, 0 100%)`, zIndex: 2 }} 
+                  />
+                  <span style={{ position: 'absolute', top: 8, left: 8, background: '#FFD700', padding: '2px 8px', fontSize: '11px', color: '#000', fontWeight: 'bold', borderRadius: '4px', zIndex: 3, opacity: sampleSliderPos > 20 ? 1 : 0, transition: 'opacity 0.2s' }}>Vectorized SVG</span>
+
+                  {/* Slider Divider Line */}
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${sampleSliderPos}%`, width: '2px', background: '#FFD700', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none' }}></div>
+                  
+                  {/* Slider Handle Visual */}
+                  <div style={{ position: 'absolute', top: '50%', left: `${sampleSliderPos}%`, transform: 'translate(-50%, -50%)', width: '32px', height: '32px', background: '#FFD700', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3, pointerEvents: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+                    <div style={{ display: 'flex', gap: '2px' }}>
+                      <div style={{ width: '2px', height: '12px', background: '#000' }}></div>
+                      <div style={{ width: '2px', height: '12px', background: '#000' }}></div>
+                    </div>
+                  </div>
+
+                  {/* Invisible Range Input for Interaction */}
+                  <input 
+                    type="range" 
+                    min="0" max="100" 
+                    value={sampleSliderPos} 
+                    onChange={e => setSampleSliderPos(e.target.value)} 
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'ew-resize', zIndex: 4, margin: 0 }} 
+                  />
+                  
+                </div>
+                <div>
+                  <div style={{ fontSize: '14px', color: '#fff', fontWeight: 'bold' }}>Vintage Skull Graphic (Auto-Traced)</div>
+                  <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>Slide to compare the original photo vs. the extracted vector SVG.</div>
+                </div>
+              </div>
+
+              {/* Sample 2: Interactive Slider */}
+              <div style={{ background: '#1a1a1a', border: '1px solid #333', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ position: 'relative', height: '400px', background: '#000', overflow: 'hidden', border: '1px solid #444' }}>
+                  
+                  {/* Original Image (Background) */}
+                  <img 
+                    src="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/0e8401f8-6602-4458-a308-8db01e22c0e2/cropped_1783258312728.jpeg" 
+                    alt="Original" 
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
+                  <span style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.7)', padding: '2px 8px', fontSize: '11px', color: '#fff', borderRadius: '4px', zIndex: 1 }}>Original Photo</span>
+                  
+                  {/* Vectorized SVG (Clipped Foreground) */}
+                  <img 
+                    src="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/0e8401f8-6602-4458-a308-8db01e22c0e2/vector_1783258378211.svg" 
+                    alt="Vector" 
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', clipPath: `polygon(0 0, ${sampleSliderPos2}% 0, ${sampleSliderPos2}% 100%, 0 100%)`, zIndex: 2 }} 
+                  />
+                  <span style={{ position: 'absolute', top: 8, left: 8, background: '#FFD700', padding: '2px 8px', fontSize: '11px', color: '#000', fontWeight: 'bold', borderRadius: '4px', zIndex: 3, opacity: sampleSliderPos2 > 20 ? 1 : 0, transition: 'opacity 0.2s' }}>Vectorized SVG</span>
+
+                  {/* Slider Divider Line */}
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${sampleSliderPos2}%`, width: '2px', background: '#FFD700', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none' }}></div>
+                  
+                  {/* Slider Handle Visual */}
+                  <div style={{ position: 'absolute', top: '50%', left: `${sampleSliderPos2}%`, transform: 'translate(-50%, -50%)', width: '32px', height: '32px', background: '#FFD700', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3, pointerEvents: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+                    <div style={{ display: 'flex', gap: '2px' }}>
+                      <div style={{ width: '2px', height: '12px', background: '#000' }}></div>
+                      <div style={{ width: '2px', height: '12px', background: '#000' }}></div>
+                    </div>
+                  </div>
+
+                  {/* Invisible Range Input for Interaction */}
+                  <input 
+                    type="range" 
+                    min="0" max="100" 
+                    value={sampleSliderPos2} 
+                    onChange={e => setSampleSliderPos2(e.target.value)} 
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'ew-resize', zIndex: 4, margin: 0 }} 
+                  />
+                  
+                </div>
+                <div>
+                  <div style={{ fontSize: '14px', color: '#fff', fontWeight: 'bold' }}>Graphic Tees (Auto-Traced)</div>
+                  <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>Slide to compare the original photo vs. the extracted vector SVG.</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { uploadToR2 } from "@/lib/cloudflare";
-import { supabase } from "@/lib/supabase";
-import { createClient } from "@supabase/supabase-js";
+import { supabase, adminSupabase } from "@/lib/supabase";
 
 export const maxDuration = 60; 
-
-const adminSupabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 const RECRAFT_API_KEY = process.env.RECRAFT_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -20,7 +14,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     projectId = body.projectId;
-    const { step, croppedBase64 } = body;
+    const { step, croppedImageUrl } = body;
 
     if (!projectId || !step) {
       return NextResponse.json({ error: "Missing required fields (projectId, step)" }, { status: 400 });
@@ -65,7 +59,7 @@ export async function POST(request) {
       }
 
       // DEDUCT IMMEDIATELY — optimistic lock prevents double-spend
-      const { error: deductErr, count } = await adminSupabase
+      const { error: deductErr, data: updatedData } = await adminSupabase
         .from('profiles')
         .update({ credits: profile.credits - 1 })
         .eq('id', project.user_id)
@@ -74,13 +68,19 @@ export async function POST(request) {
 
       if (deductErr) {
         console.error('[Billing] Deduction SQL error:', deductErr);
-        return NextResponse.json({ error: "Credit deduction failed, please try again." }, { status: 500 });
+        return NextResponse.json({ error: "Billing error. Please try again." }, { status: 500 });
+      }
+
+      if (!updatedData || updatedData.length === 0) {
+        // Condition failed, means credits changed during transaction
+        console.log(`[Billing] CONFLICT: Credits changed for user ${project.user_id} during deduction.`);
+        return NextResponse.json({ error: "Conflict updating credits. Please try again." }, { status: 409 });
       }
 
       // Mark the project as deducted so refunds are authorized
       await adminSupabase.from('projects').update({ credit_deducted: true }).eq('id', projectId);
 
-      console.log(`[Billing] ✅ DEDUCTED 1 credit from ${project.user_id}. Now: ${profile.credits - 1}`);
+      console.log(`[Billing] SUCCESS: Deducted 1 credit from user ${project.user_id}. Remaining: ${profile.credits - 1}`);
     }
 
     if (step === 1) {
@@ -93,10 +93,12 @@ export async function POST(request) {
       let base64Image;
       let mimeType = "image/png";
 
-      if (croppedBase64) {
-        const split = croppedBase64.split(",");
-        base64Image = split[1];
-        mimeType = split[0].split(":")[1].split(";")[0];
+      if (croppedImageUrl) {
+        const imageResponse = await fetch(croppedImageUrl);
+        if (!imageResponse.ok) throw new Error("Failed to fetch uploaded cropped image from R2");
+        const arrayBuffer = await imageResponse.arrayBuffer();
+        base64Image = Buffer.from(arrayBuffer).toString("base64");
+        mimeType = imageResponse.headers.get("content-type") || "image/png";
       } else {
         const imageResponse = await fetch(project.original_image_url);
         if (!imageResponse.ok) throw new Error("Failed to fetch image from URL");
@@ -134,7 +136,8 @@ CRITICAL DIRECTIVES (YOU MUST OBEY EVERY SINGLE RULE WITHOUT EXCEPTION):
       let retries = 3;
       for (let i = 0; i < retries; i++) {
         try {
-          result = await model.generateContent({
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Gemini API Timeout (55s)")), 55000));
+          const genPromise = model.generateContent({
             contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { data: base64Image, mimeType } }] }],
             generationConfig: {
               temperature: 0.1, // Near zero temperature for strict instruction adherence and zero hallucinations
@@ -142,6 +145,8 @@ CRITICAL DIRECTIVES (YOU MUST OBEY EVERY SINGLE RULE WITHOUT EXCEPTION):
               topK: 10
             }
           });
+          
+          result = await Promise.race([genPromise, timeoutPromise]);
           break; // Success, exit retry loop
         } catch (genErr) {
           if (i === retries - 1) throw genErr; // Throw if last retry fails
@@ -203,7 +208,8 @@ CRITICAL DIRECTIVES (YOU MUST OBEY EVERY SINGLE RULE WITHOUT EXCEPTION):
       const recraftUpscaleRes = await fetch("https://external.api.recraft.ai/v1/images/crispUpscale", {
         method: "POST",
         headers: { "Authorization": `Bearer ${RECRAFT_API_KEY}` },
-        body: upscaleFormData
+        body: upscaleFormData,
+        signal: AbortSignal.timeout(55000)
       });
 
       if (!recraftUpscaleRes.ok) {
@@ -247,12 +253,12 @@ CRITICAL DIRECTIVES (YOU MUST OBEY EVERY SINGLE RULE WITHOUT EXCEPTION):
       const vectorizeFormData = new FormData();
       const blob = new Blob([compressedBuffer], { type: 'image/png' });
       vectorizeFormData.append('image', blob, 'image.png');
-      vectorizeFormData.append('model', 'recraftv4_1_pro_vector');
 
       const recraftVectorRes = await fetch("https://external.api.recraft.ai/v1/images/vectorize", {
         method: "POST",
         headers: { "Authorization": `Bearer ${RECRAFT_API_KEY}` },
-        body: vectorizeFormData
+        body: vectorizeFormData,
+        signal: AbortSignal.timeout(55000)
       });
 
       if (!recraftVectorRes.ok) {

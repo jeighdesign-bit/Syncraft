@@ -6,22 +6,13 @@ export const maxDuration = 30;
 
 export async function POST(request) {
   try {
-    const { projectId, croppedBase64 } = await request.json();
+    const { projectId, croppedImageUrl } = await request.json();
 
-    if (!projectId || !croppedBase64) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (!projectId || !croppedImageUrl) {
+      return NextResponse.json({ error: "Missing required fields (projectId, croppedImageUrl)" }, { status: 400 });
     }
 
-    // Parse base64
-    const split = croppedBase64.split(",");
-    const base64Data = split[1];
-    const mimeType = split[0].split(":")[1].split(";")[0];
-    const ext = mimeType.split("/")[1] || "jpg";
-    const imageBuffer = Buffer.from(base64Data, "base64");
-
-    // Upload to Cloudflare R2
-    const fileName = `projects/${projectId}/cropped_${Date.now()}.${ext}`;
-    const fileUrl = await uploadToR2(imageBuffer, fileName, mimeType);
+    const fileUrl = croppedImageUrl;
 
     // Update project in Supabase (Overwrite original_image_url to make crop permanent and clear old trace results)
     const { error } = await supabase

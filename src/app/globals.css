@@ -194,6 +194,7 @@ html, body {
   position: relative;
   padding: 12px;
   z-index: 10;
+  transition: opacity 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 }
 
 .node-header {
@@ -232,7 +233,14 @@ html, body {
   width: 100%;
   height: auto;
   display: block;
-  object-fit: contain; /* Ensure the full image is seen, no cropping */
+  object-fit: contain;
+  /* Smooth fade-in when image loads */
+  animation: imgFadeIn 0.5s ease;
+}
+
+@keyframes imgFadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 /* Make checkerboard subtle */
@@ -272,7 +280,24 @@ html, body {
 }
 
 .node-card.dimmed {
-  opacity: 0.5;
+  opacity: 0.4;
+  filter: grayscale(30%);
+}
+
+/* Glow the active (processing) node gold */
+.node-card:has(.node-loading-overlay) {
+  border-color: rgba(255, 215, 0, 0.35);
+  box-shadow: 0 0 0 1px rgba(255,215,0,0.15), 0 10px 40px -10px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+/* Status pulse animation when processing */
+.param-active-pulse {
+  animation: statusPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
 }
 
 .node-footer-prompt {
@@ -383,12 +408,17 @@ html, body {
 .node-connector {
   flex: 1;
   height: 2px;
-  background-color: #333;
+  background-color: #2a2a2a;
   margin: 0 4px;
   position: relative;
   z-index: 5;
   overflow: hidden;
   border-radius: 2px;
+  transition: background-color 0.3s ease;
+}
+
+.node-connector.active {
+  background-color: rgba(45, 212, 191, 0.2);
 }
 
 .node-connector::before {
@@ -398,16 +428,19 @@ html, body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(45, 212, 191, 0.9), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.9), transparent);
   transform: translateX(-100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .node-connector.active::before {
-  animation: travelGlow 1.5s linear infinite;
+  animation: travelGlow 1.2s ease-in-out infinite;
+  opacity: 1;
 }
 
 @keyframes travelGlow {
-  0% { transform: translateX(-100%); }
+  0%   { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
 }
 

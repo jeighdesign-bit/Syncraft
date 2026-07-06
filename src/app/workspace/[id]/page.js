@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/utils/supabase/client";
 import { 
   ArrowLeft, Download, Monitor, CheckCircle, 
   Settings2, ChevronDown, ImageIcon, Brain, PenTool, Play, 
   Scissors, X, Home, MousePointer2, Hand, ZoomIn, Shirt, Scan, Crop, FolderDown,
-  CreditCard, Package, Tag, Mail, Smartphone, Check, MoreHorizontal, RotateCw
+  CreditCard, Package, Tag, Mail, Smartphone, Check, MoreHorizontal, RotateCw, ArrowRight, Keyboard
 } from "lucide-react";
+import { toast } from "@/components/Toast";
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
@@ -16,14 +17,19 @@ export default function Workspace() {
   const router = useRouter();
   const params = useParams();
   const projectId = params.id;
+  const supabase = createClient();
   const [project, setProject] = useState(null);
   const [activeMode, setActiveMode] = useState("pattern");
   const [activeTool, setActiveTool] = useState("pointer");
+  const activeToolRef = useRef("pointer"); // mirror for event handlers to avoid stale closures
   
-  // Pan and Zoom State
-  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  // --- Pan / Zoom: pure refs — ZERO React re-renders during interaction ---
+  const canvasAreaRef = useRef(null);    // the scrollable canvas container
+  const pipelineRef = useRef(null);     // the transformed pipeline div
+  const transformRef = useRef({ x: 0, y: 0, scale: 1 });
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
+  const rafPending = useRef(false);     // rAF gate for wheel events
 
   // Cropper State
   const [showCropModal, setShowCropModal] = useState(false);
@@ -46,6 +52,7 @@ export default function Workspace() {
   const [topUpSubmitted, setTopUpSubmitted] = useState(false);
   const [isSubmittingTopUp, setIsSubmittingTopUp] = useState(false);
   const [user, setUser] = useState(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   
   const [traceState, setTraceState] = useState("idle"); // idle, step1, step2, step3
   const [svgResult, setSvgResult] = useState(null);
@@ -54,6 +61,47 @@ export default function Workspace() {
   const logMsg = (msg, type = "normal") => {
     setConsoleLogs(prev => [...prev, { text: msg, type }]);
   };
+
+  const handleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/api/auth/callback`
+      }
+    });
+  };
+
+  // Helper: apply transform to DOM without React re-render
+  const applyTransform = useCallback((t, animated = false) => {
+    const el = pipelineRef.current;
+    if (!el) return;
+    if (animated) {
+      el.style.transition = 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+      setTimeout(() => { if (pipelineRef.current) pipelineRef.current.style.transition = ''; }, 380);
+    } else {
+      el.style.transition = '';
+    }
+    el.style.transform = `translate(${t.x}px, ${t.y}px) scale(${t.scale})`;
+    transformRef.current = t;
+  }, []);
+
+  // Fit pipeline to canvas on load / reset
+  const fitToScreen = useCallback((animated = true) => {
+    const canvas = canvasAreaRef.current;
+    const pipeline = pipelineRef.current;
+    if (!canvas || !pipeline) return;
+    pipeline.style.transition = ''; // measure without transition
+    const cw = canvas.clientWidth;
+    const ch = canvas.clientHeight;
+    const pw = pipeline.scrollWidth;
+    const ph = pipeline.scrollHeight;
+    const scaleX = (cw - 80) / pw;
+    const scaleY = (ch - 80) / ph;
+    const scale = Math.min(Math.max(0.2, Math.min(scaleX, scaleY)), 1);
+    const x = (cw - pw * scale) / 2;
+    const y = (ch - ph * scale) / 2;
+    applyTransform({ x, y, scale }, animated);
+  }, [applyTransform]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -88,6 +136,34 @@ export default function Workspace() {
     }
   }, [projectId]);
 
+  // Auto fit-to-screen once pipeline renders
+  useEffect(() => {
+    if (!project) return;
+    const timer = setTimeout(() => fitToScreen(true), 120);
+    return () => clearTimeout(timer);
+  }, [project?.id, fitToScreen]);
+
+  // Keep activeToolRef in sync
+  useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
+
+  // Press F or Space to fit canvas; Escape to reset to 1:1 center
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'f' || e.key === 'F' || e.key === ' ') { e.preventDefault(); fitToScreen(true); }
+      if (e.key === 'Escape') {
+        const canvas = canvasAreaRef.current;
+        const pipeline = pipelineRef.current;
+        if (!canvas || !pipeline) return;
+        const x = (canvas.clientWidth - pipeline.scrollWidth) / 2;
+        const y = (canvas.clientHeight - pipeline.scrollHeight) / 2;
+        applyTransform({ x, y, scale: 1 }, true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fitToScreen, applyTransform]);
+
   const generateCrop = async () => {
     if (!completedCrop || !imgRef.current || !completedCrop.width || !completedCrop.height) {
       if (!project?.generated_image_url) {
@@ -102,7 +178,7 @@ export default function Workspace() {
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
     
-    const MAX_SIZE = 1024;
+    const MAX_SIZE = 1536; // Increased max size for better AI quality
     let targetWidth = completedCrop.width * scaleX;
     let targetHeight = completedCrop.height * scaleY;
     
@@ -128,24 +204,58 @@ export default function Workspace() {
       targetHeight
     );
     
-    const base64 = canvas.toDataURL("image/jpeg", 0.85);
-    
     setShowCropModal(false);
     setIsSavingCrop(true);
     logMsg("[System] Saving cropped image permanently...");
     
     try {
+      // 1. Get Blob from canvas
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.90));
+      
+      // 2. Get Presigned URL
+      const sessionRes = await supabase.auth.getSession();
+      const token = sessionRes.data.session?.access_token;
+      
+      if (!token) {
+        setIsSavingCrop(false);
+        handleLogin();
+        return;
+      }
+      
+      const urlRes = await fetch("/api/upload-url", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ fileName: `crop_${Date.now()}.jpg`, contentType: "image/jpeg" })
+      });
+      const urlData = await urlRes.json();
+      if (!urlRes.ok || !urlData.uploadUrl) {
+        throw new Error(urlData.error || "Failed to get upload URL from server");
+      }
+      const { uploadUrl, publicUrl } = urlData;
+
+      // 3. Upload to R2 directly
+      const putRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "image/jpeg" },
+        body: blob
+      });
+      if (!putRes.ok) throw new Error("Failed to upload crop to storage");
+
+      // 4. Save crop URL to DB via API
       const res = await fetch("/api/crop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: project.id, croppedBase64: base64 })
+        body: JSON.stringify({ projectId: project.id, croppedImageUrl: publicUrl })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       
       setProject(prev => ({ 
         ...prev, 
-        original_image_url: data.cropped_image_url,
+        original_image_url: publicUrl,
         generated_image_url: null,
         upscaled_image_url: null,
         svg_url: null 
@@ -356,71 +466,84 @@ export default function Workspace() {
     }
   };
 
-  // --- PAN / ZOOM HANDLERS ---
-  const handleWheel = (e) => {
+  // --- PAN / ZOOM HANDLERS (DOM-direct, zero React re-renders) ---
+  const handleWheel = useCallback((e) => {
     if (showCropModal) return;
-    
-    const container = e.currentTarget;
-    const rect = container.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    
-    const delta = e.deltaY * -0.001;
-    
-    setTransform(prev => {
-      const newScale = Math.min(Math.max(0.1, prev.scale + delta), 3);
-      
-      const unscaledX = (mouseX - prev.x) / prev.scale;
-      const unscaledY = (mouseY - prev.y) / prev.scale;
-      
-      const newX = mouseX - unscaledX * newScale;
-      const newY = mouseY - unscaledY * newScale;
-      
-      return { x: newX, y: newY, scale: newScale };
-    });
-  };
+    e.preventDefault();
 
-  // Pan with middle mouse, OR left mouse if Hand tool is active
-  const handlePointerDown = (e) => {
-    if (e.button === 1 || (e.button === 0 && activeTool === "hand")) {
-      e.preventDefault();
-      isDragging.current = true;
-      dragStart.current = { x: e.clientX - transform.x, y: e.clientY - transform.y };
-    }
+    // rAF gate: only schedule one frame at a time
+    if (rafPending.current) return;
+    rafPending.current = true;
 
-    if (e.button === 0 && activeTool === "zoom") {
-      e.preventDefault();
-      const container = e.currentTarget;
-      const rect = container.getBoundingClientRect();
+    requestAnimationFrame(() => {
+      rafPending.current = false;
+      const canvas = canvasAreaRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
-      
-      const delta = 0.3;
-      setTransform(prev => {
-        const newScale = Math.min(prev.scale + delta, 3);
-        const unscaledX = (mouseX - prev.x) / prev.scale;
-        const unscaledY = (mouseY - prev.y) / prev.scale;
-        const newX = mouseX - unscaledX * newScale;
-        const newY = mouseY - unscaledY * newScale;
-        return { x: newX, y: newY, scale: newScale };
-      });
-    }
-  };
 
-  const handlePointerMove = (e) => {
+      const prev = transformRef.current;
+      // Smoother delta normalisation (handles trackpad vs mouse wheel)
+      const rawDelta = e.deltaMode === 1 ? e.deltaY * 20 : e.deltaY;
+      const factor = rawDelta > 0 ? 0.92 : 1.0 / 0.92;
+      const newScale = Math.min(Math.max(0.1, prev.scale * factor), 5);
+
+      const unscaledX = (mouseX - prev.x) / prev.scale;
+      const unscaledY = (mouseY - prev.y) / prev.scale;
+      const newX = mouseX - unscaledX * newScale;
+      const newY = mouseY - unscaledY * newScale;
+
+      applyTransform({ x: newX, y: newY, scale: newScale });
+    });
+  }, [showCropModal, applyTransform]);
+
+  // Pan with middle mouse OR left mouse when Hand tool active
+  const handlePointerDown = useCallback((e) => {
+    const tool = activeToolRef.current;
+    if (e.button === 1 || (e.button === 0 && tool === 'hand')) {
+      e.preventDefault();
+      isDragging.current = true;
+      const t = transformRef.current;
+      dragStart.current = { x: e.clientX - t.x, y: e.clientY - t.y };
+    }
+    if (e.button === 0 && tool === 'zoom') {
+      e.preventDefault();
+      const canvas = canvasAreaRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const prev = transformRef.current;
+      const newScale = Math.min(prev.scale * 1.35, 5);
+      const unscaledX = (mouseX - prev.x) / prev.scale;
+      const unscaledY = (mouseY - prev.y) / prev.scale;
+      applyTransform({ x: mouseX - unscaledX * newScale, y: mouseY - unscaledY * newScale, scale: newScale }, true);
+    }
+  }, [applyTransform]);
+
+  const handlePointerMove = useCallback((e) => {
     if (!isDragging.current) return;
-    setTransform((prev) => ({
-      ...prev,
+    // Direct DOM write — no setState, no re-render
+    const t = {
       x: e.clientX - dragStart.current.x,
-      y: e.clientY - dragStart.current.y
-    }));
-  };
+      y: e.clientY - dragStart.current.y,
+      scale: transformRef.current.scale
+    };
+    applyTransform(t);
+  }, [applyTransform]);
 
-  const handlePointerUp = (e) => {
-    if (e.button === 1 || e.button === 0) {
-      isDragging.current = false;
-    }
-  };
+  const handlePointerUp = useCallback(() => {
+    isDragging.current = false;
+  }, []);
+
+  // Attach wheel as non-passive via ref — must be AFTER handleWheel is initialized
+  useEffect(() => {
+    const el = canvasAreaRef.current;
+    if (!el) return;
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
 
   return (
     <div className="app-container">
@@ -432,6 +555,9 @@ export default function Workspace() {
         <div className="brand-title">
           <img src="/logo_full.png" alt="DESAYNBRO" style={{height: 12}} />
           DESAYNCLAW WORKSPACE
+        </div>
+        <div className="menu-item" onClick={() => setShowShortcuts(true)} style={{cursor: 'pointer', marginLeft: 'auto', marginRight: '16px'}}>
+          <Keyboard size={14} style={{marginRight: 4, display: 'inline-block'}} /> Shortcuts
         </div>
       </div>
 
@@ -445,36 +571,45 @@ export default function Workspace() {
             <Shirt size={14} /> Pattern Extractor
           </div>
         </div>
+        {/* Fit to Screen button */}
+        <button
+          onClick={() => fitToScreen(true)}
+          title="Fit to Screen (reset zoom)"
+          style={{ marginLeft: 'auto', marginRight: '8px', background: 'transparent', border: '1px solid #333', color: '#888', borderRadius: '4px', padding: '3px 10px', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px', transition: 'all 0.15s' }}
+          onMouseOver={e => { e.currentTarget.style.borderColor = '#FFD700'; e.currentTarget.style.color = '#FFD700'; }}
+          onMouseOut={e => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#888'; }}
+        >
+          <ZoomIn size={11} /> Fit
+        </button>
       </div>
 
       <main className="main-workspace">
         
         <div className="toolbar-vertical">
-          <div className={`tool-icon ${activeTool === "pointer" ? "active" : ""}`} onClick={() => setActiveTool("pointer")}>
+          <div className={`tool-icon ${activeTool === "pointer" ? "active" : ""}`} onClick={() => setActiveTool("pointer")} title="Pointer (V)">
             <MousePointer2 size={16} />
           </div>
-          <div className={`tool-icon ${activeTool === "hand" ? "active" : ""}`} onClick={() => setActiveTool("hand")}>
+          <div className={`tool-icon ${activeTool === "hand" ? "active" : ""}`} onClick={() => setActiveTool("hand")} title="Pan Canvas (Space)">
             <Hand size={16} />
           </div>
-          <div className={`tool-icon ${activeTool === "zoom" ? "active" : ""}`} onClick={() => setActiveTool("zoom")}>
+          <div className={`tool-icon ${activeTool === "zoom" ? "active" : ""}`} onClick={() => setActiveTool("zoom")} title="Zoom (Z)">
             <ZoomIn size={16} />
           </div>
-          <div className={`tool-icon ${activeTool === "crop" ? "active" : ""}`} onClick={() => { setActiveTool("crop"); setShowCropModal(true); }}>
+          <div className={`tool-icon ${activeTool === "crop" ? "active" : ""}`} onClick={() => { setActiveTool("crop"); setShowCropModal(true); }} title="Crop (C)">
             <Crop size={16} />
           </div>
         </div>
 
-        {/* Canvas Area */}
+        {/* Canvas Area — passive wheel listener attached via ref to allow preventDefault */}
         <div 
+          ref={canvasAreaRef}
           className="canvas-area"
-          onWheel={handleWheel}
           onMouseDown={handlePointerDown}
           onMouseMove={handlePointerMove}
           onMouseUp={handlePointerUp}
           onMouseLeave={handlePointerUp}
           style={{ 
-            cursor: isDragging.current ? 'grabbing' 
-                  : activeTool === 'hand' ? 'grab' 
+            cursor: activeTool === 'hand' ? (isDragging.current ? 'grabbing' : 'grab')
                   : activeTool === 'zoom' ? 'zoom-in' 
                   : activeTool === 'crop' ? 'crosshair'
                   : 'default' 
@@ -490,10 +625,12 @@ export default function Workspace() {
             </div>
           ) : (
             <div 
+              ref={pipelineRef}
               className="pipeline-container"
               style={{
-                transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-                transformOrigin: '0 0'
+                transform: 'translate(0px, 0px) scale(1)',
+                transformOrigin: '0 0',
+                willChange: 'transform'
               }}
             >
               
@@ -517,13 +654,16 @@ export default function Workspace() {
                 </div>
                 <div className="node-content checkerboard" style={{ position: 'relative' }}>
                   {project.original_image_url ? (
-                    <img src={`/api/proxy?url=${encodeURIComponent(project.original_image_url)}`} alt="Reference" style={{width: '100%', height: '100%', objectFit: 'contain'}} referrerPolicy="no-referrer" />
+                    <img src={`/api/proxy?url=${encodeURIComponent(project.original_image_url)}`} alt="Reference" style={{width: '100%', height: '100%', objectFit: 'contain'}} referrerPolicy="no-referrer" decoding="async" />
                   ) : (
                     <div className="placeholder-node">Image not found</div>
                   )}
                 </div>
-                <div className="node-footer">
-                  <span>Model Details ∨</span>
+                <div className="node-footer" style={{ padding: '8px 12px', borderTop: '1px solid #222', fontSize: '11px', color: '#555', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Source Upload</span>
+                  <span style={{ color: project.original_image_url ? '#4ade80' : '#555' }}>
+                    {project.original_image_url ? '● Ready' : '○ Empty'}
+                  </span>
                 </div>
                 <div className="node-port output"></div>
               </div>
@@ -546,15 +686,18 @@ export default function Workspace() {
                     </div>
                   )}
                   {project.generated_image_url ? (
-                    <img src={`/api/proxy?url=${encodeURIComponent(project.generated_image_url)}`} alt="Generated Raster" style={{width: '100%', height: '100%', objectFit: 'contain'}} referrerPolicy="no-referrer" />
+                    <img src={`/api/proxy?url=${encodeURIComponent(project.generated_image_url)}`} alt="Generated Raster" style={{width: '100%', height: '100%', objectFit: 'contain'}} referrerPolicy="no-referrer" decoding="async" />
                   ) : traceState === "step1" && project.original_image_url ? (
-                    <img src={`/api/proxy?url=${encodeURIComponent(project.original_image_url)}`} alt="Preview" style={{width: '100%', height: '100%', objectFit: 'contain', filter: 'grayscale(100%)'}} referrerPolicy="no-referrer" />
+                    <img src={`/api/proxy?url=${encodeURIComponent(project.original_image_url)}`} alt="Preview" style={{width: '100%', height: '100%', objectFit: 'contain', filter: 'grayscale(100%)'}} referrerPolicy="no-referrer" decoding="async" />
                   ) : (
                     <div className="placeholder-node">Awaiting Execution</div>
                   )}
                 </div>
-                <div className="node-footer">
-                  <span>Model Details ∨</span>
+                <div className="node-footer" style={{ padding: '8px 12px', borderTop: '1px solid #222', fontSize: '11px', color: '#555', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Gemini 3.1 Flash</span>
+                  <span className={traceState === 'step1' ? 'param-active-pulse' : ''} style={{ color: traceState === 'step1' ? '#FFD700' : project.generated_image_url ? '#4ade80' : '#555' }}>
+                    {traceState === 'step1' ? '▶ Processing...' : project.generated_image_url ? '✓ Complete' : '○ Pending'}
+                  </span>
                 </div>
                 <div className="node-port output"></div>
               </div>
@@ -577,15 +720,18 @@ export default function Workspace() {
                     </div>
                   )}
                   {project.upscaled_image_url ? (
-                    <img src={`/api/proxy?url=${encodeURIComponent(project.upscaled_image_url)}`} alt="Upscaled Raster" style={{width: '100%', height: '100%', objectFit: 'contain'}} referrerPolicy="no-referrer" />
+                    <img src={`/api/proxy?url=${encodeURIComponent(project.upscaled_image_url)}`} alt="Upscaled Raster" style={{width: '100%', height: '100%', objectFit: 'contain'}} referrerPolicy="no-referrer" decoding="async" />
                   ) : traceState === "step2" && project.generated_image_url ? (
-                    <img src={`/api/proxy?url=${encodeURIComponent(project.generated_image_url)}`} alt="Preview" style={{width: '100%', height: '100%', objectFit: 'contain', filter: 'grayscale(100%)'}} referrerPolicy="no-referrer" />
+                    <img src={`/api/proxy?url=${encodeURIComponent(project.generated_image_url)}`} alt="Preview" style={{width: '100%', height: '100%', objectFit: 'contain', filter: 'grayscale(100%)'}} referrerPolicy="no-referrer" decoding="async" />
                   ) : (
                     <div className="placeholder-node">Awaiting Execution</div>
                   )}
                 </div>
-                <div className="node-footer">
-                  <span>Model Details ∨</span>
+                <div className="node-footer" style={{ padding: '8px 12px', borderTop: '1px solid #222', fontSize: '11px', color: '#555', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Recraft Upscale</span>
+                  <span style={{ color: traceState === 'step2' ? '#FFD700' : project.upscaled_image_url ? '#4ade80' : '#555' }}>
+                    {traceState === 'step2' ? '▶ Processing...' : project.upscaled_image_url ? '✓ Complete' : '○ Pending'}
+                  </span>
                 </div>
                 <div className="node-port output"></div>
               </div>
@@ -608,15 +754,18 @@ export default function Workspace() {
                     </div>
                   )}
                   {project.svg_url ? (
-                    <img src={`/api/proxy?url=${encodeURIComponent(project.svg_url)}`} alt="Vector" style={{width: '100%', height: '100%', objectFit: 'contain'}} referrerPolicy="no-referrer" />
+                    <img src={`/api/proxy?url=${encodeURIComponent(project.svg_url)}`} alt="Vector" style={{width: '100%', height: '100%', objectFit: 'contain'}} referrerPolicy="no-referrer" decoding="async" />
                   ) : traceState === "step3" && project.upscaled_image_url ? (
-                    <img src={`/api/proxy?url=${encodeURIComponent(project.upscaled_image_url)}`} alt="Preview" style={{width: '100%', height: '100%', objectFit: 'contain', filter: 'grayscale(100%)'}} referrerPolicy="no-referrer" />
+                    <img src={`/api/proxy?url=${encodeURIComponent(project.upscaled_image_url)}`} alt="Preview" style={{width: '100%', height: '100%', objectFit: 'contain', filter: 'grayscale(100%)'}} referrerPolicy="no-referrer" decoding="async" />
                   ) : (
                     <div className="placeholder-node">Awaiting Execution</div>
                   )}
                 </div>
-                <div className="node-footer">
-                  <span>Model Details ∨</span>
+                <div className="node-footer" style={{ padding: '8px 12px', borderTop: '1px solid #222', fontSize: '11px', color: '#555', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Recraft Vectorizer</span>
+                  <span style={{ color: traceState === 'step3' ? '#FFD700' : project.svg_url ? '#4ade80' : '#555' }}>
+                    {traceState === 'step3' ? '▶ Processing...' : project.svg_url ? '✓ Complete' : '○ Pending'}
+                  </span>
                 </div>
               </div>
 
@@ -974,23 +1123,23 @@ export default function Workspace() {
       {/* ===== TOP UP MODAL (Same as Homepage) ===== */}
       {showTopUpModal && (
         <div className="modal-overlay" onClick={() => { setShowTopUpModal(false); setTopUpStep(1); setTopUpSubmitted(false); }}>
-          <div className="modal-content" style={{ maxWidth: '800px', width: '100%', padding: '0', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" style={{ maxWidth: '960px', width: '100%', padding: '0', overflow: 'hidden', borderRadius: '0', border: '1px solid #27272a', background: '#09090b' }} onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
-            <div style={{ background: 'linear-gradient(135deg, #111, #1a1a1a)', borderBottom: '1px solid #2a2a2a', padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ background: '#09090b', borderBottom: '1px solid #18181b', padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Shirt size={18} color="#FFD700" />
-                <span style={{ fontWeight: '700', fontSize: '15px', color: '#fff' }}>Get More Traces</span>
+                <Shirt size={18} color="#fff" />
+                <span style={{ fontWeight: '600', fontSize: '15px', color: '#fff' }}>Get More Traces</span>
               </div>
               {!topUpSubmitted && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {[1, 2].map(s => (
-                    <div key={s} style={{ width: '24px', height: '24px', borderRadius: '50%', background: topUpStep >= s ? '#FFD700' : '#333', border: topUpStep >= s ? 'none' : '1px solid #555', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', color: topUpStep >= s ? '#000' : '#666', transition: 'all 0.2s' }}>{s}</div>
+                    <div key={s} style={{ width: '24px', height: '24px', borderRadius: '50%', background: topUpStep >= s ? '#fff' : '#27272a', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '600', color: topUpStep >= s ? '#000' : '#888', transition: 'all 0.2s' }}>{s}</div>
                   ))}
                 </div>
               )}
-              <button onClick={() => { setShowTopUpModal(false); setTopUpStep(1); setTopUpSubmitted(false); }} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: '4px' }}><X size={16} /></button>
+              <button onClick={() => { setShowTopUpModal(false); setTopUpStep(1); setTopUpSubmitted(false); }} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px' }}><X size={16} /></button>
             </div>
-            <div style={{ padding: '24px' }}>
+            <div style={{ background: '#09090b', padding: '24px' }}>
               {/* SUBMITTED */}
               {topUpSubmitted ? (
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
@@ -1010,56 +1159,99 @@ export default function Workspace() {
               ) : topUpStep === 1 ? (
                 /* STEP 1 */
                 <>
-                  <p style={{ margin: '0 0 16px', color: '#888', fontSize: '12px' }}>Piliin ang package na gusto mo:</p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                  <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                    <div style={{ display: 'inline-block', border: '1px solid #27272a', padding: '4px 12px', fontSize: '11px', fontWeight: '600', color: '#fff', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '16px' }}>Pricing Plan</div>
+                    <h2 style={{ margin: '0 0 8px', fontSize: '28px', fontWeight: '700', color: '#fff' }}>Affordable pricing</h2>
+                    <p style={{ margin: 0, color: '#888', fontSize: '14px', maxWidth: '500px', marginLeft: 'auto', marginRight: 'auto' }}>Piliin ang credit package na sakto sa pangangailangan mo.</p>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
                     {[
-                      { key: 'starter', label: 'Starter', traces: 10, price: '₱350', desc: 'Para sa paminsan-minsang paggamit' },
-                      { key: 'pro',     label: 'Pro',     traces: 30, price: '₱900', desc: 'Best value · Pinaka-popular', best: true },
-                      { key: 'studio',  label: 'Studio',  traces: 100, price: '₱2,800', desc: 'Para sa madalas na gumagamit' },
+                      { 
+                        key: 'starter', label: 'Starter', traces: 10, price: '₱350', 
+                        desc: 'Ideal for occasional users taking their first steps.',
+                        features: ['10 AI Vector Traces', 'Standard Processing', '7-day storage', 'Email support'] 
+                      },
+                      { 
+                        key: 'pro', label: 'Pro', traces: 30, price: '₱900', 
+                        desc: 'Perfect for growing businesses needing flexibility.',
+                        best: true,
+                        features: ['30 AI Vector Traces', 'Priority Processing', '30-day storage', 'Priority support', 'Early access to models'] 
+                      },
+                      { 
+                        key: 'studio', label: 'Studio', traces: 100, price: '₱2,800', 
+                        desc: 'Best suited for established businesses & heavy users.',
+                        features: ['100 AI Vector Traces', 'Highest Priority Queue', 'Unlimited storage', 'Dedicated support', 'Custom integrations'] 
+                      },
                     ].map(p => (
                       <div 
                         key={p.key} 
-                        onClick={() => setTopUpForm(f => ({ ...f, plan: p.key }))} 
                         style={{ 
-                          background: topUpForm.plan === p.key ? '#1a1a1a' : '#0a0a0a', 
-                          border: `1px solid ${topUpForm.plan === p.key ? '#FFD700' : '#222'}`, 
-                          borderRadius: '12px', padding: '18px 20px', cursor: 'pointer', 
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                          transition: 'all 0.2s ease', position: 'relative',
-                          boxShadow: topUpForm.plan === p.key ? '0 0 20px rgba(255,215,0,0.08)' : 'none'
+                          background: p.best ? 'linear-gradient(180deg, rgba(30,41,59,0.4) 0%, #09090b 100%)' : '#09090b', 
+                          border: `1px solid ${p.best ? '#475569' : '#18181b'}`, 
+                          padding: '32px 24px', 
+                          display: 'flex', flexDirection: 'column', 
+                          position: 'relative'
                         }}
                       >
-                        {p.best && <div style={{ position: 'absolute', top: '-10px', right: '20px', background: '#FFD700', color: '#000', fontSize: '10px', fontWeight: '800', padding: '4px 10px', borderRadius: '12px', letterSpacing: '0.5px' }}>POPULAR</div>}
-                        
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                          <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: `2px solid ${topUpForm.plan === p.key ? '#FFD700' : '#444'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {topUpForm.plan === p.key && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FFD700' }} />}
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: '800', fontSize: '18px', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              {p.traces} <span style={{ color: topUpForm.plan === p.key ? '#FFD700' : '#888', fontWeight: '600', fontSize: '15px' }}>Credits</span>
-                            </div>
-                            <div style={{ color: '#666', fontSize: '12px', marginTop: '2px' }}>{p.label} Plan</div>
-                          </div>
+                        {/* Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                          <div style={{ fontSize: '16px', fontWeight: '500', color: '#fff' }}>{p.label}</div>
+                          {p.best && <div style={{ background: '#3b82f6', color: '#fff', fontSize: '11px', fontWeight: '600', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle size={12} /> Most popular</div>}
                         </div>
 
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '20px', fontWeight: '800', color: topUpForm.plan === p.key ? '#FFD700' : '#fff' }}>{p.price}</div>
-                          <div style={{ display: 'inline-block', background: '#222', color: '#aaa', fontSize: '10px', padding: '3px 8px', borderRadius: '6px', marginTop: '4px', fontWeight: '600' }}>
-                            ₱{(parseInt(p.price.replace(/[^0-9]/g,'')) / p.traces).toFixed(0)} / credit
-                          </div>
+                        {/* Price */}
+                        <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                          <span style={{ fontSize: '36px', fontWeight: '700', color: '#fff', letterSpacing: '-1px' }}>{p.price}</span>
+                          <span style={{ fontSize: '12px', color: '#888' }}>/ {p.traces} credits</span>
+                        </div>
+                        
+                        <p style={{ color: '#888', fontSize: '13px', lineHeight: '1.5', margin: '0 0 24px', minHeight: '40px' }}>{p.desc}</p>
+
+                        {/* Button */}
+                        <button 
+                          onClick={() => {
+                            setTopUpForm(f => ({ ...f, plan: p.key }));
+                            setTopUpStep(2);
+                          }}
+                          style={{ 
+                            width: '100%', padding: '12px', 
+                            background: '#fff', color: '#000', 
+                            border: 'none', fontWeight: '600', fontSize: '14px', 
+                            cursor: 'pointer', transition: 'opacity 0.2s',
+                            display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px',
+                            marginBottom: '32px'
+                          }} 
+                          onMouseOver={e => e.target.style.opacity = '0.9'} 
+                          onMouseOut={e => e.target.style.opacity = '1'}
+                        >
+                          Select Plan <ArrowRight size={14} />
+                        </button>
+
+                        <div style={{ borderTop: '1px solid #18181b', margin: '0 -24px 24px' }}></div>
+
+                        {/* Features */}
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#888', marginBottom: '16px' }}>What's Included:</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                          {p.features.map((feat, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#aaa', fontSize: '13px' }}>
+                              <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <Check size={10} color="#000" strokeWidth={3} />
+                              </div>
+                              {feat}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))}
                   </div>
-                  <button onClick={() => setTopUpStep(2)} style={{ width: '100%', padding: '14px', background: '#FFD700', color: '#000', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', transition: 'opacity 0.2s' }} onMouseOver={e => e.target.style.opacity = '0.9'} onMouseOut={e => e.target.style.opacity = '1'}>Continue to Payment →</button>
                 </>
               ) : (
                 /* STEP 2 */
                 <>
-                  <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#aaa', fontSize: '12px' }}>Selected: <strong style={{ color: '#fff' }}>{topUpForm.plan === 'starter' ? 'Starter — 10 Credits' : topUpForm.plan === 'pro' ? 'Pro — 30 Credits' : 'Studio — 100 Credits'}</strong></span>
-                    <span style={{ color: '#FFD700', fontWeight: '800', fontSize: '16px' }}>{topUpForm.plan === 'starter' ? '₱350' : topUpForm.plan === 'pro' ? '₱900' : '₱2,800'}</span>
+                  <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '8px', padding: '12px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#888', fontSize: '13px' }}>Selected: <strong style={{ color: '#fff' }}>{topUpForm.plan === 'starter' ? 'Starter — 10 Credits' : topUpForm.plan === 'pro' ? 'Pro — 30 Credits' : 'Studio — 100 Credits'}</strong></span>
+                    <span style={{ color: '#fff', fontWeight: '600', fontSize: '15px' }}>{topUpForm.plan === 'starter' ? '₱350' : topUpForm.plan === 'pro' ? '₱900' : '₱2,800'}</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', marginBottom: '24px', alignItems: 'start' }}>
                     <div style={{ textAlign: 'center' }}>
@@ -1089,12 +1281,12 @@ export default function Workspace() {
                       <p style={{ margin: '12px 0 0', color: '#aaa', fontSize: '13px', lineHeight: 1.6 }}>After paying, fill in the reference number, attach your screenshot above and submit. Credits arrive within <strong style={{ color: '#4ade80' }}>10–30 minutes</strong>.</p>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '16px' }}>
-                    <button onClick={() => setTopUpStep(1)} disabled={isSubmittingTopUp} style={{ padding: '16px 24px', background: 'transparent', color: '#888', border: '1px solid #333', borderRadius: '8px', cursor: isSubmittingTopUp ? 'not-allowed' : 'pointer', fontSize: '16px', fontWeight: '600' }}>← Back</button>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={() => setTopUpStep(1)} disabled={isSubmittingTopUp} style={{ padding: '12px 24px', background: '#18181b', color: '#fff', border: '1px solid #27272a', borderRadius: '6px', cursor: isSubmittingTopUp ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '500' }}>Back</button>
                     <button 
                       onClick={async () => { 
-                        if (!topUpForm.txnRef.trim() || !topUpForm.screenshotFile) { alert('Please enter your GCash reference number and upload proof of payment.'); return; } 
-                        if (!user) { alert('You must be logged in.'); return; }
+                        if (!topUpForm.txnRef.trim() || !topUpForm.screenshotFile) { toast.error('Please enter your GCash reference number and upload proof of payment.'); return; } 
+                        if (!user) { toast.error('You must be logged in.'); return; }
                         
                         setIsSubmittingTopUp(true);
                         try {
@@ -1108,25 +1300,25 @@ export default function Workspace() {
                             
                           if (uploadError) throw uploadError;
                           
-                          const proofUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/payment_proofs/${fileName}`;
-                          
-                          // 2. Insert into payment_requests table
+                          const { data: publicData } = supabase.storage
+                            .from('payment_proofs')
+                            .getPublicUrl(fileName);
+                            
+                          // 2. Insert Top Up Record
                           const { error: dbError } = await supabase
-                            .from('payment_requests')
+                            .from('topups')
                             .insert({
                               user_id: user.id,
-                              email: user.email,
                               plan: topUpForm.plan,
-                              reference_number: topUpForm.txnRef,
-                              proof_url: proofUrl
+                              txn_ref: topUpForm.txnRef,
+                              proof_url: publicData.publicUrl
                             });
                             
                           if (dbError) throw dbError;
                           
                           setTopUpSubmitted(true);
-                        } catch (error) {
-                          console.error("Payment Submission Error:", error);
-                          alert("Failed to submit payment request: " + error.message);
+                        } catch (err) {
+                          toast.error(`Error submitting request: ${err.message}`);
                         } finally {
                           setIsSubmittingTopUp(false);
                         }
@@ -1142,6 +1334,46 @@ export default function Workspace() {
           </div>
         </div>
       )}
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div className="modal-overlay" onClick={() => setShowShortcuts(false)} style={{ zIndex: 100000 }}>
+          <div className="modal-content" style={{ maxWidth: '400px', background: '#262626', border: '1px solid #444', borderRadius: '0' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}><Keyboard size={20} color="#FFD700" /> Keyboard Shortcuts</h2>
+              <button onClick={() => setShowShortcuts(false)} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#aaa', fontSize: '14px' }}>Pan Canvas</span>
+                <span style={{ background: '#1a1a1a', border: '1px solid #333', color: '#FFD700', padding: '4px 8px', fontSize: '12px', fontWeight: 'bold' }}>Hold Space + Drag</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#aaa', fontSize: '14px' }}>Fit to Screen</span>
+                <span style={{ background: '#1a1a1a', border: '1px solid #333', color: '#FFD700', padding: '4px 8px', fontSize: '12px', fontWeight: 'bold' }}>F</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#aaa', fontSize: '14px' }}>Reset View (1:1)</span>
+                <span style={{ background: '#1a1a1a', border: '1px solid #333', color: '#FFD700', padding: '4px 8px', fontSize: '12px', fontWeight: 'bold' }}>Esc</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#aaa', fontSize: '14px' }}>Zoom In / Out</span>
+                <span style={{ background: '#1a1a1a', border: '1px solid #333', color: '#FFD700', padding: '4px 8px', fontSize: '12px', fontWeight: 'bold' }}>Mouse Wheel</span>
+              </div>
+            </div>
+            
+            <div style={{ marginTop: '32px', textAlign: 'center' }}>
+              <button 
+                onClick={() => setShowShortcuts(false)}
+                style={{ width: '100%', padding: '12px', background: '#FFD700', color: '#000', border: 'none', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

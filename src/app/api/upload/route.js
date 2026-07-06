@@ -4,23 +4,13 @@ import { supabase } from "@/lib/supabase";
 
 export async function POST(request) {
   try {
-    const formData = await request.formData();
-    const imageFile = formData.get("image");
-    const traceType = formData.get("traceType") || "mockup";
-    const projectName = formData.get("projectName") || imageFile.name;
-    const userId = formData.get("userId");
+    const { imageUrl, traceType, projectName, userId } = await request.json();
 
-    if (!imageFile) {
-      return NextResponse.json({ error: "No image provided" }, { status: 400 });
+    if (!imageUrl) {
+      return NextResponse.json({ error: "No image URL provided" }, { status: 400 });
     }
 
-    // 1. Convert to buffer
-    const arrayBuffer = await imageFile.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // 2. Upload original image to Cloudflare R2
-    const fileName = `uploads/${Date.now()}_${imageFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    const fileUrl = await uploadToR2(buffer, fileName, imageFile.type);
+    const fileUrl = imageUrl;
 
     // 3. Save to Supabase database
     const { data, error } = await supabase
