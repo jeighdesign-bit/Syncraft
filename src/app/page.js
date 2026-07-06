@@ -7,6 +7,20 @@ import { ImageIcon, Monitor, LogIn, FilePlus, User, Edit3, Trash2, MoreVertical,
 import { toast } from "@/components/Toast";
 import "./globals.css";
 
+const TraceIcon = ({ size = 16, color = "#FFD700" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* Outer Coin Circle */}
+    <circle cx="10" cy="12" r="8" stroke={color} strokeWidth="2" />
+    <circle cx="10" cy="12" r="9" stroke={color} strokeWidth="0.5" opacity="0.5" />
+    {/* Inner Shirt */}
+    <path d="M7 8H13L14 10H13V15H7V10H6L7 8Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    {/* Dotted Trail */}
+    <circle cx="18" cy="8" r="1" fill={color} />
+    <circle cx="21" cy="6" r="1.5" fill={color} />
+    <circle cx="20" cy="10" r="1" fill={color} />
+  </svg>
+);
+
 export default function StartScreen() {
   const [recentProjects, setRecentProjects] = useState([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
@@ -276,7 +290,7 @@ export default function StartScreen() {
           {user ? (
             <>
               <div onClick={() => setShowTopUpModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#333', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', border: '1px solid #555' }}>
-                <Shirt size={14} color="#FFD700" />
+                <TraceIcon size={16} color="#FFD700" />
                 <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#FFD700' }}>{credits} {credits === 1 ? 'Trace' : 'Traces'}</span>
                 <span style={{ fontSize: '10px', background: '#FFD700', color: '#000', padding: '2px 6px', borderRadius: '10px', marginLeft: '4px', fontWeight: 'bold' }}>TOP UP</span>
               </div>
@@ -613,7 +627,7 @@ export default function StartScreen() {
                   <h3 style={{ margin: '0 0 8px', color: '#4ade80', fontWeight: '700' }}>Request Submitted!</h3>
                   <p style={{ color: '#888', fontSize: '13px', margin: '0 0 8px' }}>Natanggap namin ang iyong payment request.</p>
                   <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '14px', margin: '16px 0', textAlign: 'left' }}>
-                    <p style={{ margin: '0 0 8px', color: '#aaa', fontSize: '12px', display: 'flex', alignItems: 'center' }}><Package size={14} style={{ marginRight: '6px', color: '#888' }} /> Package: <strong style={{ color: '#FFD700', marginLeft: '6px' }}>{topUpForm.plan === 'starter' ? '10 Credits — ₱350' : topUpForm.plan === 'pro' ? '30 Credits — ₱900' : '100 Credits — ₱2,800'}</strong></p>
+                    <p style={{ margin: '0 0 8px', color: '#aaa', fontSize: '12px', display: 'flex', alignItems: 'center' }}><Package size={14} style={{ marginRight: '6px', color: '#888' }} /> Package: <strong style={{ color: '#FFD700', marginLeft: '6px' }}>{topUpForm.plan === 'tingi' ? '2 Credits — ₱50' : topUpForm.plan === 'basic' ? '5 Credits — ₱100' : topUpForm.plan === 'starter' ? '10 Credits — ₱290' : '35 Credits — ₱870'}</strong></p>
                     <p style={{ margin: '0 0 8px', color: '#aaa', fontSize: '12px', display: 'flex', alignItems: 'center' }}><Tag size={14} style={{ marginRight: '6px', color: '#888' }} /> Ref No: <strong style={{ color: '#fff', marginLeft: '6px' }}>{topUpForm.txnRef || '—'}</strong></p>
                     <p style={{ margin: 0, color: '#aaa', fontSize: '12px', display: 'flex', alignItems: 'center' }}><Mail size={14} style={{ marginRight: '6px', color: '#888' }} /> Account: <strong style={{ color: '#fff', marginLeft: '6px' }}>{user?.email}</strong></p>
                   </div>
@@ -629,23 +643,28 @@ export default function StartScreen() {
                     <p style={{ margin: 0, color: '#aaa', fontSize: '14px', maxWidth: '500px', marginLeft: 'auto', marginRight: 'auto' }}>Piliin ang credit package na sakto sa pangangailangan mo.</p>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
                     {[
                       { 
-                        key: 'starter', label: 'Starter', traces: 10, price: '₱350', 
-                        desc: 'Ideal for occasional users taking their first steps.',
-                        features: ['10 AI Vector Traces', 'Standard Processing', '7-day storage', 'Email support'] 
+                        key: 'tingi', label: 'Tingi', traces: 2, price: '₱50', 
+                        desc: 'Sachet pricing. Good for a quick test.',
+                        features: ['2 HD Vector Traces', 'Standard Processing'] 
                       },
                       { 
-                        key: 'pro', label: 'Pro', traces: 30, price: '₱900', 
-                        desc: 'Perfect for growing businesses needing flexibility.',
+                        key: 'basic', label: 'Basic', traces: 5, price: '₱100', 
+                        desc: 'Great for hobbyists printing occasionally.',
+                        features: ['5 HD Vector Traces', 'Standard Processing', '7-day storage'] 
+                      },
+                      { 
+                        key: 'starter', label: 'Starter', traces: 10, price: '₱290', 
+                        desc: 'Ideal for small businesses taking their first steps.',
+                        features: ['10 HD Vector Traces', 'Priority Processing', '30-day storage', 'Email support'] 
+                      },
+                      { 
+                        key: 'pro', label: 'Professional', traces: 35, price: '₱870', 
+                        desc: 'Perfect for print shops & growing design studios.',
                         best: true,
-                        features: ['30 AI Vector Traces', 'Priority Processing', '30-day storage', 'Priority support', 'Early access to models'] 
-                      },
-                      { 
-                        key: 'studio', label: 'Studio', traces: 100, price: '₱2,800', 
-                        desc: 'Best suited for established businesses & heavy users.',
-                        features: ['100 AI Vector Traces', 'Highest Priority Queue', 'Unlimited storage', 'Dedicated support', 'Custom integrations'] 
+                        features: ['35 HD Vector Traces', 'Highest Priority Queue', 'Unlimited storage', 'Priority support'] 
                       },
                     ].map(p => (
                       <div 
@@ -721,8 +740,8 @@ export default function StartScreen() {
                 /* ===== STEP 2: PAY & SUBMIT ===== */
                 <>
                   <div style={{ background: '#2a2a2a', border: '1px solid #444', borderRadius: '8px', padding: '12px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#aaa', fontSize: '13px' }}>Selected: <strong style={{ color: '#fff' }}>{topUpForm.plan === 'starter' ? 'Starter — 10 Credits' : topUpForm.plan === 'pro' ? 'Pro — 30 Credits' : 'Studio — 100 Credits'}</strong></span>
-                    <span style={{ color: '#FFD700', fontWeight: '600', fontSize: '15px' }}>{topUpForm.plan === 'starter' ? '₱350' : topUpForm.plan === 'pro' ? '₱900' : '₱2,800'}</span>
+                    <span style={{ color: '#aaa', fontSize: '13px' }}>Selected: <strong style={{ color: '#fff' }}>{topUpForm.plan === 'tingi' ? 'Tingi — 2 Credits' : topUpForm.plan === 'basic' ? 'Basic — 5 Credits' : topUpForm.plan === 'starter' ? 'Starter — 10 Credits' : 'Professional — 35 Credits'}</strong></span>
+                    <span style={{ color: '#FFD700', fontWeight: '600', fontSize: '15px' }}>{topUpForm.plan === 'tingi' ? '₱50' : topUpForm.plan === 'basic' ? '₱100' : topUpForm.plan === 'starter' ? '₱290' : '₱870'}</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', marginBottom: '24px', alignItems: 'start' }}>
                     <div style={{ textAlign: 'center' }}>
