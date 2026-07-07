@@ -318,8 +318,8 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
           <div ref={leftScrollRef} onScroll={handleLeftScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "#111", backgroundImage: "radial-gradient(#333 1px, transparent 1px)", backgroundSize: "20px 20px" }}>
             {proxyOriginal ? (
               <div style={{ position: "relative", width: `${Math.max(100, zoomLevel * 100)}%`, height: `${Math.max(100, zoomLevel * 100)}%`, minWidth: "100%", minHeight: "100%" }}>
-                <div style={{ position: "absolute", top: "50%", left: "50%", width: `${100 / Math.max(1, zoomLevel)}%`, height: `${100 / Math.max(1, zoomLevel)}%`, transform: `translate(-50%, -50%) scale(${zoomLevel})`, padding: "40px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
-                  <img src={proxyOriginal} draggable={false} alt="Original" style={{ maxWidth: "100%", maxHeight: "100%", minWidth: 0, minHeight: 0, objectFit: "contain", backgroundColor: "#fff", border: "1px solid rgba(255,255,255,0.2)", boxShadow: "0 10px 40px rgba(0,0,0,0.8)", borderRadius: "2px" }} />
+                <div style={{ position: "absolute", top: "50%", left: "50%", width: `${100 / Math.max(1, zoomLevel)}%`, height: `${100 / Math.max(1, zoomLevel)}%`, transform: `translate(-50%, -50%) scale(${zoomLevel})`, padding: "20px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
+                  <img src={proxyOriginal} draggable={false} alt="Original" style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0, objectFit: "contain", borderRadius: "2px" }} />
                 </div>
               </div>
             ) : (
@@ -367,11 +367,11 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
           <div ref={rightScrollRef} onScroll={handleRightScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "#111", backgroundImage: "radial-gradient(#333 1px, transparent 1px)", backgroundSize: "20px 20px" }}>
             {activeUrl && traceState === "idle" ? (
               <div style={{ position: "relative", width: `${Math.max(100, zoomLevel * 100)}%`, height: `${Math.max(100, zoomLevel * 100)}%`, minWidth: "100%", minHeight: "100%" }}>
-                <div style={{ position: "absolute", top: "50%", left: "50%", width: `${100 / Math.max(1, zoomLevel)}%`, height: `${100 / Math.max(1, zoomLevel)}%`, transform: `translate(-50%, -50%) scale(${zoomLevel})`, padding: "40px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
+                <div style={{ position: "absolute", top: "50%", left: "50%", width: `${100 / Math.max(1, zoomLevel)}%`, height: `${100 / Math.max(1, zoomLevel)}%`, transform: `translate(-50%, -50%) scale(${zoomLevel})`, padding: "20px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
                   {activeTab === "svg" ? (
-                    <img src={activeUrl} draggable={false} alt="Output" style={{ maxWidth: "100%", maxHeight: "100%", minWidth: 0, minHeight: 0, objectFit: "contain", backgroundColor: "#fff", border: "1px solid rgba(255,255,255,0.2)", boxShadow: "0 10px 40px rgba(0,0,0,0.8)", borderRadius: "2px" }} />
+                    <img src={activeUrl} draggable={false} alt="Output" style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0, objectFit: "contain", borderRadius: "2px" }} />
                   ) : (
-                    <img src={activeUrl} draggable={false} alt="Output" style={{ maxWidth: "100%", maxHeight: "100%", minWidth: 0, minHeight: 0, objectFit: "contain", backgroundColor: "#fff", border: "1px solid rgba(255,255,255,0.2)", boxShadow: "0 10px 40px rgba(0,0,0,0.8)", borderRadius: "2px" }} />
+                    <img src={activeUrl} draggable={false} alt="Output" style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0, objectFit: "contain", borderRadius: "2px" }} />
                   )}
                 </div>
               </div>

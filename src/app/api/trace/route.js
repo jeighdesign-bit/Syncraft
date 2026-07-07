@@ -157,18 +157,35 @@ WHAT SUCCESS LOOKS LIKE:
 ✅ Output is a clean flat rectangle with the pattern extending to all edges`;
       }
 
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Gemini API Timeout (110s)")), 110000)
-      );
-      const genPromise = model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { data: base64Image, mimeType } }] }],
-        generationConfig: {
-          temperature: 0.05,
-          topP: 0.7,
-          topK: 5,
-        },
-      });
-      const result = await Promise.race([genPromise, timeoutPromise]);
+      let result;
+      let retries = 3;
+      while (retries > 0) {
+        let timeoutId;
+        try {
+          const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error("Gemini API Timeout (300s) - The AI is taking too long to generate the image.")), 300000);
+          });
+          const genPromise = model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { data: base64Image, mimeType } }] }],
+            generationConfig: {
+              temperature: 0.05,
+              topP: 0.7,
+              topK: 5,
+            },
+          });
+          result = await Promise.race([genPromise, timeoutPromise]);
+          clearTimeout(timeoutId);
+          break; // Success, exit retry loop
+        } catch (err) {
+          clearTimeout(timeoutId);
+          retries--;
+          if (retries === 0 || !err.message.includes("503")) {
+            throw err; // Out of retries or not a 503 error
+          }
+          console.log(`[Gemini API] 503 High Demand. Retrying in 2 seconds... (${retries} retries left)`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
       
       // Extract the generated image
       const parts = result.response.candidates[0].content.parts;
