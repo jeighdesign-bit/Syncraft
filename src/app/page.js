@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { ImageIcon, Monitor, LogIn, FilePlus, User, Trash2, LogOut, CheckCircle2, X } from "lucide-react";
+import { ImageIcon, Monitor, LogIn, FilePlus, User, Trash2, LogOut, CheckCircle2, X, Loader2 } from "lucide-react";
 import { toast } from "@/components/Toast";
 import "./globals.css";
 import "./home.css";
@@ -512,6 +512,23 @@ export default function StartScreen() {
           </div>
         </div>
       )}
+
+      {/* Uploading Overlay */}
+      {isUploading && !showModal && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-content" style={{ maxWidth: "340px", textAlign: "center", padding: "40px 30px" }}>
+            <div style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: "28px" }}>
+              <div style={{ position: "absolute", width: "80px", height: "80px", border: "4px solid rgba(255,204,0,0.1)", borderRadius: "50%" }}></div>
+              <Loader2 size={40} color="#ffcc00" className="animate-spin" />
+            </div>
+            <h3 style={{ margin: "0 0 12px 0", fontSize: "22px", fontWeight: "700" }}>Preparing Image...</h3>
+            <p style={{ color: "#aaa", margin: 0, fontSize: "14px", lineHeight: "1.6" }}>
+              Transferring your photo to the Auto-Tracer Workspace. Please hold on a moment.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* FOOTER */}
       <footer style={{ marginTop: "100px", borderTop: "1px solid #222", padding: "40px 0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
