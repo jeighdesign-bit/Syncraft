@@ -46,20 +46,20 @@ export default function MobileWarning() {
       }}>
         <MonitorX size={48} color="#FFD700" />
       </div>
-      
+
       <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "16px", color: "#fff" }}>
         Desktop Required
       </h2>
-      
+
       <p style={{ fontSize: "16px", color: "#aaa", lineHeight: "1.6", maxWidth: "400px" }}>
         DesaynClaw features a professional "Infinite Canvas" workspace that relies on <strong>Left Click + Drag</strong> to pan and navigate.
       </p>
-      
-      <div style={{ 
-        marginTop: "30px", 
-        padding: "16px", 
-        background: "rgba(255,255,255,0.05)", 
-        border: "1px solid #333", 
+
+      <div style={{
+        marginTop: "30px",
+        padding: "16px",
+        background: "rgba(255,255,255,0.05)",
+        border: "1px solid #333",
         borderRadius: "8px",
         fontSize: "14px",
         color: "#ccc"

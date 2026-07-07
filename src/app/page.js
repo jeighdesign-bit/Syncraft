@@ -100,7 +100,10 @@ export default function StartScreen() {
         try {
           const response = await fetch(fileUrl);
           const blob = await response.blob();
-          const file = new File([blob], "mobile-upload.png", { type: blob.type });
+          // R2 sometimes returns application/octet-stream which fails the .startsWith("image/") check.
+          // We force it to be an image type so the upload logic accepts it.
+          const mimeType = blob.type && blob.type.startsWith("image/") ? blob.type : "image/jpeg";
+          const file = new File([blob], "mobile-upload.jpg", { type: mimeType });
           
           setShowQrModal(false);
           handleFileUpload(file);
