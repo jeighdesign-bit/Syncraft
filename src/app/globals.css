@@ -1,21 +1,21 @@
 :root {
-  --bg-app: #1e1e1e;       /* Outer application background */
-  --bg-panel: #2d2d2d;     /* Tool panels */
-  --bg-canvas: #161616;    /* Workspace canvas */
-  --bg-hover: #3e3e3e;     /* Hover state for buttons/items */
-  --bg-active: #4a4a4a;    /* Active selected item */
+  --bg-app: #262626;       /* Outer application background */
+  --bg-panel: #1a1a1a;     /* Tool panels */
+  --bg-canvas: #222222;    /* Workspace canvas */
+  --bg-hover: #333333;     /* Hover state for buttons/items */
+  --bg-active: #222222;    /* Active selected item */
   
-  --border: #424242;       /* Panel borders */
+  --border: #444444;       /* Panel borders */
   --border-light: #555555; /* Input borders */
   
-  --accent: #ffcc00;       /* DESAYNBRO Yellow (sparingly) */
+  --accent: #FFD700;       /* DESAYNBRO Yellow */
   --accent-text: #000000;
   
   --text-primary: #cccccc; /* Off-white for less eye strain */
   --text-bright: #ffffff;  /* Pure white for headings/active */
   --text-muted: #888888;   /* Disabled or secondary text */
   
-  --radius: 2px;           /* Sharp professional corners */
+  --radius: 0px;           /* Sharp industrial corners */
 }
 
 * {
@@ -27,6 +27,7 @@
 html, body {
   background-color: var(--bg-app);
   color: var(--text-primary);
+  font-family: var(--font-outfit), monospace;
   font-size: 13px; /* Smaller, professional desktop font size */
   height: 100vh;
   overflow: hidden;
@@ -161,8 +162,6 @@ html, body {
 .canvas-area {
   flex: 1;
   background-color: var(--bg-canvas);
-  background-image: radial-gradient(#333 1px, transparent 1px);
-  background-size: 20px 20px;
   position: relative;
   display: flex;
   align-items: center;

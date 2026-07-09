@@ -91,7 +91,10 @@ const CropModal = memo(function CropModal({
 
       const res = await fetch("/api/crop", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Required: route now verifies auth
+        },
         body: JSON.stringify({ projectId: project.id, croppedImageUrl: urlData.publicUrl }),
       });
       const data = await res.json();
@@ -126,7 +129,7 @@ const CropModal = memo(function CropModal({
             >
               <img
                 ref={imgRef}
-                src={`/api/proxy-image?url=${encodeURIComponent(project.original_image_url)}`}
+                src={`/api/proxy?url=${encodeURIComponent(project.original_image_url)}`}
                 alt="Crop source"
                 style={{ maxHeight: "65vh", maxWidth: "100%", objectFit: "contain", display: "block", margin: "0 auto" }}
                 crossOrigin="anonymous"

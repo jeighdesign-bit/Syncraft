@@ -53,6 +53,15 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
     // Deduct locally in UI for immediate feedback
     if (userCredits > 0) setUserCredits(prev => prev - 1);
 
+    // Fetch auth token once — used for all secure API calls in this pipeline
+    let authToken = null;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      authToken = session?.access_token || null;
+    } catch {
+      // Token fetch failed — save-asset calls will still work via server-side project check
+    }
+
     try {
       // ─── Step 1: Gemini ───────────────────────────────────────────────
       setTraceState("step1");
@@ -84,7 +93,10 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
 
       const save1 = await fetch("/api/save-asset", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify({ projectId: project.id, step: 1, base64: data1.base64, mimeType: data1.mimeType }),
       });
       if (!save1.ok) throw new Error("Failed to save image");
@@ -117,7 +129,10 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
 
       const save2 = await fetch("/api/save-asset", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify({ projectId: project.id, step: 2, fileUrl: data2.fileUrl, mimeType: data2.mimeType }),
       });
       if (!save2.ok) throw new Error("Failed to save upscaled image");
@@ -132,7 +147,10 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
 
       const res3 = await fetch("/api/trace-step3", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify({ projectId: project.id, colors: vectorColors }),
       });
 

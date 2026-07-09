@@ -1,26 +1,39 @@
 import { NextResponse } from "next/server";
-import { uploadToR2 } from "@/lib/cloudflare";
-import { supabase } from "@/lib/supabase";
+import { adminSupabase } from "@/lib/supabase";
 
 export async function POST(request) {
   try {
-    const { imageUrl, traceType, projectName, userId } = await request.json();
+    // ─── Auth: verify token from the request header ───────────────────────────
+    // NEVER trust userId from the request body — always verify server-side.
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const token = authHeader.replace('Bearer ', '').trim();
+    if (!token || token === 'undefined') {
+      return NextResponse.json({ error: 'Unauthorized: invalid token' }, { status: 401 });
+    }
+    const { data: { user }, error: authError } = await adminSupabase.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized: invalid session' }, { status: 401 });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const { imageUrl, traceType, projectName } = await request.json();
 
     if (!imageUrl) {
       return NextResponse.json({ error: "No image URL provided" }, { status: 400 });
     }
 
-    const fileUrl = imageUrl;
-
-    // 3. Save to Supabase database
-    const { data, error } = await supabase
+    // Save to Supabase database — use verified user.id, NOT body userId
+    const { data, error } = await adminSupabase
       .from('projects')
       .insert([
         { 
           name: projectName, 
-          original_image_url: fileUrl,
+          original_image_url: imageUrl,
           trace_type: traceType.startsWith('mockup') ? 'mockup' : 'logo',
-          user_id: userId || null,
+          user_id: user.id,
           ai_prompt: traceType === 'mockup_erase' ? 'ERASE_LOGOS' : (traceType === 'mockup_preserve' ? 'PRESERVE_LOGOS' : null)
         }
       ])
@@ -43,3 +56,4 @@ export async function POST(request) {
     );
   }
 }
+

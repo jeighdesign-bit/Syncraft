@@ -30,15 +30,16 @@ const PropertiesPanel = memo(function PropertiesPanel({
 
   const traceButtonStyle = {
     width: "100%",
-    background: noCredits ? "#333" : "linear-gradient(135deg, #FFD700 0%, #E5B800 100%)",
-    color: noCredits ? "#666" : "#111",
-    border: "none",
-    borderRadius: "8px",
+    background: noCredits ? "rgba(255, 215, 0, 0.1)" : "#1a1a1a",
+    color: noCredits ? "#FFD700" : "#FFD700",
+    border: noCredits ? "1px dashed #FFD700" : "1px solid #FFD700",
+    borderRadius: "0",
     fontWeight: "600",
-    boxShadow: noCredits ? "none" : "0 4px 15px rgba(255, 215, 0, 0.2)",
-    cursor: noCredits || isBusy ? "not-allowed" : "pointer",
+    textTransform: "uppercase",
+    letterSpacing: "1px",
+    cursor: isBusy ? "not-allowed" : "pointer",
     opacity: isBusy ? 0.7 : 1,
-    padding: "12px 16px",
+    padding: "14px 16px",
     transition: "all 0.2s"
   };
 
@@ -47,7 +48,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
     : traceState !== "idle"
     ? "Processing..."
     : noCredits
-    ? "No Credits Remaining"
+    ? "Get More Credits"
     : !isCropped
     ? "Crop Image First"
     : "Run Auto-Trace (-1 Credit)";
@@ -57,7 +58,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
 
       {/* PROPERTIES section */}
       <div className="panel-section">
-        <div className="section-header">
+        <div className="section-header" style={{ background: "#222", borderBottom: "1px solid #444", padding: "12px 16px", fontSize: "11px", letterSpacing: "1px", color: "#888", textTransform: "uppercase" }}>
           <span>PROPERTIES</span>
           <Settings2 size={12} />
         </div>
@@ -71,7 +72,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
             <select 
               value={vectorColors}
               onChange={(e) => setVectorColors(e.target.value)}
-              style={{ padding: "8px 12px", fontSize: "12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#ddd", marginTop: "6px", borderRadius: "6px", width: "100%", outline: "none", cursor: "pointer", transition: "all 0.2s" }}
+              style={{ padding: "8px 12px", fontSize: "12px", background: "#1a1a1a", border: "1px solid #444", color: "#ddd", marginTop: "6px", borderRadius: "0", width: "100%", outline: "none", cursor: "pointer", transition: "all 0.2s" }}
             >
               <option value="auto" style={{ background: "#222", color: "#ddd" }}>Auto (Preserve Details)</option>
               <option value="16" style={{ background: "#222", color: "#ddd" }}>16 Colors (High Details)</option>
@@ -88,7 +89,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
 
       {/* ACTIONS section */}
       <div className="panel-section">
-        <div className="section-header">
+        <div className="section-header" style={{ background: "#222", borderBottom: "1px solid #444", padding: "12px 16px", fontSize: "11px", letterSpacing: "1px", color: "#888", textTransform: "uppercase" }}>
           <span>ACTIONS</span>
           <ChevronDown size={12} />
         </div>
@@ -101,9 +102,16 @@ const PropertiesPanel = memo(function PropertiesPanel({
           {!project?.svg_url && (
             <button
               className="btn-primary"
-              style={{ ...traceButtonStyle, opacity: (!isCropped || isBusy) ? 0.5 : 1, cursor: (!isCropped || isBusy || noCredits) ? "not-allowed" : "pointer" }}
-              onClick={() => { if (isCropped && !isBusy && !noCredits) onExecuteTrace(vectorColors) }}
-              disabled={!isCropped || isBusy}
+              style={{ ...traceButtonStyle, opacity: (!isCropped && !noCredits) || isBusy ? 0.5 : 1, cursor: (!isCropped && !noCredits) || isBusy ? "not-allowed" : "pointer" }}
+              onClick={() => {
+                if (isBusy) return;
+                if (noCredits) {
+                  onOpenTopUp?.();
+                } else if (isCropped) {
+                  onExecuteTrace(vectorColors);
+                }
+              }}
+              disabled={isBusy || (!isCropped && !noCredits)}
             >
               {traceButtonLabel}
             </button>
@@ -113,7 +121,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
             className="btn-primary"
             onClick={onDownloadSvg}
             disabled={!project?.svg_url}
-            style={{ marginBottom: "8px", marginTop: "8px", background: "rgba(255, 215, 0, 0.1)", border: "1px solid rgba(255, 215, 0, 0.3)", color: "#FFD700", borderRadius: "8px", padding: "10px 16px", transition: "all 0.2s" }}
+            style={{ marginBottom: "8px", marginTop: "8px", background: "rgba(255, 215, 0, 0.1)", border: "1px solid #FFD700", color: "#FFD700", borderRadius: "0", padding: "10px 16px", transition: "all 0.2s", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" }}
             onMouseOver={e => { if(project?.svg_url) e.currentTarget.style.background = "rgba(255, 215, 0, 0.2)"; }}
             onMouseOut={e => { if(project?.svg_url) e.currentTarget.style.background = "rgba(255, 215, 0, 0.1)"; }}
           >
@@ -124,7 +132,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
             className="btn-primary"
             onClick={onDownloadAll}
             disabled={!project?.original_image_url}
-            style={{ marginBottom: "8px", background: "rgba(255,255,255,0.02)", color: "#aaa", border: "1px solid transparent", borderRadius: "6px", padding: "8px 16px", transition: "all 0.2s", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}
+            style={{ marginBottom: "8px", background: "#1a1a1a", color: "#aaa", border: "1px solid #444", borderRadius: "0", padding: "8px 16px", transition: "all 0.2s", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}
             onMouseOver={e => { if(project?.original_image_url) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
             onMouseOut={e => { if(project?.original_image_url) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
           >
@@ -135,7 +143,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
             className="btn-primary"
             onClick={onOpenCompare}
             disabled={!project?.svg_url}
-            style={{ background: "rgba(255,255,255,0.02)", color: "#aaa", border: "1px solid transparent", borderRadius: "6px", padding: "8px 16px", transition: "all 0.2s", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}
+            style={{ background: "#1a1a1a", color: "#aaa", border: "1px solid #444", borderRadius: "0", padding: "8px 16px", transition: "all 0.2s", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}
             onMouseOver={e => { if(project?.svg_url) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
             onMouseOut={e => { if(project?.svg_url) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
           >

@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo, useState, useRef, useEffect, useLayoutEffect } from "react";
-import { Scissors, ZoomIn, ZoomOut, Maximize, AlertCircle, Eraser } from "lucide-react";
+import { Scissors, ZoomIn, ZoomOut, Maximize, AlertCircle, Eraser, Loader2 } from "lucide-react";
 
 const SplitViewCanvas = memo(function SplitViewCanvas({
   project,
@@ -239,16 +239,9 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
           )}
           <div style={{ zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#fff', background: 'rgba(0,0,0,0.6)', padding: '24px 48px', borderRadius: '0', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.05)', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '8px' }}>
-              <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '2px', color: '#FFD700' }}>AI TRACE IN PROGRESS</span>
-              <span style={{ fontSize: '11px', color: '#888' }}>[||||||]</span>
-            </div>
-            
-            <div style={{ width: '260px', height: '6px', background: 'rgba(255,255,255,0.1)', position: 'relative', overflow: 'hidden', marginBottom: '12px' }}>
-              <div className="segmented-progress" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: 'repeating-linear-gradient(to right, #FFD700 0, #FFD700 4px, transparent 4px, transparent 8px)', backgroundSize: '200% 100%', animation: 'segmentMove 0.8s linear infinite' }} />
-            </div>
-
-            <span style={{ fontSize: '10px', color: '#aaa' }}>Optimizing paths and reducing colors...</span>
+            <Loader2 size={24} color="#FFD700" className="animate-spin" style={{ marginBottom: "16px" }} />
+            <div style={{ fontSize: "14px", color: "#FFD700", fontWeight: "500", marginBottom: "4px" }}>Processing image</div>
+            <span style={{ fontSize: "12px", color: "#888" }}>Optimizing paths and reducing colors...</span>
           </div>
         </div>
       );
@@ -276,19 +269,21 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
   };
 
   return (
-    <div ref={containerRef} style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", backgroundColor: "#0f0f0f" }}>
+    <div ref={containerRef} style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", backgroundColor: "#1a1a1a", border: "1px solid #444", position: "relative" }}>
+      {/* Top Edge Accent */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, #FFD700, #444, #1a1a1a)", zIndex: 10 }} />
       
       {/* Zoom Toolbar */}
-      <div style={{ display: "flex", padding: "12px 20px", background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.05)", alignItems: "center", justifyContent: "center", gap: "12px" }}>
-        <button onClick={() => setZoomLevel(z => Math.max(0.5, z - 0.25))} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#ccc", borderRadius: "20px", padding: "6px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.background="rgba(255,255,255,0.1)"} onMouseOut={e => e.currentTarget.style.background="rgba(255,255,255,0.05)"}>
+      <div style={{ display: "flex", padding: "12px 20px", background: "#222", borderBottom: "1px solid #444", alignItems: "center", justifyContent: "center", gap: "12px", zIndex: 5 }}>
+        <button onClick={() => setZoomLevel(z => Math.max(0.5, z - 0.25))} style={{ background: "#1a1a1a", border: "1px solid #444", color: "#ccc", borderRadius: "0", padding: "6px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor="#FFD700"} onMouseOut={e => e.currentTarget.style.borderColor="#444"}>
           <ZoomOut size={14} /> Zoom Out
         </button>
-        <span style={{ color: "#fff", fontSize: "12px", minWidth: "45px", textAlign: "center", fontWeight: "600" }}>{Math.round(zoomLevel * 100)}%</span>
-        <button onClick={() => setZoomLevel(z => Math.min(4, z + 0.25))} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#ccc", borderRadius: "20px", padding: "6px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.background="rgba(255,255,255,0.1)"} onMouseOut={e => e.currentTarget.style.background="rgba(255,255,255,0.05)"}>
+        <span style={{ color: "#FFD700", fontSize: "12px", minWidth: "45px", textAlign: "center", fontWeight: "600", fontFamily: "monospace" }}>{Math.round(zoomLevel * 100)}%</span>
+        <button onClick={() => setZoomLevel(z => Math.min(4, z + 0.25))} style={{ background: "#1a1a1a", border: "1px solid #444", color: "#ccc", borderRadius: "0", padding: "6px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor="#FFD700"} onMouseOut={e => e.currentTarget.style.borderColor="#444"}>
           <ZoomIn size={14} /> Zoom In
         </button>
-        <div style={{ width: "1px", height: "16px", background: "rgba(255,255,255,0.1)", margin: "0 4px" }} />
-        <button onClick={() => setZoomLevel(1)} style={{ background: "transparent", border: "none", color: "#888", borderRadius: "20px", padding: "6px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", transition: "color 0.2s" }} onMouseOver={e => e.currentTarget.style.color="#fff"} onMouseOut={e => e.currentTarget.style.color="#888"}>
+        <div style={{ width: "1px", height: "16px", background: "#444", margin: "0 4px" }} />
+        <button onClick={() => setZoomLevel(1)} style={{ background: "transparent", border: "none", color: "#888", borderRadius: "0", padding: "6px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", transition: "color 0.2s" }} onMouseOver={e => e.currentTarget.style.color="#FFD700"} onMouseOut={e => e.currentTarget.style.color="#888"}>
           <Maximize size={14} /> Fit
         </button>
       </div>
@@ -301,21 +296,21 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
         onPointerLeave={handlePointerUp}
       >
         {/* LEFT PANEL: Original Image */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: "1px solid rgba(255,255,255,0.05)" }}>
-          <div style={{ padding: "12px 24px", background: "rgba(255,255,255,0.01)", borderBottom: "1px solid rgba(255,255,255,0.03)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ color: "#aaa", fontWeight: "500", fontSize: "11px", letterSpacing: "1.5px" }}>ORIGINAL UPLOAD</span>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: "1px solid #444" }}>
+          <div style={{ padding: "12px 24px", background: "#222", borderBottom: "1px solid #444", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ color: "#888", fontWeight: "600", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase" }}>ORIGINAL UPLOAD</span>
             {traceState === "idle" && (
               <div style={{ display: "flex", gap: "8px" }}>
-                <button onClick={onEraseOpen} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#ccc", borderRadius: "20px", padding: "4px 12px", cursor: "pointer", fontSize: "11px", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.background="rgba(255,255,255,0.1)"} onMouseOut={e => e.currentTarget.style.background="rgba(255,255,255,0.05)"}>
+                <button onClick={onEraseOpen} style={{ background: "#1a1a1a", border: "1px solid #444", color: "#ccc", borderRadius: "0", padding: "4px 12px", cursor: "pointer", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor="#FFD700"} onMouseOut={e => e.currentTarget.style.borderColor="#444"}>
                   <Eraser size={12} /> Erase Noise
                 </button>
-                <button onClick={onCropOpen} style={{ background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.3)", color: "#FFD700", borderRadius: "20px", padding: "4px 12px", cursor: "pointer", fontSize: "11px", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.background="rgba(255,215,0,0.2)"} onMouseOut={e => e.currentTarget.style.background="rgba(255,215,0,0.1)"}>
+                <button onClick={onCropOpen} style={{ background: "rgba(255,215,0,0.1)", border: "1px solid #FFD700", color: "#FFD700", borderRadius: "0", padding: "4px 12px", cursor: "pointer", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.background="rgba(255,215,0,0.2)"} onMouseOut={e => e.currentTarget.style.background="rgba(255,215,0,0.1)"}>
                   <Scissors size={12} /> Crop Region
                 </button>
               </div>
             )}
           </div>
-          <div ref={leftScrollRef} onScroll={handleLeftScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "#111", backgroundImage: "radial-gradient(#333 1px, transparent 1px)", backgroundSize: "20px 20px" }}>
+          <div ref={leftScrollRef} onScroll={handleLeftScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "#222" }}>
             {proxyOriginal ? (
               <div style={{ position: "relative", width: `${Math.max(100, zoomLevel * 100)}%`, height: `${Math.max(100, zoomLevel * 100)}%`, minWidth: "100%", minHeight: "100%" }}>
                 <div style={{ position: "absolute", top: "50%", left: "50%", width: `${100 / Math.max(1, zoomLevel)}%`, height: `${100 / Math.max(1, zoomLevel)}%`, transform: `translate(-50%, -50%) scale(${zoomLevel})`, padding: "20px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
@@ -330,31 +325,31 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
 
         {/* RIGHT PANEL: Outputs */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", background: "rgba(255,255,255,0.01)", borderBottom: "1px solid rgba(255,255,255,0.03)", padding: "8px 16px", gap: "8px", alignItems: "center" }}>
+          <div style={{ display: "flex", background: "#222", borderBottom: "1px solid #444", alignItems: "stretch", padding: "0" }}>
             <button 
               onClick={() => setActiveTab("generated")}
-              style={{ flex: 1, padding: "8px 0", background: activeTab === "generated" ? "rgba(255,255,255,0.1)" : "transparent", border: "none", borderRadius: "6px", color: activeTab === "generated" ? "#fff" : "#666", fontSize: "12px", fontWeight: activeTab === "generated" ? "600" : "500", cursor: "pointer", transition: "all 0.2s" }}
+              style={{ flex: 1, padding: "12px 0", background: activeTab === "generated" ? "#1a1a1a" : "transparent", border: "none", borderRight: "1px solid #444", borderRadius: "0", color: activeTab === "generated" ? "#FFD700" : "#666", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase", fontWeight: "600", cursor: "pointer", transition: "all 0.2s" }}
             >
               1. Flat Extract
             </button>
             <button 
               onClick={() => setActiveTab("upscaled")}
-              style={{ flex: 1, padding: "8px 0", background: activeTab === "upscaled" ? "rgba(255,255,255,0.1)" : "transparent", border: "none", borderRadius: "6px", color: activeTab === "upscaled" ? "#fff" : "#666", fontSize: "12px", fontWeight: activeTab === "upscaled" ? "600" : "500", cursor: "pointer", transition: "all 0.2s" }}
+              style={{ flex: 1, padding: "12px 0", background: activeTab === "upscaled" ? "#1a1a1a" : "transparent", border: "none", borderRight: "1px solid #444", borderRadius: "0", color: activeTab === "upscaled" ? "#FFD700" : "#666", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase", fontWeight: "600", cursor: "pointer", transition: "all 0.2s" }}
             >
               2. HD Upscale
             </button>
             <div style={{ flex: 1, position: "relative", display: "flex" }}>
               <button 
                 onClick={() => { setActiveTab("svg"); setShowSvgAlert(false); }}
-                style={{ flex: 1, padding: "8px 0", background: activeTab === "svg" ? "rgba(255,255,255,0.1)" : "transparent", border: "none", borderRadius: "6px", color: activeTab === "svg" ? "#fff" : "#666", fontSize: "12px", fontWeight: activeTab === "svg" ? "600" : "500", cursor: "pointer", transition: "all 0.2s" }}
+                style={{ flex: 1, padding: "12px 0", background: activeTab === "svg" ? "#1a1a1a" : "transparent", border: "none", borderRadius: "0", color: activeTab === "svg" ? "#FFD700" : "#666", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase", fontWeight: "600", cursor: "pointer", transition: "all 0.2s" }}
               >
                 3. Vector SVG
               </button>
               {showSvgAlert && (
                 <div style={{
                   position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: "12px",
-                  background: "#FFD700", color: "#000", padding: "8px 14px", borderRadius: "6px",
-                  fontSize: "12px", fontWeight: "700", whiteSpace: "nowrap", zIndex: 100,
+                  background: "#FFD700", color: "#000", padding: "8px 14px", borderRadius: "0",
+                  fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px", whiteSpace: "nowrap", zIndex: 100,
                   boxShadow: "0 6px 20px rgba(255, 215, 0, 0.4)", pointerEvents: "none"
                 }}>
                   <div style={{ position: "absolute", top: "-6px", left: "50%", transform: "translateX(-50%)", borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderBottom: "6px solid #FFD700" }} />
@@ -364,7 +359,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
             </div>
           </div>
           
-          <div ref={rightScrollRef} onScroll={handleRightScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "#111", backgroundImage: "radial-gradient(#333 1px, transparent 1px)", backgroundSize: "20px 20px" }}>
+          <div ref={rightScrollRef} onScroll={handleRightScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "#222" }}>
             {activeUrl && traceState === "idle" ? (
               <div style={{ position: "relative", width: `${Math.max(100, zoomLevel * 100)}%`, height: `${Math.max(100, zoomLevel * 100)}%`, minWidth: "100%", minHeight: "100%" }}>
                 <div style={{ position: "absolute", top: "50%", left: "50%", width: `${100 / Math.max(1, zoomLevel)}%`, height: `${100 / Math.max(1, zoomLevel)}%`, transform: `translate(-50%, -50%) scale(${zoomLevel})`, padding: "20px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
@@ -383,7 +378,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
       </div>
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes spin { 100% { transform: rotate(360deg); } }
-        @keyframes segmentMove { 0% { background-position: 0 0; } 100% { background-position: 8px 0; } }
+        /* Segment move keyframes removed */
       `}} />
     </div>
   );

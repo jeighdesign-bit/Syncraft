@@ -5,11 +5,21 @@ import { adminSupabase } from "@/lib/supabase";
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const RECRAFT_API_KEY = process.env.RECRAFT_API_KEY;
-
 export async function POST(request) {
   let projectId;
   try {
+    // ─── Auth: verify the caller owns the project ─────────────────────────────
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const token = authHeader.replace('Bearer ', '').trim();
+    const { data: { user }, error: authError } = await adminSupabase.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized: invalid session' }, { status: 401 });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const body = await request.json();
     projectId = body.projectId;
     const colors = body.colors || "auto";
@@ -28,6 +38,11 @@ export async function POST(request) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
+    // Verify caller owns this project
+    if (project.user_id !== user.id) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
     // ==========================================
     // STAGE 3: VECTORIZE THE UPSCALED IMAGE (RECRAFT)
     // ==========================================
@@ -41,12 +56,12 @@ export async function POST(request) {
     const sharp = (await import('sharp')).default;
     let sharpInstance = sharp(rawBuffer).resize({ width: 1536, height: 1536, fit: 'inside', withoutEnlargement: true });
     
-    // EXTREME SHARPENING FOR LOGOS: If it's a logo, stretch contrast and sharpen heavily 
+    // EXTREME SHARPENING FOR LOGOS: stretch contrast and sharpen heavily
     // to ensure text and circles have pixel-perfect borders before vectorization.
     if (project.trace_type === 'logo') {
       sharpInstance = sharpInstance
         .normalize() // Stretch contrast to pure blacks and whites where applicable
-        .sharpen({ sigma: 1.5, m1: 1, m2: 2, x1: 2, y2: 10, y3: 20 }); // Aggressive unsharp mask to fix any remaining blur
+        .sharpen({ sigma: 1.5, m1: 1, m2: 2, x1: 2, y2: 10, y3: 20 }); // Aggressive unsharp mask
     }
 
     let compressedBuffer;
@@ -63,7 +78,7 @@ export async function POST(request) {
 
     const recraftVectorRes = await fetch("https://external.api.recraft.ai/v1/images/vectorize", {
       method: "POST",
-      headers: { "Authorization": `Bearer ${RECRAFT_API_KEY}` },
+      headers: { "Authorization": `Bearer ${process.env.RECRAFT_API_KEY}` },
       body: vectorizeFormData,
       signal: AbortSignal.timeout(55000),
     });

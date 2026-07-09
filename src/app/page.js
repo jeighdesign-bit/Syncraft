@@ -1,14 +1,22 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+// ─── React & Routing ──────────────────────────────────────────────────────────
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+
+// ─── Data & Auth ──────────────────────────────────────────────────────────────
 import { createClient } from "@/utils/supabase/client";
-import { ImageIcon, Monitor, LogIn, FilePlus, User, Trash2, LogOut, CheckCircle2, X, Loader2, Table2, Scan } from "lucide-react";
 import { toast } from "@/components/Toast";
+import { compressImageClientSide } from "@/utils/imageUtils";
+
+// ─── Icons ────────────────────────────────────────────────────────────────────
+import { ImageIcon, Monitor, LogIn, FilePlus, User, Trash2, LogOut, CheckCircle2, X, Loader2, Table2, Scan } from "lucide-react";
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 import "./globals.css";
 import "./home.css";
 
-// Components
+// ─── Components ───────────────────────────────────────────────────────────────
 import TopUpModal from "@/components/TopUpModal";
 import NewProjectModal from "./components/NewProjectModal";
 import OnboardingModal from "./components/OnboardingModal";
@@ -83,41 +91,47 @@ export default function StartScreen() {
 
   // Handle QR Sync Session Generation
   useEffect(() => {
-    if (!syncSessionId && typeof window !== "undefined") {
-      setSyncSessionId(crypto.randomUUID());
+    if (typeof window !== "undefined") {
+      let syncId = localStorage.getItem("globalSyncSessionId");
+      if (!syncId) {
+        syncId = crypto.randomUUID();
+        localStorage.setItem("globalSyncSessionId", syncId);
+      }
+      setSyncSessionId(syncId);
     }
-  }, [syncSessionId]);
+  }, []);
 
-  // Setup Supabase Realtime Listener for Mobile Uploads
+  // Handle Routed Mobile Image
   useEffect(() => {
-    if (!syncSessionId || !user) return; 
-
-    const channel = supabase.channel(`mobile_sync_${syncSessionId}`)
-      .on('broadcast', { event: 'image_uploaded' }, async (payload) => {
+    const checkPendingImage = async () => {
+      const pendingUrl = sessionStorage.getItem("pendingMobileImage");
+      if (pendingUrl && user) {
+        sessionStorage.removeItem("pendingMobileImage");
         setIsQrConnected(true);
-        const fileUrl = payload.payload.imageUrl;
+        setShowQrModal(false);
         
         try {
-          const response = await fetch(fileUrl);
+          const response = await fetch(pendingUrl);
           const blob = await response.blob();
-          // R2 sometimes returns application/octet-stream which fails the .startsWith("image/") check.
-          // We force it to be an image type so the upload logic accepts it.
           const mimeType = blob.type && blob.type.startsWith("image/") ? blob.type : "image/jpeg";
           const file = new File([blob], "mobile-upload.jpg", { type: mimeType });
           
-          setShowQrModal(false);
           handleFileUpload(file);
         } catch (error) {
-          console.error("Failed to process mobile upload:", error);
-          toast.error("Failed to receive image from mobile.");
+          console.error("Failed to process routed mobile upload:", error);
+          toast.error("Failed to load received image.");
         }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
+      }
     };
-  }, [syncSessionId, user, supabase]);
+
+    checkPendingImage();
+    const handleEvent = () => checkPendingImage();
+    window.addEventListener("mobileImageRouted", handleEvent);
+    
+    return () => {
+      window.removeEventListener("mobileImageRouted", handleEvent);
+    };
+  }, [user]);
 
   const fetchCredits = async (userId) => {
     const { data } = await supabase.from("profiles").select("credits, created_at").eq("id", userId).single();
@@ -166,9 +180,14 @@ export default function StartScreen() {
       return;
     }
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const res = await fetch("/api/project", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ projectId: id, newName: editValue })
       });
       if (res.ok) setRecentProjects(prev => prev.map(p => p.id === id ? { ...p, name: editValue } : p));
@@ -185,7 +204,12 @@ export default function StartScreen() {
     setProjectToDelete(null);
     setOpenMenuId(null);
     try {
-      await fetch(`/api/project?id=${id}`, { method: "DELETE" });
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      await fetch(`/api/project?id=${id}`, { 
+        method: "DELETE",
+        headers: token ? { "Authorization": `Bearer ${token}` } : {}
+      });
     } catch (err) {
       console.error("Failed to delete", err);
       fetchRecentProjects(user?.id);
@@ -205,6 +229,14 @@ export default function StartScreen() {
 
     setIsUploading(true);
     try {
+      // 1. Compress Image
+      let fileToUpload = file;
+      try {
+        fileToUpload = await compressImageClientSide(file, 2048, 0.85); // 2048px max, 85% quality
+      } catch (compressErr) {
+        console.warn("Compression failed, uploading original:", compressErr);
+      }
+
       const sessionRes = await supabase.auth.getSession();
       const token = sessionRes.data.session?.access_token;
       if (!token) { setIsUploading(false); handleLogin(); return; }
@@ -212,7 +244,7 @@ export default function StartScreen() {
       const urlRes = await fetch("/api/upload-url", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ fileName: file.name, contentType: file.type })
+        body: JSON.stringify({ fileName: fileToUpload.name, contentType: fileToUpload.type })
       });
       
       const urlData = await urlRes.json();
@@ -220,19 +252,22 @@ export default function StartScreen() {
       
       const putRes = await fetch(urlData.uploadUrl, {
         method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file
+        headers: { "Content-Type": fileToUpload.type },
+        body: fileToUpload
       });
       if (!putRes.ok) throw new Error("Failed to upload image to storage");
 
       const response = await fetch("/api/upload", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Required: server verifies user server-side
+        },
         body: JSON.stringify({
           imageUrl: urlData.publicUrl,
           projectName: modalProjectName || file.name,
-          traceType: modalTraceType,
-          userId: user.id
+          traceType: modalTraceType
+          // userId intentionally omitted — server reads from verified token
         })
       });
 
@@ -249,7 +284,7 @@ export default function StartScreen() {
 
   const handleDrop = (e) => {
     e.preventDefault();
-    if (!user) { handleLogin(); return; }
+    if (!user) { setShowTopUpModal(true); return; }
     if (e.dataTransfer.files?.length > 0) handleFileUpload(e.dataTransfer.files[0]);
   };
 
@@ -266,7 +301,7 @@ export default function StartScreen() {
               e.preventDefault();
               setIsDraggingGlobal(false);
               if (e.dataTransfer.files?.length > 0) {
-                if (!user) { handleLogin(); return; }
+                if (!user) { setShowTopUpModal(true); return; }
                 handleFileUpload(e.dataTransfer.files[0]);
               }
            }}
@@ -291,18 +326,17 @@ export default function StartScreen() {
             {user ? (
               <>
                 {/* Premium Credits Badge */}
-                <div onClick={() => setShowTopUpModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", background: "linear-gradient(135deg, #2a2a2a, #111)", padding: "6px 14px", borderRadius: "20px", cursor: "pointer", border: "1px solid #333", boxShadow: "0 2px 10px rgba(0,0,0,0.5)", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor = "#FFD700"} onMouseOut={e => e.currentTarget.style.borderColor = "#333"}>
-                  <TraceIcon size={14} color="#FFD700" />
-                  <span style={{ fontSize: "13px", fontWeight: "bold", color: "#FFD700" }}>{credits} {credits === 1 ? "Trace" : "Traces"}</span>
-                  <span style={{ fontSize: "9px", background: "#FFD700", color: "#000", padding: "2px 6px", borderRadius: "10px", marginLeft: "4px", fontWeight: "900", letterSpacing: "0.5px" }}>TOP UP</span>
+                <div onClick={() => setShowTopUpModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", background: "#2a2a2a", padding: "6px 12px", borderRadius: "0", cursor: "pointer", border: "1px solid #444", transition: "border-color 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor = "#FFD700"} onMouseOut={e => e.currentTarget.style.borderColor = "#444"}>
+                  <span style={{ color: "#FFD700", fontWeight: "bold", fontSize: "14px", fontFamily: "monospace" }}>{credits}</span>
+                  <span style={{ color: "#888", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>CREDITS</span>
                 </div>
                 
                 {/* Profile Pill */}
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.05)", padding: "4px 12px 4px 4px", borderRadius: "20px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.05)", padding: "4px 12px 4px 4px", borderRadius: "0", border: "1px solid rgba(255,255,255,0.05)" }}>
                   {user.user_metadata?.avatar_url ? (
-                    <img src={user.user_metadata.avatar_url} referrerPolicy="no-referrer" style={{ width: 24, height: 24, borderRadius: "50%" }} alt="Avatar" />
-                  ) : <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#333", display: "flex", alignItems: "center", justifyContent: "center" }}><User size={14} color="#aaa" /></div>}
-                  <span style={{ fontSize: "13px", color: "#ddd", fontWeight: "500" }}>{user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0]}</span>
+                    <img src={user.user_metadata.avatar_url} referrerPolicy="no-referrer" style={{ width: 24, height: 24, borderRadius: "0" }} alt="Avatar" />
+                  ) : <div style={{ width: 24, height: 24, borderRadius: "0", background: "#333", display: "flex", alignItems: "center", justifyContent: "center" }}><User size={14} color="#aaa" /></div>}
+                  <span style={{ fontSize: "13px", color: "#ddd", fontWeight: "500", textTransform: "uppercase", letterSpacing: "1px" }}>{user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0]}</span>
                 </div>
                 
                 {/* Logout Icon Button */}
@@ -311,8 +345,8 @@ export default function StartScreen() {
                 </button>
               </>
             ) : (
-              <button onClick={handleLogin} className="start-btn" style={{ background: "#FFD700", color: "#000", borderColor: "#FFD700", display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", padding: "8px 16px", borderRadius: "20px" }}>
-                <LogIn size={16} /> Log in for 1 Free Credit
+              <button onClick={handleLogin} className="start-btn" style={{ background: "#FFD700", color: "#000", borderColor: "#FFD700", display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", padding: "8px 16px", borderRadius: "0", textTransform: "uppercase", letterSpacing: "1px" }}>
+                <LogIn size={16} /> Log In
               </button>
             )}
           </div>
@@ -334,16 +368,16 @@ export default function StartScreen() {
           </div>
           
           <div style={{ display: "flex", gap: "6px", marginBottom: "20px", flexWrap: "nowrap", justifyContent: "space-between", width: "100%", overflowX: "auto" }}>
-            <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { handleLogin(); return; } setShowModal(true); }} disabled={isUploading} style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", transition: "all 0.2s", whiteSpace: "nowrap"}}>
+            <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowTopUpModal(true); return; } setShowModal(true); }} disabled={isUploading} style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", transition: "all 0.2s", whiteSpace: "nowrap"}}>
               {isUploading ? <><Monitor size={14} className="animate-pulse" /> Creating...</> : <><FilePlus size={14} /> New Project</>}
             </button>
-            <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { handleLogin(); return; } fileInputRef.current.click(); }} disabled={isUploading} style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", transition: "all 0.2s", whiteSpace: "nowrap"}}>
+            <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowTopUpModal(true); return; } fileInputRef.current.click(); }} disabled={isUploading} style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", transition: "all 0.2s", whiteSpace: "nowrap"}}>
               {isUploading ? <><Monitor size={14} className="animate-pulse" /> Uploading...</> : <><Monitor size={14} /> Open PC</>}
             </button>
-            <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { handleLogin(); return; } setShowQrModal(true); }} disabled={isUploading} style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", transition: "all 0.2s", whiteSpace: "nowrap"}}>
+            <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowTopUpModal(true); return; } setShowQrModal(true); }} disabled={isUploading} style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", transition: "all 0.2s", whiteSpace: "nowrap"}}>
               <Scan size={14} /> Scan Phone
             </button>
-            <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { handleLogin(); return; } router.push('/ocr'); }} disabled={isUploading} style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", transition: "all 0.2s", whiteSpace: "nowrap"}}>
+            <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowTopUpModal(true); return; } router.push('/ocr'); }} disabled={isUploading} style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", transition: "all 0.2s", whiteSpace: "nowrap"}}>
               <Table2 size={14} /> Extract CSV
             </button>
           </div>
@@ -354,7 +388,7 @@ export default function StartScreen() {
               e.preventDefault();
               e.stopPropagation();
               if (e.dataTransfer.files?.length > 0) {
-                if (!user) { handleLogin(); return; }
+                if (!user) { setShowTopUpModal(true); return; }
                 handleFileUpload(e.dataTransfer.files[0]);
               }
             }}
@@ -364,7 +398,7 @@ export default function StartScreen() {
               <label htmlFor="aiEnhance" style={{ fontSize: "14px", color: "#ccc", cursor: "pointer" }}><strong>Enhance image with AI</strong> (Removes noise)</label>
             </div>
             
-            <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { handleLogin(); return; } fileInputRef.current.click(); }} disabled={isUploading} style={{ background: "#2d2d2d", color: "#e0e0e0", border: "1px solid #424242", borderRadius: "8px", fontSize: "16px", padding: "16px 24px", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", fontWeight: "500", transition: "all 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.background = "#3e3e3e"} onMouseLeave={(e) => e.currentTarget.style.background = "#2d2d2d"}>
+            <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowTopUpModal(true); return; } fileInputRef.current.click(); }} disabled={isUploading} style={{ background: "#2d2d2d", color: "#e0e0e0", border: "1px solid #424242", borderRadius: "8px", fontSize: "16px", padding: "16px 24px", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", fontWeight: "500", transition: "all 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.background = "#3e3e3e"} onMouseLeave={(e) => e.currentTarget.style.background = "#2d2d2d"}>
               {isUploading ? <><Monitor size={18} className="animate-pulse" /> Uploading...</> : <><Monitor size={18} /> Upload Images</>}
             </button>
             <div style={{ marginTop: "15px", color: "#888", fontSize: "14px" }}>or drop an image</div>
@@ -437,6 +471,7 @@ export default function StartScreen() {
         user={user} 
         supabase={supabase} 
         onClose={() => setShowTopUpModal(false)} 
+        onLoginRequired={() => { setShowTopUpModal(false); handleLogin(); }}
       />
 
       {/* Delete Confirmation Modal */}
@@ -519,14 +554,11 @@ export default function StartScreen() {
       {/* Uploading Overlay */}
       {isUploading && !showModal && (
         <div className="modal-overlay" style={{ zIndex: 9999 }}>
-          <div className="modal-content" style={{ maxWidth: "340px", textAlign: "center", padding: "40px 30px" }}>
-            <div style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: "28px" }}>
-              <div style={{ position: "absolute", width: "80px", height: "80px", border: "4px solid rgba(255,204,0,0.1)", borderRadius: "50%" }}></div>
-              <Loader2 size={40} color="#ffcc00" className="animate-spin" />
-            </div>
-            <h3 style={{ margin: "0 0 12px 0", fontSize: "22px", fontWeight: "700" }}>Preparing Image...</h3>
-            <p style={{ color: "#aaa", margin: 0, fontSize: "14px", lineHeight: "1.6" }}>
-              Transferring your photo to the Auto-Tracer Workspace. Please hold on a moment.
+          <div className="modal-content" style={{ maxWidth: "340px", textAlign: "center", padding: "40px 30px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <Loader2 size={32} color="#FFD700" className="animate-spin" style={{ marginBottom: "20px" }} />
+            <div style={{ fontSize: "16px", color: "#fff", fontWeight: "600", marginBottom: "8px" }}>Preparing Image...</div>
+            <p style={{ color: "#aaa", margin: 0, fontSize: "13px", lineHeight: "1.6" }}>
+              Transferring your photo to the workspace.
             </p>
           </div>
         </div>

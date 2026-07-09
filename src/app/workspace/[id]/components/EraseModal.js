@@ -33,7 +33,7 @@ const EraseModal = memo(function EraseModal({
     const img = new Image();
     
     img.crossOrigin = "anonymous";
-    img.src = `/api/proxy-image?url=${encodeURIComponent(project.original_image_url)}`;
+    img.src = `/api/proxy?url=${encodeURIComponent(project.original_image_url)}`;
     
     img.onload = () => {
       // Set internal canvas resolution to image resolution for perfect quality
@@ -143,7 +143,10 @@ const EraseModal = memo(function EraseModal({
       // 3. Update original_image_url
       const res = await fetch("/api/crop", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Required: route now verifies auth
+        },
         body: JSON.stringify({ projectId: project.id, croppedImageUrl: urlData.publicUrl }),
       });
       const data = await res.json();

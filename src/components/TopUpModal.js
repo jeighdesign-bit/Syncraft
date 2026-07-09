@@ -11,32 +11,32 @@ const PLANS = [
     features: ['2 HD Vector Traces', 'Standard Processing'] 
   },
   { 
-    key: 'basic', label: 'Basic', traces: 5, price: '₱100', 
+    key: 'basic', label: 'Basic', traces: 4, price: '₱100', 
     desc: 'Great for hobbyists printing occasionally.',
-    features: ['5 HD Vector Traces', 'Standard Processing', '7-day storage'] 
+    features: ['4 HD Vector Traces', 'Standard Processing', '7-day storage'] 
   },
   { 
-    key: 'starter', label: 'Starter', traces: 10, price: '₱290', 
+    key: 'starter', label: 'Starter', traces: 13, price: '₱290', 
     desc: 'Ideal for small businesses taking their first steps.',
-    features: ['10 HD Vector Traces', 'Priority Processing', '30-day storage', 'Email support'] 
+    features: ['13 HD Vector Traces', 'Priority Processing', '30-day storage', 'Email support'] 
   },
   { 
-    key: 'pro', label: 'Professional', traces: 35, price: '₱870', 
+    key: 'pro', label: 'Professional', traces: 45, price: '₱870', 
     desc: 'Perfect for print shops & growing design studios.',
     best: true,
-    features: ['35 HD Vector Traces', 'Highest Priority Queue', 'Unlimited storage', 'Priority support'] 
+    features: ['45 HD Vector Traces', 'Highest Priority Queue', 'Unlimited storage', 'Priority support'] 
   }
 ];
 
 const PLAN_LABELS = { 
   tingi: "Tingi — 2 Credits", 
-  basic: "Basic — 5 Credits", 
-  starter: "Starter — 10 Credits", 
-  pro: "Professional — 35 Credits" 
+  basic: "Basic — 4 Credits", 
+  starter: "Starter — 13 Credits", 
+  pro: "Professional — 45 Credits" 
 };
 const PLAN_PRICES = { tingi: "₱50", basic: "₱100", starter: "₱290", pro: "₱870" };
 
-const TopUpModal = memo(function TopUpModal({ show, user, supabase, onClose }) {
+const TopUpModal = memo(function TopUpModal({ show, user, supabase, onClose, onLoginRequired }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({ plan: "pro", txnRef: "", screenshotName: "", screenshotFile: null });
   const [submitted, setSubmitted] = useState(false);
@@ -129,6 +129,11 @@ const TopUpModal = memo(function TopUpModal({ show, user, supabase, onClose }) {
           ) : step === 1 ? (
             <>
               <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                {!user && (
+                  <div style={{ background: 'rgba(255,215,0,0.1)', border: '1px solid #FFD700', color: '#FFD700', padding: '12px', borderRadius: '8px', marginBottom: '24px', fontSize: '14px', fontWeight: '500' }}>
+                    👋 Welcome! You need credits to trace images. Please select a plan and log in.
+                  </div>
+                )}
                 <div style={{ display: 'inline-block', border: '1px solid #555', padding: '4px 12px', fontSize: '11px', fontWeight: '600', color: '#ccc', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '16px', borderRadius: '4px' }}>Pricing Plan</div>
                 <h2 style={{ margin: '0 0 8px', fontSize: '28px', fontWeight: '700', color: '#fff' }}>Affordable pricing</h2>
                 <p style={{ margin: 0, color: '#aaa', fontSize: '14px', maxWidth: '500px', marginLeft: 'auto', marginRight: 'auto' }}>Piliin ang credit package na sakto sa pangangailangan mo.</p>
@@ -150,12 +155,19 @@ const TopUpModal = memo(function TopUpModal({ show, user, supabase, onClose }) {
                     <p style={{ color: '#aaa', fontSize: '13px', lineHeight: '1.5', margin: '0 0 24px', minHeight: '40px' }}>{p.desc}</p>
 
                     <button 
-                      onClick={() => { setForm(f => ({ ...f, plan: p.key })); setStep(2); }}
+                      onClick={() => { 
+                        if (!user) {
+                          onLoginRequired?.();
+                          return;
+                        }
+                        setForm(f => ({ ...f, plan: p.key })); 
+                        setStep(2); 
+                      }}
                       style={{ width: '100%', padding: '12px', background: p.best ? '#FFD700' : 'transparent', color: p.best ? '#000' : '#d5d5d5', border: p.best ? 'none' : '1px solid #555', fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginBottom: '32px', borderRadius: '4px' }} 
                       onMouseOver={e => { e.target.style.opacity = '0.9'; if (!p.best) { e.target.style.background = '#3a3a3a'; e.target.style.borderColor = '#777'; } }} 
                       onMouseOut={e => { e.target.style.opacity = '1'; if (!p.best) { e.target.style.background = 'transparent'; e.target.style.borderColor = '#555'; } }}
                     >
-                      Select Plan <ArrowRight size={14} />
+                      {user ? 'Select Plan' : 'Log in to Purchase'} <ArrowRight size={14} />
                     </button>
 
                     <div style={{ borderTop: '1px solid #444', margin: '0 -24px 24px' }}></div>

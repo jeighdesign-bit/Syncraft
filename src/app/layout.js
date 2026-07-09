@@ -11,6 +11,7 @@ export const metadata = {
 };
 
 import MaintenanceScreen from "./components/MaintenanceScreen";
+import GlobalMobileSync from "@/components/GlobalMobileSync";
 
 const isMaintenance = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
 
@@ -23,6 +24,7 @@ export default function RootLayout({ children }) {
         ) : (
           <>
             <MobileWarning />
+            <GlobalMobileSync />
             {children}
           </>
         )}

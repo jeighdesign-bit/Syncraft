@@ -31,14 +31,17 @@
           border: 1px solid #555;
           color: #d5d5d5;
           padding: 10px 20px;
-          border-radius: 4px;
-          font-size: 14px;
+          border-radius: 0;
+          font-size: 13px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
         }
         .start-btn:hover:not(.disabled) {
           background: #3a3a3a;
-          border-color: #777;
+          border-color: #FFD700;
         }
         .start-btn.disabled {
           opacity: 0.5;
@@ -48,7 +51,7 @@
           width: 600px;
           height: 120px;
           border: 1px solid #444;
-          border-radius: 6px;
+          border-radius: 0;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -62,8 +65,10 @@
         }
         .recent-projects h3 {
           font-size: 14px;
-          font-weight: normal;
-          color: #aaa;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: #888;
           margin-bottom: 15px;
           border-bottom: 1px solid #444;
           padding-bottom: 5px;
@@ -82,25 +87,25 @@
         }
         .recent-grid::-webkit-scrollbar-track {
           background: #1a1a1a;
-          border-radius: 3px;
+          border-radius: 0;
         }
         .recent-grid::-webkit-scrollbar-thumb {
           background: #444;
-          border-radius: 3px;
+          border-radius: 0;
         }
         .recent-grid::-webkit-scrollbar-thumb:hover {
           background: #666;
         }
         .recent-card {
-          background: #333;
-          border-radius: 6px;
+          background: #2a2a2a;
+          border-radius: 0;
           overflow: hidden;
           cursor: pointer;
-          border: 1px solid transparent;
-          transition: border 0.2s;
+          border: 1px solid #444;
+          transition: border-color 0.2s;
         }
         .recent-card:hover {
-          border-color: #666;
+          border-color: #FFD700;
         }
         .recent-thumb {
           height: 100px;
@@ -120,6 +125,8 @@
           overflow: hidden;
           text-overflow: ellipsis;
           flex-grow: 1;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
         .menu-container {
           position: relative;
@@ -130,7 +137,7 @@
           color: #888;
           cursor: pointer;
           padding: 2px;
-          border-radius: 4px;
+          border-radius: 0;
         }
         .dots-btn:hover {
           color: #fff;
@@ -141,9 +148,9 @@
           right: 0;
           bottom: 100%;
           margin-bottom: 5px;
-          background: #333;
+          background: #2a2a2a;
           border: 1px solid #444;
-          border-radius: 6px;
+          border-radius: 0;
           padding: 4px;
           display: flex;
           flex-direction: column;
@@ -159,8 +166,10 @@
           padding: 6px 10px;
           text-align: left;
           font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
           cursor: pointer;
-          border-radius: 4px;
+          border-radius: 0;
           display: flex;
           align-items: center;
           gap: 6px;
@@ -186,12 +195,12 @@
           color: #fff;
           font-size: 12px;
           padding: 4px 6px;
-          border-radius: 3px;
+          border-radius: 0;
           outline: none;
           width: 50%;
         }
         .inline-edit input:focus {
-          border-color: #888;
+          border-color: #FFD700;
         }
         .save-btn, .cancel-btn {
           background: transparent;
@@ -326,6 +335,7 @@
           height: 180px;
           background: #222;
           border-bottom: 1px solid #333;
+          border-radius: 0;
           position: relative;
           overflow: hidden;
         }
@@ -338,7 +348,7 @@
           height: 14px;
           background: #333;
           width: 60%;
-          border-radius: 2px;
+          border-radius: 0;
           position: relative;
           overflow: hidden;
         }
@@ -375,7 +385,6 @@
           font-weight: 800;
           color: #fff;
           margin: 0 0 10px 0;
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
           letter-spacing: -1px;
         }
         .hero-subtitle {
@@ -388,7 +397,7 @@
           width: 100%;
           background: #2a2a2a;
           border: 2px dashed #555;
-          border-radius: 12px;
+          border-radius: 0;
           padding: 30px;
           display: flex;
           flex-direction: column;
@@ -410,7 +419,7 @@
           max-width: 400px;
           height: auto;
           box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-          border-radius: 12px;
+          border-radius: 0;
           border: 1px solid #444;
           background: #111;
           padding: 20px;
@@ -418,7 +427,7 @@
           justify-content: center;
           align-items: center;
         }
-        
+
         @media (max-width: 768px) {
           .hero-section {
             flex-direction: column;

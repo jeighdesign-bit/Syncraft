@@ -1,33 +1,43 @@
 import { NextResponse } from "next/server";
-import { uploadToR2 } from "@/lib/cloudflare";
-import { supabase } from "@/lib/supabase";
+import { adminSupabase } from "@/lib/supabase";
 
 export const maxDuration = 30;
 
 export async function POST(request) {
   try {
+    // ─── Auth: verify the caller owns this project ────────────────────────────
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const token = authHeader.replace('Bearer ', '').trim();
+    const { data: { user }, error: authError } = await adminSupabase.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized: invalid session' }, { status: 401 });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const { projectId, croppedImageUrl } = await request.json();
 
     if (!projectId || !croppedImageUrl) {
       return NextResponse.json({ error: "Missing required fields (projectId, croppedImageUrl)" }, { status: 400 });
     }
 
-    const fileUrl = croppedImageUrl;
-
-    // Update project in Supabase (Overwrite original_image_url to make crop permanent and clear old trace results)
-    const { error } = await supabase
+    // Update project in Supabase — only if the user owns it
+    const { error } = await adminSupabase
       .from('projects')
       .update({ 
-        original_image_url: fileUrl,
+        original_image_url: croppedImageUrl,
         generated_image_url: null,
         upscaled_image_url: null,
         svg_url: null
       })
-      .eq('id', projectId);
+      .eq('id', projectId)
+      .eq('user_id', user.id); // ownership check
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, cropped_image_url: fileUrl });
+    return NextResponse.json({ success: true, cropped_image_url: croppedImageUrl });
 
   } catch (error) {
     console.error(`[Crop API Error]:`, error);

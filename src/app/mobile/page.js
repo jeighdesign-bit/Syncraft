@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Camera, Upload, CheckCircle2, Loader2, Image as ImageIcon } from "lucide-react";
+import { compressImageClientSide } from "@/utils/imageUtils";
 
 function MobileUploadContent() {
   const searchParams = useSearchParams();
@@ -26,12 +27,20 @@ function MobileUploadContent() {
     try {
       setStatus("uploading");
       
+      // 1. Compress Image
+      let fileToUpload = file;
+      try {
+        fileToUpload = await compressImageClientSide(file, 2048, 0.85);
+      } catch (compressErr) {
+        console.warn("Compression failed on mobile, using original:", compressErr);
+      }
+      
       const res = await fetch("/api/upload-mobile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type,
+          fileName: fileToUpload.name,
+          contentType: fileToUpload.type,
           syncSessionId: syncSessionId
         })
       });
@@ -44,8 +53,8 @@ function MobileUploadContent() {
 
       const uploadRes = await fetch(uploadUrl, {
         method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
+        headers: { "Content-Type": fileToUpload.type },
+        body: fileToUpload,
       });
 
       if (!uploadRes.ok) {
@@ -78,40 +87,46 @@ function MobileUploadContent() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#1e1e1e", color: "#cccccc", display: "flex", flexDirection: "column", padding: "24px", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#262626", color: "#e0e0e0", display: "flex", flexDirection: "column", padding: "24px", fontFamily: "var(--font-outfit), monospace" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginBottom: "40px", marginTop: "20px" }}>
-        <img src="/nav bar logo.png" alt="DesaynClaw Logo" style={{ height: "24px", width: "auto", filter: "grayscale(100%) opacity(0.8)" }} />
+        <img src="/nav bar logo.png" alt="DesaynClaw Logo" style={{ height: "24px", width: "auto", filter: "opacity(0.8)" }} />
       </div>
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         {status === "idle" && (
-          <div style={{ textAlign: "center", width: "100%" }}>
-            <h1 style={{ fontSize: "24px", fontWeight: "600", marginBottom: "12px", color: "#ffffff", letterSpacing: "-0.5px" }}>Take a Photo</h1>
-            <p style={{ color: "#888888", fontSize: "15px", marginBottom: "40px", lineHeight: "1.5" }}>
-              Snap a picture of the logo or business card. It will instantly appear on your PC.
+          <div style={{ textAlign: "center", width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <h1 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "12px", color: "#FFD700", textTransform: "uppercase", letterSpacing: "2px" }}>ESTABLISH UPLINK</h1>
+            <p style={{ color: "#888", fontSize: "12px", marginBottom: "40px", lineHeight: "1.5", textTransform: "uppercase", letterSpacing: "1px", maxWidth: "250px" }}>
+              CAPTURE IMAGE DATA. IT WILL SYNC INSTANTLY TO YOUR PC VIEWPORT.
             </p>
 
             <button 
               onClick={() => fileInputRef.current.click()}
               style={{
-                background: "#2d2d2d",
-                border: "1px solid #424242",
-                width: "140px",
-                height: "140px",
-                borderRadius: "50%",
+                background: "#1a1a1a",
+                border: "1px solid #444",
+                width: "200px",
+                height: "200px",
+                borderRadius: "0",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: "12px",
+                gap: "16px",
                 margin: "0 auto",
                 cursor: "pointer",
-                color: "#cccccc",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.2)"
+                color: "#e0e0e0",
+                position: "relative"
               }}
             >
-              <Camera size={40} strokeWidth={1} />
-              <span style={{ fontWeight: "500", fontSize: "14px", letterSpacing: "0.5px" }}>OPEN CAMERA</span>
+              {/* Corner Brackets */}
+              <div style={{ position: "absolute", top: -1, left: -1, width: "15px", height: "15px", borderTop: "2px solid #FFD700", borderLeft: "2px solid #FFD700" }} />
+              <div style={{ position: "absolute", top: -1, right: -1, width: "15px", height: "15px", borderTop: "2px solid #FFD700", borderRight: "2px solid #FFD700" }} />
+              <div style={{ position: "absolute", bottom: -1, left: -1, width: "15px", height: "15px", borderBottom: "2px solid #FFD700", borderLeft: "2px solid #FFD700" }} />
+              <div style={{ position: "absolute", bottom: -1, right: -1, width: "15px", height: "15px", borderBottom: "2px solid #FFD700", borderRight: "2px solid #FFD700" }} />
+
+              <Camera size={48} strokeWidth={1} color="#FFD700" />
+              <span style={{ fontWeight: "bold", fontSize: "12px", letterSpacing: "2px", textTransform: "uppercase" }}>INITIATE SCAN</span>
             </button>
 
             <div style={{ marginTop: "30px" }}>
@@ -122,19 +137,22 @@ function MobileUploadContent() {
                   fileInputRef.current.setAttribute('capture', 'environment');
                 }}
                 style={{
-                  background: "transparent",
-                  border: "1px solid #333",
-                  color: "#ddd",
+                  background: "#222",
+                  border: "1px solid #444",
+                  color: "#aaa",
                   padding: "12px 24px",
-                  borderRadius: "24px",
-                  fontSize: "14px",
+                  borderRadius: "0",
+                  fontSize: "11px",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "8px",
-                  cursor: "pointer"
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                  fontWeight: "bold"
                 }}
               >
-                <ImageIcon size={16} /> or choose from gallery
+                <ImageIcon size={14} /> BROWSE STORAGE
               </button>
             </div>
           </div>
@@ -143,58 +161,63 @@ function MobileUploadContent() {
         {status === "uploading" && (
           <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "20px" }}>
             <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ position: "absolute", width: "80px", height: "80px", border: "2px solid #3e3e3e", borderRadius: "50%" }}></div>
-              <Loader2 size={32} color="#888888" className="animate-spin" />
+              <div style={{ position: "absolute", width: "80px", height: "80px", border: "1px solid #444", borderRadius: "0", background: "#1a1a1a" }}></div>
+              <Loader2 size={32} color="#FFD700" className="animate-spin" />
             </div>
-            <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "500", color: "#ffffff" }}>Sending to PC...</h2>
-            <p style={{ color: "#888888", margin: 0, fontSize: "14px" }}>Please keep this page open.</p>
+            <h2 style={{ margin: 0, fontSize: "14px", fontWeight: "bold", color: "#FFD700", textTransform: "uppercase", letterSpacing: "2px", marginTop: "10px" }}>TRANSMITTING DATA...</h2>
+            <p style={{ color: "#888", margin: 0, fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" }}>DO NOT CLOSE UPLINK</p>
           </div>
         )}
 
         {status === "success" && (
           <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
-            <div style={{ background: "#2d2d2d", border: "1px solid #424242", padding: "20px", borderRadius: "50%", marginBottom: "10px" }}>
-              <CheckCircle2 size={48} color="#cccccc" strokeWidth={1} />
+            <div style={{ background: "#1a1a1a", border: "1px solid #444", padding: "20px", borderRadius: "0", marginBottom: "10px" }}>
+              <CheckCircle2 size={48} color="#FFD700" strokeWidth={1} />
             </div>
-            <h2 style={{ margin: 0, fontSize: "24px", fontWeight: "500", color: "#ffffff" }}>Success</h2>
-            <p style={{ color: "#888888", fontSize: "15px", maxWidth: "280px", lineHeight: "1.5" }}>
-              Your image has been sent to your computer. You can now close this tab.
+            <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "bold", color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>UPLINK COMPLETE</h2>
+            <p style={{ color: "#888", fontSize: "11px", maxWidth: "280px", lineHeight: "1.5", textTransform: "uppercase", letterSpacing: "1px" }}>
+              IMAGE RECEIVED ON PC VIEWPORT. YOU MAY CLOSE THIS DEVICE.
             </p>
             <button 
               onClick={() => setStatus("idle")}
               style={{
                 marginTop: "24px",
-                background: "transparent",
-                border: "1px solid #333",
-                color: "#888",
+                background: "#222",
+                border: "1px solid #444",
+                color: "#ccc",
                 padding: "12px 24px",
-                borderRadius: "24px",
-                fontSize: "14px",
+                borderRadius: "0",
+                fontSize: "11px",
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+                fontWeight: "bold"
               }}
             >
-              Take another photo
+              INITIATE NEW SCAN
             </button>
           </div>
         )}
 
         {status === "error" && (
           <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
-            <h2 style={{ margin: 0, fontSize: "22px", fontWeight: "500", color: "#ffffff" }}>Upload Failed</h2>
-            <p style={{ color: "#888888", fontSize: "14px" }}>{errorMsg}</p>
+            <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "bold", color: "#ff4444", textTransform: "uppercase", letterSpacing: "2px" }}>UPLINK FAILED</h2>
+            <p style={{ color: "#888", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" }}>{errorMsg}</p>
             <button 
               onClick={() => setStatus("idle")}
               style={{
                 marginTop: "16px",
-                background: "#2d2d2d",
-                color: "#ffffff",
-                border: "1px solid #424242",
+                background: "#1a1a1a",
+                color: "#ff4444",
+                border: "1px solid #ff4444",
                 padding: "10px 24px",
-                borderRadius: "24px",
-                fontWeight: "500",
-                fontSize: "14px"
+                borderRadius: "0",
+                fontWeight: "bold",
+                fontSize: "11px",
+                textTransform: "uppercase",
+                letterSpacing: "1px"
               }}
             >
-              Try Again
+              RETRY CONNECTION
             </button>
           </div>
         )}

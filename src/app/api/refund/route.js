@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const adminSupabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { adminSupabase } from "@/lib/supabase";
 
 export async function POST(request) {
   try {
@@ -20,17 +15,31 @@ export async function POST(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader.replace("Bearer ", "").trim();
     const { data: { user }, error: authError } = await adminSupabase.auth.getUser(token);
     
     if (authError || !user) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
-    // Manual refund since RPC doesn't exist and DB cannot be migrated easily
-    const { data: proj } = await adminSupabase.from('projects').select('generated_image_url').eq('id', projectId).single();
-    if (proj && proj.generated_image_url !== 'REFUNDED') {
-      const { data: profile } = await adminSupabase.from('profiles').select('credits').eq('id', user.id).single();
+    // Fetch project — use shared adminSupabase singleton (no new DB connections per request)
+    const { data: proj } = await adminSupabase
+      .from('projects')
+      .select('generated_image_url, user_id')
+      .eq('id', projectId)
+      .single();
+    
+    // Security check: only the project owner can request a refund
+    if (!proj || proj.user_id !== user.id) {
+      return NextResponse.json({ error: "Project not found or access denied" }, { status: 403 });
+    }
+
+    if (proj.generated_image_url !== 'REFUNDED') {
+      const { data: profile } = await adminSupabase
+        .from('profiles')
+        .select('credits')
+        .eq('id', user.id)
+        .single();
       if (profile) {
         await adminSupabase.from('profiles').update({ credits: profile.credits + 1 }).eq('id', user.id);
         await adminSupabase.from('projects').update({ generated_image_url: 'REFUNDED' }).eq('id', projectId);

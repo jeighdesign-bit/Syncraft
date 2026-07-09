@@ -1,14 +1,19 @@
 "use client";
 
+// ─── React & Routing ──────────────────────────────────────────────────────────
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
-import { ArrowLeft, Download, Home, MousePointer2, Hand, ZoomIn, Crop, Keyboard } from "lucide-react";
 
-// Hooks
+// ─── Data & Auth ──────────────────────────────────────────────────────────────
+import { createClient } from "@/utils/supabase/client";
+
+// ─── Icons ────────────────────────────────────────────────────────────────────
+import { Home, Keyboard } from "lucide-react";
+
+// ─── Hooks ────────────────────────────────────────────────────────────────────
 import { useTraceExecution } from "./hooks/useTraceExecution";
 
-// Components
+// ─── Components ───────────────────────────────────────────────────────────────
 import SplitViewCanvas from "./components/SplitViewCanvas";
 import PropertiesPanel from "./components/PropertiesPanel";
 import CropModal from "./components/CropModal";
@@ -18,8 +23,9 @@ import NoCreditsModal from "./components/NoCreditsModal";
 import TopUpModal from "@/components/TopUpModal";
 import ShortcutsModal from "./components/ShortcutsModal";
 
-// Supabase client — created ONCE at module level, not inside the component
+// ─── Supabase client — created ONCE at module level, not inside the component ─
 const supabase = createClient();
+
 
 export default function Workspace() {
   const router = useRouter();
@@ -208,18 +214,24 @@ export default function Workspace() {
     <div className="app-container">
 
       {/* Top Menu Bar */}
-      <div className="menu-bar">
-        <div className="menu-item" onClick={() => router.push("/")} style={{ cursor: "pointer" }}>
-          <Home size={12} style={{ marginRight: 4, display: "inline-block" }} /> Home
+      <header style={{ padding: "16px 32px", display: "flex", alignItems: "center", borderBottom: "1px solid #444", background: "#1a1a1a" }}>
+        <button onClick={() => router.push('/')} style={{ display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color="#FFD700"} onMouseLeave={e => e.currentTarget.style.color="#666"}>
+          <Home size={16} /> HOME
+        </button>
+        <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "10px" }}>
+          <img src="/nav bar logo.png" alt="DESAYNCLAW" style={{ height: "20px", filter: "opacity(0.8)" }} />
+          <h1 style={{ fontSize: "14px", fontWeight: "600", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>WORKSPACE</h1>
         </div>
-        <div className="brand-title">
-          <img src="/logo_full.png" alt="DESAYNBRO" style={{ height: 12 }} />
-          DESAYNCLAW WORKSPACE
+        <div style={{ width: "200px", display: "flex", justifyContent: "flex-end", gap: "16px", alignItems: "center" }}>
+          <button onClick={() => setShowShortcuts(true)} style={{ display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color="#FFD700"} onMouseLeave={e => e.currentTarget.style.color="#666"}>
+            <Keyboard size={14} /> SHORTCUTS
+          </button>
+          <div onClick={() => setShowTopUpModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", background: "#2a2a2a", padding: "6px 12px", borderRadius: "0", cursor: "pointer", border: "1px solid #444", transition: "border-color 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor = "#FFD700"} onMouseOut={e => e.currentTarget.style.borderColor = "#444"}>
+            <span style={{ color: "#FFD700", fontWeight: "bold", fontSize: "14px", fontFamily: "monospace" }}>{userCredits !== null ? userCredits : "-"}</span>
+            <span style={{ color: "#888", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>CREDITS</span>
+          </div>
         </div>
-        <div className="menu-item" onClick={() => setShowShortcuts(true)} style={{ cursor: "pointer", marginLeft: "auto", marginRight: "16px" }}>
-          <Keyboard size={14} style={{ marginRight: 4, display: "inline-block" }} /> Shortcuts
-        </div>
-      </div>
+      </header>
 
 
       <main className="main-workspace" style={{ padding: 0 }}>

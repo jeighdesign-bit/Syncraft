@@ -58,7 +58,7 @@ const RecentProjects = memo(function RecentProjects({
                 border: "1px solid #333",
                 color: "#e0e0e0",
                 padding: "8px 12px 8px 34px",
-                borderRadius: "6px",
+                borderRadius: "0",
                 fontSize: "13px",
                 outline: "none",
                 transition: "border-color 0.2s"
@@ -70,7 +70,7 @@ const RecentProjects = memo(function RecentProjects({
         </div>
 
         {filteredProjects.length === 0 ? (
-          <div style={{ padding: "40px 0", textAlign: "center", color: "#666", fontSize: "14px", background: "#1a1a1a", border: "1px dashed #333", borderRadius: "8px" }}>
+          <div style={{ padding: "40px 0", textAlign: "center", color: "#666", fontSize: "14px", background: "#1a1a1a", border: "1px dashed #333", borderRadius: "0" }}>
             No projects found matching "{searchQuery}"
           </div>
         ) : (

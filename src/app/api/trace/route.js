@@ -85,7 +85,7 @@ export async function POST(request) {
       // ==========================================
       // STAGE 1: GEMINI 3 PRO IMAGE -> RASTER PNG
       // ==========================================
-      const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image" });
+      const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-image" });
 
       let base64Image;
       let mimeType = "image/png";
@@ -132,7 +132,12 @@ WHAT FAILURE LOOKS LIKE (AVOID THESE AT ALL COSTS):
 
 WHAT SUCCESS LOOKS LIKE:
 ✅ A 1:1 exact pixel-perfect HD restoration of the original logo.
-✅ All metallic reflections, gradients, and stylized fonts are perfectly preserved.`;
+✅ All metallic reflections, gradients, and stylized fonts are perfectly preserved.
+
+WOW-FACTOR & PREMIUM AESTHETICS (CRITICAL FOR OUTPUT QUALITY):
+- HYPER-CRISP VECTOR-LIKE EDGES: Ensure all lines, shapes, and borders are razor-sharp with zero blur. It must look like a meticulously crafted vector file.
+- VIBRANT, STRIKING COLORS: Enhance the color palette to be rich, deeply saturated, and highly contrasted. Make the colors POP intensely while staying true to the original hues.
+- PROFESSIONAL STUDIO FINISH: The final image must look like a breathtaking, top-tier premium esports/corporate logo. Apply a flawless, high-definition polish that makes the user say "WOW!" instantly upon seeing it. Do not just clean it; make it visually spectacular and incredibly premium.`;
       } else {
         if (project.ai_prompt === 'ERASE_LOGOS') {
           prompt = `You are DesaynVision™, an elite AI that performs surgical 'Content-Aware Fill' on sublimation garments and apparel designs. You are NOT a creative AI. Your job is pixel-perfect pattern restoration with surgical text removal.
@@ -158,7 +163,12 @@ WHAT FAILURE LOOKS LIKE (AVOID THESE):
 
 WHAT SUCCESS LOOKS LIKE:
 ✅ A perfect, solid rectangle filled ONLY with the design pattern, completely devoid of text/logos.
-✅ Clean, solid shapes with razor-sharp edges and flawless background reconstruction.`;
+✅ Clean, solid shapes with razor-sharp edges and flawless background reconstruction.
+
+WOW-FACTOR & PREMIUM AESTHETICS (CRITICAL FOR OUTPUT QUALITY):
+- HYPER-CRISP VECTOR-LIKE EDGES: Ensure all lines, shapes, and borders are razor-sharp with zero blur. It must look like a meticulously crafted vector file.
+- VIBRANT, STRIKING COLORS: Enhance the color palette to be rich, deeply saturated, and highly contrasted. Make the colors POP intensely while staying true to the original hues.
+- PROFESSIONAL STUDIO FINISH: The final image must look like a breathtaking, top-tier premium esports/corporate logo. Apply a flawless, high-definition polish that makes the user say "WOW!" instantly upon seeing it. Do not just clean it; make it visually spectacular and incredibly premium.`;
         } else {
           prompt = `You are DesaynVision™, an elite AI that performs professional garment flattening and design extraction. You are NOT a creative AI. Your job is pixel-perfect design preservation.
 
@@ -187,7 +197,12 @@ WHAT FAILURE LOOKS LIKE (AVOID THESE):
 
 WHAT SUCCESS LOOKS LIKE:
 ✅ A perfect, solid rectangle filled with the design pattern and ALL original artwork/logos preserved.
-✅ Clean, solid shapes with razor-sharp edges and smooth gradients.`;
+✅ Clean, solid shapes with razor-sharp edges and smooth gradients.
+
+WOW-FACTOR & PREMIUM AESTHETICS (CRITICAL FOR OUTPUT QUALITY):
+- HYPER-CRISP VECTOR-LIKE EDGES: Ensure all lines, shapes, and borders are razor-sharp with zero blur. It must look like a meticulously crafted vector file.
+- VIBRANT, STRIKING COLORS: Enhance the color palette to be rich, deeply saturated, and highly contrasted. Make the colors POP intensely while staying true to the original hues.
+- PROFESSIONAL STUDIO FINISH: The final image must look like a breathtaking, top-tier premium esports/corporate logo. Apply a flawless, high-definition polish that makes the user say "WOW!" instantly upon seeing it. Do not just clean it; make it visually spectacular and incredibly premium.`;
         }
       }
 
@@ -197,7 +212,8 @@ WHAT SUCCESS LOOKS LIKE:
         let timeoutId;
         try {
           const timeoutPromise = new Promise((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error("Gemini API Timeout (600s) - The AI is performing a complex surgical erase and taking too long.")), 600000);
+            // 110s — fires BEFORE Vercel's 120s hard kill, allowing catch/refund to run cleanly
+            timeoutId = setTimeout(() => reject(new Error("Gemini API Timeout (110s) - The AI is taking too long. Please crop the image smaller and try again.")), 110000);
           });
           const genPromise = model.generateContent({
             contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { data: base64Image, mimeType } }] }],

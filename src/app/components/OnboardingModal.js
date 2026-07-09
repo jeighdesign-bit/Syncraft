@@ -20,7 +20,7 @@ const OnboardingModal = memo(function OnboardingModal({ show, onClose }) {
               <Shirt size={32} color="#FFD700" />
             </div>
           </div>
-          <h2 style={{ margin: "0 0 10px", fontWeight: "800", fontSize: "24px", color: "#fff", letterSpacing: "-0.5px" }}>Congratulations! You received 1 Free Credit.</h2>
+          <h2 style={{ margin: "0 0 10px", fontWeight: "800", fontSize: "24px", color: "#fff", letterSpacing: "-0.5px" }}>Welcome to DesaynClaw!</h2>
           <p style={{ color: "#888", fontSize: "14px", margin: 0, lineHeight: "1.5" }}>Welcome to DesaynClaw! Before you start, let's quickly go over how it works.</p>
         </div>
 
@@ -58,10 +58,10 @@ const OnboardingModal = memo(function OnboardingModal({ show, onClose }) {
             <p style={{ margin: 0, fontWeight: "800", color: "#fff", fontSize: "15px" }}>1 Credit = 1 AI Generation</p>
           </div>
           <p style={{ margin: "0 0 8px", color: "#aaa", fontSize: "13px", textAlign: "center", lineHeight: "1.5" }}>
-            You have been granted <strong style={{ color: "#FFD700" }}>1 Free Credit</strong> to test the platform.
+            Top up credits to start generating. Plans start at <strong style={{ color: "#FFD700" }}>₱35 per credit</strong>.
           </p>
           <p style={{ margin: 0, color: "#666", fontSize: "12px", textAlign: "center" }}>
-            Once depleted, you can top up for as low as ₱35 per credit.
+            Click the Credits badge on the top bar to purchase.
           </p>
         </div>
 
