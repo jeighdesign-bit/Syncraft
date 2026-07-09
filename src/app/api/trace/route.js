@@ -168,7 +168,8 @@ WHAT SUCCESS LOOKS LIKE:
 WOW-FACTOR & PREMIUM AESTHETICS (CRITICAL FOR OUTPUT QUALITY):
 - HYPER-CRISP VECTOR-LIKE EDGES: Ensure all lines, shapes, and borders are razor-sharp with zero blur. It must look like a meticulously crafted vector file.
 - VIBRANT, STRIKING COLORS: Enhance the color palette to be rich, deeply saturated, and highly contrasted. Make the colors POP intensely while staying true to the original hues.
-- PROFESSIONAL STUDIO FINISH: The final image must look like a breathtaking, top-tier premium esports/corporate logo. Apply a flawless, high-definition polish that makes the user say "WOW!" instantly upon seeing it. Do not just clean it; make it visually spectacular and incredibly premium.`;
+- PROFESSIONAL STUDIO FINISH: The final image must look like a breathtaking, top-tier premium esports/corporate logo. Apply a flawless, high-definition polish that makes the user say "WOW!" instantly upon seeing it. Do not just clean it; make it visually spectacular and incredibly premium.
+- MAINTAIN PORTRAIT ORIENTATION: The original image is a vertical portrait. The output MUST maintain this vertical portrait orientation (taller than it is wide). DO NOT output a landscape image. DO NOT rotate the design 90 degrees.`;
         } else {
           prompt = `You are DesaynVision™, an elite AI that performs professional garment flattening and design extraction. You are NOT a creative AI. Your job is pixel-perfect design preservation.
 
@@ -176,7 +177,8 @@ CRITICAL INSTRUCTIONS - AVOID THE SHIRT SHAPE:
 - RECTANGULAR EDGE-TO-EDGE CANVAS: You MUST COMPLETELY IGNORE the physical shape of the shirt. DO NOT output a torso shape, do not output sleeves, collars, or armholes. 
 - FULL BLEED PATTERN: The output MUST be a perfect, solid rectangular canvas filled edge-to-edge with the background pattern and design elements. Extend all lines, shapes, and textures infinitely to the borders of the rectangular image.
 
-CRITICAL INSTRUCTION - STRICT 1:1 REPLICATION:
+CRITICAL INSTRUCTION - STRICT 1:1 REPLICATION & PORTRAIT ORIENTATION:
+- MAINTAIN PORTRAIT ORIENTATION: The original image is a vertical portrait. The output MUST maintain this exact vertical portrait orientation (taller than it is wide). DO NOT output a landscape image. DO NOT rotate the design 90 degrees.
 - DO NOT REDRAW OR REINTERPRET: You are strictly forbidden from changing the shape, style, or layout of ANY element, logo, or mascot. 
 - 100% EXACT ACCURACY: You must output a mathematically exact replica of all logos and designs present on the shirt.
 
@@ -191,12 +193,14 @@ CLEAN VECTOR-LIKE AESTHETICS (NO NOISE/DOTS):
 
 WHAT FAILURE LOOKS LIKE (AVOID THESE):
 ❌ The output looks like the shape of a shirt, torso, or garment.
+❌ The output is rotated sideways into a landscape format instead of matching the original portrait orientation.
 ❌ Visible wrinkles, fabric folds, or shadows remaining.
 ❌ Noisy dot patterns, speckles, or muddy textures.
 ❌ ERASING OR REMOVING the main text, logos, or typography. 
 
 WHAT SUCCESS LOOKS LIKE:
 ✅ A perfect, solid rectangle filled with the design pattern and ALL original artwork/logos preserved.
+✅ The image remains in its correct vertical portrait orientation.
 ✅ Clean, solid shapes with razor-sharp edges and smooth gradients.
 
 WOW-FACTOR & PREMIUM AESTHETICS (CRITICAL FOR OUTPUT QUALITY):
