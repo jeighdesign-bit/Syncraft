@@ -5,7 +5,7 @@ import { adminSupabase } from "@/lib/supabase";
 // IMPORTANT: Must use Node.js runtime (not edge) so we get real 120s timeouts.
 // Edge runtime on Vercel has a hard 30s cap which causes all Gemini generations to fail.
 export const runtime = 'nodejs';
-export const maxDuration = 300; // Vercel Pro plan allows up to 300s
+export const maxDuration = 120; // Vercel Pro plan allows up to 300s; 120s is safe
 
 const RECRAFT_API_KEY = process.env.RECRAFT_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -85,10 +85,7 @@ export async function POST(request) {
       // ==========================================
       // STAGE 1: GEMINI 3 PRO IMAGE -> RASTER PNG
       // ==========================================
-      const model = genAI.getGenerativeModel(
-        { model: "gemini-3.1-flash-image" },
-        process.env.PROXY_BASE_URL ? { baseUrl: process.env.PROXY_BASE_URL } : undefined
-      );
+      const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image" });
 
       let base64Image;
       let mimeType = "image/png";
@@ -99,11 +96,11 @@ export async function POST(request) {
       const arrayBuffer = await imageResponse.arrayBuffer();
       const rawBuffer = Buffer.from(arrayBuffer);
       
-      // HACK: Compress image to 768x768 to prevent Gemini Pro Timeout. 
-      // This reduces pixel processing by 44%, finishing in ~60s instead of 110s+.
+      // Compress image to prevent Gemini Timeout for massive files
+      // MAX 1024x1024 to ensure processing finishes well under Google's 300s load balancer timeout
       const sharp = (await import('sharp')).default;
       const compressedBuffer = await sharp(rawBuffer)
-        .resize({ width: 768, height: 768, fit: 'inside', withoutEnlargement: true })
+        .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 85 })
         .toBuffer();
         
@@ -200,8 +197,7 @@ WHAT SUCCESS LOOKS LIKE:
         let timeoutId;
         try {
           const timeoutPromise = new Promise((_, reject) => {
-            // 290s — fires BEFORE Vercel's 300s hard kill
-            timeoutId = setTimeout(() => reject(new Error("Gemini API Timeout (290s) - The AI is taking too long. Please crop the image smaller and try again.")), 290000);
+            timeoutId = setTimeout(() => reject(new Error("Gemini API Timeout (600s) - The AI is performing a complex surgical erase and taking too long.")), 600000);
           });
           const genPromise = model.generateContent({
             contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { data: base64Image, mimeType } }] }],
@@ -248,7 +244,7 @@ WHAT SUCCESS LOOKS LIKE:
           const arrBuf = await imgRes.arrayBuffer();
           generatedImageBuffer = Buffer.from(arrBuf);
         } else {
-          throw new Error(`Gemini did not return an image. It returned text instead: "${textResp.substring(0, 150)}..."`);
+          throw new Error("Gemini did not return a generated image.");
         }
       }
 
@@ -270,8 +266,7 @@ WHAT SUCCESS LOOKS LIKE:
       // TEMPORARILY BYPASSED TO DOUBLE THE SPEED OF THE TOOL
       // Since Gemini now generates 1536px images and Recraft Vectorize handles smoothing natively,
       // the upscale step is redundant and adds 15-20 seconds of unnecessary waiting time.
-      const isJpeg = project.generated_image_url.toLowerCase().endsWith('.jpg') || project.generated_image_url.toLowerCase().endsWith('.jpeg');
-      return NextResponse.json({ success: true, step: 2, fileUrl: project.generated_image_url, mimeType: isJpeg ? "image/jpeg" : "image/png" });
+      return NextResponse.json({ success: true, step: 2, fileUrl: project.generated_image_url, mimeType: "image/png" });
     }
 
     return NextResponse.json({ error: "Invalid step parameter" }, { status: 400 });
