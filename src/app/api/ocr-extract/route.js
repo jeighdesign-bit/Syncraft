@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from '@supabase/supabase-js';
+import { adminSupabase, safeRefundCredit } from "@/lib/supabase";
 import { validateUrlForSSRF } from "@/lib/ssrf";
-import { safeRefundCredit } from "@/lib/supabase";
 export async function POST(request) {
   try {
     const formData = await request.formData();
@@ -23,11 +22,7 @@ export async function POST(request) {
     if (!authHeader) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const token = authHeader.replace('Bearer ', '');
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
+    const token = authHeader.replace('Bearer ', '').trim();
 
     const { data: { user }, error: authErr } = await adminSupabase.auth.getUser(token);
     if (authErr || !user) {

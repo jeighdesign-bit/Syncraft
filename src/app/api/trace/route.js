@@ -8,8 +8,6 @@ import { validateUrlForSSRF } from "@/lib/ssrf";
 export const runtime = 'nodejs';
 export const maxDuration = 120; // Vercel Pro plan allows up to 300s; 120s is safe
 
-const RECRAFT_API_KEY = process.env.RECRAFT_API_KEY;
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 export async function POST(request) {
   let projectId;
   try {
@@ -131,6 +129,12 @@ export async function POST(request) {
         if (project.ai_prompt === 'FLATTEN') {
           prompt = `Transform this jersey/shirt design into a perfectly flat, 2D rectangular vector-ready wallpaper. DO NOT DRAW A SHIRT OR CLOTHING SILHOUETTE.
 
+CRITICAL — PERSPECTIVE CORRECTION (READ FIRST):
+- The reference photo may be taken at an angle, on a hanger, on a person, or with camera perspective distortion. You MUST mentally correct this.
+- Output the design as if the jersey is lying perfectly flat on a table, viewed straight-on from above — NO perspective, NO tilt, NO angle, NO distortion.
+- If the photo shows BOTH the front and back of the jersey, use ONLY the FRONT side. Ignore the back panel entirely.
+- The output canvas must be perfectly straight and symmetrical — never crooked or skewed.
+
 OUTPUT REQUIREMENTS:
 - The canvas must be a pure rectangle filled completely edge-to-edge.
 - Extend every stripe, gradient, polygon, and geometric shape to bleed off all four edges.
@@ -154,6 +158,12 @@ FINISHING:
         } else if (project.ai_prompt === 'ERASE_LOGOS') {
           prompt = `Transform this jersey/shirt design into a perfectly flat, 2D rectangular vector-ready wallpaper with all text and logos removed. DO NOT DRAW A SHIRT OR CLOTHING SILHOUETTE.
 
+CRITICAL — PERSPECTIVE CORRECTION (READ FIRST):
+- The reference photo may be taken at an angle, on a hanger, on a person, or with camera perspective distortion. You MUST mentally correct this.
+- Output the design as if the jersey is lying perfectly flat on a table, viewed straight-on from above — NO perspective, NO tilt, NO angle, NO distortion.
+- If the photo shows BOTH the front and back of the jersey, use ONLY the FRONT side. Ignore the back panel entirely.
+- The output canvas must be perfectly straight and symmetrical — never crooked or skewed.
+
 OUTPUT REQUIREMENTS:
 - The canvas must be a pure rectangle filled completely edge-to-edge.
 - Extend every stripe, gradient, polygon, and geometric shape to bleed off all four edges.
@@ -172,8 +182,44 @@ TEXT AND LOGO REMOVAL:
 FINISHING:
 - Flatten all 3D fabric folds, wrinkles, and shadows into clean, solid flat colors.
 - The result should look like a clean flat-lay pattern ready for screen printing.`;
+        } else if (project.ai_prompt === 'LOGO_FLATTEN') {
+          prompt = `You are a professional vector artist. Your task is to produce a PIXEL-PERFECT flat vector-ready version of the logo in this reference image.
+
+THIS IS A LOGO TRACE — NOT A JERSEY TRACE. The rules below are absolute:
+
+ACCURACY — THIS IS THE #1 PRIORITY (TARGET: 98%+ MATCH):
+- Reproduce the logo with MATHEMATICALLY EXACT fidelity to the reference.
+- Every shape, outline, curve, angle, and proportion must match the reference exactly.
+- Every color must be reproduced as the exact same solid flat color. No color shifting, no darkening, no lightening.
+- If the logo has multiple color regions, preserve ALL of them in their exact positions and sizes.
+
+TEXT & TYPOGRAPHY — DO NOT ALTER EVER:
+- If the logo contains text (wordmark, tagline, acronym, team name), reproduce every single letter EXACTLY as written — same font style, same weight, same spacing, same capitalization.
+- Do NOT autocorrect, rewrite, or stylize any letter, word, or character under any circumstances.
+- Text-only logos (wordmarks like "NIKE", "ADIDAS", team names) must be reproduced purely as flat typography with the exact same letterform style.
+
+ELEMENTS TO KEEP — ALL OF THEM:
+- All icons, symbols, crests, stars, shields, crowns, swooshes, or decorative elements.
+- All borders, outlines, rings, and inner frames.
+- All fine inner details inside the logo shapes.
+- All secondary text, taglines, year numbers, or decorative text.
+
+BACKGROUND:
+- If the original logo has a transparent, white, or solid colored background, keep it exactly as-is.
+- Do NOT add any new background, shadow, glow, or border that is not in the reference.
+
+FINISHING:
+- Remove any photo texture, fabric grain, noise, or 3D shading — output pure flat solid colors only.
+- The result must look like it was drawn in Adobe Illustrator — clean, crisp, and ready for SVG vectorization.
+- Maintain the original proportions and centering of the logo exactly.`;
         } else {
           prompt = `Transform this jersey/shirt design into a perfectly flat, 2D rectangular vector-ready wallpaper. DO NOT DRAW A SHIRT OR CLOTHING SILHOUETTE.
+
+CRITICAL — PERSPECTIVE CORRECTION (READ FIRST):
+- The reference photo may be taken at an angle, on a hanger, on a person, or with camera perspective distortion. You MUST mentally correct this.
+- Output the design as if the jersey is lying perfectly flat on a table, viewed straight-on from above — NO perspective, NO tilt, NO angle, NO distortion.
+- If the photo shows BOTH the front and back of the jersey, use ONLY the FRONT side. Ignore the back panel entirely.
+- The output canvas must be perfectly straight and symmetrical — never crooked or skewed.
 
 OUTPUT REQUIREMENTS:
 - The canvas must be a pure rectangle filled completely edge-to-edge.

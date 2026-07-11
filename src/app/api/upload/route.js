@@ -34,7 +34,10 @@ export async function POST(request) {
           original_image_url: imageUrl,
           trace_type: traceType.startsWith('mockup') ? 'mockup' : 'logo',
           user_id: user.id,
-          ai_prompt: traceType === 'mockup_erase' ? 'ERASE_LOGOS' : (traceType === 'mockup_preserve' ? 'PRESERVE_LOGOS' : null)
+          ai_prompt: traceType === 'mockup_erase' ? 'ERASE_LOGOS' 
+                   : traceType === 'mockup_preserve' ? 'PRESERVE_LOGOS'
+                   : traceType === 'logo' ? 'LOGO_FLATTEN'
+                   : null
         }
       ])
       .select('id')

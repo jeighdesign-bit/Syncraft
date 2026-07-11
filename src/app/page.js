@@ -50,6 +50,7 @@ export default function StartScreen() {
   const [showTopUpModal, setShowTopUpModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null); // holds file waiting for type selection
   
   // ─── Modal Specific State ───────────────────────────────────────────────────
   const [modalProjectName, setModalProjectName] = useState("Untitled Design");
@@ -289,6 +290,19 @@ export default function StartScreen() {
     if (e.dataTransfer.files?.length > 0) handleFileUpload(e.dataTransfer.files[0]);
   };
 
+  // Open type-selection modal with a pre-selected file (from drop or file picker)
+  const openModalWithFile = (file) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    if (!user) { setShowTopUpModal(true); return; }
+    const maxSizeInMB = 10;
+    if (file.size > maxSizeInMB * 1024 * 1024) {
+      toast.error(`File is too large! Maximum allowed size is ${maxSizeInMB}MB.`);
+      return;
+    }
+    setPendingFile(file);
+    setShowModal(true);
+  };
+
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="start-screen-container" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} onClick={() => setOpenMenuId(null)}>
@@ -299,13 +313,12 @@ export default function StartScreen() {
            onDragOver={(e) => e.preventDefault()}
            onDragLeave={() => setIsDraggingGlobal(false)}
            onDrop={(e) => {
-              e.preventDefault();
-              setIsDraggingGlobal(false);
-              if (e.dataTransfer.files?.length > 0) {
-                if (!user) { setShowTopUpModal(true); return; }
-                handleFileUpload(e.dataTransfer.files[0]);
-              }
-           }}
+               e.preventDefault();
+               setIsDraggingGlobal(false);
+               if (e.dataTransfer.files?.length > 0) {
+                 openModalWithFile(e.dataTransfer.files[0]);
+               }
+            }}
         >
           <div style={{ background: "#FFD700", padding: "24px", borderRadius: "50%", marginBottom: "24px" }}><ImageIcon size={48} color="#000" /></div>
           <h2 style={{ color: "#FFD700", fontSize: "32px", margin: 0, fontWeight: "800" }}>Drop your image anywhere</h2>
@@ -389,8 +402,7 @@ export default function StartScreen() {
               e.preventDefault();
               e.stopPropagation();
               if (e.dataTransfer.files?.length > 0) {
-                if (!user) { setShowTopUpModal(true); return; }
-                handleFileUpload(e.dataTransfer.files[0]);
+                openModalWithFile(e.dataTransfer.files[0]);
               }
             }}
           >
@@ -449,8 +461,8 @@ export default function StartScreen() {
       </div>
       <EduSection />
 
-      {/* Hidden File Input */}
-      <input type="file" ref={fileInputRef} onChange={(e) => handleFileUpload(e.target.files[0])} accept="image/*" style={{ display: "none" }} />
+      {/* Hidden File Input — shows type-selector modal before uploading */}
+      <input type="file" ref={fileInputRef} onChange={(e) => { if (e.target.files[0]) openModalWithFile(e.target.files[0]); e.target.value = ""; }} accept="image/*" style={{ display: "none" }} />
 
       {/* ─── Modals ────────────────────────────────────────────────────────── */}
       <NewProjectModal 
@@ -458,8 +470,14 @@ export default function StartScreen() {
         projectName={modalProjectName} setProjectName={setModalProjectName}
         traceType={modalTraceType} setTraceType={setModalTraceType}
         isUploading={isUploading}
-        onClose={() => setShowModal(false)}
-        onSelectImage={() => fileInputRef.current.click()}
+        onClose={() => { setShowModal(false); setPendingFile(null); }}
+        onSelectImage={() => {
+          if (pendingFile) {
+            handleFileUpload(pendingFile);
+          } else {
+            fileInputRef.current.click();
+          }
+        }}
       />
 
       <OnboardingModal 
