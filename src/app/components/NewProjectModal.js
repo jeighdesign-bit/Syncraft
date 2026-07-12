@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
 import { memo, useState } from "react";
-import { Shirt, X } from "lucide-react";
+import { Shirt, X, Scissors } from "lucide-react";
 
 const LogoIcon = () => (
   <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -48,6 +48,7 @@ const NewProjectModal = memo(function NewProjectModal({
   isUploading,
   onClose,
   onSelectImage,
+  onSelectBgRemover,
 }) {
   const [step, setStep] = useState("category");
   const [category, setCategory] = useState(null);
@@ -56,6 +57,12 @@ const NewProjectModal = memo(function NewProjectModal({
 
   const handleCategorySelect = (cat) => {
     setCategory(cat);
+    if (cat === "bg_remover") {
+      // Skip details step — trigger file upload immediately
+      onSelectBgRemover?.();
+      handleClose();
+      return;
+    }
     if (cat === "logo") {
       setTraceType("logo");
     } else {
@@ -77,7 +84,7 @@ const NewProjectModal = memo(function NewProjectModal({
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, position: "relative" }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: step === "category" ? 800 : 480, position: "relative", transition: "max-width 0.3s ease", width: "100%" }}>
 
         <button
           onClick={handleClose}
@@ -93,10 +100,10 @@ const NewProjectModal = memo(function NewProjectModal({
             <h2 style={{ margin: "0 0 6px 0" }}>What are you tracing?</h2>
             <p style={{ margin: "0 0 24px 0", color: "#888", fontSize: "13px" }}>Choose a category to get started.</p>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
               <div
                 onClick={() => handleCategorySelect("garment")}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "28px 16px", border: "2px solid #444", borderRadius: 10, cursor: "pointer", background: "transparent", transition: "all 0.18s", textAlign: "center" }}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "20px 24px", border: "2px solid #444", borderRadius: 10, cursor: "pointer", background: "transparent", transition: "all 0.18s", textAlign: "center", aspectRatio: "1 / 1" }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#FFD700"; e.currentTarget.style.background = "rgba(255,215,0,0.06)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.background = "transparent"; }}
               >
@@ -109,7 +116,7 @@ const NewProjectModal = memo(function NewProjectModal({
 
               <div
                 onClick={() => handleCategorySelect("logo")}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "28px 16px", border: "2px solid #444", borderRadius: 10, cursor: "pointer", background: "transparent", transition: "all 0.18s", textAlign: "center" }}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "20px 24px", border: "2px solid #444", borderRadius: 10, cursor: "pointer", background: "transparent", transition: "all 0.18s", textAlign: "center", aspectRatio: "1 / 1" }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#FFD700"; e.currentTarget.style.background = "rgba(255,215,0,0.06)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.background = "transparent"; }}
               >
@@ -117,6 +124,20 @@ const NewProjectModal = memo(function NewProjectModal({
                 <div>
                   <p style={{ margin: "0 0 4px 0", color: "#fff", fontSize: "15px", fontWeight: 700 }}>Logo / Wordmark</p>
                   <p style={{ margin: 0, fontSize: "11px", color: "#888", lineHeight: 1.5 }}>Icons, emblems, wordmarks — vectorize with exact color and text.</p>
+                </div>
+              </div>
+
+              <div
+                onClick={() => handleCategorySelect("bg_remover")}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "20px 24px", border: "2px solid #444", borderRadius: 10, cursor: "pointer", background: "transparent", transition: "all 0.18s", textAlign: "center", position: "relative", aspectRatio: "1 / 1" }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#FFD700"; e.currentTarget.style.background = "rgba(255,215,0,0.06)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.background = "transparent"; }}
+              >
+                <div style={{ position: "absolute", top: 8, right: 8, background: "#FFD700", color: "#000", fontSize: "9px", fontWeight: 800, padding: "2px 6px", borderRadius: 4, letterSpacing: "0.5px" }}>AI</div>
+                <div style={{ color: "#FFD700" }}><Scissors size={40} strokeWidth={1.2} /></div>
+                <div>
+                  <p style={{ margin: "0 0 4px 0", color: "#fff", fontSize: "15px", fontWeight: 700 }}>BG Remover</p>
+                  <p style={{ margin: 0, fontSize: "11px", color: "#888", lineHeight: 1.5 }}>Remove backgrounds instantly with AI — perfect for products &amp; portraits.</p>
                 </div>
               </div>
             </div>

@@ -18,6 +18,11 @@ const ALLOWED_HOSTS = [
 
 export async function GET(request) {
   try {
+    // NOTE: This route intentionally has no auth check.
+    // It is used in browser <img src="..."> tags which cannot send auth headers.
+    // Security is provided by:
+    // 1. Host allowlist below (SSRF protection — only R2 URLs allowed)
+    // 2. Rate limiting in middleware (60 req/min per IP)
     const { searchParams } = new URL(request.url);
     const url = searchParams.get('url');
 

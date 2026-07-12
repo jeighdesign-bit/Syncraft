@@ -18,6 +18,7 @@ import SplitViewCanvas from "./components/SplitViewCanvas";
 import PropertiesPanel from "./components/PropertiesPanel";
 import CropModal from "./components/CropModal";
 import EraseModal from "./components/EraseModal";
+import RemoveBgModal from "./components/RemoveBgModal";
 import CompareModal from "./components/CompareModal";
 import NoCreditsModal from "./components/NoCreditsModal";
 import TopUpModal from "@/components/TopUpModal";
@@ -41,6 +42,7 @@ export default function Workspace() {
   // ─── Modal State ──────────────────────────────────────────────────────────
   const [showCropModal, setShowCropModal] = useState(false);
   const [showEraseModal, setShowEraseModal] = useState(false);
+  const [showRemoveBgModal, setShowRemoveBgModal] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
   const [showNoCreditsModal, setShowNoCreditsModal] = useState(false);
   const [showTopUpModal, setShowTopUpModal] = useState(false);
@@ -78,7 +80,9 @@ export default function Workspace() {
         }
         setProject(projData);
 
-        if (!projData.generated_image_url) setShowCropModal(true);
+        if (!projData.generated_image_url) {
+          setShowCropModal(true);
+        }
 
         if (session?.user) {
           const { data: profile } = await supabase
@@ -116,20 +120,23 @@ export default function Workspace() {
     }
   }, []);
 
-  const handleDownloadSvg = useCallback(() => {
+  const handleDownloadSvg = useCallback(async () => {
     if (!project?.svg_url) return;
-    forceDownload(project.svg_url, `DesaynClaw_${project.name}_Vector.svg`);
+    const proxyUrl = `/api/proxy?url=${encodeURIComponent(project.svg_url)}`;
+    await forceDownload(proxyUrl, `DesaynClaw_${project.name}_Vector.svg`);
   }, [project, forceDownload]);
 
-  const handleDownloadRaster = useCallback(() => {
+  const handleDownloadRaster = useCallback(async () => {
     if (!project?.generated_image_url) return;
-    forceDownload(project.generated_image_url, `DesaynClaw_${project.name}_Raster.png`);
+    const proxyUrl = `/api/proxy?url=${encodeURIComponent(project.generated_image_url)}`;
+    await forceDownload(proxyUrl, `DesaynClaw_${project.name}_Raster.png`);
   }, [project, forceDownload]);
 
   // Dedicated 4K download — uses upscaled_image_url (Step 2 ESRGAN output), NOT generated_image_url
-  const handleDownloadUpscaled = useCallback(() => {
+  const handleDownloadUpscaled = useCallback(async () => {
     if (!project?.upscaled_image_url) return;
-    forceDownload(project.upscaled_image_url, `DesaynClaw_${project.name}_4K.png`);
+    const proxyUrl = `/api/proxy?url=${encodeURIComponent(project.upscaled_image_url)}`;
+    await forceDownload(proxyUrl, `DesaynClaw_${project.name}_4K.png`);
   }, [project, forceDownload]);
 
   const handleDownloadAll = useCallback(async () => {
@@ -210,6 +217,22 @@ export default function Workspace() {
     }
   }, [logToConsole]);
 
+  const handleRemoveBgApplied = useCallback((publicUrl, errorMsg) => {
+    if (errorMsg) {
+      logToConsole(`[Error] Failed to remove background: ${errorMsg}`, "error");
+    } else if (publicUrl) {
+      setProject(prev => ({
+        ...prev,
+        original_image_url: publicUrl,
+        generated_image_url: null,
+        upscaled_image_url: null,
+        svg_url: null,
+      }));
+      setUserCredits(prev => (prev > 0 ? prev - 1 : 0));
+      logToConsole("[Success] Background removed! You can now re-trace.", "success");
+    }
+  }, [logToConsole]);
+
   const handleLogin = useCallback(async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -256,6 +279,7 @@ export default function Workspace() {
               nodeErrors={nodeErrors}
               onCropOpen={() => setShowCropModal(true)}
               onEraseOpen={() => setShowEraseModal(true)}
+              onRemoveBgOpen={() => setShowRemoveBgModal(true)}
             />
           )}
         </div>
@@ -273,6 +297,7 @@ export default function Workspace() {
           onDownloadAll={handleDownloadAll}
           onOpenCompare={() => setShowCompare(true)}
           onOpenCrop={() => setShowCropModal(true)}
+          onOpenRemoveBg={() => setShowRemoveBgModal(true)}
           onOpenTopUp={() => setShowTopUpModal(true)}
         />
       </main>
@@ -294,6 +319,14 @@ export default function Workspace() {
         onClose={() => setShowEraseModal(false)}
         onEraseApplied={handleEraseApplied}
         onLoginRequired={handleLogin}
+      />
+
+      <RemoveBgModal
+        show={showRemoveBgModal}
+        project={project}
+        supabase={supabase}
+        onClose={() => setShowRemoveBgModal(false)}
+        onRemoveBgApplied={handleRemoveBgApplied}
       />
 
       <CompareModal

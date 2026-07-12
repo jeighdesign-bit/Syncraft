@@ -76,7 +76,7 @@ const RecentProjects = memo(function RecentProjects({
         ) : (
           <div className="recent-grid">
             {filteredProjects.map(proj => (
-              <div key={proj.id} className="recent-card" onClick={() => onNavigate(proj.id)}>
+              <div key={proj.id} className="recent-card" onClick={() => onNavigate(proj)}>
                 <div className="recent-thumb" style={{backgroundImage: `url(${proj.svg_url || proj.original_image_url})`}}></div>
                 <div className="recent-info">
                   

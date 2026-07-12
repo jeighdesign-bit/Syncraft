@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useState } from "react";
-import { Download, Monitor, Settings2, ChevronDown, FolderDown } from "lucide-react";
+import { Download, Monitor, Settings2, ChevronDown, FolderDown, Loader2 } from "lucide-react";
 
 /**
  * PropertiesPanel — Right sidebar with PROPERTIES, ACTIONS sections and the console.
@@ -20,6 +20,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
   onDownloadAll,
   onOpenCompare,
   onOpenCrop,
+  onOpenRemoveBg,
   onOpenTopUp,
 }) {
   const [vectorColors, setVectorColors] = useState("auto");
@@ -28,6 +29,18 @@ const PropertiesPanel = memo(function PropertiesPanel({
   // If original_image_url contains 'crop', we assume it was cropped.
   const isCropped = project?.original_image_url?.includes("crop") || project?.generated_image_url;
   const isBusy = traceState !== "idle" || isSavingCrop;
+
+  const [downloading, setDownloading] = useState(null);
+
+  const handleDownloadClick = async (type, handler) => {
+    if (downloading) return;
+    setDownloading(type);
+    try {
+      await handler();
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   const traceButtonStyle = {
     width: "100%",
@@ -100,6 +113,49 @@ const PropertiesPanel = memo(function PropertiesPanel({
             <span>If image shows front AND back of a shirt, use the Crop Tool to isolate one side, or AI will fail.</span>
           </div>
 
+          {/* BACKGROUND REMOVER BUTTON */}
+          {!project?.svg_url && (
+            <button
+              className="btn-primary"
+              style={{
+                width: "100%",
+                background: "linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)",
+                color: "#fff",
+                border: "1px solid #444",
+                borderRadius: "4px",
+                fontWeight: "700",
+                fontSize: "12px",
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+                cursor: isBusy ? "not-allowed" : "pointer",
+                opacity: isBusy ? 0.7 : 1,
+                padding: "16px",
+                marginBottom: "16px",
+                transition: "all 0.3s ease",
+                boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "4px"
+              }}
+              onClick={() => {
+                if (isBusy) return;
+                onOpenRemoveBg?.();
+              }}
+              disabled={isBusy}
+              onMouseOver={e => { if(!isBusy) { e.currentTarget.style.borderColor = "#FFD700"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(255,215,0,0.15)"; } }}
+              onMouseOut={e => { if(!isBusy) { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 15px rgba(0,0,0,0.3)"; } }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#FFD700" }}>
+                <span style={{ fontSize: "16px" }}>✨</span>
+                BACKGROUND REMOVER
+              </div>
+              <span style={{ fontSize: "10px", color: "#888", fontWeight: "500", textTransform: "none", letterSpacing: "0.5px" }}>
+                Perfect for logos & apparel (-1 Credit)
+              </span>
+            </button>
+          )}
+
           {!project?.svg_url && (
             <button
               className="btn-primary"
@@ -120,35 +176,35 @@ const PropertiesPanel = memo(function PropertiesPanel({
 
           <button
             className="btn-primary"
-            onClick={onDownloadSvg}
-            disabled={!project?.svg_url}
-            style={{ marginBottom: "8px", marginTop: "8px", background: "rgba(255, 215, 0, 0.1)", border: "1px solid #FFD700", color: "#FFD700", borderRadius: "0", padding: "10px 16px", transition: "all 0.2s", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" }}
-            onMouseOver={e => { if(project?.svg_url) e.currentTarget.style.background = "rgba(255, 215, 0, 0.2)"; }}
-            onMouseOut={e => { if(project?.svg_url) e.currentTarget.style.background = "rgba(255, 215, 0, 0.1)"; }}
+            onClick={() => handleDownloadClick('svg', onDownloadSvg)}
+            disabled={!project?.svg_url || downloading}
+            style={{ marginBottom: "8px", marginTop: "8px", background: "rgba(255, 215, 0, 0.1)", border: "1px solid #FFD700", color: "#FFD700", borderRadius: "0", padding: "10px 16px", transition: "all 0.2s", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", opacity: downloading ? 0.5 : 1 }}
+            onMouseOver={e => { if(project?.svg_url && !downloading) e.currentTarget.style.background = "rgba(255, 215, 0, 0.2)"; }}
+            onMouseOut={e => { if(project?.svg_url && !downloading) e.currentTarget.style.background = "rgba(255, 215, 0, 0.1)"; }}
           >
-            <Download size={14} /> EXPORT AS SVG
+            {downloading === 'svg' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} EXPORT AS SVG
           </button>
 
           <button
             className="btn-primary"
-            onClick={onDownloadAll}
-            disabled={!project?.original_image_url}
-            style={{ marginBottom: "8px", background: "#1a1a1a", color: "#aaa", border: "1px solid #444", borderRadius: "0", padding: "8px 16px", transition: "all 0.2s", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}
-            onMouseOver={e => { if(project?.original_image_url) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
-            onMouseOut={e => { if(project?.original_image_url) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
+            onClick={() => handleDownloadClick('all', onDownloadAll)}
+            disabled={!project?.original_image_url || downloading}
+            style={{ marginBottom: "8px", background: "#1a1a1a", color: "#aaa", border: "1px solid #444", borderRadius: "0", padding: "8px 16px", transition: "all 0.2s", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px", opacity: downloading ? 0.5 : 1 }}
+            onMouseOver={e => { if(project?.original_image_url && !downloading) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+            onMouseOut={e => { if(project?.original_image_url && !downloading) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
           >
-            <FolderDown size={14} /> DOWNLOAD ALL (ZIP)
+            {downloading === 'all' ? <Loader2 size={14} className="animate-spin" /> : <FolderDown size={14} />} DOWNLOAD ALL (ZIP)
           </button>
 
           <button
             className="btn-primary"
-            onClick={onDownloadRaster}
-            disabled={!project?.upscaled_image_url}
-            style={{ marginBottom: "8px", background: "#1a1a1a", color: "#aaa", border: "1px solid #444", borderRadius: "0", padding: "8px 16px", transition: "all 0.2s", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px", opacity: !project?.upscaled_image_url ? 0.4 : 1 }}
-            onMouseOver={e => { if(project?.upscaled_image_url) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
-            onMouseOut={e => { if(project?.upscaled_image_url) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
+            onClick={() => handleDownloadClick('raster', onDownloadRaster)}
+            disabled={!project?.upscaled_image_url || downloading}
+            style={{ marginBottom: "8px", background: "#1a1a1a", color: "#aaa", border: "1px solid #444", borderRadius: "0", padding: "8px 16px", transition: "all 0.2s", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px", opacity: (!project?.upscaled_image_url || downloading) ? 0.4 : 1 }}
+            onMouseOver={e => { if(project?.upscaled_image_url && !downloading) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+            onMouseOut={e => { if(project?.upscaled_image_url && !downloading) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
           >
-            <Download size={14} /> EXPORT 4K PNG
+            {downloading === 'raster' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} EXPORT 4K PNG
           </button>
 
           <button

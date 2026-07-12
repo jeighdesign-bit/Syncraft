@@ -25,14 +25,21 @@ export async function POST(request) {
       return NextResponse.json({ error: "No image URL provided" }, { status: 400 });
     }
 
+    // Fix #4: Sanitize projectName — prevent XSS and oversized DB entries
+    const safeName = ((projectName || 'Untitled Project').toString())
+      .replace(/<[^>]*>/g, '')  // strip any HTML tags
+      .replace(/[^\w\s.\-()[\]]/g, '') // allow only safe printable chars
+      .trim()
+      .slice(0, 100) || 'Untitled Project';
+
     // Save to Supabase database — use verified user.id, NOT body userId
     const { data, error } = await adminSupabase
       .from('projects')
       .insert([
         { 
-          name: projectName, 
+          name: safeName, 
           original_image_url: imageUrl,
-          trace_type: traceType.startsWith('mockup') ? 'mockup' : 'logo',
+          trace_type: traceType === 'bg_remover' ? 'bg_remover' : (traceType.startsWith('mockup') ? 'mockup' : 'logo'),
           user_id: user.id,
           ai_prompt: traceType === 'mockup_erase' ? 'ERASE_LOGOS' 
                    : traceType === 'mockup_preserve' ? 'PRESERVE_LOGOS'

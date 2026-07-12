@@ -12,6 +12,7 @@ const RATE_LIMIT_CONFIG = {
   '/api/upload':        { window: '60 s', windowMs: 60_000, max: 20  },
   '/api/upload-mobile': { window: '60 s', windowMs: 60_000, max: 10  },
   '/api/crop':          { window: '60 s', windowMs: 60_000, max: 30  },
+  '/api/remove-bg':     { window: '60 s', windowMs: 60_000, max: 10  },
   '/api/refund':        { window: '60 s', windowMs: 60_000, max: 5   },
   '/api/proxy':         { window: '60 s', windowMs: 60_000, max: 60  },
 };

@@ -9,6 +9,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
   nodeErrors,
   onCropOpen,
   onEraseOpen,
+  onRemoveBgOpen,
 }) {
   const [activeTab, setActiveTab] = useState("generated");
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -301,6 +302,9 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
             <span style={{ color: "#888", fontWeight: "600", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase" }}>ORIGINAL UPLOAD</span>
             {traceState === "idle" && (
               <div style={{ display: "flex", gap: "8px" }}>
+                <button onClick={onRemoveBgOpen} style={{ background: "#1a1a1a", border: "1px solid #444", color: "#ccc", borderRadius: "0", padding: "4px 12px", cursor: "pointer", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor="#FFD700"} onMouseOut={e => e.currentTarget.style.borderColor="#444"}>
+                  <Scissors size={12} /> BG Remove
+                </button>
                 <button onClick={onEraseOpen} style={{ background: "#1a1a1a", border: "1px solid #444", color: "#ccc", borderRadius: "0", padding: "4px 12px", cursor: "pointer", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor="#FFD700"} onMouseOut={e => e.currentTarget.style.borderColor="#444"}>
                   <Eraser size={12} /> Erase Noise
                 </button>

@@ -9,8 +9,7 @@ import { createClient } from "@/utils/supabase/client";
 import { toast } from "@/components/Toast";
 import { compressImageClientSide } from "@/utils/imageUtils";
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
-import { ImageIcon, Monitor, LogIn, FilePlus, User, Trash2, LogOut, CheckCircle2, X, Loader2, Table2, Scan } from "lucide-react";
+import { ImageIcon, Monitor, LogIn, FilePlus, User, Trash2, LogOut, CheckCircle2, X, Loader2, Table2, Scan, Scissors } from "lucide-react";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 import "./globals.css";
@@ -32,6 +31,8 @@ export default function StartScreen() {
   const router = useRouter();
   const supabase = createClient();
   const fileInputRef = useRef(null);
+  const bgRemoveInputRef = useRef(null);
+  const containerRef = useRef(null);
 
   const [syncSessionId, setSyncSessionId] = useState("");
   const [showQrModal, setShowQrModal] = useState(false);
@@ -219,7 +220,7 @@ export default function StartScreen() {
   };
 
   // ─── Upload Logic ───────────────────────────────────────────────────────────
-  const handleFileUpload = async (file) => {
+  const handleFileUpload = async (file, isBgRemover = false) => {
     if (!file || !file.type.startsWith("image/")) return;
 
     // Limit upload to 10MB to save bandwidth and prevent AI processing timeouts
@@ -267,8 +268,8 @@ export default function StartScreen() {
         },
         body: JSON.stringify({
           imageUrl: urlData.publicUrl,
-          projectName: modalProjectName || file.name,
-          traceType: modalTraceType
+          projectName: isBgRemover ? fileToUpload.name.replace(/\.[^/.]+$/, "") : (modalProjectName || file.name),
+          traceType: isBgRemover ? "bg_remover" : modalTraceType
           // userId intentionally omitted — server reads from verified token
         })
       });
@@ -276,7 +277,11 @@ export default function StartScreen() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.details || "Project creation failed");
 
-      router.push(`/workspace/${data.projectId}`);
+      if (isBgRemover) {
+        router.push(`/bg-remover/${data.projectId}`);
+      } else {
+        router.push(`/workspace/${data.projectId}`);
+      }
     } catch (error) {
       console.error("Upload error:", error);
       toast.error("Failed to create project: " + error.message);
@@ -394,6 +399,9 @@ export default function StartScreen() {
             <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowTopUpModal(true); return; } router.push('/ocr'); }} disabled={isUploading} style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", transition: "all 0.2s", whiteSpace: "nowrap"}}>
               <Table2 size={14} /> Extract CSV
             </button>
+            <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowTopUpModal(true); return; } bgRemoveInputRef.current.click(); }} disabled={isUploading} style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#FFD700", border: "1px solid rgba(255, 215, 0, 0.4)", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "700", transition: "all 0.2s", whiteSpace: "nowrap", boxShadow: "0 0 10px rgba(255,215,0,0.1)"}} onMouseEnter={e => e.currentTarget.style.background="rgba(255,215,0,0.1)"} onMouseLeave={e => e.currentTarget.style.background="transparent"}>
+              <Scissors size={14} color="#FFD700" /> BG Remover
+            </button>
           </div>
 
           <div className="hero-upload-box"
@@ -430,7 +438,7 @@ export default function StartScreen() {
               setEditValue={setEditValue}
               openMenuId={openMenuId}
               setOpenMenuId={setOpenMenuId}
-              onNavigate={(id) => router.push(`/workspace/${id}`)}
+              onNavigate={(proj) => router.push(proj.trace_type === 'bg_remover' ? `/bg-remover/${proj.id}` : `/workspace/${proj.id}`)}
               onStartEditing={(e, proj) => { e.stopPropagation(); setOpenMenuId(null); setEditingId(proj.id); setEditValue(proj.name); }}
               onCancelEditing={(e) => { e.stopPropagation(); setEditingId(null); }}
               onSaveRename={saveRename}
@@ -480,6 +488,7 @@ export default function StartScreen() {
 
       {/* Hidden File Input — shows type-selector modal before uploading */}
       <input type="file" ref={fileInputRef} onChange={(e) => { if (e.target.files[0]) openModalWithFile(e.target.files[0]); e.target.value = ""; }} accept="image/*" style={{ display: "none" }} />
+      <input type="file" ref={bgRemoveInputRef} onChange={(e) => { if (e.target.files[0]) handleFileUpload(e.target.files[0], true); e.target.value = ""; }} accept="image/*" style={{ display: "none" }} />
 
       {/* ─── Modals ────────────────────────────────────────────────────────── */}
       <NewProjectModal 
@@ -494,6 +503,9 @@ export default function StartScreen() {
           } else {
             fileInputRef.current.click();
           }
+        }}
+        onSelectBgRemover={() => {
+          bgRemoveInputRef.current.click();
         }}
       />
 

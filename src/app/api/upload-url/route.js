@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getUploadUrl } from '@/lib/cloudflare';
-import { supabase } from '@/lib/supabase'; // Using normal client to check auth
+import { adminSupabase } from '@/lib/supabase';
 
 export async function POST(request) {
   try {
@@ -10,10 +10,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing fileName or contentType' }, { status: 400 });
     }
 
-    // Since we're calling this from the browser with standard Supabase auth,
-    // we should use the server client to verify the session.
-    // However, the browser already sends cookies. So we can just use the SSR client.
-    // Wait, let's just use the simpler approach: the client sends the access token in headers.
+    // Fix #9: Allowlist content types — block non-image uploads
+    const ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/bmp', 'image/tiff'];
+    if (!ALLOWED_CONTENT_TYPES.includes(contentType)) {
+      return NextResponse.json({ error: 'Invalid file type. Only images are allowed.' }, { status: 400 });
+    }
     
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
@@ -26,7 +27,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized - Invalid token format' }, { status: 401 });
     }
     
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    // Fix #3: Use adminSupabase (service role) for consistent server-side auth validation
+    const { data: { user }, error } = await adminSupabase.auth.getUser(token);
     
     if (error || !user) {
       console.error("[Upload URL] Supabase auth error:", error);

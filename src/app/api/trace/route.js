@@ -304,8 +304,11 @@ FINISHING:
     if (step === 2) {
       // ==========================================
       // STAGE 2: 4x UPSCALE WITH fal-ai/esrgan
-      // Reverted to fal.ai for fast pixel-scaling and dashboard logging.
       // ==========================================
+      // Fix #7: Verify Step 1 was legitimately completed before allowing upscale
+      if (!project.credit_deducted) {
+        return NextResponse.json({ error: "Step 1 (Auto-Trace) must be completed before upscaling." }, { status: 403 });
+      }
       if (!project.generated_image_url) throw new Error("No generated raster image found for Step 2");
       if (!process.env.FAL_KEY) throw new Error("FAL_KEY is missing in environment variables.");
 
