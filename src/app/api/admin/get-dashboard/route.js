@@ -34,10 +34,23 @@ export async function GET(request) {
       throw projError;
     }
 
+    // Fetch recent reviews (projects with a rating)
+    const { data: reviews, error: reviewError } = await adminSupabase
+      .from('projects')
+      .select('id, name, rating, feedback_text, created_at')
+      .not('rating', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (reviewError) {
+      console.error("Failed to fetch reviews:", reviewError);
+    }
+
     return NextResponse.json({
       success: true,
       requests: requests || [],
-      totalProjects: projCount || 0
+      totalProjects: projCount || 0,
+      reviews: reviews || []
     });
   } catch (error) {
     console.error("Admin Dashboard Fetch Error:", error);

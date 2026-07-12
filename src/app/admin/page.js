@@ -14,6 +14,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState([]);
   const [approvedRequests, setApprovedRequests] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [totalProjects, setTotalProjects] = useState(0);
   const [processingId, setProcessingId] = useState(null);
   const router = useRouter();
@@ -61,6 +62,7 @@ export default function AdminDashboard() {
       // Sort pending so oldest is first
       setRequests(pending.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
       setApprovedRequests(approved);
+      setReviews(data.reviews || []);
       setTotalProjects(data.totalProjects || 0);
     } catch (err) {
       toast.error("Failed to load admin data");
@@ -259,6 +261,50 @@ export default function AdminDashboard() {
 
                   <div style={{ color: '#4ade80', fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Check size={16} strokeWidth={3} /> PAID
+                  </div>
+
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* REVIEWS SECTION */}
+        <div className="hero-upload-box" style={{ width: '100%', padding: '20px', minHeight: '150px', marginTop: '30px', justifyContent: reviews.length === 0 ? 'center' : 'flex-start', borderStyle: 'solid', borderColor: '#333' }}>
+          {reviews.length === 0 ? (
+            <div style={{ textAlign: 'center', color: '#888', fontSize: '14px' }}>
+              No user reviews yet.
+            </div>
+          ) : (
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div style={{ fontSize: "12px", color: "#fbbf24", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>
+                Recent User Reviews ({reviews.length})
+              </div>
+              
+              {reviews.map(rev => (
+                <div key={rev.id} style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '0', padding: '15px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ color: '#666', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <Clock size={12} /> {new Date(rev.created_at).toLocaleString()}
+                    </div>
+                    <div style={{ color: '#fbbf24', fontSize: '16px', letterSpacing: '2px' }}>
+                      {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
+                    </div>
+                  </div>
+                  
+                  {rev.feedback_text ? (
+                    <div style={{ fontSize: '14px', color: '#eee', fontStyle: 'italic', background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '4px', borderLeft: '3px solid #fbbf24' }}>
+                      "{rev.feedback_text}"
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '13px', color: '#888', fontStyle: 'italic' }}>
+                      (No written feedback provided)
+                    </div>
+                  )}
+
+                  <div style={{ color: '#555', fontSize: '11px', alignSelf: 'flex-end', marginTop: '4px' }}>
+                    Project ID: {rev.id.substring(0,8)}...
                   </div>
 
                 </div>

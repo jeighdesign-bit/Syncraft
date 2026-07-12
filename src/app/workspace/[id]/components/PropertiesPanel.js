@@ -2,6 +2,7 @@
 
 import { memo, useState } from "react";
 import { Download, Monitor, Settings2, ChevronDown, FolderDown, Loader2 } from "lucide-react";
+import FeedbackWidget from "./FeedbackWidget";
 
 /**
  * PropertiesPanel — Right sidebar with PROPERTIES, ACTIONS sections and the console.
@@ -174,6 +175,13 @@ const PropertiesPanel = memo(function PropertiesPanel({
           >
             <Monitor size={14} /> BEFORE/AFTER COMPARE
           </button>
+          
+          {project?.svg_url && (
+            <FeedbackWidget 
+              projectId={project.id} 
+              initialRating={project.rating} 
+            />
+          )}
         </div>
       </div>
 

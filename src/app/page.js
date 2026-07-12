@@ -25,6 +25,7 @@ import TraceIcon from "./components/TraceIcon";
 import BeforeAfterSlider from "./components/BeforeAfterSlider";
 import PromoModal from "./components/PromoModal";
 import AIDisclaimerModal from "./components/AIDisclaimerModal";
+import TestimonialSection from "./components/TestimonialSection";
 import QRCode from "react-qr-code";
 
 export default function StartScreen() {
@@ -484,6 +485,7 @@ export default function StartScreen() {
           />
         </div>
       </div>
+      <TestimonialSection />
       <EduSection />
 
       {/* Hidden File Input — shows type-selector modal before uploading */}
