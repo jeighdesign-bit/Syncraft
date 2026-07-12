@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 export default function AIDisclaimerModal() {
   const [show, setShow] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(10);
+  const [timeLeft, setTimeLeft] = useState(5);
 
   useEffect(() => {
     const hasSeen = sessionStorage.getItem('ai_disclaimer_seen');

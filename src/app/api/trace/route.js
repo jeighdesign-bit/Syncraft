@@ -138,36 +138,7 @@ export async function POST(request) {
       base64Image = compressedBuffer.toString("base64");
       let prompt = "";
       if (project) {
-        if (project.ai_prompt === 'FLATTEN') {
-          prompt = `Transform this jersey/shirt design into a perfectly flat, 2D rectangular vector-ready wallpaper. DO NOT DRAW A SHIRT OR CLOTHING SILHOUETTE.
-
-CRITICAL — PERSPECTIVE CORRECTION (READ FIRST):
-- The reference photo may be taken at an angle, on a hanger, on a person, or with camera perspective distortion. You MUST mentally correct this.
-- Output the design as if the jersey is lying perfectly flat on a table, viewed straight-on from above — NO perspective, NO tilt, NO angle, NO distortion.
-- If the photo shows BOTH the front and back of the jersey, use ONLY the FRONT side. Ignore the back panel entirely.
-- The output canvas must be perfectly straight and symmetrical — never crooked or skewed.
-
-OUTPUT REQUIREMENTS:
-- The canvas must be a pure rectangle filled completely edge-to-edge.
-- Extend every stripe, gradient, polygon, and geometric shape to bleed off all four edges.
-- Remove the shirt/jersey shape — output ONLY the raw design pattern.
-
-SHAPE & LAYOUT ACCURACY — THIS IS THE MOST IMPORTANT RULE:
-- REPLICATE EVERY SINGLE SHAPE with its EXACT position, size, angle, and proportion as seen in the reference image. Do NOT move, scale, rotate, add, or remove any shape.
-- Every polygon, triangle, hexagon, diagonal stripe, curved line, dot-grid, or geometric element must appear in the EXACT same location relative to the canvas as it appears on the reference shirt.
-- If a stripe runs from bottom-left to top-right at 45°, keep it at exactly 45°. Do not change any angle.
-- If a hexagon grid covers the upper-right, it must cover the upper-right of the output — not be moved or resized.
-- Preserve the EXACT color of every region. Use solid, flat colors — no gradients unless the original has gradients.
-- Do NOT invent new shapes, new stripes, or new patterns. ONLY replicate what exists.
-
-TEXT, NUMBERS, NAMES, AND LOGOS:
-- DO NOT remove logos, chest badges, or text that are part of the design — replicate them as flat vector-style artwork.
-- Remove player name/number placeholder text ONLY if they are clearly generic placeholders (e.g. "NAME", "00").
-
-FINISHING:
-- Flatten all 3D fabric folds, wrinkles, and shadows into clean, solid flat colors.
-- The result should look like a clean flat-lay pattern ready for screen printing.`;
-        } else if (project.ai_prompt === 'ERASE_LOGOS') {
+        if (project.ai_prompt === 'ERASE_LOGOS') {
           prompt = `Transform this jersey/shirt design into a perfectly flat, 2D rectangular vector-ready wallpaper with all text and logos removed. DO NOT DRAW A SHIRT OR CLOTHING SILHOUETTE.
 
 CRITICAL — PERSPECTIVE CORRECTION (READ FIRST):

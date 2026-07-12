@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export default function BeforeAfterSlider({ title, rasterUrl, vectorUrl }) {
+export default function BeforeAfterSlider({ title, rasterUrl, vectorUrl, height = '400px' }) {
   const [sliderPosition, setSliderPosition] = useState(50);
 
   return (
@@ -19,7 +19,7 @@ export default function BeforeAfterSlider({ title, rasterUrl, vectorUrl }) {
         borderRadius: '12px',
         textAlign: 'left'
       }}>
-        <div style={{ position: 'relative', height: '400px', background: '#000', overflow: 'hidden', border: '1px solid #444', borderRadius: '8px' }}>
+        <div style={{ position: 'relative', height, background: '#000', overflow: 'hidden', border: '1px solid #444', borderRadius: '8px' }}>
           
           {/* Original Image (Background / Right Side) */}
           <img 

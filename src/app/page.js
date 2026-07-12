@@ -370,9 +370,9 @@ export default function StartScreen() {
       {/* Main Content Wrapper */}
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "100px 20px 0 20px", width: "100%" }}>
 
-      <div className="hero-section" style={{ justifyContent: !user ? "center" : "flex-start" }}>
+      <div className="hero-section" style={{ justifyContent: "flex-start" }}>
         {/* LOGO AND UPLOAD BOX (ALWAYS VISIBLE) */}
-        <div className="hero-left" style={{ margin: !user ? "0 auto" : "0" }}>
+        <div className="hero-left" style={{ margin: "0" }}>
           <div className="start-logo" style={{ marginBottom: "30px", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
             <img src="/logo.png" alt="DesaynClaw Logo" style={{ width: "350px", maxWidth: "100%", height: "auto", margin: 0 }} />
             <p style={{ fontSize: "14px", color: "#888", margin: "5px 0 0 0" }}>Developed by desaynbro</p>
@@ -418,8 +418,8 @@ export default function StartScreen() {
           </div>
         </div>
 
-        {/* RIGHT PANEL (RECENT PROJECTS) - ONLY SHOW IF LOGGED IN */}
-        {user && (
+        {/* RIGHT PANEL — Recent Projects (logged in) OR Sample Extractions (guest) */}
+        {user ? (
           <div className="hero-right" style={{ width: "100%" }}>
             <RecentProjects 
               user={user}
@@ -436,6 +436,23 @@ export default function StartScreen() {
               onSaveRename={saveRename}
               onConfirmDelete={(e, proj) => { e.stopPropagation(); setProjectToDelete(proj); }}
             />
+          </div>
+        ) : (
+          <div className="hero-right" style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <BeforeAfterSlider 
+                title="EMPOWER Custom Jersey"
+                rasterUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/users/30f2a02b-2b1a-4ce3-9ec2-585a21b741b1/1783338326367_crop_1783338342234.jpg"
+                vectorUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/bdf18f96-9332-44c3-8b77-e82917acbffa/vector_1783338385589.svg"
+                height="290px"
+              />
+              <BeforeAfterSlider 
+                title="Graphic Tees"
+                rasterUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/users/30f2a02b-2b1a-4ce3-9ec2-585a21b741b1/1783337357357_crop_1783337373451.jpg"
+                vectorUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/59e847c9-93d3-48e4-b822-4b9c3523c8eb/vector_1783337410425.svg"
+                height="290px"
+              />
+            </div>
           </div>
         )}
       </div>

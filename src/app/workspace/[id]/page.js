@@ -126,6 +126,12 @@ export default function Workspace() {
     forceDownload(project.generated_image_url, `DesaynClaw_${project.name}_Raster.png`);
   }, [project, forceDownload]);
 
+  // Dedicated 4K download — uses upscaled_image_url (Step 2 ESRGAN output), NOT generated_image_url
+  const handleDownloadUpscaled = useCallback(() => {
+    if (!project?.upscaled_image_url) return;
+    forceDownload(project.upscaled_image_url, `DesaynClaw_${project.name}_4K.png`);
+  }, [project, forceDownload]);
+
   const handleDownloadAll = useCallback(async () => {
     if (!project) return;
     logToConsole("[System] Zipping all assets...");
@@ -263,6 +269,7 @@ export default function Workspace() {
           consoleRef={consoleRef}
           onExecuteTrace={onExecuteTrace}
           onDownloadSvg={handleDownloadSvg}
+          onDownloadRaster={handleDownloadUpscaled}
           onDownloadAll={handleDownloadAll}
           onOpenCompare={() => setShowCompare(true)}
           onOpenCrop={() => setShowCropModal(true)}

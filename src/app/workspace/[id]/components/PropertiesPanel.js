@@ -16,6 +16,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
   consoleRef,
   onExecuteTrace,
   onDownloadSvg,
+  onDownloadRaster,
   onDownloadAll,
   onOpenCompare,
   onOpenCrop,
@@ -137,6 +138,17 @@ const PropertiesPanel = memo(function PropertiesPanel({
             onMouseOut={e => { if(project?.original_image_url) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
           >
             <FolderDown size={14} /> DOWNLOAD ALL (ZIP)
+          </button>
+
+          <button
+            className="btn-primary"
+            onClick={onDownloadRaster}
+            disabled={!project?.upscaled_image_url}
+            style={{ marginBottom: "8px", background: "#1a1a1a", color: "#aaa", border: "1px solid #444", borderRadius: "0", padding: "8px 16px", transition: "all 0.2s", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px", opacity: !project?.upscaled_image_url ? 0.4 : 1 }}
+            onMouseOver={e => { if(project?.upscaled_image_url) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+            onMouseOut={e => { if(project?.upscaled_image_url) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
+          >
+            <Download size={14} /> EXPORT 4K PNG
           </button>
 
           <button

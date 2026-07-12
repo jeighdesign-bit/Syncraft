@@ -14,7 +14,8 @@
     "@google/generative-ai": "^0.24.1",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.109.0",
-    "dotenv": "^17.4.2",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "jszip": "^3.10.1",
     "lucide-react": "^1.23.0",
     "next": "16.2.10",
@@ -23,6 +24,7 @@
     "react-image-crop": "^11.1.2",
     "react-qr-code": "^2.2.0",
     "replicate": "^1.4.0",
+    "resend": "^6.17.2",
     "sharp": "^0.35.3"
   },
   "devDependencies": {
