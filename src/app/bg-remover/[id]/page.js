@@ -168,14 +168,12 @@ export default function BgRemoverPage() {
     if (!container) return;
     
     const handleWheel = (e) => {
-      if (e.ctrlKey || e.metaKey || e.altKey) {
-        e.preventDefault();
-        const z = currentZoom.current;
-        const delta = Math.sign(e.deltaY) * 0.25;
-        const newZ = Math.min(Math.max(0.25, z - delta), 5);
-        if (newZ !== z) {
-          setZoom(newZ);
-        }
+      e.preventDefault();
+      const z = currentZoom.current;
+      const delta = Math.sign(e.deltaY) * 0.15; // slightly smoother zoom
+      const newZ = Math.min(Math.max(0.25, z - delta), 5);
+      if (newZ !== z) {
+        setZoom(newZ);
       }
     };
     
@@ -194,18 +192,18 @@ export default function BgRemoverPage() {
   return (
     <div className="app-container">
       {/* Top Menu Bar */}
-      <header className="workspace-header" style={{ padding: "0 24px", height: "60px", display: "flex", alignItems: "center", borderBottom: "1px solid #1a1a1a", background: "#0a0a0a" }}>
-        <button onClick={() => router.push('/')} style={{ width: "200px", display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color="#fff"} onMouseLeave={e => e.currentTarget.style.color="#888"}>
+      <header style={{ padding: "16px 32px", display: "flex", alignItems: "center", borderBottom: "1px solid #444", background: "#1a1a1a" }}>
+        <button onClick={() => router.push('/')} style={{ width: "200px", display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color="#FFD700"} onMouseLeave={e => e.currentTarget.style.color="#666"}>
           <Home size={16} /> HOME
         </button>
         <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "10px" }}>
-          <img src="/nav bar logo.png" alt="DESAYNCLAW" style={{ height: "20px", filter: "opacity(0.8)" }} />
-          <h1 style={{ fontSize: "14px", fontWeight: "600", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>BACKGROUND REMOVER</h1>
+          <img src="/nav bar logo.png" alt="DESAYNCLAW" style={{ height: "20px" }} />
+          <h1 style={{ fontSize: "16px", fontWeight: "700", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>BACKGROUND REMOVER</h1>
         </div>
         <div style={{ width: "200px", display: "flex", justifyContent: "flex-end", gap: "16px", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#2a2a2a", padding: "6px 12px", borderRadius: "0", cursor: "default", border: "1px solid #444" }}>
-            <span style={{ color: "#FFD700", fontWeight: "bold", fontSize: "14px", fontFamily: "monospace" }}>{userCredits !== null ? userCredits : "-"}</span>
-            <span style={{ color: "#888", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>CREDITS</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#222", padding: "8px 16px", borderRadius: "4px", border: "1px solid #333", cursor: "default" }}>
+            <span style={{ color: "#FFD700", fontWeight: "bold", fontSize: "14px" }}>{userCredits !== null ? userCredits : "-"}</span>
+            <span style={{ color: "#888", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600" }}>CREDITS</span>
           </div>
         </div>
       </header>
@@ -238,7 +236,7 @@ export default function BgRemoverPage() {
             <button onClick={() => setZoom(1)} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", padding: "6px", borderRadius: "4px", display: "flex", alignItems: "center", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "1px" }} onMouseOver={e => e.currentTarget.style.background="#222"} onMouseOut={e => e.currentTarget.style.background="transparent"}>
               <Maximize size={12} style={{ marginRight: "4px" }}/> FIT
             </button>
-            <span style={{ color: "#666", fontSize: "10px", marginLeft: "8px", marginRight: "8px", whiteSpace: "nowrap" }}>Tip: Ctrl + Scroll to Zoom</span>
+            <span style={{ color: "#666", fontSize: "10px", marginLeft: "8px", marginRight: "8px", whiteSpace: "nowrap" }}>Tip: Scroll to Zoom</span>
           </div>
 
           <div 
@@ -390,7 +388,7 @@ export default function BgRemoverPage() {
         <aside className="properties-panel" style={{ width: "320px", display: "flex", flexDirection: "column", background: "#0a0a0a", borderLeft: "1px solid #1a1a1a", zIndex: 10 }}>
           {/* PROPERTIES SECTION */}
           <div className="panel-section">
-            <div className="section-header">
+            <div className="section-header" style={{ background: "#222", borderBottom: "1px solid #444", padding: "12px 16px", fontSize: "11px", letterSpacing: "1px", color: "#888", textTransform: "uppercase" }}>
               <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><ImageIcon size={14} color="#888"/> IMAGE PROPERTIES</span>
             </div>
             <div className="section-content" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -409,7 +407,7 @@ export default function BgRemoverPage() {
 
           {/* ACTIONS SECTION */}
           <div className="panel-section">
-            <div className="section-header">
+            <div className="section-header" style={{ background: "#222", borderBottom: "1px solid #444", padding: "12px 16px", fontSize: "11px", letterSpacing: "1px", color: "#888", textTransform: "uppercase" }}>
               <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><Settings2 size={14} color="#888"/> ACTIONS</span>
             </div>
             <div className="section-content" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
