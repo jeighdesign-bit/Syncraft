@@ -16,6 +16,7 @@ export default function AdminDashboard() {
   const [approvedRequests, setApprovedRequests] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [totalProjects, setTotalProjects] = useState(0);
+  const [paidUsers, setPaidUsers] = useState([]);
   const [processingId, setProcessingId] = useState(null);
   const router = useRouter();
 
@@ -64,6 +65,7 @@ export default function AdminDashboard() {
       setApprovedRequests(approved);
       setReviews(data.reviews || []);
       setTotalProjects(data.totalProjects || 0);
+      setPaidUsers(data.paidUsers || []);
     } catch (err) {
       toast.error("Failed to load admin data");
       console.error(err);
@@ -162,7 +164,7 @@ export default function AdminDashboard() {
               <div style={{ marginTop: "10px", color: "#888", fontSize: "13px" }}>No pending payments to review.</div>
             </div>
           ) : (
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '350px', overflowY: 'auto', paddingRight: '10px' }}>
               <div style={{ fontSize: "12px", color: "#FFD700", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>
                 Pending Requests ({requests.length})
               </div>
@@ -241,7 +243,7 @@ export default function AdminDashboard() {
               No paid/approved requests yet.
             </div>
           ) : (
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '350px', overflowY: 'auto', paddingRight: '10px' }}>
               <div style={{ fontSize: "12px", color: "#4ade80", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>
                 Paid / Approved ({approvedRequests.length})
               </div>
@@ -276,7 +278,7 @@ export default function AdminDashboard() {
               No user reviews yet.
             </div>
           ) : (
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '350px', overflowY: 'auto', paddingRight: '10px' }}>
               <div style={{ fontSize: "12px", color: "#fbbf24", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>
                 Recent User Reviews ({reviews.length})
               </div>
@@ -305,6 +307,40 @@ export default function AdminDashboard() {
 
                   <div style={{ color: '#555', fontSize: '11px', alignSelf: 'flex-end', marginTop: '4px' }}>
                     Project ID: {rev.id.substring(0,8)}...
+                  </div>
+
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* PAID USERS & CREDITS SECTION */}
+        <div className="hero-upload-box" style={{ width: '100%', padding: '20px', minHeight: '150px', marginTop: '30px', justifyContent: paidUsers.length === 0 ? 'center' : 'flex-start', borderStyle: 'solid', borderColor: '#333' }}>
+          {paidUsers.length === 0 ? (
+            <div style={{ textAlign: 'center', color: '#888', fontSize: '14px' }}>
+              No paid users found.
+            </div>
+          ) : (
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '350px', overflowY: 'auto', paddingRight: '10px' }}>
+              <div style={{ fontSize: "12px", color: "#FFD700", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>
+                Paid Users & Remaining Credits ({paidUsers.length})
+              </div>
+              
+              {paidUsers.map(u => (
+                <div key={u.id} style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '0', padding: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
+                  
+                  <div style={{ flex: 1, minWidth: '200px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#fff', marginBottom: '4px' }}>{u.email}</div>
+                    <div style={{ color: '#888', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Joined: {new Date(u.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ background: '#222', padding: '8px 16px', borderRadius: '4px', border: '1px solid #444', color: '#FFD700', fontWeight: '600', fontSize: '14px' }}>
+                      {u.credits} Traces
+                    </div>
                   </div>
 
                 </div>

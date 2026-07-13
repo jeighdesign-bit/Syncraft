@@ -46,11 +46,71 @@ export async function GET(request) {
       console.error("Failed to fetch reviews:", reviewError);
     }
 
+    // Fetch users with credits (SCALABLE APPROACH)
+    let paidUsers = [];
+    try {
+      // 1. Fetch only profiles with credits > 0 directly from DB (limits memory usage)
+      // Capped at top 100 to ensure the admin dashboard never freezes at scale
+      const { data: profiles, error: profErr } = await adminSupabase
+        .from('profiles')
+        .select('id, credits')
+        .gt('credits', 0)
+        .order('credits', { ascending: false })
+        .limit(100);
+
+      if (!profErr && profiles && profiles.length > 0) {
+        const userIds = profiles.map(p => p.id);
+
+        // 2. Fast bulk mapping: Get emails from payment history
+        const { data: reqs } = await adminSupabase
+          .from('payment_requests')
+          .select('user_id, email, created_at')
+          .in('user_id', userIds);
+
+        const emailMap = {};
+        const joinMap = {};
+
+        if (reqs) {
+          reqs.forEach(r => {
+            if (r.email) emailMap[r.user_id] = r.email;
+            if (!joinMap[r.user_id] || new Date(r.created_at) < new Date(joinMap[r.user_id])) {
+              joinMap[r.user_id] = r.created_at;
+            }
+          });
+        }
+
+        // 3. Fallback for any users without a payment record (e.g. free initial credits)
+        const missingEmailIds = userIds.filter(id => !emailMap[id]);
+        if (missingEmailIds.length > 0) {
+          await Promise.all(
+            missingEmailIds.map(async (id) => {
+              const { data: authData } = await adminSupabase.auth.admin.getUserById(id);
+              if (authData && authData.user) {
+                emailMap[id] = authData.user.email;
+                joinMap[id] = authData.user.created_at;
+              }
+            })
+          );
+        }
+
+        // 4. Assemble the final list
+        paidUsers = profiles.map(p => ({
+          id: p.id,
+          email: emailMap[p.id] || "Unknown User",
+          credits: p.credits,
+          created_at: joinMap[p.id] || new Date().toISOString()
+        }));
+      }
+    } catch(e) {
+      console.error("Error fetching paid users list", e);
+    }
+
     return NextResponse.json({
       success: true,
       requests: requests || [],
       totalProjects: projCount || 0,
-      reviews: reviews || []
+      reviews: reviews || [],
+      paidUsers: paidUsers
     });
   } catch (error) {
     console.error("Admin Dashboard Fetch Error:", error);

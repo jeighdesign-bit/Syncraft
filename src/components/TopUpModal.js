@@ -51,7 +51,7 @@ const TopUpModal = memo(function TopUpModal({ show, user, supabase, onClose, onL
 
   const handleSubmit = useCallback(async () => {
     if (!form.txnRef.trim() || !form.screenshotFile) {
-      toast.error("Please enter your GCash reference number and upload proof of payment.");
+      toast.error("Please enter your GCash number and upload proof of payment.");
       return;
     }
     if (!user) {
@@ -201,8 +201,8 @@ const TopUpModal = memo(function TopUpModal({ show, user, supabase, onClose, onL
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', color: '#aaa', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>GCash Ref. Number *</label>
-                    <input type="text" placeholder="e.g. 1234567890" value={form.txnRef} onChange={e => setForm(f => ({ ...f, txnRef: e.target.value }))} style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '8px', padding: '16px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = '#FFD700'} onBlur={e => e.target.style.borderColor = '#444'} />
+                    <label style={{ display: 'block', color: '#aaa', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>GCASH NUMBER *</label>
+                    <input type="text" placeholder="e.g. 09123456789" value={form.txnRef} onChange={e => setForm(f => ({ ...f, txnRef: e.target.value }))} style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '8px', padding: '16px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = '#FFD700'} onBlur={e => e.target.style.borderColor = '#444'} />
                   </div>
                   <div>
                     <label style={{ display: 'block', color: '#aaa', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Upload Proof of Payment *</label>

@@ -128,41 +128,78 @@ export async function POST(request) {
         if (project.ai_prompt === 'ERASE_LOGOS') {
           prompt = `⚠️ HARDEST RULE — READ THIS FIRST AND OBEY IT ALWAYS:
 DO NOT DRAW A SHIRT. DO NOT DRAW A JERSEY SHAPE. DO NOT DRAW A NECKLINE. DO NOT DRAW ARMHOLES. DO NOT DRAW SLEEVES. DO NOT DRAW ANY CLOTHING SILHOUETTE WHATSOEVER.
-Your output canvas is a PLAIN RECTANGLE filled edge-to-edge with design pattern ONLY. If any part of your output looks like a shirt shape, collar, or sleeve cutout — YOU HAVE FAILED.
+Your output canvas is a PLAIN RECTANGLE filled edge-to-edge with design pattern ONLY.
+
+== FINAL OUTPUT STANDARD — THIS IS YOUR TARGET ==
+Your output must look EXACTLY like the flat rectangular source artwork panel shown next to a jersey product mockup image — the kind you see on stock design websites where the jersey photo is on the LEFT and the flat pattern file is on the RIGHT. That flat pattern on the RIGHT is your target output:
+- A perfectly flat rectangle filled completely edge-to-edge with the jersey's design
+- Zero shirt shape — no collar outline, no sleeve silhouette, no armhole curve
+- Preserve ALL intricate design details: halftones, dot patterns, fine lines, and design gradients.
+- ONLY remove 3D lighting: no fabric wrinkles, no fold shadows, no lens vignette.
+- All lines are perfectly geometric (straight or smoothly curved AS DESIGNED — not distorted by the 3D shirt/body)
+- It looks like a professional Adobe Illustrator sublimation print file, ready to send to a fabric printer
+- The SAME pattern that is on the jersey — not a reinterpretation, not a reinvention — the EXACT same design
 
 You are a FORENSIC COPY ARTIST. Your ONLY task is to make a pixel-accurate flat rectangular replica of the DESIGN PATTERN on this jersey. You are NOT allowed to be creative. You are NOT allowed to invent anything.
 
 == STEP 1: ANALYZE THE REFERENCE IMAGE (DO THIS FIRST) ==
-Before drawing anything, mentally catalog EVERY design element:
-- What are the EXACT background colors? (list them all)
-- What geometric shapes exist? (stripes, polygons, curves, gradients — describe each one's angle, size, and position)
-- Where exactly is each color zone? (top-left, center, bottom-right, etc.)
-- What exact colors are used? (e.g. "hot pink", "electric blue", "black")
+Before drawing anything, mentally catalog EVERY design element with surgical precision:
+- What are the EXACT background colors? (list every color zone)
+- What geometric shapes exist? (stripes, polygons, chevrons, curves, sublimation patterns — describe each one's exact angle, thickness, size, and position)
+- Where exactly is each color zone? (top-left corner, center-left, bottom-right, etc. — use a mental grid)
+- What exact colors are used? (e.g. "navy blue", "golden yellow", "white", "black")
+- How many stripes, polygons, or pattern repeats are there? Count them exactly.
 
 == STEP 2: PERSPECTIVE CORRECTION (MANDATORY) ==
-- The photo may show the jersey worn on a person, hung on a hanger, or shot at an angle. You MUST mentally "unfold" and flatten it.
-- Output the design as if the jersey fabric is cut open and laid perfectly flat — 100% straight-on rectangle.
-- If both front and back panels are visible, ONLY reproduce the FRONT panel.
-- The output must be a perfect upright rectangle — never crooked or skewed.
+- The photo may show the jersey worn on a person, hung on a hanger, or shot at an angle. Mentally "cut open" the fabric and lay it completely flat.
+- Output the design as if the jersey fabric is unfolded into a flat rectangle — 100% straight-on, no perspective, no tilt, no 3D.
+- If both front and back panels are visible, ONLY reproduce the FRONT panel. Completely ignore the back.
+- The output must be a perfect upright rectangle — never crooked, never skewed.
 
-== STEP 3: CANVAS REQUIREMENTS (RE-READ THE FIRST RULE) ==
-- The output is a RECTANGLE. No shirt shape. No neckline. No sleeves. No armhole cutouts. JUST A RECTANGLE.
+== STEP 2B: DE-PERSPECTIVE & STRAIGHTEN ALL LINES (MANDATORY) ==
+- ANY line, stripe, border, or panel edge that appears curved or diagonal in the photo ONLY because of fabric drape, body curvature, or camera angle MUST be straightened to a perfect geometric line in the output.
+- Side panels (left stripe, right stripe) that look curved because of the shirt shape must be output as perfectly straight vertical bands.
+- If a stripe appears to curve inward at the waist due to the body shape — straighten it. Output it as a ruler-straight vertical or diagonal line.
+- The output must look like the design was drawn in Adobe Illustrator with straight crisp lines and no fabric distortion whatsoever.
+- CRITICAL DISTINCTION: Lines that are curved IN THE DESIGN ITSELF (intentional artistic curves/waves) must remain. But lines that are only curved because of the 3D shirt/body/camera angle — must be output as straight.
+
+== STEP 3: CANVAS REQUIREMENTS ==
+- The output is a RECTANGLE. No shirt shape. No neckline cutout. No sleeve cutouts. No armholes. JUST A SOLID RECTANGLE.
 - Fill the entire canvas completely edge-to-edge with the design pattern.
-- Every color zone, stripe, and shape must bleed fully to all four canvas edges — no white space, no padding.
+- Every color zone, stripe, and shape must bleed fully to all four canvas edges — no white space, no padding, no border.
 
-== STEP 4: SHAPE & COLOR ACCURACY — THIS IS LAW ==
-- COPY EVERY SHAPE EXACTLY: same position, same angle, same size, same color. No exceptions.
-- ANTI-HALLUCINATION: Do NOT substitute real design elements with invented ones. If you see hot pink, output hot pink. If you see diagonal straight stripes, output straight stripes — NOT wavy swirls.
-- SUBLIMATION PATTERNS: Reproduce the EXACT SAME sublimation shapes, waves, or geometric polygons. Do not replace with a generic pattern.
+== STEP 4: SHAPE & COLOR ACCURACY — THIS IS ABSOLUTE LAW ==
+- EXACT HEX COLORS: You MUST extract and use the exact same color hex codes as the original. Do not saturate, brighten, or wash out the colors.
+- COPY EVERY SHAPE EXACTLY: same position on the canvas, same angle, same size, same color. No exceptions.
+- ANTI-HALLUCINATION RULE (CRITICAL): Do NOT substitute real design elements with invented ones.
+  If you see HOT PINK, output HOT PINK. If you see diagonal straight stripes, output STRAIGHT STRIPES — NOT wavy swirls.
+  Do NOT reimagine or "improve" any element. COPY IT EXACTLY.
+- SUBLIMATION PATTERNS: Reproduce the EXACT SAME sublimation shapes, colors, waves, or geometric polygons. Do not replace them with a generic pattern.
 - Zero tolerance for invented elements: every output pixel must correspond to a real element in the reference image.
 
 == STEP 5: TEXT AND LOGO REMOVAL ==
 - REMOVE all player names, jersey numbers, sponsor logos, and chest badges.
 - Seamlessly continue the background pattern beneath removed text — no white boxes, no blank gaps.
+- The removed areas must be filled with the EXACT pattern that would logically continue underneath.
 
 == STEP 6: FINISHING ==
-- Flatten all fabric wrinkles, fold shadows, and lighting into clean solid flat colors.
-- The output must look like a clean rectangular sublimation print file in Adobe Illustrator — crisp, flat, print-ready. NO SHIRT SHAPE.`;
+- Flatten all fabric wrinkles, fold shadows, and photographic lighting into clean 2D artwork.
+- CRITICAL: Do NOT flatten intentional design gradients, halftone dots, or intricate patterns into solid blocks. Reproduce them exactly.
+- The final output must look like a professional rectangular sublimation print file — perfectly clean, print-ready.
+
+== STEP 7: SHAPE PLACEMENT LOCK — CRITICAL FOR ACCURACY ==
+- Divide the canvas into a 4x4 grid (16 cells). Before outputting, verify every shape is in the correct grid cell matching the reference.
+- Left-side shapes stay left. Right-side shapes stay right. Center shapes stay center. Top shapes stay top. Bottom shapes stay bottom.
+- Do NOT mirror, flip, or reposition any element. Shape drift is a failure.
+- EXACT COLOR MATCHING: You MUST sample the exact HEX color codes from the reference image. Do NOT brighten, do NOT over-saturate, do NOT shift the hue. If the reference is dark navy blue, the output must be the exact same dark navy blue.
+- STRIPE/POLYGON COUNT LOCK: If there are 3 yellow stripes in the reference, output exactly 3 yellow stripes — not 2, not 4.
+
+== STEP 8: NO MIRRORING — ABSOLUTE RULE ==
+- DO NOT mirror, reflect, or symmetrize the design. The output must NOT be left-right symmetric unless the reference design itself is symmetric.
+- If the left side has a pattern and the right side is different — reproduce them differently, exactly as in the reference.
+- DO NOT create a butterfly/kaleidoscope/mirror effect. This is a real design file.
+- Every asymmetric element (logo position, stripe layout, patch placement) must remain asymmetric exactly as in the original.`;
+
         } else if (project.ai_prompt === 'LOGO_FLATTEN') {
           prompt = `You are a FORENSIC LOGO REPRODUCTION ARTIST. Your task is to create a 100% pixel-accurate, flat vector-ready copy of the logo in this reference image. You are NOT allowed to be creative. You are NOT allowed to simplify, stylize, or interpret. Copy it EXACTLY.
 
@@ -172,13 +209,13 @@ Before drawing anything, mentally catalog EVERY design element:
 - If the logo has multiple color layers or regions, reproduce ALL of them in their exact positions, sizes, and proportions.
 - ZERO HALLUCINATION: Do not add any element that does not exist in the reference. Do not remove any element that does exist.
 
-== TEXT & TYPOGRAPHY — ABSOLUTE RULE: COPY VERBATIM ==
-- If the logo contains any text, letterforms, numbers, or words — reproduce EVERY SINGLE CHARACTER EXACTLY as written.
+== TEXT & TYPOGRAPHY \u2014 ABSOLUTE RULE: COPY VERBATIM ==
+- If the logo contains any text, letterforms, numbers, or words \u2014 reproduce EVERY SINGLE CHARACTER EXACTLY as written.
 - Same font style, same weight (bold/thin/italic), same letter-spacing, same capitalization, same arrangement.
 - Do NOT autocorrect spelling. Do NOT rewrite any word. Do NOT change any letter's shape.
 - Even if the font looks unusual or custom, copy the letterforms exactly as they appear.
 
-== ELEMENTS TO PRESERVE — ALL OF THEM ==
+== ELEMENTS TO PRESERVE \u2014 ALL OF THEM ==
 - Every icon, symbol, mascot, crest, shield, crown, star, swoosh, and decorative element.
 - Every border, outline, ring, frame, and inner detail stroke.
 - Every secondary piece of text: taglines, year numbers, location text, sub-brand text.
@@ -189,21 +226,37 @@ Before drawing anything, mentally catalog EVERY design element:
 
 == FINISHING ==
 - Strip out all fabric texture, photo noise, compression artifacts, lighting shadows, and 3D shading.
-- Output only pure, clean, flat solid colors — as if redrawn in Adobe Illustrator from scratch.
-- Maintain the exact original proportions and centering.`;
+- Output only pure, clean, flat solid colors \u2014 as if redrawn in Adobe Illustrator from scratch.
+- Maintain the exact original proportions and centering.
+
+== SHAPE PLACEMENT LOCK ==
+- Divide the logo into a 3x3 grid. Every element must be in the correct grid cell matching the reference.
+- Do NOT drift, shift, or reposition any element. Position accuracy is as important as color accuracy.`;
+
         } else {
           prompt = `⚠️ HARDEST RULE — READ THIS FIRST AND OBEY IT ALWAYS:
 DO NOT DRAW A SHIRT. DO NOT DRAW A JERSEY SHAPE. DO NOT DRAW A NECKLINE. DO NOT DRAW ARMHOLES. DO NOT DRAW SLEEVES. DO NOT DRAW ANY CLOTHING SILHOUETTE WHATSOEVER.
-Your output canvas is a PLAIN RECTANGLE filled edge-to-edge with design pattern ONLY. The output must look like a flat rectangular wallpaper or fabric print file — NOT like a shirt or mockup. If any part of your output looks like a shirt shape, collar, or sleeve cutout — YOU HAVE FAILED THIS TASK.
+Your output canvas is a PLAIN RECTANGLE filled edge-to-edge with design pattern ONLY.
+
+== FINAL OUTPUT STANDARD — THIS IS YOUR TARGET ==
+Your output must look EXACTLY like the flat rectangular source artwork panel shown next to a jersey product mockup image — the kind you see on stock design websites where the jersey photo is on the LEFT and the flat pattern file is on the RIGHT. That flat pattern on the RIGHT is your target output:
+- A perfectly flat rectangle filled completely edge-to-edge with the jersey's design
+- Zero shirt shape — no collar outline, no sleeve silhouette, no armhole curve anywhere in the output
+- Preserve ALL intricate design details: halftones, dot patterns, fine lines, and design gradients.
+- ONLY remove 3D lighting: no fabric wrinkles, no fold shadows, no lens vignette.
+- All lines are perfectly geometric (straight or smoothly curved AS DESIGNED — not distorted by the 3D shirt/body)
+- It looks like a professional Adobe Illustrator sublimation print file, ready to send to a fabric printer
+- The SAME pattern that is on the jersey — not a reinterpretation, not a reinvention — the EXACT same design colors, shapes, and layout
 
 You are a FORENSIC COPY ARTIST. Your ONLY task is to make a pixel-accurate flat rectangular replica of the DESIGN PATTERN on this jersey. You are NOT allowed to be creative. You are NOT allowed to invent anything.
 
 == STEP 1: ANALYZE THE REFERENCE IMAGE (DO THIS FIRST) ==
-Before drawing anything, mentally catalog EVERY design element:
-- What are the EXACT background colors? (list them all)
-- What geometric shapes exist? (stripes, polygons, curves, sublimation patterns — describe each one's angle, size, and position)
-- Where exactly is each color zone? (top-left, center, bottom-right, etc.)
-- What exact colors are used? (e.g. "hot pink", "electric blue", "black")
+Before drawing anything, mentally catalog EVERY design element with surgical precision:
+- What are the EXACT background colors? (list every color zone)
+- What geometric shapes exist? (stripes, polygons, chevrons, curves, sublimation patterns — describe each one's exact angle, thickness, size, and position)
+- Where exactly is each color zone? (top-left corner, center-left, bottom-right, etc. — use a mental grid)
+- What exact colors are used? (e.g. "navy blue", "golden yellow", "white", "black")
+- How many stripes, polygons, or pattern repeats are there? Count them exactly.
 
 == STEP 2: PERSPECTIVE CORRECTION (MANDATORY) ==
 - The photo may show the jersey worn on a person, hung on a hanger, or shot at an angle. Mentally "cut open" the fabric and lay it completely flat.
@@ -211,13 +264,20 @@ Before drawing anything, mentally catalog EVERY design element:
 - If both front and back panels are visible, ONLY reproduce the FRONT panel. Completely ignore the back.
 - The output must be a perfect upright rectangle — never crooked, never skewed.
 
-== STEP 3: CANVAS REQUIREMENTS (RE-READ THE FIRST RULE AGAIN) ==
+== STEP 2B: DE-PERSPECTIVE & STRAIGHTEN ALL LINES (MANDATORY) ==
+- ANY line, stripe, border, or panel edge that appears curved or bent in the photo ONLY because of fabric drape, body curvature, or camera angle MUST be straightened to a perfect geometric line in the output.
+- Side panels (left stripe, right stripe) that look curved because of the shirt shape must be output as perfectly straight vertical bands.
+- If a stripe appears to curve inward at the waist due to the body shape — straighten it. Output it as a ruler-straight vertical or diagonal line.
+- The output must look like the design was drawn in Adobe Illustrator with straight crisp lines and no fabric distortion whatsoever.
+- CRITICAL DISTINCTION: Lines that are curved IN THE DESIGN ITSELF (intentional artistic curves/waves) must remain. But lines that are only curved because of the 3D shirt/body/camera angle — must be output as straight.
+
+== STEP 3: CANVAS REQUIREMENTS ==
 - The output is a RECTANGLE. No shirt shape. No neckline cutout. No sleeve cutouts. No armholes. JUST A SOLID RECTANGLE.
 - Fill the entire canvas completely edge-to-edge with the design pattern.
 - Every color zone, stripe, and shape must bleed fully to all four canvas edges — no white space, no padding, no border.
-- Imagine you are filling a rectangular fabric panel used for sublimation printing — there is no shirt shape, only the flat pattern.
 
 == STEP 4: SHAPE & COLOR ACCURACY — THIS IS ABSOLUTE LAW ==
+- EXACT HEX COLORS: You MUST extract and use the exact same color hex codes as the original. Do not saturate, brighten, or wash out the colors.
 - COPY EVERY SHAPE EXACTLY: same position on the canvas, same angle, same size, same color. No exceptions.
 - ANTI-HALLUCINATION RULE (CRITICAL): Do NOT substitute real design elements with invented ones.
   If you see HOT PINK, output HOT PINK. If you see TEAL/CYAN, output TEAL/CYAN. If you see diagonal straight stripes, output STRAIGHT STRIPES — NOT wavy swirls.
@@ -231,8 +291,22 @@ Before drawing anything, mentally catalog EVERY design element:
 - DO replicate team logos, chest crests, and decorative sublimation graphics that are part of the design.
 
 == STEP 6: FINISHING ==
-- Flatten all fabric wrinkles, fold shadows, and photographic lighting into clean solid flat colors.
-- The final output must look like a rectangular sublimation print file — perfectly clean, print-ready. NO SHIRT SHAPE. NO MOCKUP. RECTANGLE ONLY.`;
+- Flatten all fabric wrinkles, fold shadows, and photographic lighting into clean 2D artwork.
+- CRITICAL: Do NOT flatten intentional design gradients, halftone dots, or intricate patterns into solid blocks. Reproduce them exactly.
+- The final output must look like a professional rectangular sublimation print file — perfectly clean, print-ready. NO SHIRT SHAPE. NO MOCKUP. RECTANGLE ONLY.
+
+== STEP 7: SHAPE PLACEMENT LOCK — CRITICAL FOR ACCURACY ==
+- Divide the canvas into a 4x4 grid (16 cells). Before outputting, verify every shape is in the correct grid cell matching the reference.
+- Left-side shapes stay left. Right-side shapes stay right. Center shapes stay center. Top shapes stay top. Bottom shapes stay bottom.
+- Do NOT mirror, flip, or reposition any element. Shape drift is a failure.
+- EXACT COLOR MATCHING: You MUST sample the exact HEX color codes from the reference image. Do NOT brighten, do NOT over-saturate, do NOT shift the hue. If the reference is dark navy blue, the output must be the exact same dark navy blue.
+- STRIPE/POLYGON COUNT LOCK: If there are 3 yellow stripes in the reference, output exactly 3 yellow stripes — not 2, not 4.
+
+== STEP 8: NO MIRRORING — ABSOLUTE RULE ==
+- DO NOT mirror, reflect, or symmetrize the design. The output must NOT be left-right symmetric unless the reference design itself is symmetric.
+- If the left side has a pattern and the right side is different — reproduce them differently, exactly as in the reference.
+- DO NOT create a butterfly/kaleidoscope/mirror effect. This is a real sublimation print file, not a reflected pattern.
+- Every asymmetric element (logo position, stripe layout, graphic placement) must remain asymmetric exactly as in the original.`;
         }
       }
 
@@ -262,28 +336,29 @@ Before drawing anything, mentally catalog EVERY design element:
 
         console.log("[fal.ai Input URL]:", finalImageUrl);
 
-        // ── PRE-UPSCALE: Feed a sharper 2x reference into nano-banana-pro ────
-        // Giving the AI a higher-res, noise-free input dramatically improves
-        // its ability to accurately read fine sublimation patterns and colors.
-        console.log("[API Step 1 Pre-Upscale] Upscaling reference with ESRGAN 2x for better AI input...");
+        // ── PRE-UPSCALE: Feed a sharper reference into nano-banana-pro ────────
+        // aura-sr v2 is highly optimized for flat design files, keeping edges crisp
+        // without adding the photographic noise that other upscalers might introduce.
+        console.log("[API Step 1 Pre-Upscale] Upscaling reference with fal-ai/chrono-edit-lora-gallery/upscaler for better AI input...");
         let highResInputUrl = finalImageUrl; // safe fallback to original
         try {
-          const preUpscaleResult = await fal.subscribe("fal-ai/esrgan", {
+          const preUpscaleResult = await fal.subscribe("fal-ai/chrono-edit-lora-gallery/upscaler", {
             input: {
               image_url: finalImageUrl,
-              scale: 2,            // 2x only — fast (~10-15s) and enough to sharpen details
-              face_enhance: false, // jerseys have no faces — skip
+              prompt: "jersey fabric pattern, flat design, sublimation print, crisp edges, solid colors",
             },
             logs: true,
           });
-          if (preUpscaleResult?.data?.image?.url) {
-            highResInputUrl = preUpscaleResult.data.image.url;
-            console.log("[Pre-Upscale] ✅ Success! Using 2x upscaled reference:", highResInputUrl);
+          
+          const outputUrl = preUpscaleResult?.data?.image?.url || preUpscaleResult?.data?.image_url;
+          if (outputUrl) {
+            highResInputUrl = outputUrl;
+            console.log("[Pre-Upscale] ✅ chrono upscaler success! Using upscaled reference:", highResInputUrl);
           } else {
-            console.warn("[Pre-Upscale] ⚠️ ESRGAN returned no URL — falling back to original reference.");
+            console.warn("[Pre-Upscale] ⚠️ upscaler returned no URL — falling back to original reference.");
           }
         } catch (preUpscaleErr) {
-          console.warn("[Pre-Upscale] ⚠️ ESRGAN pre-upscale failed, falling back to original. Error:", preUpscaleErr.message);
+          console.warn("[Pre-Upscale] ⚠️ upscaler failed, falling back to original. Error:", preUpscaleErr.message);
           // Do NOT throw — gracefully fall back to original image
         }
         // ─────────────────────────────────────────────────────────────────────
@@ -294,7 +369,10 @@ Before drawing anything, mentally catalog EVERY design element:
           input: {
             image_urls: [highResInputUrl],
             prompt: prompt,
-            aspect_ratio: targetAspectRatio
+            aspect_ratio: targetAspectRatio,
+            guidance_scale: 7.5,         // higher = more prompt-faithful output
+            num_inference_steps: 50,     // more steps = sharper, more accurate reproduction
+            image_strength: 0.40,        // extremely strict adherence to original image (preserves halftones & gradients)
           },
           logs: true,
           onQueueUpdate: (update) => {
@@ -319,6 +397,7 @@ Before drawing anything, mentally catalog EVERY design element:
         generatedMimeType = result.data.images[0].content_type || "image/jpeg";
         geminiThinking = "Generated via fal.ai Nano Banana Pro Edit";
 
+
       } catch (err) {
         console.error("[fal.ai Error]:", err);
         if (err.body && err.body.detail) {
@@ -338,10 +417,15 @@ Before drawing anything, mentally catalog EVERY design element:
 
     if (step === 2) {
       // ==========================================
-      // STAGE 2: 4x UPSCALE WITH fal-ai/esrgan
+      // STAGE 2: 4x UPSCALE WITH fal-ai/aura-sr
       // ==========================================
-      // Fix #7: Verify Step 1 was legitimately completed before allowing upscale
-      // We verify this by ensuring generated_image_url exists and is not 'REFUNDED'.
+      // AuraSR v2 is a purpose-built AI upscaler that outperforms classic ESRGAN
+      // for flat design assets (jerseys, sublimation prints, logos):
+      //   • Crisper edges with no ringing artifacts
+      //   • Accurate flat color preservation
+      //   • overlapping_tiles=true removes tile seam artifacts
+      //   • checkpoint="v2" uses the newer, higher-quality model
+      // ==========================================
       if (!project.generated_image_url || project.generated_image_url === 'REFUNDED') {
         return NextResponse.json({ error: "Step 1 (Auto-Trace) must be completed before upscaling." }, { status: 403 });
       }
@@ -356,28 +440,28 @@ Before drawing anything, mentally catalog EVERY design element:
         upscaleInputUrl = httpMatches2[httpMatches2.length - 1];
       }
 
-      console.log("[API Step 2] Upscaling with fal-ai/esrgan (4x)...");
-      console.log("[fal.ai ESRGAN Input URL]:", upscaleInputUrl);
+      console.log("[API Step 2] Upscaling with fal-ai/chrono-edit-lora-gallery/upscaler...");
+      console.log("[fal.ai Upscaler Input URL]:", upscaleInputUrl);
 
-      const esrganResult = await fal.subscribe("fal-ai/esrgan", {
+      const upscalerResult = await fal.subscribe("fal-ai/chrono-edit-lora-gallery/upscaler", {
         input: {
           image_url: upscaleInputUrl,
-          scale: 4,
-          face_enhance: false, // jerseys have no faces — skip face enhancement
+          prompt: "flat 2d design, vector style, sharp crisp edges, solid flat colors, professional sublimation print file",
         },
         logs: true,
       });
 
-      console.log("[fal.ai ESRGAN RAW Response]:", JSON.stringify(esrganResult?.data, null, 2));
+      console.log("[fal.ai Upscaler RAW Response]:", JSON.stringify(upscalerResult?.data, null, 2));
 
-      if (!esrganResult || !esrganResult.data || !esrganResult.data.image || !esrganResult.data.image.url) {
-        throw new Error("fal-ai/esrgan did not return a valid image URL. Response: " + JSON.stringify(esrganResult));
+      const upscaledUrl = upscalerResult?.data?.image?.url || upscalerResult?.data?.image_url;
+      if (!upscaledUrl) {
+        throw new Error("fal-ai/chrono-edit-lora-gallery/upscaler did not return a valid image URL. Response: " + JSON.stringify(upscalerResult));
       }
 
-      const upscaledUrl = esrganResult.data.image.url;
-      const upscaledMimeType = esrganResult.data.image.content_type || "image/png";
+      const upscaledMimeType = upscalerResult?.data?.image?.content_type || "image/png";
 
       return NextResponse.json({ success: true, step: 2, fileUrl: upscaledUrl, mimeType: upscaledMimeType });
+
     }
 
     return NextResponse.json({ error: "Invalid step parameter" }, { status: 400 });

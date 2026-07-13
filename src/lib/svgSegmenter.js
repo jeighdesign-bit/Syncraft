@@ -223,7 +223,7 @@ No markdown. No explanation. Raw JSON only.`;
       'X-Title': 'TracerClaw SVG Segmenter',
     },
     body: JSON.stringify({
-      model: 'google/gemini-flash-1.5',
+      model: 'google/gemini-2.0-flash-001',
       messages: [
         { role: 'system', content: systemPrompt },
         {
