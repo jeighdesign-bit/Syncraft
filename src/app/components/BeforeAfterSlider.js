@@ -2,6 +2,68 @@
 
 import { useState } from 'react';
 
+/** Fetches SVG text and injects inline for reliable cross-browser SVG rendering */
+function InlineSVG({ url, style }) {
+  const [svgHtml, setSvgHtml] = useState(null);
+  const [isSvg, setIsSvg] = useState(true);
+
+  useEffect(() => {
+    if (!url) { setSvgHtml(null); return; }
+    
+    // If it's explicitly not an SVG (e.g. png fallback), fallback to img tag immediately
+    if (!url.toLowerCase().endsWith('.svg') && !url.includes('svg')) {
+      setIsSvg(false);
+      return;
+    }
+
+    setSvgHtml(null);
+    setIsSvg(true);
+    fetch(url)
+      .then(r => r.text())
+      .then(text => {
+        const safe = text
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/\son\w+="[^"]*"/gi, '')
+          .replace(/\son\w+='[^']*'/gi, '');
+        if (safe.includes('<svg')) {
+          const scaled = safe.replace(/<svg([^>]*?)>/i, (_, attrs) => {
+            let clean = attrs;
+            const wMatch = attrs.match(/\swidth=["']([^"']+)["']/i);
+            const hMatch = attrs.match(/\sheight=["']([^"']+)["']/i);
+            const vMatch = attrs.match(/\sviewBox=["']([^"']+)["']/i);
+
+            clean = clean.replace(/\s+width=["'][^"']*["']/gi, '')
+                         .replace(/\s+height=["'][^"']*["']/gi, '');
+
+            if (!vMatch && wMatch && hMatch) {
+              const w = parseFloat(wMatch[1].replace(/px/i, ''));
+              const h = parseFloat(hMatch[1].replace(/px/i, ''));
+              if (!isNaN(w) && !isNaN(h)) {
+                clean += ` viewBox="0 0 ${w} ${h}"`;
+              }
+            }
+            return `<svg${clean} style="width:100%;height:100%;display:block;" preserveAspectRatio="xMidYMid meet">`;
+          });
+          setSvgHtml(scaled);
+        } else {
+          // If fetch succeeds but it's not SVG text, fallback
+          setIsSvg(false);
+        }
+      })
+      .catch(err => {
+        console.error('[InlineSVG] fetch failed:', err);
+        setIsSvg(false);
+      });
+  }, [url]);
+
+  if (!isSvg) {
+    return <img src={url} alt="" style={style} />;
+  }
+
+  if (!svgHtml) return null;
+  return <div style={{ ...style, overflow: 'hidden' }} dangerouslySetInnerHTML={{ __html: svgHtml }} />;
+}
+
 export default function BeforeAfterSlider({ title, rasterUrl, vectorUrl, height = '400px' }) {
   const [sliderPosition, setSliderPosition] = useState(50);
 
@@ -31,9 +93,8 @@ export default function BeforeAfterSlider({ title, rasterUrl, vectorUrl, height 
           <span style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.7)', padding: '4px 10px', fontSize: '11px', color: '#fff', borderRadius: '4px', zIndex: 1 }}>Original Photo</span>
           
           {/* Vectorized SVG (Foreground / Left Side) */}
-          <img 
-            src={vectorUrl} 
-            alt="Vectorized SVG" 
+          <InlineSVG 
+            url={vectorUrl} 
             style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`, zIndex: 2 }} 
           />
           <span style={{ position: 'absolute', top: 12, left: 12, background: '#FFD700', padding: '4px 10px', fontSize: '11px', color: '#000', fontWeight: 'bold', borderRadius: '4px', zIndex: 3, opacity: sliderPosition > 10 ? 1 : 0, transition: 'opacity 0.2s' }}>Vectorized SVG</span>
