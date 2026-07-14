@@ -545,6 +545,128 @@ export default function StartScreen() {
       {/* Main Content Wrapper (For the rest of the page) */}
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px", width: "100%" }}>
         
+        {/* ─── GREAT FOR SECTION ────────────────────────────────────────────── */}
+        <div style={{ marginTop: "60px", marginBottom: "0" }}>
+          {/* Section Header */}
+          <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "32px" }}>
+            <div style={{
+              background: "#FFD700",
+              color: "#000",
+              fontSize: "11px",
+              fontWeight: "800",
+              letterSpacing: "1.5px",
+              textTransform: "uppercase",
+              padding: "6px 14px",
+              transform: "skewX(-8deg)",
+              display: "inline-block",
+              whiteSpace: "nowrap",
+            }}>
+              <span style={{ display: "inline-block", transform: "skewX(8deg)" }}>Great For</span>
+            </div>
+            <div style={{ flex: 1, height: "1px", background: "linear-gradient(to right, #444, transparent)" }} />
+          </div>
+
+          {/* Cards Grid */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: "1px",
+            background: "#333",
+            border: "1px solid #333",
+          }}>
+
+            {/* Card 1 — Sublimation Print Shops */}
+            <div style={{
+              background: "#1e1e1e",
+              padding: "28px 24px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px",
+              transition: "background 0.2s",
+              cursor: "default",
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = "#252525"}
+              onMouseLeave={e => e.currentTarget.style.background = "#1e1e1e"}
+            >
+              <div style={{ width: "44px", height: "44px", background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFD700" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              </div>
+              <div>
+                <div style={{ fontSize: "15px", fontWeight: "700", color: "#fff", marginBottom: "8px", letterSpacing: "0.3px" }}>Sublimation Print Shops</div>
+                <div style={{ fontSize: "13px", color: "#888", lineHeight: "1.6" }}>Extract flat sublimation-ready files from jersey mockups. Save hours of manual Photoshop work. Output clean, print-ready rectangles straight to your RIP software.</div>
+              </div>
+            </div>
+
+            {/* Card 2 — Logos & Branding */}
+            <div style={{
+              background: "#1e1e1e",
+              padding: "28px 24px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px",
+              transition: "background 0.2s",
+              cursor: "default",
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = "#252525"}
+              onMouseLeave={e => e.currentTarget.style.background = "#1e1e1e"}
+            >
+              <div style={{ width: "44px", height: "44px", background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFD700" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </div>
+              <div>
+                <div style={{ fontSize: "15px", fontWeight: "700", color: "#fff", marginBottom: "8px", letterSpacing: "0.3px" }}>Logos &amp; Branding</div>
+                <div style={{ fontSize: "13px", color: "#888", lineHeight: "1.6" }}>Vectorize low-resolution logos into crisp, scalable SVGs. Enhance old or blurry brand marks into professional vector files ready for Illustrator, CorelDRAW, or embroidery.</div>
+              </div>
+            </div>
+
+            {/* Card 3 — School & Sports Uniforms */}
+            <div style={{
+              background: "#1e1e1e",
+              padding: "28px 24px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px",
+              transition: "background 0.2s",
+              cursor: "default",
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = "#252525"}
+              onMouseLeave={e => e.currentTarget.style.background = "#1e1e1e"}
+            >
+              <div style={{ width: "44px", height: "44px", background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFD700" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div>
+                <div style={{ fontSize: "15px", fontWeight: "700", color: "#fff", marginBottom: "8px", letterSpacing: "0.3px" }}>School &amp; Sports Uniforms</div>
+                <div style={{ fontSize: "13px", color: "#888", lineHeight: "1.6" }}>Reproduce barangay, basketball, volleyball, and school uniform designs from mockup photos. Get editable flat files for any sport — without touching the original artwork.</div>
+              </div>
+            </div>
+
+            {/* Card 4 — Freelance Designers */}
+            <div style={{
+              background: "#1e1e1e",
+              padding: "28px 24px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px",
+              transition: "background 0.2s",
+              cursor: "default",
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = "#252525"}
+              onMouseLeave={e => e.currentTarget.style.background = "#1e1e1e"}
+            >
+              <div style={{ width: "44px", height: "44px", background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFD700" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/></svg>
+              </div>
+              <div>
+                <div style={{ fontSize: "15px", fontWeight: "700", color: "#fff", marginBottom: "8px", letterSpacing: "0.3px" }}>Freelance Designers</div>
+                <div style={{ fontSize: "13px", color: "#888", lineHeight: "1.6" }}>Remove backgrounds, upscale to 4K, and vectorize client artwork in minutes — not hours. Take on more orders and deliver faster without sacrificing quality.</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        {/* ────────────────────────────────────────────────────────────────────── */}
+
         <EduSection />
 
         {/* Feature Cards below Hero */}
@@ -693,12 +815,13 @@ export default function StartScreen() {
           </div>
         )}
 
-        {/* FOOTER */}
+
         <footer style={{ marginTop: "100px", borderTop: "1px solid #222", padding: "40px 0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "20px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
             <img src="/logo.png" alt="DesaynClaw Logo" style={{ width: "140px", height: "auto", filter: "grayscale(100%) opacity(0.7)" }} />
             <span style={{ color: "#555", fontSize: "13px" }}>© 2024-2026</span>
           </div>
+
 
           <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
             <a href="/privacy" className="footer-link">Privacy Policy</a>
@@ -712,11 +835,129 @@ export default function StartScreen() {
 
       </div>
 
+
       {/* Promo Popup */}
       <PromoModal onBuyClick={() => window.open('https://m.me/105884602605306', '_blank')} />
 
       {/* AI Guidelines Popup */}
       <AIDisclaimerModal />
+
+      {/* ─── SEO: FAQ Structured Data (JSON-LD) ─────────────────────────────── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What is DesaynClaw?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "DesaynClaw is an AI-powered tool for sublimation jersey design extraction, vector auto-tracing, logo enhancement, background removal, and 4K image upscaling. It's built specifically for print shops and apparel designers who need clean, print-ready files fast.",
+                },
+              },
+              {
+                "@type": "Question",
+                "name": "How do I extract a flat sublimation design from a jersey mockup?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Simply upload your jersey mockup image to DesaynClaw, choose 'Flat Extract' mode, and our AI will automatically remove the 3D shirt shape, correct the perspective, and output a clean flat rectangular sublimation print file ready for production.",
+                },
+              },
+              {
+                "@type": "Question",
+                "name": "Can DesaynClaw convert my logo to SVG vector?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes! DesaynClaw can auto-trace your PNG or JPG logo into a clean, scalable SVG vector file. It removes compression artifacts, enhances the design, and outputs a production-ready SVG you can open in Adobe Illustrator, CorelDRAW, or Inkscape.",
+                },
+              },
+              {
+                "@type": "Question",
+                "name": "Does DesaynClaw support background removal for sublimation designs?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. DesaynClaw has a built-in AI background remover that can cleanly cut out jersey designs, logos, and product photos to produce transparent PNG files — no Photoshop required.",
+                },
+              },
+              {
+                "@type": "Question",
+                "name": "Can I upscale a low-resolution sublimation design?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Absolutely. DesaynClaw's AI upscaler can enhance any low-resolution sublimation design, jersey artwork, or logo to 4K quality — making it suitable for large format printing without quality loss.",
+                },
+              },
+              {
+                "@type": "Question",
+                "name": "Is DesaynClaw free to use?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "DesaynClaw offers free credits on sign up so you can try all the tools. Additional credits can be purchased at an affordable rate, making it accessible for small print shops and solo designers.",
+                },
+              },
+              {
+                "@type": "Question",
+                "name": "What file formats does DesaynClaw support?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "DesaynClaw accepts PNG and JPG image uploads. It outputs SVG vector files, 4K PNG images, and transparent PNG cutouts depending on the tool you use.",
+                },
+              },
+            ],
+          }),
+        }}
+      />
+      {/* ─── SEO: HowTo Structured Data ─────────────────────────────────────── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "HowTo",
+            "name": "How to Extract a Flat Sublimation Design from a Jersey Mockup",
+            "description":
+              "Use DesaynClaw's AI to extract a clean, flat sublimation print file from any jersey photo or mockup in minutes.",
+            "totalTime": "PT2M",
+            "tool": {
+              "@type": "HowToTool",
+              "name": "DesaynClaw AI Tracer",
+            },
+            "step": [
+              {
+                "@type": "HowToStep",
+                "position": 1,
+                "name": "Upload Your Jersey Image",
+                "text": "Upload a photo or mockup of the jersey you want to extract. Supported formats: PNG, JPG.",
+                "url": "https://desaynclaw.com",
+              },
+              {
+                "@type": "HowToStep",
+                "position": 2,
+                "name": "Choose Flat Extract Mode",
+                "text": "Select the 'Flat Extract' or 'Auto-Trace' option and let the AI remove the 3D shirt shape and correct perspective.",
+                "url": "https://desaynclaw.com",
+              },
+              {
+                "@type": "HowToStep",
+                "position": 3,
+                "name": "Review and Upscale",
+                "text": "Review the AI-generated flat design and optionally upscale it to 4K for high-resolution sublimation printing.",
+                "url": "https://desaynclaw.com",
+              },
+              {
+                "@type": "HowToStep",
+                "position": 4,
+                "name": "Export as SVG or PNG",
+                "text": "Download your clean, print-ready flat design as an SVG vector or 4K PNG file.",
+                "url": "https://desaynclaw.com",
+              },
+            ],
+          }),
+        }}
+      />
     </div>
   );
 }
