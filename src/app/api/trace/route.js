@@ -542,9 +542,9 @@ If any difference is detected, continue refining until the reconstruction is vis
             image_urls: [highResInputUrl],
             prompt: prompt,
             aspect_ratio: targetAspectRatio,
-            guidance_scale: 12,          // max prompt adherence — strictly follow instructions
+            guidance_scale: 7.5,         // reverted to 7.5: 12 caused deep-frying and massive glitches
             num_inference_steps: 50,     // more steps = sharper, more accurate reproduction
-            image_strength: 0.20,        // LOW = stay very close to source image, minimal hallucination
+            image_strength: 0.35,        // 0.35 is the sweet spot to preserve geometry without glitching out
           },
           logs: true,
           onQueueUpdate: (update) => {
