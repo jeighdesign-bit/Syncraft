@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 /** Fetches SVG text and injects inline for reliable cross-browser SVG rendering */
 function InlineSVG({ url, style }) {
