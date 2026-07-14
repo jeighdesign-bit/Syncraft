@@ -514,19 +514,19 @@ export default function StartScreen() {
               />
             </div>
           ) : (
-            <div className="hero-right" style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <div className="hero-right" style={{ width: "100%", display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
                 <BeforeAfterSlider
                   title="EMPOWER Custom Jersey"
                   rasterUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/users/30f2a02b-2b1a-4ce3-9ec2-585a21b741b1/1783338326367_crop_1783338342234.jpg"
                   vectorUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/bdf18f96-9332-44c3-8b77-e82917acbffa/vector_1783338385589.svg"
-                  height="290px"
+                  height="220px"
                 />
                 <BeforeAfterSlider
                   title="Graphic Tees"
                   rasterUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/users/30f2a02b-2b1a-4ce3-9ec2-585a21b741b1/1783337357357_crop_1783337373451.jpg"
                   vectorUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/59e847c9-93d3-48e4-b822-4b9c3523c8eb/vector_1783337410425.svg"
-                  height="290px"
+                  height="220px"
                 />
               </div>
             </div>
