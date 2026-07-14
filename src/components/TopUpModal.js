@@ -13,12 +13,12 @@ const PLANS = [
   { 
     key: 'basic', label: 'Basic', traces: 4, price: '₱100', 
     desc: 'Great for hobbyists printing occasionally.',
-    features: ['4 HD Vector Traces', 'Standard Processing', '7-day storage'] 
+    features: ['4 HD Vector Traces', 'Standard Processing'] 
   },
   { 
     key: 'starter', label: 'Starter', traces: 13, price: '₱290', 
     desc: 'Ideal for small businesses taking their first steps.',
-    features: ['13 HD Vector Traces', 'Priority Processing', '30-day storage', 'Email support'] 
+    features: ['13 HD Vector Traces', 'Priority Processing', 'Email support'] 
   },
   { 
     key: 'pro', label: 'Professional', traces: 45, price: '₱870', 
