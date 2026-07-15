@@ -49,7 +49,7 @@ export async function GET(request) {
       return new NextResponse(`Failed to fetch image: ${res.statusText}`, { status: res.status });
     }
 
-    const buffer = await res.arrayBuffer();
+    let buffer = await res.arrayBuffer();
     
     // Force correct Content-Type for SVG files — R2 sometimes returns
     // application/octet-stream for .svg which breaks <img> rendering
@@ -57,6 +57,15 @@ export async function GET(request) {
     const contentType = isSvg
       ? 'image/svg+xml'
       : (res.headers.get('content-type') || 'image/jpeg');
+
+    // FIX FOR OLD SVGs: Strip invalid inkscape:label that causes Adobe Illustrator to crash
+    if (isSvg) {
+      let svgText = Buffer.from(buffer).toString('utf8');
+      if (svgText.includes('inkscape:label=')) {
+        svgText = svgText.replace(/\sinkscape:label=["'][^"']*["']/g, '');
+        buffer = Buffer.from(svgText, 'utf8');
+      }
+    }
 
     return new NextResponse(buffer, {
       status: 200,
