@@ -186,10 +186,16 @@ export default function StartScreen() {
 
   const fetchRecentProjects = async (userId) => {
     setIsLoadingProjects(true);
+    
+    // Only fetch projects from the last 3 days since R2 objects are auto-deleted after 3 days
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
     const { data, error } = await supabase
       .from("projects")
       .select("*")
       .eq("user_id", userId)
+      .gte("created_at", threeDaysAgo.toISOString())
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -517,15 +523,15 @@ export default function StartScreen() {
             <div className="hero-right" style={{ width: "100%", display: "flex", flexDirection: "column", gap: "16px" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
                 <BeforeAfterSlider
-                  title="EMPOWER Custom Jersey"
-                  rasterUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/users/30f2a02b-2b1a-4ce3-9ec2-585a21b741b1/1783338326367_crop_1783338342234.jpg"
-                  vectorUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/bdf18f96-9332-44c3-8b77-e82917acbffa/vector_1783338385589.svg"
+                  title="Untitled Design 1"
+                  rasterUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/users/30f2a02b-2b1a-4ce3-9ec2-585a21b741b1/1783990134382_crop_1783990137133.jpg"
+                  vectorUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/5fca148b-6565-440c-b323-5a345bd2f15a/generated_flat_1783990173901.png"
                   height="220px"
                 />
                 <BeforeAfterSlider
-                  title="Graphic Tees"
-                  rasterUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/users/30f2a02b-2b1a-4ce3-9ec2-585a21b741b1/1783337357357_crop_1783337373451.jpg"
-                  vectorUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/59e847c9-93d3-48e4-b822-4b9c3523c8eb/vector_1783337410425.svg"
+                  title="Untitled Design 2"
+                  rasterUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/users/30f2a02b-2b1a-4ce3-9ec2-585a21b741b1/1784032953717_crop_1784032953314.jpg"
+                  vectorUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/1fb04f02-72a0-4ee5-9011-3f3005f4d45a/generated_flat_1784032985488.png"
                   height="220px"
                 />
               </div>
@@ -677,14 +683,14 @@ export default function StartScreen() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
             <BeforeAfterSlider
-              title="EMPOWER Custom Jersey (Auto-Traced)"
-              rasterUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/users/30f2a02b-2b1a-4ce3-9ec2-585a21b741b1/1783338326367_crop_1783338342234.jpg"
-              vectorUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/bdf18f96-9332-44c3-8b77-e82917acbffa/vector_1783338385589.svg"
+              title="Untitled Design 1 (AI Upscaled)"
+              rasterUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/users/30f2a02b-2b1a-4ce3-9ec2-585a21b741b1/1783990134382_crop_1783990137133.jpg"
+              vectorUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/5fca148b-6565-440c-b323-5a345bd2f15a/generated_flat_1783990173901.png"
             />
             <BeforeAfterSlider
-              title="Graphic Tees (Auto-Traced)"
-              rasterUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/users/30f2a02b-2b1a-4ce3-9ec2-585a21b741b1/1783337357357_crop_1783337373451.jpg"
-              vectorUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/59e847c9-93d3-48e4-b822-4b9c3523c8eb/vector_1783337410425.svg"
+              title="Untitled Design 2 (AI Upscaled)"
+              rasterUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/users/30f2a02b-2b1a-4ce3-9ec2-585a21b741b1/1784032953717_crop_1784032953314.jpg"
+              vectorUrl="https://pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev/projects/1fb04f02-72a0-4ee5-9011-3f3005f4d45a/generated_flat_1784032985488.png"
             />
           </div>
         </div>

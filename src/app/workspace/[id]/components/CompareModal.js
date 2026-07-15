@@ -122,11 +122,19 @@ const CompareModal = memo(function CompareModal({
               alt=""
             />
 
-            {/* AFTER layer — SVG inline (most reliable rendering method) */}
-            <InlineSVG
-              url={project.svg_url ? `/api/proxy?url=${encodeURIComponent(project.svg_url)}` : null}
-              style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }}
-            />
+            {/* AFTER layer */}
+            {project.upscaled_image_url || project.generated_image_url ? (
+              <img
+                src={`/api/proxy?url=${encodeURIComponent(project.upscaled_image_url || project.generated_image_url)}`}
+                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", objectFit: "contain" }}
+                alt="After"
+              />
+            ) : (
+              <InlineSVG
+                url={project.svg_url ? `/api/proxy?url=${encodeURIComponent(project.svg_url)}` : null}
+                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+              />
+            )}
 
             {/* BEFORE layer — stretched to fill */}
             <div
@@ -169,7 +177,9 @@ const CompareModal = memo(function CompareModal({
 
             {/* Labels */}
             <div style={{ position: "absolute", bottom: "14px", left: "14px", background: "rgba(0,0,0,0.75)", padding: "4px 10px", borderRadius: "4px", color: "#aaa", fontSize: "11px", pointerEvents: "none", letterSpacing: "0.5px" }}>ORIGINAL (BEFORE)</div>
-            <div style={{ position: "absolute", bottom: "14px", right: "14px", background: "rgba(0,0,0,0.75)", padding: "4px 10px", borderRadius: "4px", color: "#aaa", fontSize: "11px", pointerEvents: "none", letterSpacing: "0.5px" }}>VECTOR (AFTER)</div>
+            <div style={{ position: "absolute", bottom: "14px", right: "14px", background: "rgba(0,0,0,0.75)", padding: "4px 10px", borderRadius: "4px", color: "#aaa", fontSize: "11px", pointerEvents: "none", letterSpacing: "0.5px" }}>
+              {(project.upscaled_image_url || project.generated_image_url) ? "AI UPSCALED (AFTER)" : "VECTOR (AFTER)"}
+            </div>
           </div>
         </div>
 
