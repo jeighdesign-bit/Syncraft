@@ -313,8 +313,7 @@ function rebuildSvgWithGroups(svgText, shapes, labelMap) {
     if (!groups.has(label)) continue;
     const groupShapes = groups.get(label);
     const pathsXml = groupShapes.map(s => `    ${s.fullTag}`).join('\n');
-    groupedContent += `\n  <!-- ═══ Layer: ${label.toUpperCase()} (${groupShapes.length} element${groupShapes.length !== 1 ? 's' : ''}) ═══ -->\n`;
-    groupedContent += `  <g id="layer-${label}" inkscape:label="${label}" data-layer="${label}">\n${pathsXml}\n  </g>\n`;
+    groupedContent += `  <g id="layer-${label}" data-layer="${label}">\n${pathsXml}\n  </g>\n`;
   }
 
   const rebuilt = `${svgOpen}${groupedContent}</svg>`;
