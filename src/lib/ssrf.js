@@ -33,12 +33,30 @@ export function getAllowedStorageHosts() {
 export function getAllowedProviderHosts() {
   return [
     'fal.media',
+    '.fal.media',
     'v2.fal.media',
     'v3.fal.media',
+    'fal.run',
+    '.fal.run',
     'queue.fal.run',
     'storage.googleapis.com',
+    '.googleapis.com',
     'img.recraft.ai',
+    '.recraft.ai',
   ];
+}
+
+function isHostAllowed(hostname, allowedHosts = []) {
+  const host = hostname.toLowerCase();
+  return allowedHosts.some((allowedHost) => {
+    const allowed = String(allowedHost || '').toLowerCase();
+    if (!allowed) return false;
+    if (allowed.startsWith('.')) {
+      const suffix = allowed.slice(1);
+      return host === suffix || host.endsWith(allowed);
+    }
+    return host === allowed;
+  });
 }
 
 function isPrivateIP(ip) {
@@ -119,7 +137,7 @@ export async function validateUrlForSSRF(urlString, options = {}) {
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
 
     const allowedHosts = options.allowedHosts || getAllowedStorageHosts();
-    if (allowedHosts && allowedHosts.length > 0 && !allowedHosts.includes(parsed.hostname.toLowerCase())) {
+    if (allowedHosts && allowedHosts.length > 0 && !isHostAllowed(parsed.hostname, allowedHosts)) {
       return false;
     }
 
