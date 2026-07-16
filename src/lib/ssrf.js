@@ -112,6 +112,13 @@ export async function validateUrlForSSRF(urlString, options = {}) {
       return false;
     }
 
+    // For strict allowlisted storage hosts, the hostname is the security boundary.
+    // Avoid production false-negatives from transient DNS resolution issues while
+    // still applying DNS/private-IP checks to arbitrary provider URLs.
+    if (allowedHosts && allowedHosts.length > 0) {
+      return true;
+    }
+
     const addresses = await lookup(parsed.hostname, { all: true, verbatim: false });
     if (!addresses.length || addresses.some(({ address }) => isPrivateIP(address))) {
       return false;

@@ -66,11 +66,17 @@ export async function POST(request) {
       if (!isOwnedStorageUrl(sourceUrl, { userId: user.id, projectId }) || !(await validateUrlForSSRF(sourceUrl, { allowedHosts: getAllowedStorageHosts() }))) {
         return NextResponse.json({ error: "Invalid or unauthorized image URL" }, { status: 400 });
       }
-      const sourceFetch = await fetchWithSSRFProtection(sourceUrl, {
-        allowedHosts: getAllowedStorageHosts(),
-        maxBytes: DEFAULT_MAX_IMAGE_BYTES,
-        allowedContentTypes: ['image/'],
-      });
+      let sourceFetch;
+      try {
+        sourceFetch = await fetchWithSSRFProtection(sourceUrl, {
+          allowedHosts: getAllowedStorageHosts(),
+          maxBytes: DEFAULT_MAX_IMAGE_BYTES,
+          allowedContentTypes: ['image/'],
+        });
+      } catch (sourceErr) {
+        console.warn(`[Trace] Blocked or failed source image fetch for project ${projectId}:`, sourceErr.message);
+        return NextResponse.json({ error: "Invalid or unauthorized image URL" }, { status: 400 });
+      }
       if (!sourceFetch.response.ok) throw new Error("Failed to fetch source image");
       rawSourceBuffer = sourceFetch.buffer;
       sourceUrl = sourceFetch.finalUrl;
