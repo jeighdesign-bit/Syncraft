@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useState, useCallback, useEffect } from "react";
-import { X, Shirt, CheckCircle, Package, Tag, Mail, Smartphone, Check, ArrowRight, ImageIcon, History, Clock, CreditCard } from "lucide-react";
+import { X, Shirt, CheckCircle, Package, Tag, Mail, Smartphone, Check, ArrowRight, ImageIcon, History, Clock, CreditCard, AlertTriangle } from "lucide-react";
 import { toast } from "@/components/Toast";
 import { createClient } from "@/utils/supabase/client";
 
@@ -134,14 +134,25 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
 
       const { data: publicData } = supabase.storage.from("payment_proofs").getPublicUrl(fileName);
 
-      const { error: dbError } = await supabase.from("payment_requests").insert({
-        user_id: user.id,
-        email: user.email,
-        plan: form.plan,
-        reference_number: form.txnRef,
-        proof_url: publicData.publicUrl,
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("Please log in again before submitting payment proof.");
+
+      const response = await fetch("/api/payments/gcash/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          plan: form.plan,
+          referenceNumber: form.txnRef,
+          proofUrl: publicData.publicUrl,
+        }),
       });
-      if (dbError) throw dbError;
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to submit payment request.");
 
       setSubmitted(true);
     } catch (err) {
@@ -349,6 +360,12 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
               <div style={{ background: '#2a2a2a', border: '1px solid #444', borderRadius: '8px', padding: '12px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: '#aaa', fontSize: '13px' }}>Selected: <strong style={{ color: '#fff' }}>{PLAN_LABELS[form.plan]}</strong> · GCash Manual</span>
                 <span style={{ color: '#FFD700', fontWeight: '600', fontSize: '15px' }}>{PLAN_PRICES[form.plan]}</span>
+              </div>
+              <div style={{ background: 'rgba(255, 215, 0, 0.08)', border: '1px solid rgba(255, 215, 0, 0.35)', borderRadius: '8px', padding: '14px 16px', marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                <AlertTriangle size={18} color="#FFD700" style={{ flexShrink: 0, marginTop: '1px' }} />
+                <div style={{ color: '#d6d6d6', fontSize: '13px', lineHeight: 1.55 }}>
+                  <strong style={{ color: '#FFD700' }}>Manual GCash is not automated.</strong> Submit only once after paying. Duplicate or repeated proof submissions after credits are already added may be blocked for 7 days. Use the same email/account you want credited.
+                </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', marginBottom: '24px', alignItems: 'start' }}>
                 <div style={{ textAlign: 'center' }}>
