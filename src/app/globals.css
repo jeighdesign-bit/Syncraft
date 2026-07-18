@@ -430,6 +430,47 @@ html, body {
   z-index: 5;
 }
 
+/* AI Processing Scanner Animation */
+@keyframes aiScan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+@keyframes pulseOpacity {
+  0%, 100% { opacity: 1; filter: grayscale(100%) brightness(1); }
+  50% { opacity: 0.7; filter: grayscale(100%) brightness(1.4); }
+}
+
+.processing-scan-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.processing-scan-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+  animation: pulseOpacity 2s infinite ease-in-out;
+}
+
+.processing-scan-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 20%;
+  background: linear-gradient(to bottom, transparent, rgba(255, 215, 0, 0.4), var(--accent));
+  opacity: 0.6;
+  box-shadow: 0 4px 15px var(--accent);
+  animation: aiScan 1.5s infinite linear;
+  pointer-events: none;
+}
+
 /* Empty State / Dropzone */
 .empty-state {
   display: flex;
@@ -665,3 +706,4 @@ html, body {
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
 ::-webkit-scrollbar-corner { background: transparent; }
+

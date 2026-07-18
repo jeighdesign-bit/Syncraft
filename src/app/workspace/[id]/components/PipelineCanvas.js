@@ -25,7 +25,7 @@ function InlineSVG({ url, style }) {
             const vMatch = attrs.match(/\sviewBox=["']([^"']+)["']/i);
 
             clean = clean.replace(/\s+width=["'][^"']*["']/gi, '')
-                         .replace(/\s+height=["'][^"']*["']/gi, '');
+              .replace(/\s+height=["'][^"']*["']/gi, '');
 
             if (!vMatch && wMatch && hMatch) {
               const w = parseFloat(wMatch[1].replace(/px/i, ''));

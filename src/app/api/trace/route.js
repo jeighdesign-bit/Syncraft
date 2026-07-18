@@ -146,19 +146,19 @@ export async function POST(request) {
       // Calculate closest aspect ratio for fal.ai Nano Banana Pro
       let targetAspectRatio = "auto";
       if (metadata && metadata.width && metadata.height) {
-         const ratio = metadata.width / metadata.height;
-         const allowedRatios = {
-             "21:9": 21/9, "16:9": 16/9, "3:2": 3/2, "4:3": 4/3, "5:4": 5/4,
-             "1:1": 1/1, "4:5": 4/5, "3:4": 3/4, "2:3": 2/3, "9:16": 9/16
-         };
-         let minDiff = Infinity;
-         for (const [str, val] of Object.entries(allowedRatios)) {
-             const diff = Math.abs(ratio - val);
-             if (diff < minDiff) {
-                 minDiff = diff;
-                 targetAspectRatio = str;
-             }
-         }
+        const ratio = metadata.width / metadata.height;
+        const allowedRatios = {
+          "21:9": 21 / 9, "16:9": 16 / 9, "3:2": 3 / 2, "4:3": 4 / 3, "5:4": 5 / 4,
+          "1:1": 1 / 1, "4:5": 4 / 5, "3:4": 3 / 4, "2:3": 2 / 3, "9:16": 9 / 16
+        };
+        let minDiff = Infinity;
+        for (const [str, val] of Object.entries(allowedRatios)) {
+          const diff = Math.abs(ratio - val);
+          if (diff < minDiff) {
+            minDiff = diff;
+            targetAspectRatio = str;
+          }
+        }
       }
 
       let prompt = "";
@@ -548,7 +548,7 @@ If any difference is detected, continue refining until the reconstruction is vis
         }
 
         const { fal } = await import("@fal-ai/client");
-        
+
         let finalImageUrl = sourceUrl;
 
         console.log("[fal.ai Input URL]:", finalImageUrl);
@@ -557,7 +557,7 @@ If any difference is detected, continue refining until the reconstruction is vis
         // Feed original source image directly — no pre-upscale step.
         // Flow: Extract → Upscale (step 2) → Vectorize (step 3)
         console.log("[API Step 1] Extracting flat design with fal.ai (nano-banana-pro/edit)...");
-        
+
         const result = await fal.subscribe("fal-ai/nano-banana-pro/edit", {
           input: {
             image_urls: [finalImageUrl],
@@ -578,7 +578,7 @@ If any difference is detected, continue refining until the reconstruction is vis
         console.log("[fal.ai RAW Response]:", JSON.stringify(result, null, 2));
 
         if (!result || !result.data || !result.data.images || result.data.images.length === 0) {
-           throw new Error("fal.ai did not return a valid image URL. Response: " + JSON.stringify(result));
+          throw new Error("fal.ai did not return a valid image URL. Response: " + JSON.stringify(result));
         }
 
         const outputUrl = result.data.images[0].url;
@@ -612,61 +612,57 @@ If any difference is detected, continue refining until the reconstruction is vis
 
     if (step === 2) {
       // ==========================================
-      // STAGE 2: FREE 2048px UPSCALE WITH SHARP (Lanczos)
+      // STAGE 2: AI UPSCALE WITH fal-ai/esrgan
       // ==========================================
-      // Sharp Lanczos is BETTER than AI upscalers for flat geometric designs:
-      //   ✅ Zero hallucination — exact colors, perfect hard edges preserved
-      //   ✅ FREE — Sharp already installed, no external API call
-      //   ✅ Fast — no network round-trip
-      //   ✅ Recraft re-traces everything in Step 3 anyway — AI texture adds no value
-      //   ✅ Lanczos3 = industry standard for upscaling flat/graphic assets
-      // Cost: $0.00 per image (was $0.13 with Clarity Upscaler)
+      // User preferred an AI upscaler over local Sharp, but Clarity was too expensive ($0.13).
+      // Real-ESRGAN (fal-ai/esrgan) provides excellent quality and is billed per compute second
+      // ($0.00111/s). A typical upscale takes ~2s, costing ~$0.002 (₱0.10) per image.
       // ==========================================
       if (!project.generated_image_url || project.generated_image_url === 'REFUNDED') {
         return NextResponse.json({ error: "Step 1 (Auto-Trace) must be completed before upscaling." }, { status: 403 });
       }
+      if (!process.env.FAL_KEY) throw new Error("FAL_KEY is missing in environment variables.");
+
+      const { fal } = await import("@fal-ai/client");
 
       const upscaleInputUrl = normalizeUserImageUrl(project.generated_image_url, new URL(request.url).origin);
       if (!isOwnedStorageUrl(upscaleInputUrl, { userId: user.id, projectId }) || !(await validateUrlForSSRF(upscaleInputUrl, { allowedHosts: getAllowedStorageHosts() }))) {
         return NextResponse.json({ error: "Invalid or unauthorized generated image URL" }, { status: 400 });
       }
 
-      console.log("[API Step 2] Upscaling to 2048px with Sharp Lanczos (FREE)...");
+      console.log("[API Step 2] Upscaling with fal-ai/esrgan...");
 
-      const { response: srcRes, buffer: srcBuffer } = await fetchWithSSRFProtection(upscaleInputUrl, {
-        allowedHosts: getAllowedStorageHosts(),
-        maxBytes: DEFAULT_MAX_IMAGE_BYTES,
-        allowedContentTypes: ['image/'],
+      const upscalerResult = await fal.subscribe("fal-ai/esrgan", {
+        input: {
+          image_url: upscaleInputUrl,
+          scale: 4, // 4x upscale (increased from 2x)
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (update.status === "IN_PROGRESS") {
+            update.logs?.map((log) => log.message).forEach(console.log);
+          }
+        },
       });
-      if (!srcRes.ok) throw new Error("Failed to fetch generated image for upscaling");
 
-      const sharp = (await import('sharp')).default;
-      const upscaledBuffer = await sharp(srcBuffer)
-        .resize({
-          width: 2048,
-          height: 2048,
-          fit: 'inside',
-          withoutEnlargement: false,   // always upscale to 2048px even if smaller
-          kernel: sharp.kernel.lanczos3, // Lanczos3 = best for flat/geometric graphics
-        })
-        .png({ effort: 1 })            // fast lossless PNG
-        .toBuffer();
+      console.log("[ESRGAN RAW Response]:", JSON.stringify(upscalerResult?.data, null, 2));
 
-      console.log(`[API Step 2] Sharp upscale done. Output: ${upscaledBuffer.length} bytes`);
+      const upscaledUrl = upscalerResult?.data?.image?.url || upscalerResult?.data?.image_url;
+      if (!upscaledUrl) {
+        throw new Error("fal-ai/esrgan did not return a valid image URL. Response: " + JSON.stringify(upscalerResult));
+      }
 
-      return NextResponse.json({
-        success: true,
-        step: 2,
-        base64: upscaledBuffer.toString('base64'),
-        mimeType: 'image/png',
-      });
+      const upscaledMimeType = upscalerResult?.data?.image?.content_type || "image/jpeg";
+
+      return NextResponse.json({ success: true, step: 2, fileUrl: upscaledUrl, mimeType: upscaledMimeType });
+
     }
 
     return NextResponse.json({ error: "Invalid step parameter" }, { status: 400 });
 
   } catch (error) {
     console.error(`[Trace API Error]:`, error.message);
-    
+
     // Attempt automatic refund on server-side failure
     try {
       if (projectId) {
@@ -682,7 +678,7 @@ If any difference is detected, continue refining until the reconstruction is vis
         const { data: updatedProj } = await refundQuery.select('user_id');
 
         if (updatedProj && updatedProj.length > 0) {
-           await safeRefundCredit(updatedProj[0].user_id);
+          await safeRefundCredit(updatedProj[0].user_id);
         }
       }
     } catch (refundErr) {
