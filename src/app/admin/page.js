@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { toast } from "@/components/Toast";
-import { Check, Clock, ExternalLink, LogOut } from "lucide-react";
+import { Check, Clock, ExternalLink, LogOut, RefreshCw } from "lucide-react";
 
 import "../globals.css";
 import "../home.css";
@@ -20,6 +20,8 @@ export default function AdminDashboard() {
   const [activeCreditsTotal, setActiveCreditsTotal] = useState(0);
   const [paidUsers, setPaidUsers] = useState([]);
   const [processingId, setProcessingId] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasNewRequests, setHasNewRequests] = useState(false);
   const router = useRouter();
 
   const PLAN_PRICES = {
@@ -36,7 +38,8 @@ export default function AdminDashboard() {
   ));
 
   useEffect(() => {
-    let refreshInterval;
+    let fallbackInterval;
+    let realtimeChannel;
 
     const checkAdmin = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -45,21 +48,59 @@ export default function AdminDashboard() {
         return;
       }
       setUser(session.user);
-      fetchRequests(session.access_token);
-      refreshInterval = setInterval(() => {
+      await fetchRequests(session.access_token);
+
+      // ── Supabase Realtime Subscription ──────────────────────────────────
+      // Fires instantly when any row in payment_requests changes,
+      // replacing the old 30-second polling loop.
+      realtimeChannel = supabase
+        .channel('admin_payment_requests')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'payment_requests' },
+          (payload) => {
+            // New payment just submitted — notify admin immediately
+            const email = payload.new?.email || 'a user';
+            const plan = payload.new?.plan || 'unknown';
+            toast.success(`🔔 New payment from ${email} (${plan})`);
+            setHasNewRequests(true);
+            fetchRequests(session.access_token, { silent: true });
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'payment_requests' },
+          () => {
+            // Status changed externally (e.g. another session approved it)
+            fetchRequests(session.access_token, { silent: true });
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('[Admin] Realtime connected — instant payment notifications active.');
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.warn('[Admin] Realtime connection issue:', status);
+          }
+        });
+
+      // ── Fallback Polling (5 min) ─────────────────────────────────────────
+      // Safety net in case the realtime WebSocket disconnects.
+      fallbackInterval = setInterval(() => {
         fetchRequests(session.access_token, { silent: true });
-      }, 30000);
+      }, 5 * 60_000);
     };
 
     checkAdmin();
 
     return () => {
-      if (refreshInterval) clearInterval(refreshInterval);
+      if (fallbackInterval) clearInterval(fallbackInterval);
+      if (realtimeChannel) supabase.removeChannel(realtimeChannel);
     };
   }, [supabase, router]);
 
   const fetchRequests = async (token, options = {}) => {
     if (!options.silent) setLoading(true);
+    if (options.manual) setIsRefreshing(true);
     try {
       const res = await fetch('/api/admin/get-dashboard', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -80,11 +121,22 @@ export default function AdminDashboard() {
       setTotalProjects(data.totalProjects || 0);
       setActiveCreditsTotal(Number(data.activeCreditsTotal || 0));
       setPaidUsers(data.paidUsers || []);
+
+      // Clear the new-request indicator after fetching
+      if (options.manual) setHasNewRequests(false);
     } catch (err) {
       toast.error("Failed to load admin data");
       console.error(err);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleManualRefresh = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      fetchRequests(session.access_token, { silent: true, manual: true });
     }
   };
 
@@ -154,6 +206,14 @@ export default function AdminDashboard() {
           </p>
         </div>
 
+        {/* TAB TITLE BADGE — updates browser tab with pending count */}
+        {typeof document !== 'undefined' && (() => {
+          document.title = requests.length > 0
+            ? `(${requests.length}) Admin Dashboard — DesaynClaw`
+            : 'Admin Dashboard — DesaynClaw';
+          return null;
+        })()}
+
         {/* TOP BUTTONS */}
         <div style={{ display: "flex", gap: "15px", marginBottom: "40px", flexWrap: "wrap", justifyContent: "center", width: "100%" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "12px 24px", borderRadius: "4px", fontSize: "16px", fontWeight: "500", whiteSpace: "nowrap" }}>
@@ -168,6 +228,16 @@ export default function AdminDashboard() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "transparent", color: "#d5d5d5", border: "1px solid #5a4a00", padding: "12px 24px", borderRadius: "4px", fontSize: "16px", fontWeight: "500", whiteSpace: "nowrap" }}>
             Active Credits: <strong style={{ color: '#FFD700', fontSize: '18px' }}>🪙 {totalActiveCredits.toLocaleString()}</strong>
           </div>
+          <button
+            className="start-btn"
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            title="Manually refresh dashboard"
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "12px 24px", borderRadius: "4px", fontSize: "16px", background: 'transparent', color: isRefreshing ? '#888' : '#aaa', borderColor: '#555', opacity: isRefreshing ? 0.7 : 1 }}
+          >
+            <RefreshCw size={16} style={{ animation: isRefreshing ? 'spin 1s linear infinite' : 'none' }} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
           <button className="start-btn" onClick={handleLogout} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "12px 24px", borderRadius: "4px", fontSize: "16px" }}>
             <LogOut size={16} /> Logout
           </button>
@@ -184,7 +254,19 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '350px', overflowY: 'auto', paddingRight: '10px' }}>
-              <div style={{ fontSize: "12px", color: "#FFD700", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>
+              <div style={{ fontSize: "12px", color: "#FFD700", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                {hasNewRequests && (
+                  <span style={{
+                    display: 'inline-block',
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: '#ff4444',
+                    boxShadow: '0 0 0 0 rgba(255,68,68,0.7)',
+                    animation: 'pulse-dot 1.5s ease-in-out infinite',
+                    flexShrink: 0
+                  }} />
+                )}
                 Pending Requests ({requests.length})
               </div>
               
@@ -403,8 +485,22 @@ export default function AdminDashboard() {
 
         {/* Footer Text */}
         <div style={{ marginTop: '40px', color: '#555', fontSize: '12px', textAlign: 'center' }}>
-          Auto-Tracer Admin Panel &copy; 2026
+          Auto-Tracer Admin Panel &copy; 2026 &nbsp;·&nbsp;
+          <span style={{ color: '#2a6', fontSize: '11px' }}>⚡ Live — Realtime notifications active</span>
         </div>
+
+        {/* Inline keyframes for pulsing dot + spinner */}
+        <style>{`
+          @keyframes pulse-dot {
+            0%   { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); }
+            70%  { box-shadow: 0 0 0 8px rgba(255, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
+          }
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+          }
+        `}</style>
         
       </div>
     </div>
