@@ -1,13 +1,12 @@
 "use client";
 
 import { memo, useState } from "react";
-import { Download, Monitor, Settings2, ChevronDown, FolderDown, Loader2 } from "lucide-react";
+import { Download, Monitor, ChevronDown, FolderDown, Loader2, X, ChevronRight } from "lucide-react";
 import FeedbackWidget from "./FeedbackWidget";
 
 /**
- * PropertiesPanel — Right sidebar with PROPERTIES, ACTIONS sections and the console.
- * memo'd so it only re-renders when its own props change.
- * The console <div> is written to via DOM ref (consoleRef) — zero re-renders per log line.
+ * PropertiesPanel — Right sidebar.
+ * Matches the "AI TRACE SETTINGS" design from the workspace screenshot.
  */
 const PropertiesPanel = memo(function PropertiesPanel({
   project,
@@ -25,12 +24,11 @@ const PropertiesPanel = memo(function PropertiesPanel({
   onOpenTopUp,
 }) {
   const [vectorColors, setVectorColors] = useState("auto");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const noCredits = userCredits !== null && userCredits <= 0;
-  // If original_image_url contains 'crop', we assume it was cropped.
   const isCropped = project?.original_image_url?.includes("crop") || project?.generated_image_url;
   const isBusy = traceState !== "idle" || isSavingCrop;
-
   const [downloading, setDownloading] = useState(null);
 
   const handleDownloadClick = async (type, handler) => {
@@ -43,21 +41,6 @@ const PropertiesPanel = memo(function PropertiesPanel({
     }
   };
 
-  const traceButtonStyle = {
-    width: "100%",
-    background: noCredits ? "rgba(255, 215, 0, 0.1)" : "#1a1a1a",
-    color: noCredits ? "#FFD700" : "#FFD700",
-    border: noCredits ? "1px dashed #FFD700" : "1px solid #FFD700",
-    borderRadius: "0",
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: "1px",
-    cursor: isBusy ? "not-allowed" : "pointer",
-    opacity: isBusy ? 0.7 : 1,
-    padding: "14px 16px",
-    transition: "all 0.2s"
-  };
-
   const traceButtonLabel = isSavingCrop
     ? "Saving Crop..."
     : traceState !== "idle"
@@ -66,129 +49,282 @@ const PropertiesPanel = memo(function PropertiesPanel({
     ? "Get More Credits"
     : !isCropped
     ? "Crop Image First"
-    : "Run Auto-Trace (-1 Credit)";
+    : "Run Auto-Trace  (−1 Credit)";
+
+  const canTrace = !isBusy && (noCredits || isCropped);
 
   return (
-    <aside className="properties-panel">
+    <aside style={{
+      width: "280px",
+      background: "#181818",
+      borderLeft: "1px solid #2a2a2a",
+      display: "flex",
+      flexDirection: "column",
+      flexShrink: 0,
+      overflowY: "auto",
+    }}>
 
-      {/* PROPERTIES section */}
-      <div className="panel-section">
-        <div className="section-header" style={{ background: "#222", borderBottom: "1px solid #444", padding: "12px 16px", fontSize: "11px", letterSpacing: "1px", color: "#888", textTransform: "uppercase" }}>
-          <span>PROPERTIES</span>
-          <Settings2 size={12} />
+      {/* ── Header ─────────────────────────────────────────── */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "11px 14px",
+        borderBottom: "1px solid #2a2a2a",
+        background: "#1e1e1e",
+        flexShrink: 0,
+      }}>
+        <span style={{ fontSize: "10px", fontWeight: "700", color: "#aaa", letterSpacing: "1.5px", textTransform: "uppercase" }}>
+          AI TRACE SETTINGS
+        </span>
+        <X size={13} color="#444" style={{ cursor: "pointer" }} />
+      </div>
+
+      {/* ── Vector Engine ───────────────────────────────────── */}
+      <div style={{ padding: "16px 14px", borderBottom: "1px solid #2a2a2a" }}>
+        <label style={{ fontSize: "10px", color: "#666", textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: "8px", fontWeight: "600" }}>
+          Vector Engine (Beta)
+        </label>
+        <div style={{ position: "relative" }}>
+          <select
+            value={vectorColors}
+            onChange={(e) => setVectorColors(e.target.value)}
+            style={{
+              width: "100%",
+              background: "#242424",
+              border: "1px solid #383838",
+              color: "#ddd",
+              padding: "8px 32px 8px 10px",
+              fontSize: "12px",
+              appearance: "none",
+              cursor: "pointer",
+              outline: "none",
+              transition: "border-color 0.2s",
+            }}
+            onFocus={e => e.target.style.borderColor = "#FFD700"}
+            onBlur={e => e.target.style.borderColor = "#383838"}
+          >
+            <option value="auto"  style={{ background: "#242424" }}>Auto (Precision Balance)</option>
+            <option value="16"    style={{ background: "#242424" }}>16 Colors (High Details)</option>
+            <option value="8"     style={{ background: "#242424" }}>8 Colors (Medium Details)</option>
+            <option value="4"     style={{ background: "#242424" }}>4 Colors (Merges Shadows)</option>
+            <option value="2"     style={{ background: "#242424" }}>2 Colors (Solid / Line Art)</option>
+          </select>
+          <ChevronDown size={12} style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: "#666", pointerEvents: "none" }} />
         </div>
-        <div className="section-content">
+        <p style={{ marginTop: "8px", fontSize: "10px", color: "#555", lineHeight: 1.5 }}>
+          Automatically balances detail and performance for the best vector output.
+        </p>
+      </div>
 
-          <div className="form-group" style={{ marginTop: "16px" }}>
-            <label className="form-label" style={{ color: "#aaa", display: "flex", justifyContent: "space-between" }}>
-              <span>Vector Colors (Shadow Killer)</span>
-              <span style={{ fontSize: "10px", background: "rgba(255,215,0,0.1)", color: "#FFD700", padding: "2px 6px", borderRadius: "10px" }}>BETA</span>
-            </label>
-            <select 
-              value={vectorColors}
-              onChange={(e) => setVectorColors(e.target.value)}
-              style={{ padding: "8px 12px", fontSize: "12px", background: "#1a1a1a", border: "1px solid #444", color: "#ddd", marginTop: "6px", borderRadius: "0", width: "100%", outline: "none", cursor: "pointer", transition: "all 0.2s" }}
-            >
-              <option value="auto" style={{ background: "#222", color: "#ddd" }}>Auto (Preserve Details)</option>
-              <option value="16" style={{ background: "#222", color: "#ddd" }}>16 Colors (High Details)</option>
-              <option value="8" style={{ background: "#222", color: "#ddd" }}>8 Colors (Medium Details)</option>
-              <option value="4" style={{ background: "#222", color: "#ddd" }}>4 Colors (Merges Shadows)</option>
-              <option value="2" style={{ background: "#222", color: "#ddd" }}>2 Colors (Solid / Line Art)</option>
-            </select>
-            <div style={{ color: "#888", fontSize: "11px", lineHeight: 1.4, marginTop: "4px" }}>
-              Limit colors to force the AI to merge shadows and wrinkles into solid shapes. Perfect for messy mockups.
+      {/* ── Advanced Settings (collapsible) ────────────────── */}
+      <div style={{ borderBottom: "1px solid #2a2a2a" }}>
+        <button
+          onClick={() => setAdvancedOpen(v => !v)}
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "10px 14px",
+            background: "none",
+            border: "none",
+            color: "#777",
+            cursor: "pointer",
+            fontSize: "11px",
+            fontWeight: "600",
+            letterSpacing: "0.5px",
+            transition: "color 0.15s",
+          }}
+          onMouseOver={e => e.currentTarget.style.color = "#ccc"}
+          onMouseOut={e => e.currentTarget.style.color = "#777"}
+        >
+          Advanced Settings
+          <ChevronDown size={12} style={{ transform: advancedOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+        </button>
+
+        {advancedOpen && (
+          <div style={{ padding: "0 14px 14px" }}>
+            <div style={{ background: "rgba(255,68,68,0.05)", borderLeft: "2px solid #ff4444", padding: "8px 10px", marginBottom: "8px", fontSize: "10.5px", color: "#ff8888", display: "flex", gap: "8px", alignItems: "flex-start", lineHeight: 1.4 }}>
+              <span style={{ fontWeight: "bold", background: "rgba(255,68,68,0.2)", borderRadius: "50%", width: "14px", height: "14px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>!</span>
+              <span>If image shows front AND back of a shirt, use the Crop Tool to isolate one side, or AI will fail.</span>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* ACTIONS section */}
-      <div className="panel-section">
-        <div className="section-header" style={{ background: "#222", borderBottom: "1px solid #444", padding: "12px 16px", fontSize: "11px", letterSpacing: "1px", color: "#888", textTransform: "uppercase" }}>
-          <span>ACTIONS</span>
-          <ChevronDown size={12} />
+      {/* ── ACTIONS ────────────────────────────────────────── */}
+      <div style={{ padding: "14px", borderBottom: "1px solid #2a2a2a", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+          <span style={{ fontSize: "10px", fontWeight: "700", color: "#aaa", letterSpacing: "1.5px", textTransform: "uppercase" }}>ACTIONS</span>
         </div>
-        <div className="section-content">
-          <div style={{ background: "rgba(255, 68, 68, 0.05)", borderLeft: "2px solid #ff4444", borderRadius: "0 4px 4px 0", padding: "8px 10px", marginBottom: "16px", fontSize: "10.5px", color: "#ff8888", display: "flex", gap: "8px", alignItems: "flex-start", lineHeight: 1.4 }}>
-            <span style={{ fontWeight: "bold", background: "rgba(255,68,68,0.2)", borderRadius: "50%", width: "14px", height: "14px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>!</span>
-            <span>If image shows front AND back of a shirt, use the Crop Tool to isolate one side, or AI will fail.</span>
+
+        {/* Warning if not cropped */}
+        {!advancedOpen && (
+          <div style={{ background: "rgba(255,68,68,0.05)", borderLeft: "2px solid #ff4444", padding: "7px 10px", marginBottom: "12px", fontSize: "10px", color: "#ff8888", display: "flex", gap: "8px", alignItems: "flex-start", lineHeight: 1.4 }}>
+            <span style={{ fontWeight: "bold", background: "rgba(255,68,68,0.2)", borderRadius: "50%", width: "13px", height: "13px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "9px" }}>!</span>
+            <span>If image shows front AND back of a shirt, use Crop Tool to isolate one side.</span>
           </div>
+        )}
 
-          {!project?.svg_url && (
-            <button
-              className="btn-primary"
-              style={{ ...traceButtonStyle, opacity: (!isCropped && !noCredits) || isBusy ? 0.5 : 1, cursor: (!isCropped && !noCredits) || isBusy ? "not-allowed" : "pointer" }}
-              onClick={() => {
-                if (isBusy) return;
-                if (noCredits) {
-                  onOpenTopUp?.();
-                } else if (isCropped) {
-                  onExecuteTrace(vectorColors);
-                }
-              }}
-              disabled={isBusy || (!isCropped && !noCredits)}
-            >
-              {traceButtonLabel}
-            </button>
-          )}
+        {/* Primary: Export SVG — big yellow button */}
+        <button
+          onClick={() => handleDownloadClick('svg', onDownloadSvg)}
+          disabled={!project?.svg_url || !!downloading}
+          style={{
+            width: "100%",
+            background: project?.svg_url && !downloading ? "#FFD700" : "rgba(255,215,0,0.08)",
+            border: "1px solid " + (project?.svg_url ? "#FFD700" : "#383838"),
+            color: project?.svg_url && !downloading ? "#000" : "#555",
+            padding: "12px 16px",
+            fontSize: "12px",
+            fontWeight: "700",
+            textTransform: "uppercase",
+            letterSpacing: "1px",
+            cursor: project?.svg_url && !downloading ? "pointer" : "not-allowed",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            marginBottom: "8px",
+            transition: "all 0.2s",
+          }}
+          onMouseOver={e => { if (project?.svg_url && !downloading) e.currentTarget.style.background = "#FFC800"; }}
+          onMouseOut={e => { if (project?.svg_url && !downloading) e.currentTarget.style.background = "#FFD700"; }}
+        >
+          {downloading === 'svg' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} strokeWidth={2.5} />}
+          Export as SVG
+        </button>
 
+        {/* Download All ZIP */}
+        <button
+          onClick={() => handleDownloadClick('all', onDownloadAll)}
+          disabled={!project?.original_image_url || !!downloading}
+          style={secondaryBtnStyle(!!project?.original_image_url && !downloading)}
+          onMouseOver={e => { if (project?.original_image_url && !downloading) e.currentTarget.style.borderColor = "#555"; }}
+          onMouseOut={e => { if (project?.original_image_url && !downloading) e.currentTarget.style.borderColor = "#2e2e2e"; }}
+        >
+          {downloading === 'all' ? <Loader2 size={13} className="animate-spin" /> : <FolderDown size={13} />}
+          Download All (ZIP)
+        </button>
+
+        {/* Export 4K PNG */}
+        <button
+          onClick={() => handleDownloadClick('raster', onDownloadRaster)}
+          disabled={!project?.upscaled_image_url || !!downloading}
+          style={secondaryBtnStyle(!!project?.upscaled_image_url && !downloading)}
+          onMouseOver={e => { if (project?.upscaled_image_url && !downloading) e.currentTarget.style.borderColor = "#555"; }}
+          onMouseOut={e => { if (project?.upscaled_image_url && !downloading) e.currentTarget.style.borderColor = "#2e2e2e"; }}
+        >
+          {downloading === 'raster' ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+          Export as PNG
+        </button>
+
+        {/* Before / After Compare */}
+        <button
+          onClick={onOpenCompare}
+          disabled={!project?.svg_url}
+          style={secondaryBtnStyle(!!project?.svg_url)}
+          onMouseOver={e => { if (project?.svg_url) e.currentTarget.style.borderColor = "#555"; }}
+          onMouseOut={e => { if (project?.svg_url) e.currentTarget.style.borderColor = "#2e2e2e"; }}
+        >
+          <Monitor size={13} />
+          Before / After Compare
+        </button>
+
+        {/* Run Auto-Trace — show only before SVG is done */}
+        {!project?.svg_url && (
           <button
-            className="btn-primary"
-            onClick={() => handleDownloadClick('svg', onDownloadSvg)}
-            disabled={!project?.svg_url || downloading}
-            style={{ marginBottom: "8px", marginTop: "8px", background: "rgba(255, 215, 0, 0.1)", border: "1px solid #FFD700", color: "#FFD700", borderRadius: "0", padding: "10px 16px", transition: "all 0.2s", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", opacity: downloading ? 0.5 : 1 }}
-            onMouseOver={e => { if(project?.svg_url && !downloading) e.currentTarget.style.background = "rgba(255, 215, 0, 0.2)"; }}
-            onMouseOut={e => { if(project?.svg_url && !downloading) e.currentTarget.style.background = "rgba(255, 215, 0, 0.1)"; }}
+            onClick={() => {
+              if (isBusy) return;
+              if (noCredits) { onOpenTopUp?.(); return; }
+              if (isCropped) onExecuteTrace(vectorColors);
+            }}
+            disabled={isBusy || (!isCropped && !noCredits)}
+            style={{
+              width: "100%",
+              background: isBusy
+                ? "rgba(255,215,0,0.08)"
+                : (noCredits || isCropped)
+                  ? "#FFD700"
+                  : "#2a2a2a",
+              border: "1px solid " + (
+                isBusy ? "#333" :
+                (noCredits || isCropped) ? "#FFD700" : "#3a3a3a"
+              ),
+              color: isBusy
+                ? "#666"
+                : (noCredits || isCropped)
+                  ? "#000"
+                  : "#555",
+              padding: "12px 16px",
+              fontSize: "11px",
+              fontWeight: "800",
+              textTransform: "uppercase",
+              letterSpacing: "1.5px",
+              whiteSpace: "nowrap",
+              cursor: canTrace ? "pointer" : "not-allowed",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              marginTop: "8px",
+              opacity: isBusy ? 0.6 : 1,
+              transition: "all 0.2s",
+            }}
+            onMouseOver={e => {
+              if (!isBusy && (noCredits || isCropped)) {
+                e.currentTarget.style.background = "#FFC800";
+              }
+            }}
+            onMouseOut={e => {
+              if (!isBusy && (noCredits || isCropped)) {
+                e.currentTarget.style.background = "#FFD700";
+              }
+            }}
           >
-            {downloading === 'svg' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} EXPORT AS SVG
+            {traceButtonLabel}
           </button>
-
-          <button
-            className="btn-primary"
-            onClick={() => handleDownloadClick('all', onDownloadAll)}
-            disabled={!project?.original_image_url || downloading}
-            style={{ marginBottom: "8px", background: "#1a1a1a", color: "#aaa", border: "1px solid #444", borderRadius: "0", padding: "8px 16px", transition: "all 0.2s", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px", opacity: downloading ? 0.5 : 1 }}
-            onMouseOver={e => { if(project?.original_image_url && !downloading) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
-            onMouseOut={e => { if(project?.original_image_url && !downloading) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
-          >
-            {downloading === 'all' ? <Loader2 size={14} className="animate-spin" /> : <FolderDown size={14} />} DOWNLOAD ALL (ZIP)
-          </button>
-
-          <button
-            className="btn-primary"
-            onClick={() => handleDownloadClick('raster', onDownloadRaster)}
-            disabled={!project?.upscaled_image_url || downloading}
-            style={{ marginBottom: "8px", background: "#1a1a1a", color: "#aaa", border: "1px solid #444", borderRadius: "0", padding: "8px 16px", transition: "all 0.2s", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px", opacity: (!project?.upscaled_image_url || downloading) ? 0.4 : 1 }}
-            onMouseOver={e => { if(project?.upscaled_image_url && !downloading) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
-            onMouseOut={e => { if(project?.upscaled_image_url && !downloading) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
-          >
-            {downloading === 'raster' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} EXPORT 4K PNG
-          </button>
-
-          <button
-            className="btn-primary"
-            onClick={onOpenCompare}
-            disabled={!project?.svg_url}
-            style={{ background: "#1a1a1a", color: "#aaa", border: "1px solid #444", borderRadius: "0", padding: "8px 16px", transition: "all 0.2s", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}
-            onMouseOver={e => { if(project?.svg_url) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
-            onMouseOut={e => { if(project?.svg_url) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
-          >
-            <Monitor size={14} /> BEFORE/AFTER COMPARE
-          </button>
-          
-          {project?.svg_url && (
-            <FeedbackWidget 
-              projectId={project.id} 
-              initialRating={project.rating} 
-            />
-          )}
-        </div>
+        )}
       </div>
 
-      {/* Console — written to via DOM ref, zero re-renders per log line */}
-      <div className="console-area" ref={consoleRef} />
+      {/* ── Feedback Widget ─────────────────────────────────── */}
+      {project?.svg_url && (
+        <div style={{ padding: "14px", borderBottom: "1px solid #2a2a2a" }}>
+          <FeedbackWidget
+            projectId={project.id}
+            initialRating={project.rating}
+          />
+        </div>
+      )}
+
+      {/* ── Console area ────────────────────────────────────── */}
+      <div className="console-area" ref={consoleRef} style={{ flex: 1 }} />
     </aside>
   );
 });
+
+// Secondary button style helper
+function secondaryBtnStyle(active) {
+  return {
+    width: "100%",
+    background: "#1e1e1e",
+    border: "1px solid #2e2e2e",
+    color: active ? "#bbb" : "#444",
+    padding: "9px 16px",
+    fontSize: "11px",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    cursor: active ? "pointer" : "not-allowed",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    marginBottom: "6px",
+    opacity: active ? 1 : 0.4,
+    transition: "all 0.2s",
+  };
+}
 
 export default PropertiesPanel;
