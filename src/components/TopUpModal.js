@@ -4,39 +4,37 @@ import { memo, useState, useCallback, useEffect } from "react";
 import { X, Shirt, CheckCircle, Package, Tag, Mail, Smartphone, Check, ArrowRight, ImageIcon, History, Clock, CreditCard, AlertTriangle } from "lucide-react";
 import { toast } from "@/components/Toast";
 import { createClient } from "@/utils/supabase/client";
+import { CREDIT_PLANS } from "@/lib/paymentPlans";
 
-const PLANS = [
-  { 
-    key: 'tingi', label: 'Mini', traces: 2, price: '₱50', 
-    desc: 'Small package for quick tests.',
-    features: ['2 HD Vector Traces', 'Standard Processing'] 
-  },
-  { 
-    key: 'basic', label: 'Basic', traces: 4, price: '₱100', 
-    desc: 'Great for hobbyists printing occasionally.',
-    features: ['4 HD Vector Traces', 'Standard Processing'] 
-  },
-  { 
-    key: 'starter', label: 'Starter', traces: 13, price: '₱290', 
-    desc: 'Ideal for small businesses taking their first steps.',
-    features: ['13 HD Vector Traces', 'Priority Processing', 'Email support'] 
-  },
-  { 
-    key: 'pro', label: 'Professional', traces: 45, price: '₱870', 
-    desc: 'Perfect for print shops & growing design studios.',
-    best: true,
-    features: ['45 HD Vector Traces', 'Highest Priority Queue', 'Unlimited storage', 'Priority support'] 
-  }
-];
-
-const PLAN_LABELS = { 
-  tingi: "Mini — 2 Credits", 
-  basic: "Basic — 4 Credits", 
-  starter: "Starter — 13 Credits", 
-  pro: "Professional — 45 Credits" 
+// Derived from CREDIT_PLANS — single source of truth.
+// To change prices, edit src/lib/paymentPlans.js only.
+const PLANS_META = {
+  tingi:   { desc: 'Small package for quick tests.',                          features: ['2 HD Vector Traces', 'Standard Processing'] },
+  basic:   { desc: 'Great for hobbyists printing occasionally.',               features: ['4 HD Vector Traces', 'Standard Processing'] },
+  starter: { desc: 'Ideal for small businesses taking their first steps.',     features: ['13 HD Vector Traces', 'Priority Processing', 'Email support'] },
+  pro:     { desc: 'Perfect for print shops & growing design studios.',        best: true, features: ['45 HD Vector Traces', 'Highest Priority Queue', 'Unlimited storage', 'Priority support'] },
 };
-const PLAN_PRICES = { tingi: "₱50", basic: "₱100", starter: "₱290", pro: "₱870" };
-const DODO_ENABLED_PLANS = new Set(["basic", "starter", "pro"]);
+
+const PLANS = Object.values(CREDIT_PLANS).map((plan) => ({
+  key:      plan.key,
+  label:    plan.label,
+  traces:   plan.credits,
+  price:    plan.price,
+  desc:     PLANS_META[plan.key]?.desc || '',
+  best:     PLANS_META[plan.key]?.best || false,
+  features: PLANS_META[plan.key]?.features || [],
+}));
+
+const PLAN_LABELS = Object.fromEntries(
+  Object.values(CREDIT_PLANS).map((p) => [p.key, `${p.label} — ${p.credits} Credits`])
+);
+const PLAN_PRICES = Object.fromEntries(
+  Object.values(CREDIT_PLANS).map((p) => [p.key, p.price])
+);
+const DODO_ENABLED_PLANS = new Set(
+  Object.values(CREDIT_PLANS).filter((p) => p.dodoEnabled).map((p) => p.key)
+);
+
 
 const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supabaseProp, onClose, onLoginRequired }) {
   const [fallbackSupabase] = useState(() => createClient());
@@ -152,6 +150,15 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
       });
 
       const data = await response.json();
+
+      // If this reference was already approved, credits are already in their account.
+      // Treat this as success/info — not an error — so users aren't confused.
+      if (data.alreadyApproved) {
+        toast.success("✅ Your credits were already added! Please check your balance.");
+        setSubmitted(true);
+        return;
+      }
+
       if (!response.ok) throw new Error(data.error || "Failed to submit payment request.");
 
       setSubmitted(true);

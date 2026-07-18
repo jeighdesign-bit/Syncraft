@@ -593,7 +593,6 @@ If any difference is detected, continue refining until the reconstruction is vis
         generatedMimeType = result.data.images[0].content_type || "image/jpeg";
         geminiThinking = "Generated via fal.ai Nano Banana Pro Edit";
 
-
       } catch (err) {
         console.error("[fal.ai Error]:", err);
         if (err.body && err.body.detail) {
@@ -613,14 +612,18 @@ If any difference is detected, continue refining until the reconstruction is vis
 
     if (step === 2) {
       // ==========================================
-      // STAGE 2: 4x UPSCALE WITH fal-ai/aura-sr
+      // STAGE 2: 2x UPSCALE WITH fal-ai/clarity-upscaler
       // ==========================================
-      // AuraSR v2 is a purpose-built AI upscaler that outperforms classic ESRGAN
-      // for flat design assets (jerseys, sublimation prints, logos):
-      //   • Crisper edges with no ringing artifacts
-      //   • Accurate flat color preservation
-      //   • overlapping_tiles=true removes tile seam artifacts
-      //   • checkpoint="v2" uses the newer, higher-quality model
+      // Clarity Upscaler uses ControlNet-tile architecture which strictly
+      // preserves the original geometry and hard edges of flat design assets.
+      // Unlike AuraSR (GAN-based), it does NOT hallucinate or add texture —
+      // critical for jerseys, logos, and sublimation patterns with precise geometry.
+      //
+      // Config:
+      //   • upscale_factor: 2 → outputs ~2048px from ~1024px Step 1 result
+      //   • creativity: 0.1 → minimal deviation, maximum structural fidelity
+      //   • prompt tuned for flat design / sublimation print assets
+      //   • Cost: ~$0.13 per image (2048×2048 @ $0.03/MP) — within ₱8 budget
       // ==========================================
       if (!project.generated_image_url || project.generated_image_url === 'REFUNDED') {
         return NextResponse.json({ error: "Step 1 (Auto-Trace) must be completed before upscaling." }, { status: 403 });
@@ -634,23 +637,30 @@ If any difference is detected, continue refining until the reconstruction is vis
         return NextResponse.json({ error: "Invalid or unauthorized generated image URL" }, { status: 400 });
       }
 
-      console.log("[API Step 2] Upscaling with fal-ai/aura-sr...");
-      console.log("[Aura SR Input URL]:", upscaleInputUrl);
+      console.log("[API Step 2] Upscaling with fal-ai/clarity-upscaler (2048px output)...");
+      console.log("[Clarity Upscaler Input URL]:", upscaleInputUrl);
 
-      const upscalerResult = await fal.subscribe("fal-ai/aura-sr", {
+      const upscalerResult = await fal.subscribe("fal-ai/clarity-upscaler", {
         input: {
           image_url: upscaleInputUrl,
-          upscaling_factor: 4,          // 4x — aura-sr is cheap enough to do 4x
-          overlapping_tiles: true,      // eliminates seam artifacts between tiles
+          upscale_factor: 2,            // 2x → ~2048px output (~$0.13 per image @ $0.03/MP)
+          prompt: "flat sublimation print design, sharp geometric edges, clean solid color zones, crisp vector-ready artwork, no fabric texture, no 3D lighting, perfectly clean flat design",
+          negative_prompt: "blurry, noisy, fabric texture, 3D shading, wrinkles, artifacts, hallucinated details, over-sharpened, ringing, halo effects",
+          creativity: 0.1,             // near-zero = maximum structural fidelity to original geometry
         },
         logs: true,
+        onQueueUpdate: (update) => {
+          if (update.status === "IN_PROGRESS") {
+            update.logs?.map((log) => log.message).forEach(console.log);
+          }
+        },
       });
 
-      console.log("[Aura SR RAW Response]:", JSON.stringify(upscalerResult?.data, null, 2));
+      console.log("[Clarity Upscaler RAW Response]:", JSON.stringify(upscalerResult?.data, null, 2));
 
       const upscaledUrl = upscalerResult?.data?.image?.url || upscalerResult?.data?.image_url;
       if (!upscaledUrl) {
-        throw new Error("fal-ai/aura-sr did not return a valid image URL. Response: " + JSON.stringify(upscalerResult));
+        throw new Error("fal-ai/clarity-upscaler did not return a valid image URL. Response: " + JSON.stringify(upscalerResult));
       }
 
       const upscaledMimeType = upscalerResult?.data?.image?.content_type || "image/png";

@@ -82,9 +82,10 @@ export async function POST(request) {
     if (duplicateApproved) {
       return NextResponse.json(
         {
-          error: "This GCash reference was already approved. Repeated manual submissions are blocked for 7 days.",
+          error: "This GCash reference was already approved and your credits have been added. Please check your balance. If you believe this is wrong, contact support.",
+          alreadyApproved: true,
         },
-        { status: 403 }
+        { status: 409 }
       );
     }
 
