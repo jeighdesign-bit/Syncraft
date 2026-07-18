@@ -612,61 +612,54 @@ If any difference is detected, continue refining until the reconstruction is vis
 
     if (step === 2) {
       // ==========================================
-      // STAGE 2: 2x UPSCALE WITH fal-ai/clarity-upscaler
+      // STAGE 2: FREE 2048px UPSCALE WITH SHARP (Lanczos)
       // ==========================================
-      // Clarity Upscaler uses ControlNet-tile architecture which strictly
-      // preserves the original geometry and hard edges of flat design assets.
-      // Unlike AuraSR (GAN-based), it does NOT hallucinate or add texture —
-      // critical for jerseys, logos, and sublimation patterns with precise geometry.
-      //
-      // Config:
-      //   • upscale_factor: 2 → outputs ~2048px from ~1024px Step 1 result
-      //   • creativity: 0.1 → minimal deviation, maximum structural fidelity
-      //   • prompt tuned for flat design / sublimation print assets
-      //   • Cost: ~$0.13 per image (2048×2048 @ $0.03/MP) — within ₱8 budget
+      // Sharp Lanczos is BETTER than AI upscalers for flat geometric designs:
+      //   ✅ Zero hallucination — exact colors, perfect hard edges preserved
+      //   ✅ FREE — Sharp already installed, no external API call
+      //   ✅ Fast — no network round-trip
+      //   ✅ Recraft re-traces everything in Step 3 anyway — AI texture adds no value
+      //   ✅ Lanczos3 = industry standard for upscaling flat/graphic assets
+      // Cost: $0.00 per image (was $0.13 with Clarity Upscaler)
       // ==========================================
       if (!project.generated_image_url || project.generated_image_url === 'REFUNDED') {
         return NextResponse.json({ error: "Step 1 (Auto-Trace) must be completed before upscaling." }, { status: 403 });
       }
-      if (!process.env.FAL_KEY) throw new Error("FAL_KEY is missing in environment variables.");
-
-      const { fal } = await import("@fal-ai/client");
 
       const upscaleInputUrl = normalizeUserImageUrl(project.generated_image_url, new URL(request.url).origin);
       if (!isOwnedStorageUrl(upscaleInputUrl, { userId: user.id, projectId }) || !(await validateUrlForSSRF(upscaleInputUrl, { allowedHosts: getAllowedStorageHosts() }))) {
         return NextResponse.json({ error: "Invalid or unauthorized generated image URL" }, { status: 400 });
       }
 
-      console.log("[API Step 2] Upscaling with fal-ai/clarity-upscaler (2048px output)...");
-      console.log("[Clarity Upscaler Input URL]:", upscaleInputUrl);
+      console.log("[API Step 2] Upscaling to 2048px with Sharp Lanczos (FREE)...");
 
-      const upscalerResult = await fal.subscribe("fal-ai/clarity-upscaler", {
-        input: {
-          image_url: upscaleInputUrl,
-          upscale_factor: 2,            // 2x → ~2048px output (~$0.13 per image @ $0.03/MP)
-          prompt: "flat sublimation print design, sharp geometric edges, clean solid color zones, crisp vector-ready artwork, no fabric texture, no 3D lighting, perfectly clean flat design",
-          negative_prompt: "blurry, noisy, fabric texture, 3D shading, wrinkles, artifacts, hallucinated details, over-sharpened, ringing, halo effects",
-          creativity: 0.1,             // near-zero = maximum structural fidelity to original geometry
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (update.status === "IN_PROGRESS") {
-            update.logs?.map((log) => log.message).forEach(console.log);
-          }
-        },
+      const { response: srcRes, buffer: srcBuffer } = await fetchWithSSRFProtection(upscaleInputUrl, {
+        allowedHosts: getAllowedStorageHosts(),
+        maxBytes: DEFAULT_MAX_IMAGE_BYTES,
+        allowedContentTypes: ['image/'],
       });
+      if (!srcRes.ok) throw new Error("Failed to fetch generated image for upscaling");
 
-      console.log("[Clarity Upscaler RAW Response]:", JSON.stringify(upscalerResult?.data, null, 2));
+      const sharp = (await import('sharp')).default;
+      const upscaledBuffer = await sharp(srcBuffer)
+        .resize({
+          width: 2048,
+          height: 2048,
+          fit: 'inside',
+          withoutEnlargement: false,   // always upscale to 2048px even if smaller
+          kernel: sharp.kernel.lanczos3, // Lanczos3 = best for flat/geometric graphics
+        })
+        .png({ effort: 1 })            // fast lossless PNG
+        .toBuffer();
 
-      const upscaledUrl = upscalerResult?.data?.image?.url || upscalerResult?.data?.image_url;
-      if (!upscaledUrl) {
-        throw new Error("fal-ai/clarity-upscaler did not return a valid image URL. Response: " + JSON.stringify(upscalerResult));
-      }
+      console.log(`[API Step 2] Sharp upscale done. Output: ${upscaledBuffer.length} bytes`);
 
-      const upscaledMimeType = upscalerResult?.data?.image?.content_type || "image/png";
-
-      return NextResponse.json({ success: true, step: 2, fileUrl: upscaledUrl, mimeType: upscaledMimeType });
-
+      return NextResponse.json({
+        success: true,
+        step: 2,
+        base64: upscaledBuffer.toString('base64'),
+        mimeType: 'image/png',
+      });
     }
 
     return NextResponse.json({ error: "Invalid step parameter" }, { status: 400 });

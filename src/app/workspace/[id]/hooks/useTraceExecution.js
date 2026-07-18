@@ -139,7 +139,7 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
           "Content-Type": "application/json",
           ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
         },
-        body: JSON.stringify({ projectId: project.id, step: 2, fileUrl: data2.fileUrl, mimeType: data2.mimeType }),
+        body: JSON.stringify({ projectId: project.id, step: 2, base64: data2.base64, mimeType: data2.mimeType }),
       });
       if (!save2.ok) throw new Error("Failed to save upscaled image");
       const saveData2 = await save2.json();
