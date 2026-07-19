@@ -9,7 +9,7 @@ const NoCreditsModal = memo(function NoCreditsModal({ show, onClose, onTopUp }) 
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" style={{ maxWidth: "400px", textAlign: "center", padding: "30px" }} onClick={e => e.stopPropagation()}>
         <div style={{ marginBottom: "16px", display: "flex", justifyContent: "center" }}>
-          <CreditCard size={48} color="#FFD700" strokeWidth={1.5} />
+          <CreditCard size={48} color="#d4ff59" strokeWidth={1.5} />
         </div>
         <h3 style={{ margin: "0 0 10px", color: "#fff", fontWeight: "700", fontSize: "20px" }}>0 Traces Remaining</h3>
         <p style={{ color: "#aaa", fontSize: "14px", marginBottom: "24px", lineHeight: 1.5 }}>

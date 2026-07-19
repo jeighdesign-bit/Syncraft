@@ -7,13 +7,13 @@ import "./globals.css";
 const outfit = Outfit({ subsets: ["latin"], display: "swap" });
 
 export const metadata = {
-  metadataBase: new URL("https://desaynclaw.com"),
+  metadataBase: new URL("https://syncraft.com"),
   title: {
-    default: "DesaynClaw | AI Sublimation Design Extractor & Vector Tracer",
-    template: "%s | DesaynClaw",
+    default: "Syncraft | AI Sublimation Design Extractor & Vector Tracer",
+    template: "%s | Syncraft",
   },
   description:
-    "DesaynClaw is the #1 AI-powered tool for sublimation jersey design extraction, vector auto-tracing, logo enhancement, background removal, and 4K upscaling. Convert jersey mockups to flat print-ready SVG files instantly. Trusted by print shops and apparel designers in the Philippines and worldwide.",
+    "Syncraft is the #1 AI-powered tool for sublimation jersey design extraction, vector auto-tracing, logo enhancement, background removal, and 4K upscaling. Convert jersey mockups to flat print-ready SVG files instantly. Trusted by print shops and apparel designers in the Philippines and worldwide.",
   keywords: [
     // Core product features
     "sublimation design extractor",
@@ -77,41 +77,43 @@ export const metadata = {
     "tshirt design extractor",
     "polo shirt flat design",
     // Brand
-    "desaynclaw",
-    "desayn claw",
+    "syncraft",
     "desaynbro",
   ],
-  authors: [{ name: "desaynbro", url: "https://desaynclaw.com" }],
+  authors: [{ name: "desaynbro", url: "https://syncraft.com" }],
   creator: "desaynbro",
-  publisher: "DesaynClaw",
+  publisher: "Syncraft",
   category: "Design Tools",
-  applicationName: "DesaynClaw",
+  applicationName: "Syncraft",
+  icons: {
+    icon: "/favicon.svg",
+  },
   alternates: {
-    canonical: "https://desaynclaw.com",
+    canonical: "https://syncraft.com",
   },
   openGraph: {
     type: "website",
     locale: "en_PH",
-    url: "https://desaynclaw.com",
-    title: "DesaynClaw | AI Sublimation Design Extractor & Vector Tracer",
+    url: "https://syncraft.com",
+    title: "Syncraft | AI Sublimation Design Extractor & Vector Tracer",
     description:
       "Extract flat sublimation print files from jersey mockups, convert logos to crisp SVG vectors, remove backgrounds, and upscale designs to 4K — all powered by AI. Built for print shops and apparel designers.",
-    siteName: "DesaynClaw",
+    siteName: "Syncraft",
     images: [
       {
-        url: "/DESAYNCLAW-Image.JPG",
+        url: "/SYNCRAFT-Image.JPG",
         width: 1230,
         height: 807,
-        alt: "DesaynClaw AI Sublimation Design Extractor and Vector Tracer",
+        alt: "Syncraft AI Sublimation Design Extractor and Vector Tracer",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "DesaynClaw | AI Sublimation Design Extractor & Vector Tracer",
+    title: "Syncraft | AI Sublimation Design Extractor & Vector Tracer",
     description:
       "Extract sublimation flat files, vectorize logos, remove backgrounds & upscale designs using AI. Perfect for print shops in the Philippines.",
-    images: ["/DESAYNCLAW-Image.JPG"],
+    images: ["/SYNCRAFT-Image.JPG"],
     creator: "@desaynbro",
   },
   robots: {
@@ -147,11 +149,11 @@ export default function RootLayout({ children }) {
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "SoftwareApplication",
-              "name": "DesaynClaw",
-              "url": "https://desaynclaw.com",
-              "image": "https://desaynclaw.com/DESAYNCLAW-Image.JPG",
+              "name": "Syncraft",
+              "url": "https://syncraft.com",
+              "image": "https://syncraft.com/SYNCRAFT-Image.JPG",
               "sameAs": [
-                "https://desaynclaw.com"
+                "https://syncraft.com"
               ],
               "applicationCategory": "DesignApplication",
               "applicationSubCategory": "AI image vectorizer and sublimation design tool",
@@ -166,7 +168,7 @@ export default function RootLayout({ children }) {
               },
               "featureList": [
                 "Sublimation jersey flat file extraction",
-                "AI vector auto-tracer (SVG output)",
+                "AI vector syncraft (SVG output)",
                 "Logo enhancer and vectorizer",
                 "AI background remover",
                 "4K AI image upscaler",
@@ -175,13 +177,13 @@ export default function RootLayout({ children }) {
               "creator": {
                 "@type": "Person",
                 "name": "desaynbro",
-                "url": "https://desaynclaw.com",
+                "url": "https://syncraft.com",
               },
               "publisher": {
                 "@type": "Organization",
-                "name": "DesaynClaw",
-                "url": "https://desaynclaw.com",
-                "logo": "https://desaynclaw.com/logo.png"
+                "name": "Syncraft",
+                "url": "https://syncraft.com",
+                "logo": "https://syncraft.com/logo.png"
               }
             }),
           }}
@@ -195,18 +197,18 @@ export default function RootLayout({ children }) {
               "@graph": [
                 {
                   "@type": "Organization",
-                  "name": "DesaynClaw",
-                  "url": "https://desaynclaw.com",
-                  "logo": "https://desaynclaw.com/logo.png",
-                  "image": "https://desaynclaw.com/DESAYNCLAW-Image.JPG"
+                  "name": "Syncraft",
+                  "url": "https://syncraft.com",
+                  "logo": "https://syncraft.com/logo.png",
+                  "image": "https://syncraft.com/SYNCRAFT-Image.JPG"
                 },
                 {
                   "@type": "WebSite",
-                  "name": "DesaynClaw",
-                  "url": "https://desaynclaw.com",
+                  "name": "Syncraft",
+                  "url": "https://syncraft.com",
                   "publisher": {
                     "@type": "Organization",
-                    "name": "DesaynClaw"
+                    "name": "Syncraft"
                   }
                 }
               ],

@@ -26,7 +26,8 @@ const PropertiesPanel = memo(function PropertiesPanel({
   const [vectorColors, setVectorColors] = useState("auto");
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  const noCredits = userCredits !== null && userCredits <= 0;
+  const isUnauthenticated = userCredits === null;
+  const noCredits = !isUnauthenticated && userCredits < 12;
   const isCropped = project?.original_image_url?.includes("crop") || project?.generated_image_url;
   const isBusy = traceState !== "idle" || isSavingCrop;
   const [downloading, setDownloading] = useState(null);
@@ -45,13 +46,15 @@ const PropertiesPanel = memo(function PropertiesPanel({
     ? "Saving Crop..."
     : traceState !== "idle"
     ? "Processing..."
+    : isUnauthenticated
+    ? "Login to Trace"
     : noCredits
     ? "Get More Credits"
     : !isCropped
     ? "Crop Image First"
-    : "Run Auto-Trace  (−1 Credit)";
+    : "Run Auto-Trace  (−12 Credits)";
 
-  const canTrace = !isBusy && (noCredits || isCropped);
+  const canTrace = !isBusy && (isUnauthenticated || noCredits || isCropped);
 
   return (
     <aside style={{
@@ -101,7 +104,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
               outline: "none",
               transition: "border-color 0.2s",
             }}
-            onFocus={e => e.target.style.borderColor = "#FFD700"}
+            onFocus={e => e.target.style.borderColor = "#d4ff59"}
             onBlur={e => e.target.style.borderColor = "#383838"}
           >
             <option value="auto"  style={{ background: "#242424" }}>Auto (Precision Balance)</option>
@@ -173,8 +176,8 @@ const PropertiesPanel = memo(function PropertiesPanel({
           disabled={!project?.svg_url || !!downloading}
           style={{
             width: "100%",
-            background: project?.svg_url && !downloading ? "#FFD700" : "rgba(255,215,0,0.08)",
-            border: "1px solid " + (project?.svg_url ? "#FFD700" : "#383838"),
+            background: project?.svg_url && !downloading ? "#d4ff59" : "rgba(212, 255, 89,0.08)",
+            border: "1px solid " + (project?.svg_url ? "#d4ff59" : "#383838"),
             color: project?.svg_url && !downloading ? "#000" : "#555",
             padding: "12px 16px",
             fontSize: "12px",
@@ -189,8 +192,8 @@ const PropertiesPanel = memo(function PropertiesPanel({
             marginBottom: "8px",
             transition: "all 0.2s",
           }}
-          onMouseOver={e => { if (project?.svg_url && !downloading) e.currentTarget.style.background = "#FFC800"; }}
-          onMouseOut={e => { if (project?.svg_url && !downloading) e.currentTarget.style.background = "#FFD700"; }}
+          onMouseOver={e => { if (project?.svg_url && !downloading) e.currentTarget.style.background = "#bfe650"; }}
+          onMouseOut={e => { if (project?.svg_url && !downloading) e.currentTarget.style.background = "#d4ff59"; }}
         >
           {downloading === 'svg' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} strokeWidth={2.5} />}
           Export as SVG
@@ -237,20 +240,20 @@ const PropertiesPanel = memo(function PropertiesPanel({
           <button
             onClick={() => {
               if (isBusy) return;
-              if (noCredits) { onOpenTopUp?.(); return; }
+              if (isUnauthenticated || noCredits) { onOpenTopUp?.(); return; }
               if (isCropped) onExecuteTrace(vectorColors);
             }}
             disabled={isBusy || (!isCropped && !noCredits)}
             style={{
               width: "100%",
               background: isBusy
-                ? "rgba(255,215,0,0.08)"
+                ? "rgba(212, 255, 89,0.08)"
                 : (noCredits || isCropped)
-                  ? "#FFD700"
+                  ? "#d4ff59"
                   : "#2a2a2a",
               border: "1px solid " + (
                 isBusy ? "#333" :
-                (noCredits || isCropped) ? "#FFD700" : "#3a3a3a"
+                (noCredits || isCropped) ? "#d4ff59" : "#3a3a3a"
               ),
               color: isBusy
                 ? "#666"
@@ -274,12 +277,12 @@ const PropertiesPanel = memo(function PropertiesPanel({
             }}
             onMouseOver={e => {
               if (!isBusy && (noCredits || isCropped)) {
-                e.currentTarget.style.background = "#FFC800";
+                e.currentTarget.style.background = "#bfe650";
               }
             }}
             onMouseOut={e => {
               if (!isBusy && (noCredits || isCropped)) {
-                e.currentTarget.style.background = "#FFD700";
+                e.currentTarget.style.background = "#d4ff59";
               }
             }}
           >

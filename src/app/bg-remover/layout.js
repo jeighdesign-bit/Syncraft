@@ -21,30 +21,30 @@ export const metadata = {
     "background eraser online",
     "ai cutout tool",
     "sublimation design cutout",
-    "desaynclaw bg remover",
+    "syncraft bg remover",
   ],
   alternates: {
-    canonical: "https://desaynclaw.com/bg-remover",
+    canonical: "https://syncraft.com/bg-remover",
   },
   openGraph: {
-    title: "AI Background Remover — Free Transparent PNG | DesaynClaw",
+    title: "AI Background Remover — Free Transparent PNG | Syncraft",
     description:
       "Remove backgrounds from jersey designs, logos, and photos using AI. Get a clean transparent PNG instantly — no Photoshop needed.",
-    url: "https://desaynclaw.com/bg-remover",
+    url: "https://syncraft.com/bg-remover",
     images: [
       {
-        url: "/DESAYNCLAW-Image.JPG",
+        url: "/SYNCRAFT-Image.JPG",
         width: 1230,
         height: 807,
-        alt: "DesaynClaw AI Background Remover",
+        alt: "Syncraft AI Background Remover",
       },
     ],
   },
   twitter: {
-    title: "AI Background Remover | DesaynClaw",
+    title: "AI Background Remover | Syncraft",
     description:
       "Remove backgrounds from sublimation designs and logos in one click. Free to try.",
-    images: ["/DESAYNCLAW-Image.JPG"],
+    images: ["/SYNCRAFT-Image.JPG"],
   },
 };
 

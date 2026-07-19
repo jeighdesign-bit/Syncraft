@@ -219,7 +219,7 @@ No markdown. No explanation. Raw JSON only.`;
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://auto-tracer.app',
+      'HTTP-Referer': 'https://syncraft.app',
       'X-Title': 'TracerClaw SVG Segmenter',
     },
     body: JSON.stringify({

@@ -89,13 +89,13 @@ function MobileUploadContent() {
   return (
     <div style={{ minHeight: "100vh", background: "#262626", color: "#e0e0e0", display: "flex", flexDirection: "column", padding: "24px", fontFamily: "var(--font-outfit), monospace" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginBottom: "40px", marginTop: "20px" }}>
-        <img src="/nav bar logo.png" alt="DesaynClaw Logo" style={{ height: "24px", width: "auto", filter: "opacity(0.8)" }} />
+        <img src="/logo.svg" alt="Syncraft Logo" style={{ height: "24px", width: "auto", filter: "opacity(0.8)" }} />
       </div>
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         {status === "idle" && (
           <div style={{ textAlign: "center", width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <h1 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "12px", color: "#FFD700", textTransform: "uppercase", letterSpacing: "2px" }}>ESTABLISH UPLINK</h1>
+            <h1 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "12px", color: "#d4ff59", textTransform: "uppercase", letterSpacing: "2px" }}>ESTABLISH UPLINK</h1>
             <p style={{ color: "#888", fontSize: "12px", marginBottom: "40px", lineHeight: "1.5", textTransform: "uppercase", letterSpacing: "1px", maxWidth: "250px" }}>
               CAPTURE IMAGE DATA. IT WILL SYNC INSTANTLY TO YOUR PC VIEWPORT.
             </p>
@@ -120,12 +120,12 @@ function MobileUploadContent() {
               }}
             >
               {/* Corner Brackets */}
-              <div style={{ position: "absolute", top: -1, left: -1, width: "15px", height: "15px", borderTop: "2px solid #FFD700", borderLeft: "2px solid #FFD700" }} />
-              <div style={{ position: "absolute", top: -1, right: -1, width: "15px", height: "15px", borderTop: "2px solid #FFD700", borderRight: "2px solid #FFD700" }} />
-              <div style={{ position: "absolute", bottom: -1, left: -1, width: "15px", height: "15px", borderBottom: "2px solid #FFD700", borderLeft: "2px solid #FFD700" }} />
-              <div style={{ position: "absolute", bottom: -1, right: -1, width: "15px", height: "15px", borderBottom: "2px solid #FFD700", borderRight: "2px solid #FFD700" }} />
+              <div style={{ position: "absolute", top: -1, left: -1, width: "15px", height: "15px", borderTop: "2px solid #d4ff59", borderLeft: "2px solid #d4ff59" }} />
+              <div style={{ position: "absolute", top: -1, right: -1, width: "15px", height: "15px", borderTop: "2px solid #d4ff59", borderRight: "2px solid #d4ff59" }} />
+              <div style={{ position: "absolute", bottom: -1, left: -1, width: "15px", height: "15px", borderBottom: "2px solid #d4ff59", borderLeft: "2px solid #d4ff59" }} />
+              <div style={{ position: "absolute", bottom: -1, right: -1, width: "15px", height: "15px", borderBottom: "2px solid #d4ff59", borderRight: "2px solid #d4ff59" }} />
 
-              <Camera size={48} strokeWidth={1} color="#FFD700" />
+              <Camera size={48} strokeWidth={1} color="#d4ff59" />
               <span style={{ fontWeight: "bold", fontSize: "12px", letterSpacing: "2px", textTransform: "uppercase" }}>INITIATE SCAN</span>
             </button>
 
@@ -162,9 +162,9 @@ function MobileUploadContent() {
           <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "20px" }}>
             <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <div style={{ position: "absolute", width: "80px", height: "80px", border: "1px solid #444", borderRadius: "0", background: "#1a1a1a" }}></div>
-              <Loader2 size={32} color="#FFD700" className="animate-spin" />
+              <Loader2 size={32} color="#d4ff59" className="animate-spin" />
             </div>
-            <h2 style={{ margin: 0, fontSize: "14px", fontWeight: "bold", color: "#FFD700", textTransform: "uppercase", letterSpacing: "2px", marginTop: "10px" }}>TRANSMITTING DATA...</h2>
+            <h2 style={{ margin: 0, fontSize: "14px", fontWeight: "bold", color: "#d4ff59", textTransform: "uppercase", letterSpacing: "2px", marginTop: "10px" }}>TRANSMITTING DATA...</h2>
             <p style={{ color: "#888", margin: 0, fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" }}>DO NOT CLOSE UPLINK</p>
           </div>
         )}
@@ -172,7 +172,7 @@ function MobileUploadContent() {
         {status === "success" && (
           <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
             <div style={{ background: "#1a1a1a", border: "1px solid #444", padding: "20px", borderRadius: "0", marginBottom: "10px" }}>
-              <CheckCircle2 size={48} color="#FFD700" strokeWidth={1} />
+              <CheckCircle2 size={48} color="#d4ff59" strokeWidth={1} />
             </div>
             <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "bold", color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>UPLINK COMPLETE</h2>
             <p style={{ color: "#888", fontSize: "11px", maxWidth: "280px", lineHeight: "1.5", textTransform: "uppercase", letterSpacing: "1px" }}>
@@ -237,7 +237,7 @@ function MobileUploadContent() {
 
 export default function MobileUpload() {
   return (
-    <Suspense fallback={<div style={{ height: "100vh", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 className="animate-spin" color="#FFD700" size={32} /></div>}>
+    <Suspense fallback={<div style={{ height: "100vh", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 className="animate-spin" color="#d4ff59" size={32} /></div>}>
       <MobileUploadContent />
     </Suspense>
   );

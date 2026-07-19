@@ -39,12 +39,12 @@ export default function MobileWarning() {
       color: "#fff"
     }}>
       <div style={{
-        background: "rgba(255, 215, 0, 0.1)",
+        background: "rgba(212, 255, 89, 0.1)",
         padding: "20px",
         borderRadius: "50%",
         marginBottom: "24px"
       }}>
-        <MonitorX size={48} color="#FFD700" />
+        <MonitorX size={48} color="#d4ff59" />
       </div>
 
       <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "16px", color: "#fff" }}>
@@ -52,7 +52,7 @@ export default function MobileWarning() {
       </h2>
 
       <p style={{ fontSize: "16px", color: "#aaa", lineHeight: "1.6", maxWidth: "400px" }}>
-        DesaynClaw features a professional "Infinite Canvas" workspace that relies on <strong>Left Click + Drag</strong> to pan and navigate.
+        Syncraft features a professional "Infinite Canvas" workspace that relies on <strong>Left Click + Drag</strong> to pan and navigate.
       </p>
 
       <div style={{

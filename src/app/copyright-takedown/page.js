@@ -14,13 +14,13 @@ export default function CopyrightTakedownRequest() {
         <button
           onClick={() => router.push("/")}
           style={{ display: "flex", alignItems: "center", gap: "8px", background: "transparent", color: "#aaa", border: "none", cursor: "pointer", padding: "0", fontSize: "14px", marginBottom: "30px", transition: "color 0.2s" }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#FFD700")}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#d4ff59")}
           onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}
         >
           <ArrowLeft size={16} /> Back to Home
         </button>
         <h1 style={{ fontSize: "36px", margin: "0 0 10px 0", color: "#fff", display: "flex", alignItems: "center", gap: "12px" }}>
-          <ShieldAlert color="#FFD700" size={36} /> Copyright Takedown Request
+          <ShieldAlert color="#d4ff59" size={36} /> Copyright Takedown Request
         </h1>
         <p style={{ color: "#888", fontSize: "14px", margin: "8px 0 0 0" }}>
           Last updated: July 2026 &nbsp;|&nbsp; Information for rights holders and authorized agents.
@@ -33,7 +33,7 @@ export default function CopyrightTakedownRequest() {
         {/* Intro */}
         <div style={{ background: "#1a1a1a", padding: "24px", borderRadius: "12px", border: "1px solid #2a2a2a" }}>
           <p style={{ margin: 0, color: "#aaa" }}>
-            If you believe content processed, stored, or displayed through DesaynClaw infringes your copyright or trademark rights, please contact us with the details below so we can review the request.
+            If you believe content processed, stored, or displayed through Syncraft infringes your copyright or trademark rights, please contact us with the details below so we can review the request.
           </p>
         </div>
 
@@ -51,7 +51,7 @@ export default function CopyrightTakedownRequest() {
         </Section>
 
         <Section num="2" title="Where to Send Requests">
-          Send copyright or trademark complaints through our official Facebook support channel or any official DesaynClaw contact channel listed on the website. Please include &ldquo;Copyright Takedown Request&rdquo; in your message.
+          Send copyright or trademark complaints through our official Facebook support channel or any official Syncraft contact channel listed on the website. Please include &ldquo;Copyright Takedown Request&rdquo; in your message.
         </Section>
 
         <Section num="3" title="Review Process">
@@ -70,7 +70,7 @@ export default function CopyrightTakedownRequest() {
 function Section({ num, title, children }) {
   return (
     <div style={{ borderLeft: "3px solid #2a2a2a", paddingLeft: "24px" }}>
-      <div style={{ color: "#FFD700", fontSize: "12px", textTransform: "uppercase", letterSpacing: "2px", fontWeight: "700", marginBottom: "8px" }}>
+      <div style={{ color: "#d4ff59", fontSize: "12px", textTransform: "uppercase", letterSpacing: "2px", fontWeight: "700", marginBottom: "8px" }}>
         Section {num}
       </div>
       <h2 style={{ color: "#fff", fontSize: "20px", margin: "0 0 16px 0", fontWeight: "600" }}>{title}</h2>

@@ -66,10 +66,10 @@ export async function POST(request) {
 
     const baseName = safeFileName(project.name);
     const assets = [
-      project.original_image_url && { url: project.original_image_url, name: `DesaynClaw_${baseName}_Reference.png`, maxBytes: DEFAULT_MAX_IMAGE_BYTES },
-      project.generated_image_url && project.generated_image_url !== "REFUNDED" && { url: project.generated_image_url, name: `DesaynClaw_${baseName}_DesaynVision.png`, maxBytes: DEFAULT_MAX_IMAGE_BYTES },
-      project.upscaled_image_url && { url: project.upscaled_image_url, name: `DesaynClaw_${baseName}_Upscaled.png`, maxBytes: DEFAULT_MAX_UPSCALED_IMAGE_BYTES },
-      project.svg_url && { url: project.svg_url, name: `DesaynClaw_${baseName}_Vector.svg`, maxBytes: DEFAULT_MAX_SVG_BYTES },
+      project.original_image_url && { url: project.original_image_url, name: `Syncraft_${baseName}_Reference.png`, maxBytes: DEFAULT_MAX_IMAGE_BYTES },
+      project.generated_image_url && project.generated_image_url !== "REFUNDED" && { url: project.generated_image_url, name: `Syncraft_${baseName}_SyncraftVision.png`, maxBytes: DEFAULT_MAX_IMAGE_BYTES },
+      project.upscaled_image_url && { url: project.upscaled_image_url, name: `Syncraft_${baseName}_Upscaled.png`, maxBytes: DEFAULT_MAX_UPSCALED_IMAGE_BYTES },
+      project.svg_url && { url: project.svg_url, name: `Syncraft_${baseName}_Vector.svg`, maxBytes: DEFAULT_MAX_SVG_BYTES },
     ].filter(Boolean);
 
     if (assets.length === 0) {
@@ -82,7 +82,7 @@ export async function POST(request) {
         success: true,
         cached: true,
         zipUrl: project.zip_url,
-        fileName: `DesaynClaw_${baseName}_AllFiles.zip`,
+        fileName: `Syncraft_${baseName}_AllFiles.zip`,
       });
     }
 
@@ -142,7 +142,7 @@ export async function POST(request) {
       success: true,
       cached: false,
       zipUrl,
-      fileName: `DesaynClaw_${baseName}_AllFiles.zip`,
+      fileName: `Syncraft_${baseName}_AllFiles.zip`,
     });
   } catch (error) {
     console.error("[Prepare ZIP Error]:", error);

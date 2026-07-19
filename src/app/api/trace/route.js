@@ -98,14 +98,14 @@ export async function POST(request) {
         return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
       }
 
-      if (profile.credits <= 0) {
+      if (profile.credits < 12) {
         return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
       }
 
       // DEDUCT IMMEDIATELY — optimistic lock prevents double-spend
       const { error: deductErr, data: updatedData } = await adminSupabase
         .from('profiles')
-        .update({ credits: profile.credits - 1 })
+        .update({ credits: profile.credits - 12 })
         .eq('id', project.user_id)
         .eq('credits', profile.credits) // only succeeds if credits haven't changed
         .select();
@@ -124,7 +124,7 @@ export async function POST(request) {
       await adminSupabase.from('credit_logs').insert({
         user_id: project.user_id,
         action: 'Extract & Vectorize',
-        amount: -1
+        amount: -12
       });
 
       await adminSupabase
@@ -686,8 +686,8 @@ If any difference is detected, continue refining until the reconstruction is vis
     }
 
     // Never expose raw internal error messages (API keys, stack traces) to the client
-    const safeMessage = error.message?.includes('FAL') || error.message?.includes('fal') || error.message?.includes('API')
-      ? 'AI processing failed. Your credit has been refunded automatically.'
+    const safeMessage = error.message?.includes('FAL') || error.message?.includes('fal') || error.message?.includes('API') || error.message === 'Unauthorized'
+      ? 'AI provider authentication failed (Unauthorized/Keys). Your credit has been refunded automatically.'
       : (error.message || 'Failed to process trace step');
     return NextResponse.json({ error: safeMessage }, { status: 500 });
   }

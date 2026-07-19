@@ -14,16 +14,16 @@ export default function RefundPolicy() {
         <button
           onClick={() => router.push("/")}
           style={{ display: "flex", alignItems: "center", gap: "8px", background: "transparent", color: "#aaa", border: "none", cursor: "pointer", padding: "0", fontSize: "14px", marginBottom: "30px", transition: "color 0.2s" }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#FFD700")}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#d4ff59")}
           onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}
         >
           <ArrowLeft size={16} /> Back to Home
         </button>
         <h1 style={{ fontSize: "36px", margin: "0 0 10px 0", color: "#fff", display: "flex", alignItems: "center", gap: "12px" }}>
-          <CreditCard color="#FFD700" size={36} /> Refund & Payment Policy
+          <CreditCard color="#d4ff59" size={36} /> Refund & Payment Policy
         </h1>
         <p style={{ color: "#888", fontSize: "14px", margin: "8px 0 0 0" }}>
-          Last updated: July 2026 &nbsp;|&nbsp; Applies to all credit purchases on DESAYNBRO Auto-Tracer.
+          Last updated: July 2026 &nbsp;|&nbsp; Applies to all credit purchases on SYNCRAFT Syncraft.
         </p>
       </div>
 
@@ -33,13 +33,13 @@ export default function RefundPolicy() {
         {/* Summary Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px" }}>
           <SummaryCard icon={<CheckCircle2 color="#22c55e" size={22} />} color="#22c55e" title="In-App Credit Refund" desc="Failed traces are automatically refunded back to your credit balance." />
-          <SummaryCard icon={<AlertCircle color="#FFD700" size={22} />} color="#FFD700" title="Unused Credits" desc="Contact us within 7 days of purchase if you have not used any credits." />
+          <SummaryCard icon={<AlertCircle color="#d4ff59" size={22} />} color="#d4ff59" title="Unused Credits" desc="Contact us within 7 days of purchase if you have not used any credits." />
           <SummaryCard icon={<XCircle color="#ef4444" size={22} />} color="#ef4444" title="Used Credits" desc="Credits that have been consumed for completed projects are non-refundable." />
         </div>
 
         {/* Section 1 */}
         <Section num="1" title="About Credits">
-          Auto-Tracer operates on a prepaid <strong style={{ color: "#fff" }}>credit system</strong>. Each credit corresponds to one tracing or processing operation. Credits are purchased in advance and deducted from your balance when a project is successfully processed.
+          Syncraft operates on a prepaid <strong style={{ color: "#fff" }}>credit system</strong>. Each credit corresponds to one tracing or processing operation. Credits are purchased in advance and deducted from your balance when a project is successfully processed.
           <br /><br />
           Credits are <strong style={{ color: "#fff" }}>non-transferable</strong> between accounts and have <strong style={{ color: "#fff" }}>no expiry date</strong>.
         </Section>
@@ -109,8 +109,8 @@ export default function RefundPolicy() {
         {/* CTA */}
         <div style={{ marginTop: "40px", background: "linear-gradient(145deg, #1f1f1f, #151515)", border: "1px solid #333", borderRadius: "16px", padding: "32px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "20px", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-            <div style={{ background: "rgba(255,215,0,0.1)", padding: "16px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <MessageCircle size={28} color="#FFD700" />
+            <div style={{ background: "rgba(212, 255, 89,0.1)", padding: "16px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <MessageCircle size={28} color="#d4ff59" />
             </div>
             <div>
               <h3 style={{ margin: "0 0 8px 0", color: "#fff", fontSize: "20px", fontWeight: "700" }}>Still have questions?</h3>
@@ -121,8 +121,8 @@ export default function RefundPolicy() {
             href="https://m.me/105884602605306"
             target="_blank"
             rel="noreferrer"
-            style={{ display: "flex", alignItems: "center", gap: "10px", background: "#FFD700", color: "#000", padding: "14px 28px", borderRadius: "8px", fontWeight: "700", textDecoration: "none", fontSize: "15px", letterSpacing: "0.5px", transition: "transform 0.2s, box-shadow 0.2s" }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(255,215,0,0.3)"; }}
+            style={{ display: "flex", alignItems: "center", gap: "10px", background: "#d4ff59", color: "#000", padding: "14px 28px", borderRadius: "8px", fontWeight: "700", textDecoration: "none", fontSize: "15px", letterSpacing: "0.5px", transition: "transform 0.2s, box-shadow 0.2s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(212, 255, 89,0.3)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
           >
             <MessageCircle size={18} /> Chat on Facebook
@@ -147,7 +147,7 @@ function SummaryCard({ icon, color, title, desc }) {
 function Section({ num, title, children }) {
   return (
     <div style={{ borderLeft: "3px solid #2a2a2a", paddingLeft: "24px" }}>
-      <div style={{ color: "#FFD700", fontSize: "12px", textTransform: "uppercase", letterSpacing: "2px", fontWeight: "700", marginBottom: "8px" }}>
+      <div style={{ color: "#d4ff59", fontSize: "12px", textTransform: "uppercase", letterSpacing: "2px", fontWeight: "700", marginBottom: "8px" }}>
         Section {num}
       </div>
       <h2 style={{ color: "#fff", fontSize: "20px", margin: "0 0 16px 0", fontWeight: "600" }}>{title}</h2>

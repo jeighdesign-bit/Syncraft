@@ -43,13 +43,13 @@ export default function AIDisclaimerModal() {
           fontSize: '28px', fontWeight: '300', margin: '0 0 24px 0', color: '#fff',
           letterSpacing: '-0.5px'
         }}>
-          Data Privacy & <span style={{ color: '#FFD700', fontWeight: '400' }}>Protection</span>
+          Data Privacy & <span style={{ color: '#d4ff59', fontWeight: '400' }}>Protection</span>
         </h2>
         
         {/* Highlighted Quote */}
         <div style={{
-          background: 'rgba(255, 215, 0, 0.05)',
-          borderLeft: '4px solid #FFD700',
+          background: 'rgba(212, 255, 89, 0.05)',
+          borderLeft: '4px solid #d4ff59',
           padding: '24px',
           marginBottom: '40px',
           borderRadius: '0 12px 12px 0'
@@ -64,7 +64,7 @@ export default function AIDisclaimerModal() {
             textTransform: 'uppercase'
           }}>
             We respect your privacy.<br/>
-            <span style={{ color: '#FFD700' }}>You own your data.</span>
+            <span style={{ color: '#d4ff59' }}>You own your data.</span>
           </h3>
         </div>
         
@@ -95,7 +95,7 @@ export default function AIDisclaimerModal() {
           onClick={handleClose}
           disabled={timeLeft > 0}
           style={{
-            background: timeLeft > 0 ? '#222' : '#FFD700',
+            background: timeLeft > 0 ? '#222' : '#d4ff59',
             color: timeLeft > 0 ? '#666' : '#000',
             border: timeLeft > 0 ? '1px solid #333' : 'none',
             padding: '16px 32px',

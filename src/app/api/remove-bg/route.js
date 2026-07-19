@@ -70,14 +70,14 @@ export async function POST(request) {
       return NextResponse.json({ error: "Could not fetch profile" }, { status: 403 });
     }
 
-    if (profile.credits <= 0) {
+    if (profile.credits < 12) {
       return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
     }
 
     // Deduct immediately using optimistic lock
     const { error: deductErr, data: updatedData } = await adminSupabase
       .from('profiles')
-      .update({ credits: profile.credits - 1 })
+      .update({ credits: profile.credits - 12 })
       .eq('id', user.id)
       .eq('credits', profile.credits)
       .select();
@@ -93,7 +93,7 @@ export async function POST(request) {
     await adminSupabase.from('credit_logs').insert({
       user_id: user.id,
       action: 'Background Removal',
-      amount: -1
+      amount: -12
     });
 
     await adminSupabase
@@ -190,9 +190,12 @@ export async function POST(request) {
     // If credit was already deducted but AI/R2/DB failed, refund it.
     if (creditDeducted && userId) {
       try {
-        await adminSupabase.rpc('increment_credits', { user_id: userId, amount: 1 });
-        await adminSupabase.from('credit_logs').insert({ user_id: userId, action: 'Refund (Error)', amount: 1 });
-        console.log(`[Remove BG] Refunded 1 credit to user ${userId} due to processing error.`);
+        await adminSupabase.rpc('increment_credits', { user_id: userId, amount: 12 });
+        await adminSupabase.from('credit_logs').insert({ user_id: userId, action: 'Refund (Error)', amount: 12 });
+        if (projectId) {
+          await adminSupabase.from('projects').update({ refunded: true }).eq('id', projectId).eq('user_id', userId);
+        }
+        console.log(`[Remove BG] Refunded 12 credits to user ${userId} due to processing error.`);
       } catch (refundErr) {
         // Non-fatal: log but don't block the error response
         console.error('[Remove BG] CRITICAL: Failed to refund credit:', refundErr);
@@ -204,8 +207,9 @@ export async function POST(request) {
     const safeMessage =
       error.message?.toLowerCase().includes('fal') ||
       error.message?.toLowerCase().includes('api') ||
-      error.message?.toLowerCase().includes('key')
-        ? 'AI processing failed. Your credit has been refunded automatically.'
+      error.message?.toLowerCase().includes('key') ||
+      error.message === 'Unauthorized'
+        ? 'AI provider authentication failed (Unauthorized/Keys). Your credit has been refunded automatically.'
         : (error.message || 'Failed to remove background');
     return NextResponse.json({ error: safeMessage }, { status: 500 });
   }

@@ -14,13 +14,13 @@ export default function TermsOfService() {
         <button
           onClick={() => router.push("/")}
           style={{ display: "flex", alignItems: "center", gap: "8px", background: "transparent", color: "#aaa", border: "none", cursor: "pointer", padding: "0", fontSize: "14px", marginBottom: "30px", transition: "color 0.2s" }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#FFD700")}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#d4ff59")}
           onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}
         >
           <ArrowLeft size={16} /> Back to Home
         </button>
         <h1 style={{ fontSize: "36px", margin: "0 0 10px 0", color: "#fff", display: "flex", alignItems: "center", gap: "12px" }}>
-          <ShieldAlert color="#FFD700" size={36} /> Terms of Service
+          <ShieldAlert color="#d4ff59" size={36} /> Terms of Service
         </h1>
         <p style={{ color: "#888", fontSize: "14px", margin: "8px 0 0 0" }}>
           Last updated: July 2026 &nbsp;|&nbsp; Effective immediately upon use of the Service.
@@ -33,7 +33,7 @@ export default function TermsOfService() {
         {/* Intro */}
         <div style={{ background: "#1a1a1a", padding: "24px", borderRadius: "12px", border: "1px solid #2a2a2a" }}>
           <p style={{ margin: 0, color: "#aaa" }}>
-            Welcome to <strong style={{ color: "#fff" }}>DESAYNBRO Auto-Tracer</strong> (&ldquo;the Service&rdquo;), operated by DesaynBro (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;). By accessing or using our website or any of our services, you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). If you do not agree to these Terms, you must immediately cease use of the Service.
+            Welcome to <strong style={{ color: "#fff" }}>SYNCRAFT Syncraft</strong> (&ldquo;the Service&rdquo;), operated by Syncraft (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;). By accessing or using our website or any of our services, you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). If you do not agree to these Terms, you must immediately cease use of the Service.
           </p>
         </div>
 
@@ -42,12 +42,12 @@ export default function TermsOfService() {
         </Section>
 
         <Section num="2" title="Description of Service">
-          Auto-Tracer provides an AI-powered raster-to-vector conversion tool. We reserve the right to modify, suspend, or discontinue any part of the Service at any time, with or without notice. We shall not be liable to you or any third party for any such modification, suspension, or discontinuation.
+          Syncraft provides an AI-powered raster-to-vector conversion tool. We reserve the right to modify, suspend, or discontinue any part of the Service at any time, with or without notice. We shall not be liable to you or any third party for any such modification, suspension, or discontinuation.
         </Section>
 
         <Section num="3" title="User Responsibilities & Prohibited Conduct">
           <p style={{ margin: "0 0 12px 0" }}>
-            You are responsible for every file you upload, process, export, or use through the Service. You must own the artwork or have sufficient authorization from the copyright owner, trademark owner, client, brand, team, school, business, or other rights holder before using DesaynClaw.
+            You are responsible for every file you upload, process, export, or use through the Service. You must own the artwork or have sufficient authorization from the copyright owner, trademark owner, client, brand, team, school, business, or other rights holder before using Syncraft.
           </p>
           <p style={{ margin: "0 0 12px 0" }}>You agree that you will NOT use the Service to upload, process, or distribute any content that:</p>
           <ul style={{ paddingLeft: "20px", display: "flex", flexDirection: "column", gap: "8px", color: "#aaa", margin: 0 }}>
@@ -80,7 +80,7 @@ export default function TermsOfService() {
             <li>Your data will be retained for any specific period of time.</li>
           </ul>
           <p style={{ marginTop: "16px", marginBottom: 0 }}>
-            In no event shall DesaynBro, its directors, employees, or affiliates be liable for any indirect, incidental, special, consequential, or punitive damages &mdash; including but not limited to loss of profits, data, or goodwill &mdash; arising from your use of, or inability to use, the Service.
+            In no event shall Syncraft, its directors, employees, or affiliates be liable for any indirect, incidental, special, consequential, or punitive damages &mdash; including but not limited to loss of profits, data, or goodwill &mdash; arising from your use of, or inability to use, the Service.
           </p>
         </Section>
 
@@ -97,7 +97,7 @@ export default function TermsOfService() {
         </Section>
 
         <Section num="9" title="Contact">
-          If you have any questions about these Terms, please contact us through our official Facebook page or any official DesaynBro contact channel.
+          If you have any questions about these Terms, please contact us through our official Facebook page or any official Syncraft contact channel.
         </Section>
 
       </div>
@@ -108,7 +108,7 @@ export default function TermsOfService() {
 function Section({ num, title, children }) {
   return (
     <div style={{ borderLeft: "3px solid #2a2a2a", paddingLeft: "24px" }}>
-      <div style={{ color: "#FFD700", fontSize: "12px", textTransform: "uppercase", letterSpacing: "2px", fontWeight: "700", marginBottom: "8px" }}>
+      <div style={{ color: "#d4ff59", fontSize: "12px", textTransform: "uppercase", letterSpacing: "2px", fontWeight: "700", marginBottom: "8px" }}>
         Section {num}
       </div>
       <h2 style={{ color: "#fff", fontSize: "20px", margin: "0 0 16px 0", fontWeight: "600" }}>{title}</h2>

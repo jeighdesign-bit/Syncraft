@@ -18,17 +18,17 @@ function TraceOptionCard({ value, current, onChange, title, description }) {
       style={{
         display: "flex", alignItems: "flex-start", gap: "12px",
         padding: "12px 15px",
-        border: active ? "2px solid #FFD700" : "2px solid #444",
+        border: active ? "2px solid #d4ff59" : "2px solid #444",
         borderRadius: "8px", cursor: "pointer",
-        background: active ? "rgba(255,215,0,0.08)" : "transparent",
+        background: active ? "rgba(212, 255, 89,0.08)" : "transparent",
         transition: "all 0.15s",
       }}
     >
       <div style={{
         width: 18, height: 18, borderRadius: "50%", flexShrink: 0, marginTop: 2,
         border: active ? "5px solid #1a1a1a" : "2px solid #555",
-        background: active ? "#FFD700" : "transparent",
-        outline: active ? "2px solid #FFD700" : "none",
+        background: active ? "#d4ff59" : "transparent",
+        outline: active ? "2px solid #d4ff59" : "none",
         transition: "all 0.15s",
       }} />
       <div>
@@ -104,10 +104,10 @@ const NewProjectModal = memo(function NewProjectModal({
               <div
                 onClick={() => handleCategorySelect("garment")}
                 style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "20px 24px", border: "2px solid #444", borderRadius: 10, cursor: "pointer", background: "transparent", transition: "all 0.18s", textAlign: "center", aspectRatio: "1 / 1" }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#FFD700"; e.currentTarget.style.background = "rgba(255,215,0,0.06)"; }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.background = "rgba(212, 255, 89,0.06)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.background = "transparent"; }}
               >
-                <div style={{ color: "#FFD700" }}><Shirt size={40} strokeWidth={1.2} /></div>
+                <div style={{ color: "#d4ff59" }}><Shirt size={40} strokeWidth={1.2} /></div>
                 <div>
                   <p style={{ margin: "0 0 4px 0", color: "#fff", fontSize: "15px", fontWeight: 700 }}>Garment</p>
                   <p style={{ margin: 0, fontSize: "11px", color: "#888", lineHeight: 1.5 }}>Jerseys, shirts, mockups — extract the flat pattern as SVG.</p>
@@ -117,10 +117,10 @@ const NewProjectModal = memo(function NewProjectModal({
               <div
                 onClick={() => handleCategorySelect("logo")}
                 style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "20px 24px", border: "2px solid #444", borderRadius: 10, cursor: "pointer", background: "transparent", transition: "all 0.18s", textAlign: "center", aspectRatio: "1 / 1" }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#FFD700"; e.currentTarget.style.background = "rgba(255,215,0,0.06)"; }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.background = "rgba(212, 255, 89,0.06)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.background = "transparent"; }}
               >
-                <div style={{ color: "#FFD700" }}><LogoIcon /></div>
+                <div style={{ color: "#d4ff59" }}><LogoIcon /></div>
                 <div>
                   <p style={{ margin: "0 0 4px 0", color: "#fff", fontSize: "15px", fontWeight: 700 }}>Logo / Wordmark</p>
                   <p style={{ margin: 0, fontSize: "11px", color: "#888", lineHeight: 1.5 }}>Icons, emblems, wordmarks — vectorize with exact color and text.</p>
@@ -130,11 +130,11 @@ const NewProjectModal = memo(function NewProjectModal({
               <div
                 onClick={() => handleCategorySelect("bg_remover")}
                 style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "20px 24px", border: "2px solid #444", borderRadius: 10, cursor: "pointer", background: "transparent", transition: "all 0.18s", textAlign: "center", position: "relative", aspectRatio: "1 / 1" }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#FFD700"; e.currentTarget.style.background = "rgba(255,215,0,0.06)"; }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.background = "rgba(212, 255, 89,0.06)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.background = "transparent"; }}
               >
-                <div style={{ position: "absolute", top: 8, right: 8, background: "#FFD700", color: "#000", fontSize: "9px", fontWeight: 800, padding: "2px 6px", borderRadius: 4, letterSpacing: "0.5px" }}>AI</div>
-                <div style={{ color: "#FFD700" }}><Scissors size={40} strokeWidth={1.2} /></div>
+                <div style={{ position: "absolute", top: 8, right: 8, background: "#d4ff59", color: "#000", fontSize: "9px", fontWeight: 800, padding: "2px 6px", borderRadius: 4, letterSpacing: "0.5px" }}>AI</div>
+                <div style={{ color: "#d4ff59" }}><Scissors size={40} strokeWidth={1.2} /></div>
                 <div>
                   <p style={{ margin: "0 0 4px 0", color: "#fff", fontSize: "15px", fontWeight: 700 }}>BG Remover</p>
                   <p style={{ margin: 0, fontSize: "11px", color: "#888", lineHeight: 1.5 }}>Remove backgrounds instantly with AI — perfect for products &amp; portraits.</p>
@@ -193,9 +193,9 @@ const NewProjectModal = memo(function NewProjectModal({
             )}
 
             {category === "logo" && (
-              <div style={{ background: "rgba(255,215,0,0.06)", border: "1px solid rgba(255,215,0,0.2)", borderRadius: 8, padding: "12px 14px", marginBottom: 20 }}>
+              <div style={{ background: "rgba(212, 255, 89,0.06)", border: "1px solid rgba(212, 255, 89,0.2)", borderRadius: 8, padding: "12px 14px", marginBottom: 20 }}>
                 <p style={{ margin: 0, fontSize: "12px", color: "#aaa", lineHeight: 1.6 }}>
-                  Works for <strong style={{ color: "#FFD700" }}>icons, emblems, combined logos, and text-only wordmarks.</strong> All text and colors will be preserved exactly as in the reference.
+                  Works for <strong style={{ color: "#d4ff59" }}>icons, emblems, combined logos, and text-only wordmarks.</strong> All text and colors will be preserved exactly as in the reference.
                 </p>
               </div>
             )}

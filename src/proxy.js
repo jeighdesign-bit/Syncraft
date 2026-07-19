@@ -105,8 +105,8 @@ export async function proxy(request) {
 
   // ─── Domain Redirect ────────────────────────────────────────────────────────
   // Redirect anyone using the old vercel.app domain to the new custom domain
-  if (host === 'desaynclaw.vercel.app') {
-    return NextResponse.redirect(`https://desaynclaw.com${url.pathname}${url.search}`, 301);
+  if (host === 'syncraft.vercel.app') {
+    return NextResponse.redirect(`https://syncraft.com${url.pathname}${url.search}`, 301);
   }
 
   const { pathname } = url;

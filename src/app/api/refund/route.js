@@ -42,7 +42,7 @@ export async function POST(request) {
       .from('credit_logs')
       .select('id')
       .eq('user_id', user.id)
-      .eq('amount', -1)
+      .eq('amount', -12)
       .in('action', ['Extract & Vectorize', 'Background Removal', 'AI Upscale (4K)'])
       .limit(1)
       .maybeSingle();
@@ -69,7 +69,7 @@ export async function POST(request) {
       await adminSupabase.from('credit_logs').insert({
         user_id: user.id,
         action: 'Refund',
-        amount: 1
+        amount: 12
       });
     } else {
       console.log(`[Refund API] Project ${projectId} already refunded or invalid.`);

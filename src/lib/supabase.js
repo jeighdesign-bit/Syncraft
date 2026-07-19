@@ -34,7 +34,7 @@ export async function safeRefundCredit(userId) {
     
     const { error: updateErr, data: updatedData } = await adminSupabase
       .from('profiles')
-      .update({ credits: profile.credits + 1 })
+      .update({ credits: profile.credits + 12 })
       .eq('id', userId)
       .eq('credits', profile.credits)
       .select();

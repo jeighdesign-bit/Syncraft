@@ -35,12 +35,12 @@ async function sendDodoPaymentEmail({ email, plan, credits, paymentId }) {
       <div style="background-color: #1a1a1a; color: #ffffff; font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px 20px; text-align: center;">
         <div style="max-width: 500px; margin: 0 auto; background-color: #262626; border: 1px solid #444444; padding: 40px 30px; border-radius: 8px;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="https://desaynclaw.com/logo.png" alt="DesaynClaw Logo" style="max-width: 240px; height: auto; display: inline-block;" />
+            <img src="https://syncraft.com/logo.png" alt="Syncraft Logo" style="max-width: 240px; height: auto; display: inline-block;" />
           </div>
           <hr style="border: 0; border-top: 1px solid #444; margin: 24px 0;">
           <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 12px; color: #ffffff;">Payment Successful</h2>
           <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">
-            Your Dodo payment was confirmed and your credits have been automatically added to your DesaynClaw account.
+            Your Dodo payment was confirmed and your credits have been automatically added to your Syncraft account.
           </p>
 
           <div style="background-color: #1a1a1a; border: 1px solid #333333; padding: 20px; border-radius: 6px; margin-bottom: 30px; text-align: left;">
@@ -51,7 +51,7 @@ async function sendDodoPaymentEmail({ email, plan, credits, paymentId }) {
             </div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
               <span style="color: #aaaaaa; font-size: 14px;">Credits Added:</span>
-              <strong style="color: #FFD700; font-size: 15px;">+${credits} Traces</strong>
+              <strong style="color: #d4ff59; font-size: 15px;">+${credits} Traces</strong>
             </div>
             <div style="display: flex; justify-content: space-between;">
               <span style="color: #aaaaaa; font-size: 14px;">Payment ID:</span>
@@ -59,20 +59,20 @@ async function sendDodoPaymentEmail({ email, plan, credits, paymentId }) {
             </div>
           </div>
 
-          <a href="https://desaynclaw.com" style="display: inline-block; background-color: #FFD700; color: #000000; text-decoration: none; padding: 14px 28px; font-weight: 700; border-radius: 4px; font-size: 15px;">
+          <a href="https://syncraft.com" style="display: inline-block; background-color: #d4ff59; color: #000000; text-decoration: none; padding: 14px 28px; font-weight: 700; border-radius: 4px; font-size: 15px;">
             Start Tracing Now
           </a>
 
           <p style="color: #666666; font-size: 12px; margin-top: 40px; line-height: 1.5;">
             If you have any questions or need help, just reply to this email.<br>
-            &copy; 2026 DesaynClaw. All rights reserved.
+            &copy; 2026 Syncraft. All rights reserved.
           </p>
         </div>
       </div>
     `;
 
     await resend.emails.send({
-      from: "DesaynClaw <hello@desaynclaw.com>",
+      from: "Syncraft <hello@syncraft.com>",
       to: email,
       subject: "Payment Successful - Credits Added",
       html: htmlTemplate,

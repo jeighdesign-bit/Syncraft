@@ -25,7 +25,7 @@ function extractNode(marker) {
 
 // Extract the 4 main nodes
 let node1 = extractNode('Image Reference');
-let node2 = extractNode('DesaynVision™ Neural Extractor v3.0');
+let node2 = extractNode('SyncraftVision™ Neural Extractor v3.0');
 let node3 = extractNode('ClawScale™ Ultra-Res Matrix');
 let node4 = extractNode('TrueVector™ Auto-Bezier Core');
 

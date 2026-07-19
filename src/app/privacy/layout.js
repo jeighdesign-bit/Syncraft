@@ -1,9 +1,9 @@
 export const metadata = {
   title: "Privacy Policy",
   description:
-    "Learn how DesaynClaw handles uploaded images, generated files, account data, payments, technical logs, retention, and AI training protections.",
+    "Learn how Syncraft handles uploaded images, generated files, account data, payments, technical logs, retention, and AI training protections.",
   alternates: {
-    canonical: "https://desaynclaw.com/privacy",
+    canonical: "https://syncraft.com/privacy",
   },
 };
 

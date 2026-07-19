@@ -36,7 +36,7 @@ export async function POST(request, { params }) {
     }
 
     // Extract user profile info
-    const reviewer_name = user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || "DesaynClaw User";
+    const reviewer_name = user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || "Syncraft User";
     const reviewer_avatar = user.user_metadata?.avatar_url || null;
 
     // Update the rating

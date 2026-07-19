@@ -67,8 +67,8 @@ export default function CookieConsent() {
       `}</style>
 
       {/* Icon */}
-      <div style={{ flexShrink: 0, background: "rgba(255,215,0,0.1)", padding: "10px", borderRadius: "10px" }}>
-        <Cookie size={22} color="#FFD700" />
+      <div style={{ flexShrink: 0, background: "rgba(212, 255, 89,0.1)", padding: "10px", borderRadius: "10px" }}>
+        <Cookie size={22} color="#d4ff59" />
       </div>
 
       {/* Text */}
@@ -76,7 +76,7 @@ export default function CookieConsent() {
         <p style={{ margin: 0, color: "#ddd", fontSize: "14px", lineHeight: "1.6" }}>
           We use essential cookies and local storage to manage your session, remember your preferences, and keep the app working.
           {" "}
-          <a href="/privacy" style={{ color: "#FFD700", textDecoration: "underline", whiteSpace: "nowrap" }}>
+          <a href="/privacy" style={{ color: "#d4ff59", textDecoration: "underline", whiteSpace: "nowrap" }}>
             Privacy Policy
           </a>
         </p>
@@ -105,7 +105,7 @@ export default function CookieConsent() {
         <button
           onClick={accept}
           style={{
-            background: "#FFD700",
+            background: "#d4ff59",
             border: "none",
             color: "#000",
             padding: "8px 20px",
@@ -117,7 +117,7 @@ export default function CookieConsent() {
             whiteSpace: "nowrap",
           }}
           onMouseEnter={(e) => e.currentTarget.style.background = "#e6c200"}
-          onMouseLeave={(e) => e.currentTarget.style.background = "#FFD700"}
+          onMouseLeave={(e) => e.currentTarget.style.background = "#d4ff59"}
         >
           Accept All
         </button>

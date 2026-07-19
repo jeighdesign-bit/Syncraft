@@ -1,9 +1,9 @@
 export const metadata = {
   title: "Refund and Payment Policy",
   description:
-    "Review DesaynClaw credit refund rules, failed trace refunds, payment verification timing, unused credits, and chargeback policy.",
+    "Review Syncraft credit refund rules, failed trace refunds, payment verification timing, unused credits, and chargeback policy.",
   alternates: {
-    canonical: "https://desaynclaw.com/refunds",
+    canonical: "https://syncraft.com/refunds",
   },
 };
 

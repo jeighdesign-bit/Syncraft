@@ -81,10 +81,10 @@ export default function BeforeAfterSlider({ title, rasterUrl, vectorUrl, height 
         display: 'flex', 
         flexDirection: 'column', 
         gap: '8px',
-        borderRadius: '0',
+        borderRadius: '16px',
         textAlign: 'left'
       }}>
-        <div style={{ position: 'relative', height, background: '#000', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0' }}>
+        <div style={{ position: 'relative', height, background: '#000', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px' }}>
           
           {/* Original Image (Background / Right Side) */}
           <img 
@@ -99,13 +99,13 @@ export default function BeforeAfterSlider({ title, rasterUrl, vectorUrl, height 
             url={vectorUrl} 
             style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`, zIndex: 2 }} 
           />
-          <span style={{ position: 'absolute', top: 12, left: 12, background: '#FFD700', padding: '4px 10px', fontSize: '11px', color: '#000', fontWeight: 'bold', borderRadius: '0', zIndex: 3, opacity: sliderPosition > 10 ? 1 : 0, transition: 'opacity 0.2s' }}>Vectorized SVG</span>
+          <span style={{ position: 'absolute', top: 12, left: 12, background: '#d4ff59', padding: '4px 10px', fontSize: '11px', color: '#000', fontWeight: 'bold', borderRadius: '0', zIndex: 3, opacity: sliderPosition > 10 ? 1 : 0, transition: 'opacity 0.2s' }}>Vectorized SVG</span>
 
           {/* Slider Divider Line */}
-          <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${sliderPosition}%`, width: '2px', background: '#FFD700', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none' }}></div>
+          <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${sliderPosition}%`, width: '2px', background: '#d4ff59', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none' }}></div>
           
           {/* Slider Handle Visual */}
-          <div style={{ position: 'absolute', top: '50%', left: `${sliderPosition}%`, transform: 'translate(-50%, -50%)', width: '32px', height: '32px', background: '#FFD700', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3, pointerEvents: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+          <div style={{ position: 'absolute', top: '50%', left: `${sliderPosition}%`, transform: 'translate(-50%, -50%)', width: '32px', height: '32px', background: '#d4ff59', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3, pointerEvents: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
             <div style={{ display: 'flex', gap: '2px' }}>
               <div style={{ width: '2px', height: '12px', background: '#000' }}></div>
               <div style={{ width: '2px', height: '12px', background: '#000' }}></div>

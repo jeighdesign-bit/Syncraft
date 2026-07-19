@@ -192,7 +192,7 @@ export default function UpscalePage() {
       if (!res.ok) throw new Error(data.error || "Failed to process image");
 
       setUpscaledImage(data.upscaledUrl);
-      toast.success("Image upscaled successfully! (1 Credit deducted)");
+      toast.success("Image upscaled successfully! (12 Credits deducted)");
       fetchCredits(user.id);
       fetchRecentUpscales(user.id);
 
@@ -225,15 +225,15 @@ export default function UpscalePage() {
 
       {/* Top Menu Bar */}
       <header style={{ padding: "16px 32px", display: "flex", alignItems: "center", borderBottom: "1px solid #444", background: "#1a1a1a" }}>
-        <button onClick={() => router.push('/')} style={{ display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color="#FFD700"} onMouseLeave={e => e.currentTarget.style.color="#666"}>
-          <Home size={16} /> HOME
+        <button onClick={() => router.push('/')} style={{ display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color="#d4ff59"} onMouseLeave={e => e.currentTarget.style.color="#666"}>
+          <img src="/favicon.svg" alt="Syncraft Home" style={{ width: "24px", height: "24px", opacity: 0.8 }} />
         </button>
         <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "10px" }}>
           <h1 style={{ fontSize: "14px", fontWeight: "600", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>UPSCALE STUDIO</h1>
         </div>
         <div style={{ width: "200px", display: "flex", justifyContent: "flex-end", gap: "16px", alignItems: "center" }}>
-          <div onClick={() => setShowTopUpModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", background: "#2a2a2a", padding: "6px 12px", borderRadius: "0", cursor: "pointer", border: "1px solid #444", transition: "border-color 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor = "#FFD700"} onMouseOut={e => e.currentTarget.style.borderColor = "#444"}>
-            <span style={{ color: "#FFD700", fontWeight: "bold", fontSize: "14px", fontFamily: "monospace" }}>{credits !== null ? credits : "-"}</span>
+          <div onClick={() => setShowTopUpModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", background: "#2a2a2a", padding: "6px 12px", borderRadius: "0", cursor: "pointer", border: "1px solid #444", transition: "border-color 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor = "#d4ff59"} onMouseOut={e => e.currentTarget.style.borderColor = "#444"}>
+            <span style={{ color: "#d4ff59", fontWeight: "bold", fontSize: "14px", fontFamily: "monospace" }}>{credits !== null ? credits : "-"}</span>
             <span style={{ color: "#888", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>CREDITS</span>
           </div>
         </div>
@@ -246,10 +246,10 @@ export default function UpscalePage() {
         <div className="canvas-area" style={{ padding: 0, display: "flex", flexDirection: "column", background: "url('/checkerboard.png')", backgroundColor: "#111" }}>
           
           <div style={{ display: "flex", borderBottom: "1px solid #222", background: "#1a1a1a", height: "40px" }}>
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", borderRight: "1px solid #222", color: !upscaledImage ? "#FFD700" : "#666", fontWeight: "700", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase", whiteSpace: "nowrap", padding: "0 10px" }}>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", borderRight: "1px solid #222", color: !upscaledImage ? "#d4ff59" : "#666", fontWeight: "700", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase", whiteSpace: "nowrap", padding: "0 10px" }}>
               1. ORIGINAL UPLOAD
             </div>
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: upscaledImage ? "#FFD700" : "#666", fontWeight: "700", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase", whiteSpace: "nowrap", padding: "0 10px" }}>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: upscaledImage ? "#d4ff59" : "#666", fontWeight: "700", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase", whiteSpace: "nowrap", padding: "0 10px" }}>
               2. 4X HD UPSCALE
             </div>
           </div>
@@ -264,16 +264,16 @@ export default function UpscalePage() {
                 <div style={{ display: "flex", gap: "8px", width: "100%", marginBottom: "12px", flexWrap: "nowrap" }}>
                   <button
                     onClick={() => fileInputRef.current.click()}
-                    style={{ flex: 1, background: "#FFD700", color: "#111", border: "none", borderRadius: "0", fontSize: "12px", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontWeight: "700", letterSpacing: "0.5px", textTransform: "uppercase", transition: "all 0.2s", cursor: "pointer", whiteSpace: "nowrap" }}
+                    style={{ flex: 1, background: "#d4ff59", color: "#111", border: "none", borderRadius: "0", fontSize: "12px", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontWeight: "700", letterSpacing: "0.5px", textTransform: "uppercase", transition: "all 0.2s", cursor: "pointer", whiteSpace: "nowrap" }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = "#e6c200"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "#FFD700"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "#d4ff59"; }}
                   >
                     <Monitor size={14} /> Open PC File
                   </button>
                   <button
                     onClick={() => setUploadMode(prev => prev === "qr" ? "file" : "qr")}
-                    style={{ flex: 1, background: uploadMode === "qr" ? "rgba(255,215,0,0.08)" : "transparent", color: uploadMode === "qr" ? "#FFD700" : "#999", border: uploadMode === "qr" ? "1px solid #FFD700" : "1px solid #444", borderRadius: "0", fontSize: "12px", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontWeight: "600", letterSpacing: "0.5px", textTransform: "uppercase", transition: "all 0.2s", cursor: "pointer", whiteSpace: "nowrap" }}
-                    onMouseEnter={(e) => { if (uploadMode !== "qr") { e.currentTarget.style.borderColor = "#FFD700"; e.currentTarget.style.color = "#FFD700"; } }}
+                    style={{ flex: 1, background: uploadMode === "qr" ? "rgba(212, 255, 89,0.08)" : "transparent", color: uploadMode === "qr" ? "#d4ff59" : "#999", border: uploadMode === "qr" ? "1px solid #d4ff59" : "1px solid #444", borderRadius: "0", fontSize: "12px", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontWeight: "600", letterSpacing: "0.5px", textTransform: "uppercase", transition: "all 0.2s", cursor: "pointer", whiteSpace: "nowrap" }}
+                    onMouseEnter={(e) => { if (uploadMode !== "qr") { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.color = "#d4ff59"; } }}
                     onMouseLeave={(e) => { if (uploadMode !== "qr") { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.color = "#999"; } }}
                   >
                     <Scan size={14} /> Scan Phone
@@ -284,7 +284,7 @@ export default function UpscalePage() {
                 
                 {uploadMode === "qr" ? (
                   <div style={{ background: "#111", border: "1px solid #333", borderRadius: "0", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-                    <div style={{ background: "#fff", padding: "10px", marginBottom: "14px" }}><QRCode value={`https://desaynclaw.com/m/${syncSessionId}`} size={130} /></div>
+                    <div style={{ background: "#fff", padding: "10px", marginBottom: "14px" }}><QRCode value={`https://syncraft.com/m/${syncSessionId}`} size={130} /></div>
                     <p style={{ color: "#888", margin: 0, fontSize: "12px", textAlign: "center", lineHeight: 1.5 }}>Scan with your mobile camera to upload directly.</p>
                   </div>
                 ) : (
@@ -322,9 +322,9 @@ export default function UpscalePage() {
             <button 
               onClick={handleUpscale} 
               disabled={isProcessing || (!previewImage && !upscaledImage)}
-              style={{ width: "100%", marginBottom: "8px", background: "rgba(255, 215, 0, 0.1)", color: "#FFD700", border: "1px solid #FFD700", borderRadius: "0", padding: "10px 16px", transition: "all 0.2s", fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px", opacity: (isProcessing || (!previewImage && !upscaledImage)) ? 0.5 : 1, cursor: (isProcessing || (!previewImage && !upscaledImage)) ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
-              onMouseOver={e => { if(!isProcessing && (previewImage || upscaledImage)) e.currentTarget.style.background = "rgba(255, 215, 0, 0.2)"; }}
-              onMouseOut={e => { if(!isProcessing && (previewImage || upscaledImage)) e.currentTarget.style.background = "rgba(255, 215, 0, 0.1)"; }}
+              style={{ width: "100%", marginBottom: "8px", background: "rgba(212, 255, 89, 0.1)", color: "#d4ff59", border: "1px solid #d4ff59", borderRadius: "0", padding: "10px 16px", transition: "all 0.2s", fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px", opacity: (isProcessing || (!previewImage && !upscaledImage)) ? 0.5 : 1, cursor: (isProcessing || (!previewImage && !upscaledImage)) ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+              onMouseOver={e => { if(!isProcessing && (previewImage || upscaledImage)) e.currentTarget.style.background = "rgba(212, 255, 89, 0.2)"; }}
+              onMouseOut={e => { if(!isProcessing && (previewImage || upscaledImage)) e.currentTarget.style.background = "rgba(212, 255, 89, 0.1)"; }}
             >
               {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />} GENERATE 4K UPSCALE
             </button>
@@ -354,10 +354,10 @@ export default function UpscalePage() {
             </div>
 
             {/* Privacy Notice */}
-            <div style={{ background: "rgba(255,215,0,0.04)", border: "1px solid rgba(255,215,0,0.15)", borderRadius: "0", padding: "12px", marginBottom: "20px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
-              <ShieldAlert size={14} color="#FFD700" style={{ flexShrink: 0, marginTop: "2px" }} />
+            <div style={{ background: "rgba(212, 255, 89,0.04)", border: "1px solid rgba(212, 255, 89,0.15)", borderRadius: "0", padding: "12px", marginBottom: "20px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
+              <ShieldAlert size={14} color="#d4ff59" style={{ flexShrink: 0, marginTop: "2px" }} />
               <div>
-                <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#FFD700" }}>Privacy First</p>
+                <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#d4ff59" }}>Privacy First</p>
                 <p style={{ margin: 0, fontSize: "10px", color: "#aaa", lineHeight: 1.4 }}>All uploaded and generated images are permanently deleted after 3 days to protect your privacy.</p>
               </div>
             </div>
@@ -386,7 +386,7 @@ export default function UpscalePage() {
                       onClick={() => handleDownload(item.generated_image_url)}
                       title="Download Image"
                       style={{ alignSelf: "center", background: "transparent", border: "1px solid #444", color: "#888", width: "28px", height: "28px", borderRadius: "0", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.2s", flexShrink: 0 }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = "#FFD700"; e.currentTarget.style.color = "#FFD700"; }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.color = "#d4ff59"; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.color = "#888"; }}
                     >
                       <Download size={12} strokeWidth={2.5} />

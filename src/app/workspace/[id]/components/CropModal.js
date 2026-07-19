@@ -153,7 +153,7 @@ const CropModal = memo(function CropModal({
                   </div>
                   <p style={{ fontSize: "12px", color: "#666", margin: "0 0 12px", lineHeight: 1.5 }}>Remove as much empty background as possible. Keep the box snug to the logo edges.</p>
                   <svg viewBox="5 5 90 90" width="100%" height="140" style={{ display: "block", backgroundColor: "#111", borderRadius: "6px", padding: "10px", boxSizing: "border-box" }}>
-                    <circle cx="50" cy="50" r="20" fill="#FFD700" />
+                    <circle cx="50" cy="50" r="20" fill="#d4ff59" />
                     <path d="M 40 50 L 60 50 M 50 40 L 50 60" stroke="#000" strokeWidth="4" />
                     <rect x="28" y="28" width="44" height="44" fill="transparent" stroke="#4ade80" strokeWidth="1.5" strokeDasharray="3 3" />
                     <rect x="26" y="26" width="4" height="4" fill="#4ade80" />
@@ -169,7 +169,7 @@ const CropModal = memo(function CropModal({
                   </div>
                   <p style={{ fontSize: "12px", color: "#666", margin: "0 0 12px", lineHeight: 1.5 }}>Do not leave huge margins around the logo. This reduces the AI resolution.</p>
                   <svg viewBox="5 5 90 90" width="100%" height="140" style={{ display: "block", backgroundColor: "#111", borderRadius: "6px", padding: "10px", boxSizing: "border-box" }}>
-                    <circle cx="50" cy="50" r="20" fill="#FFD700" />
+                    <circle cx="50" cy="50" r="20" fill="#d4ff59" />
                     <path d="M 40 50 L 60 50 M 50 40 L 50 60" stroke="#000" strokeWidth="4" />
                     <rect x="5" y="5" width="90" height="90" fill="rgba(255, 68, 68, 0.05)" stroke="#ff4444" strokeWidth="1.5" strokeDasharray="3 3" />
                     <rect x="3" y="3" width="4" height="4" fill="#ff4444" />

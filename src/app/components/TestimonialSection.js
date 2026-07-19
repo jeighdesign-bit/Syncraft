@@ -29,7 +29,7 @@ export default function TestimonialSection() {
   return (
     <div style={{ marginTop: '80px', marginBottom: '40px' }}>
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-        <h3 style={{ color: "#FFD700", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1.5px", margin: 0, fontWeight: "bold" }}>Community Trust</h3>
+        <h3 style={{ color: "#d4ff59", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1.5px", margin: 0, fontWeight: "bold" }}>Community Trust</h3>
         <h2 style={{ color: "#fff", fontSize: "24px", margin: "8px 0 0 0", fontWeight: "700" }}>What our users say</h2>
       </div>
 
@@ -51,7 +51,7 @@ export default function TestimonialSection() {
                 </div>
               )}
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#eee' }}>{rev.reviewer_name || "DesaynClaw User"}</div>
+                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#eee' }}>{rev.reviewer_name || "Syncraft User"}</div>
                 <div style={{ color: '#fbbf24', fontSize: '14px', letterSpacing: '1px' }}>
                   {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
                 </div>

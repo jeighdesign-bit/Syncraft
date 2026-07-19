@@ -17,7 +17,7 @@ const ShortcutsModal = memo(function ShortcutsModal({ show, onClose }) {
       <div className="modal-content" style={{ maxWidth: "400px", background: "#262626", border: "1px solid #444", borderRadius: "0" }} onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
           <h2 style={{ margin: 0, fontSize: "18px", display: "flex", alignItems: "center", gap: "8px" }}>
-            <Keyboard size={20} color="#FFD700" /> Keyboard Shortcuts
+            <Keyboard size={20} color="#d4ff59" /> Keyboard Shortcuts
           </h2>
           <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer" }}><X size={20} /></button>
         </div>

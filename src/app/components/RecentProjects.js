@@ -68,17 +68,17 @@ const RecentProjects = memo(function RecentProjects({
                 outline: "none",
                 transition: "border-color 0.2s"
               }}
-              onFocus={(e) => e.target.style.borderColor = "#FFD700"}
+              onFocus={(e) => e.target.style.borderColor = "#d4ff59"}
               onBlur={(e) => e.target.style.borderColor = "#333"}
             />
           </div>
         </div>
 
         {/* Privacy Notice for main projects */}
-        <div style={{ background: "rgba(255,215,0,0.05)", border: "1px solid rgba(255,215,0,0.2)", borderRadius: "8px", padding: "12px", marginBottom: "20px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
-          <ShieldAlert size={14} color="#FFD700" style={{ flexShrink: 0, marginTop: "2px" }} />
+        <div style={{ background: "rgba(212, 255, 89,0.05)", border: "1px solid rgba(212, 255, 89,0.2)", borderRadius: "8px", padding: "12px", marginBottom: "20px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
+          <ShieldAlert size={14} color="#d4ff59" style={{ flexShrink: 0, marginTop: "2px" }} />
           <div>
-            <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#FFD700" }}>Privacy First</p>
+            <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#d4ff59" }}>Privacy First</p>
             <p style={{ margin: 0, fontSize: "10px", color: "#aaa", lineHeight: 1.4 }}>All uploaded and generated projects are permanently deleted after 3 days to protect your privacy.</p>
           </div>
         </div>

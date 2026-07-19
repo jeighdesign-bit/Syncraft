@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useEffect } from "react";
+import { memo, useState, useEffect, useRef } from "react";
 import { X, ShieldCheck, Loader2, Mail } from "lucide-react";
 import { toast } from "@/components/Toast";
 import { Turnstile } from '@marsidev/react-turnstile';
@@ -11,9 +11,10 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState(null);
+  const turnstileRef = useRef(null);
 
   // Use the production key by default; localhost switches to Cloudflare's dummy testing key below.
-  const [turnstileSiteKey, setTurnstileSiteKey] = useState('0x4AAAAAAD26TJ8T3jCD57hp');
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAAD4kODjBozDJ38OZ');
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
@@ -28,19 +29,25 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
       toast.error("Please complete the security check first.");
       return;
     }
+    
+    // Strict token handling: Capture and clear immediately to prevent leak/reuse
+    const secureToken = turnstileToken;
+    setTurnstileToken(null);
     setIsLoadingGoogle(true);
+    
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { 
           redirectTo: `${window.location.origin}/api/auth/callback`,
-          captchaToken: turnstileToken
+          captchaToken: secureToken
         }
       });
       if (error) throw error;
     } catch (err) {
       toast.error("Google login failed. Please try again.");
       setIsLoadingGoogle(false);
+      if (turnstileRef.current) turnstileRef.current.reset();
     }
   };
 
@@ -55,13 +62,17 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
       return;
     }
     
+    // Strict token handling: Capture and clear immediately to prevent leak/reuse
+    const secureToken = turnstileToken;
+    setTurnstileToken(null);
     setIsLoadingEmail(true);
+    
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo: `${window.location.origin}/api/auth/callback`,
-          captchaToken: turnstileToken
+          captchaToken: secureToken
         }
       });
       
@@ -71,6 +82,7 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
       toast.success("Magic link sent! Check your email.");
     } catch (err) {
       toast.error(err.message || "Failed to send login link.");
+      if (turnstileRef.current) turnstileRef.current.reset();
     } finally {
       setIsLoadingEmail(false);
     }
@@ -78,59 +90,59 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
 
   return (
     <div className="modal-overlay" onClick={onClose} style={{ backdropFilter: "blur(4px)", backgroundColor: "rgba(0,0,0,0.8)", zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div 
+            <div 
         className="modal-content" 
         style={{ 
-          maxWidth: '440px', 
+          maxWidth: '1000px', 
           width: '100%', 
           padding: '0', 
-          borderRadius: '0', 
-          border: '1px solid #444', 
-          background: '#262626', 
+          borderRadius: '12px', 
+          border: '1px solid #333', 
+          background: '#111', 
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.9)',
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'row',
+          minHeight: '600px'
         }} 
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header Area - Matches TopUpModal styling */}
-        <div style={{ 
-          background: '#2a2a2a', 
-          borderBottom: '1px solid #444', 
-          padding: '24px', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          position: 'relative'
-        }}>
-          <img src="/nav bar logo.png" alt="DesaynClaw Logo" style={{ height: '36px', width: 'auto' }} />
-          
-          <button 
-            onClick={onClose} 
-            style={{ 
-              position: 'absolute', 
-              right: '24px', 
-              background: 'transparent', 
-              border: 'none', 
-              color: '#888', 
-              cursor: 'pointer', 
-              padding: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'color 0.2s'
-            }}
-            onMouseOver={e => e.currentTarget.style.color = '#fff'}
-            onMouseOut={e => e.currentTarget.style.color = '#888'}
-          >
-            <X size={20} strokeWidth={2} />
-          </button>
-        </div>
+        <style>{`
+          @media (max-width: 768px) {
+            .login-right-col { display: none !important; }
+          }
+        `}</style>
+        {/* Close Button overlaying the modal */}
+        <button 
+          onClick={onClose} 
+          style={{ 
+            position: 'absolute', 
+            top: '16px',
+            right: '16px', 
+            background: 'rgba(0,0,0,0.5)', 
+            border: 'none', 
+            borderRadius: '50%',
+            color: '#fff', 
+            cursor: 'pointer', 
+            padding: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'background 0.2s',
+            zIndex: 10
+          }}
+          onMouseOver={e => e.currentTarget.style.background = 'rgba(0,0,0,0.8)'}
+          onMouseOut={e => e.currentTarget.style.background = 'rgba(0,0,0,0.5)'}
+        >
+          <X size={20} strokeWidth={2} />
+        </button>
 
-        {/* Body Area */}
-        <div style={{ padding: '32px 32px 40px 32px' }}>
+        {/* Left Column - Form Area */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px' }}>
           
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '24px', marginTop: '10px' }}>
+            <img src="/logo.svg" alt="Syncraft Logo" style={{ height: '32px', width: 'auto', marginBottom: '20px' }} />
             <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: '700', margin: '0 0 8px 0', letterSpacing: '-0.3px' }}>Secure Login</h2>
             <p style={{ color: '#aaa', fontSize: '14px', margin: '0' }}>Please verify to access your workspace.</p>
           </div>
@@ -139,7 +151,7 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
             <div style={{ 
               background: '#111', 
               border: '1px solid #2a2a2a', 
-              borderRadius: '4px', 
+              borderRadius: '8px', 
               padding: '24px', 
               display: 'flex', 
               flexDirection: 'column', 
@@ -158,7 +170,7 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
               </button>
             </div>
           ) : (
-            <form onSubmit={handleEmailLogin} style={{ width: '100%' }}>
+            <form onSubmit={handleEmailLogin} style={{ width: '100%', maxWidth: '380px', margin: '0 auto' }}>
               
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', color: '#aaa', fontSize: '12px', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -176,7 +188,7 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
                       width: '100%', 
                       background: '#1a1a1a', 
                       border: '1px solid #444',
-                      borderRadius: '4px', 
+                      borderRadius: '8px', 
                       padding: '14px 16px 14px 44px', 
                       color: '#fff', 
                       fontSize: '15px', 
@@ -184,13 +196,11 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
                       boxSizing: 'border-box',
                       transition: 'border-color 0.2s'
                     }} 
-                    onFocus={e => e.target.style.borderColor = '#FFD700'} 
+                    onFocus={e => e.target.style.borderColor = '#d4ff59'} 
                     onBlur={e => e.target.style.borderColor = '#444'} 
                   />
                 </div>
               </div>
-
-
 
               {/* Main Button */}
               <button 
@@ -198,11 +208,11 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
                 disabled={isLoadingGoogle || isLoadingEmail || !email.trim() || !turnstileToken}
                 style={{ 
                   width: '100%', 
-                  background: '#FFD700', 
+                  background: '#d4ff59', 
                   color: '#000', 
                   border: 'none', 
                   padding: '14px', 
-                  borderRadius: '4px', 
+                  borderRadius: '8px', 
                   fontSize: '14px', 
                   fontWeight: '700', 
                   textTransform: 'uppercase',
@@ -240,7 +250,7 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
                   color: '#d5d5d5', 
                   border: '1px solid #555', 
                   padding: '14px', 
-                  borderRadius: '4px', 
+                  borderRadius: '8px', 
                   fontSize: '14px', 
                   fontWeight: '600', 
                   cursor: (isLoadingGoogle || isLoadingEmail || !turnstileToken) ? 'not-allowed' : 'pointer',
@@ -278,6 +288,7 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
               {/* Turnstile Widget */}
               <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginTop: '20px', marginBottom: '8px' }}>
                 <Turnstile 
+                  ref={turnstileRef}
                   siteKey={turnstileSiteKey} 
                   onSuccess={(token) => setTurnstileToken(token)}
                   onError={() => { toast.error("Security check failed."); setTurnstileToken(null); }}
@@ -290,6 +301,11 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
               
             </form>
           )}
+        </div>
+
+        {/* Right Column - Image Banner */}
+        <div className="login-right-col" style={{ flex: 1, display: 'flex', position: 'relative', background: '#111' }}>
+           <img src="/login-bg.png" alt="Login Background" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
       </div>
     </div>

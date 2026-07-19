@@ -80,7 +80,7 @@ const PromoModal = memo(function PromoModal({ onBuyClick }) {
 
         {/* Promo Image ONLY */}
         <img
-          src="/DESAYNCLAW.jpg"
+          src="/SYNCRAFT.jpg"
           alt="Announcement"
           style={{ width: "100%", height: "auto", display: "block" }}
         />

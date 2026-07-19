@@ -229,7 +229,7 @@ const EraseModal = memo(function EraseModal({
             <div className="form-group">
               <label style={{ fontSize: "12px", color: "#ccc", display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                 <span>Brush Size</span>
-                <span style={{ color: "#FFD700" }}>{brushSize}px</span>
+                <span style={{ color: "#d4ff59" }}>{brushSize}px</span>
               </label>
               <input 
                 type="range" 
@@ -237,7 +237,7 @@ const EraseModal = memo(function EraseModal({
                 max="100" 
                 value={brushSize} 
                 onChange={(e) => setBrushSize(parseInt(e.target.value))}
-                style={{ width: "100%", cursor: "pointer", accentColor: "#FFD700" }}
+                style={{ width: "100%", cursor: "pointer", accentColor: "#d4ff59" }}
               />
             </div>
 
@@ -252,7 +252,7 @@ const EraseModal = memo(function EraseModal({
                 className="btn-primary" 
                 onClick={handleApply} 
                 disabled={isSaving}
-                style={{ background: "#FFD700", color: "#000", fontWeight: "bold", padding: "12px", borderRadius: "8px", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px" }}
+                style={{ background: "#d4ff59", color: "#000", fontWeight: "bold", padding: "12px", borderRadius: "8px", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px" }}
               >
                 {isSaving ? "Saving..." : <><Save size={16} /> Apply & Save</>}
               </button>

@@ -26,7 +26,7 @@ export default function MaintenanceScreen() {
           alignItems: 'center',
           gap: '20px',
           marginBottom: '40px',
-          color: '#FFD700'
+          color: '#d4ff59'
         }}>
           <div style={{ 
             background: '#1a1a1a', 
@@ -69,12 +69,12 @@ export default function MaintenanceScreen() {
         </h1>
         
         <p style={{ fontSize: '15px', color: '#888', margin: '0 0 40px 0' }}>
-          DesaynBro Auto-Tracer is temporarily offline for a scheduled core engine overhaul.
+          Syncraft Syncraft is temporarily offline for a scheduled core engine overhaul.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '40px' }}>
           <div style={{ display: 'flex', gap: '15px' }}>
-            <Server size={20} color="#FFD700" style={{ marginTop: '2px' }} />
+            <Server size={20} color="#d4ff59" style={{ marginTop: '2px' }} />
             <div>
               <h3 style={{ margin: '0 0 5px 0', fontSize: '16px', color: '#fff' }}>Surgical Extraction Mode</h3>
               <p style={{ margin: 0, fontSize: '14px', color: '#888', lineHeight: '1.6' }}>
@@ -84,7 +84,7 @@ export default function MaintenanceScreen() {
           </div>
 
           <div style={{ display: 'flex', gap: '15px' }}>
-            <Zap size={20} color="#FFD700" style={{ marginTop: '2px' }} />
+            <Zap size={20} color="#d4ff59" style={{ marginTop: '2px' }} />
             <div>
               <h3 style={{ margin: '0 0 5px 0', fontSize: '16px', color: '#fff' }}>Pipeline Optimization</h3>
               <p style={{ margin: 0, fontSize: '14px', color: '#888', lineHeight: '1.6' }}>
@@ -94,7 +94,7 @@ export default function MaintenanceScreen() {
           </div>
           
           <div style={{ display: 'flex', gap: '15px' }}>
-            <RefreshCw size={20} color="#FFD700" style={{ marginTop: '2px' }} />
+            <RefreshCw size={20} color="#d4ff59" style={{ marginTop: '2px' }} />
             <div>
               <h3 style={{ margin: '0 0 5px 0', fontSize: '16px', color: '#fff' }}>Smart Refund Protocol</h3>
               <p style={{ margin: 0, fontSize: '14px', color: '#888', lineHeight: '1.6' }}>
@@ -106,11 +106,11 @@ export default function MaintenanceScreen() {
 
         <div style={{
           background: '#1a1a1a',
-          borderLeft: '4px solid #FFD700',
+          borderLeft: '4px solid #d4ff59',
           padding: '20px',
           marginTop: '20px'
         }}>
-          <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#FFD700', textTransform: 'uppercase' }}>
+          <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#d4ff59', textTransform: 'uppercase' }}>
             Coming Soon: Mobile-to-PC Bridge
           </h4>
           <p style={{ margin: 0, fontSize: '14px', color: '#aaa', lineHeight: '1.5' }}>

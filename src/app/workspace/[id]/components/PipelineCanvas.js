@@ -138,7 +138,7 @@ const PipelineCanvas = memo(function PipelineCanvas({
 
         {/* NODE 2: Gemini Neural Extractor */}
         <NodeCard
-          title="DesaynVision™ Neural Extractor v3.0"
+          title="SyncraftVision™ Neural Extractor v3.0"
           icon={<Brain size={12} />}
           footerLeft="Gemini 3 Pro"
           showInput

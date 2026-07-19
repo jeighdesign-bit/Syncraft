@@ -69,7 +69,7 @@ export async function POST(request) {
       product_cart: [{ product_id: productId, quantity: 1 }],
       customer: {
         email: user.email,
-        name: user.user_metadata?.full_name || user.email?.split("@")[0] || "DesaynClaw User",
+        name: user.user_metadata?.full_name || user.email?.split("@")[0] || "Syncraft User",
       },
       metadata: {
         local_payment_id: localPayment.id,

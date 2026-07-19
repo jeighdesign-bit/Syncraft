@@ -5,16 +5,23 @@ import { DEFAULT_MAX_IMAGE_BYTES, DEFAULT_MAX_SVG_BYTES, DEFAULT_MAX_UPSCALED_IM
 // Never fetch arbitrary URLs from the server — that opens internal metadata attacks.
 const R2_PUBLIC_HOST = process.env.CLOUDFLARE_PUBLIC_URL
   ? new URL(process.env.CLOUDFLARE_PUBLIC_URL).hostname
-  : "pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev";
+  : "pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev";
 
 const R2_STORAGE_HOST = process.env.CLOUDFLARE_ACCOUNT_ID
   ? `${process.env.CLOUDFLARE_BUCKET_NAME}.${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`
   : null;
 
+// Legacy R2 domains from previous deployments — needed so old project thumbnails still load
+const LEGACY_R2_HOSTS = [
+  "pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev", // old Syncraft R2 domain
+];
+
 const ALLOWED_HOSTS = [
   R2_PUBLIC_HOST,
   // R2 S3-compatible endpoint — images uploaded via presigned URLs may have this as source
   ...(R2_STORAGE_HOST ? [R2_STORAGE_HOST] : []),
+  // Legacy domains for backward compatibility with old project URLs
+  ...LEGACY_R2_HOSTS,
 ];
 
 export async function GET(request) {

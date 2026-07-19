@@ -36,7 +36,13 @@ const RemoveBgModal = memo(function RemoveBgModal({
         body: JSON.stringify({ projectId: project.id }),
       });
 
-      const data = await res.json();
+      const rawText = await res.text();
+      let data = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch (e) {
+        throw new Error(!res.ok ? `Server error ${res.status}` : "Invalid response from server.");
+      }
       if (!res.ok) throw new Error(data.error || "Failed to remove background.");
 
       onRemoveBgApplied(data.original_image_url, null);
@@ -68,7 +74,7 @@ const RemoveBgModal = memo(function RemoveBgModal({
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        boxShadow: "0 40px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,215,0,0.06)",
+        boxShadow: "0 40px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(212, 255, 89,0.06)",
         animation: "modalIn 0.18s ease-out",
       }}>
 
@@ -85,11 +91,11 @@ const RemoveBgModal = memo(function RemoveBgModal({
             {/* Icon badge */}
             <div style={{
               width: "30px", height: "30px",
-              background: "rgba(255,215,0,0.1)",
-              border: "1px solid rgba(255,215,0,0.25)",
+              background: "rgba(212, 255, 89,0.1)",
+              border: "1px solid rgba(212, 255, 89,0.25)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              <ImageMinus size={15} color="#FFD700" />
+              <ImageMinus size={15} color="#d4ff59" />
             </div>
             <div>
               <div style={{ fontSize: "12px", fontWeight: "700", color: "#fff", letterSpacing: "1.5px", textTransform: "uppercase" }}>
@@ -139,10 +145,10 @@ const RemoveBgModal = memo(function RemoveBgModal({
                 gap: "12px",
               }}>
                 <div style={{ position: "relative" }}>
-                  <Loader2 size={32} color="#FFD700" style={{ animation: "spin 1s linear infinite" }} />
+                  <Loader2 size={32} color="#d4ff59" style={{ animation: "spin 1s linear infinite" }} />
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: "13px", color: "#FFD700", fontWeight: "600", letterSpacing: "1px" }}>
+                  <div style={{ fontSize: "13px", color: "#d4ff59", fontWeight: "600", letterSpacing: "1px" }}>
                     Removing Background...
                   </div>
                   <div style={{ fontSize: "10px", color: "#555", marginTop: "4px" }}>
@@ -176,10 +182,10 @@ const RemoveBgModal = memo(function RemoveBgModal({
             ].map(({ icon, label }) => (
               <div key={label} style={{
                 display: "flex", alignItems: "center", gap: "5px",
-                background: "rgba(255,215,0,0.06)",
-                border: "1px solid rgba(255,215,0,0.15)",
+                background: "rgba(212, 255, 89,0.06)",
+                border: "1px solid rgba(212, 255, 89,0.15)",
                 padding: "3px 10px",
-                fontSize: "10px", color: "#FFD700", fontWeight: "600",
+                fontSize: "10px", color: "#d4ff59", fontWeight: "600",
                 letterSpacing: "0.5px",
               }}>
                 {icon} {label}
@@ -190,13 +196,13 @@ const RemoveBgModal = memo(function RemoveBgModal({
           {/* Cost notice */}
           <div style={{
             display: "flex", alignItems: "center", gap: "8px",
-            background: "rgba(255,215,0,0.04)",
+            background: "rgba(212, 255, 89,0.04)",
             border: "1px solid #2a2a2a",
             padding: "8px 12px",
             fontSize: "11px",
           }}>
             <span style={{ fontSize: "14px" }}>🪙</span>
-            <span style={{ color: "#888" }}>This action will consume <strong style={{ color: "#FFD700" }}>1 Credit</strong> from your account.</span>
+            <span style={{ color: "#888" }}>This action will consume <strong style={{ color: "#d4ff59" }}>12 Credits</strong> from your account.</span>
           </div>
 
           {/* Error */}
@@ -248,9 +254,9 @@ const RemoveBgModal = memo(function RemoveBgModal({
             disabled={isProcessing}
             style={{
               flex: 2,
-              background: isProcessing ? "rgba(255,215,0,0.15)" : "#FFD700",
+              background: isProcessing ? "rgba(212, 255, 89,0.15)" : "#d4ff59",
               color: isProcessing ? "#888" : "#000",
-              border: "1px solid " + (isProcessing ? "#333" : "#FFD700"),
+              border: "1px solid " + (isProcessing ? "#333" : "#d4ff59"),
               padding: "11px",
               fontSize: "11px",
               fontWeight: "800",
@@ -263,8 +269,8 @@ const RemoveBgModal = memo(function RemoveBgModal({
               gap: "8px",
               transition: "all 0.15s",
             }}
-            onMouseOver={e => { if (!isProcessing) e.currentTarget.style.background = "#FFC800"; }}
-            onMouseOut={e => { if (!isProcessing) e.currentTarget.style.background = "#FFD700"; }}
+            onMouseOver={e => { if (!isProcessing) e.currentTarget.style.background = "#bfe650"; }}
+            onMouseOut={e => { if (!isProcessing) e.currentTarget.style.background = "#d4ff59"; }}
           >
             {isProcessing ? (
               <>
@@ -274,7 +280,7 @@ const RemoveBgModal = memo(function RemoveBgModal({
             ) : (
               <>
                 <ImageMinus size={13} strokeWidth={2.5} />
-                Remove Background  (−1 Credit)
+                Remove Background  (−12 Credits)
               </>
             )}
           </button>

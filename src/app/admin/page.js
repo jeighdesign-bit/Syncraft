@@ -27,8 +27,9 @@ export default function AdminDashboard() {
   const PLAN_PRICES = {
     tingi: 50,
     basic: 100,
-    starter: 290,
-    pro: 870
+    starter: 299,
+    pro: 499,
+    elite: 799
   };
   const COST_PER_GENERATION = 2; // Estimated PHP cost per generation
 
@@ -43,7 +44,8 @@ export default function AdminDashboard() {
 
     const checkAdmin = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session || session.user.email !== 'lloyddumzofficial@gmail.com') {
+      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'lloyddumzofficial@gmail.com';
+      if (!session || session.user.email !== adminEmail) {
         router.push('/');
         return;
       }
@@ -181,7 +183,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="start-screen-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#FFD700', fontSize: '14px', fontWeight: '500' }}>Loading Admin Panel...</div>
+        <div style={{ color: '#d4ff59', fontSize: '14px', fontWeight: '500' }}>Loading Admin Panel...</div>
       </div>
     );
   }
@@ -199,8 +201,8 @@ export default function AdminDashboard() {
         
         {/* LOGO & TITLE (Matching Homepage Exactly) */}
         <div className="start-logo" style={{ marginBottom: "20px", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-          <img src="/logo.png" alt="DesaynClaw Logo" style={{ width: "300px", maxWidth: "100%", height: "auto", margin: 0, cursor: 'pointer' }} onClick={() => router.push('/')} />
-          <p style={{ fontSize: "14px", color: "#FFD700", margin: "5px 0 0 0", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px' }}>Admin Dashboard</p>
+          <img src="/logo.png" alt="Syncraft Logo" style={{ width: "300px", maxWidth: "100%", height: "auto", margin: 0, cursor: 'pointer' }} onClick={() => router.push('/')} />
+          <p style={{ fontSize: "14px", color: "#d4ff59", margin: "5px 0 0 0", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px' }}>Admin Dashboard</p>
           <p style={{ fontSize: "14px", color: "#aaa", textAlign: "center", marginTop: "15px", maxWidth: "420px", lineHeight: "1.6" }}>
             Review and approve pending top-up requests from users.
           </p>
@@ -209,15 +211,15 @@ export default function AdminDashboard() {
         {/* TAB TITLE BADGE — updates browser tab with pending count */}
         {typeof document !== 'undefined' && (() => {
           document.title = requests.length > 0
-            ? `(${requests.length}) Admin Dashboard — DesaynClaw`
-            : 'Admin Dashboard — DesaynClaw';
+            ? `(${requests.length}) Admin Dashboard — Syncraft`
+            : 'Admin Dashboard — Syncraft';
           return null;
         })()}
 
         {/* TOP BUTTONS */}
         <div style={{ display: "flex", gap: "15px", marginBottom: "40px", flexWrap: "wrap", justifyContent: "center", width: "100%" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "12px 24px", borderRadius: "4px", fontSize: "16px", fontWeight: "500", whiteSpace: "nowrap" }}>
-            Revenue: <strong style={{ color: '#FFD700', fontSize: '18px' }}>₱{totalRevenue.toLocaleString()}</strong>
+            Revenue: <strong style={{ color: '#d4ff59', fontSize: '18px' }}>₱{totalRevenue.toLocaleString()}</strong>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "12px 24px", borderRadius: "4px", fontSize: "16px", fontWeight: "500", whiteSpace: "nowrap" }}>
             Costs: <strong style={{ fontSize: '18px' }}>₱{totalCost.toLocaleString()}</strong>
@@ -226,7 +228,7 @@ export default function AdminDashboard() {
             Profit: <strong style={{ color: netProfit < 0 ? '#ff4444' : '#4ade80', fontSize: '18px' }}>₱{netProfit.toLocaleString()}</strong>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "transparent", color: "#d5d5d5", border: "1px solid #5a4a00", padding: "12px 24px", borderRadius: "4px", fontSize: "16px", fontWeight: "500", whiteSpace: "nowrap" }}>
-            Active Credits: <strong style={{ color: '#FFD700', fontSize: '18px' }}>🪙 {totalActiveCredits.toLocaleString()}</strong>
+            Active Credits: <strong style={{ color: '#d4ff59', fontSize: '18px' }}>🪙 {totalActiveCredits.toLocaleString()}</strong>
           </div>
           <button
             className="start-btn"
@@ -248,13 +250,13 @@ export default function AdminDashboard() {
           
           {requests.length === 0 ? (
             <div style={{ textAlign: 'center' }}>
-              <Check size={40} color="#FFD700" style={{ margin: '0 auto 15px' }} />
+              <Check size={40} color="#d4ff59" style={{ margin: '0 auto 15px' }} />
               <div style={{ fontSize: "16px", color: "#ccc", fontWeight: "500" }}>All caught up!</div>
               <div style={{ marginTop: "10px", color: "#888", fontSize: "13px" }}>No pending payments to review.</div>
             </div>
           ) : (
             <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '350px', overflowY: 'auto', paddingRight: '10px' }}>
-              <div style={{ fontSize: "12px", color: "#FFD700", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <div style={{ fontSize: "12px", color: "#d4ff59", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 {hasNewRequests && (
                   <span style={{
                     display: 'inline-block',
@@ -279,7 +281,7 @@ export default function AdminDashboard() {
                     </div>
                     <div style={{ fontSize: '14px', fontWeight: '500', color: '#fff', marginBottom: '4px' }}>{req.email}</div>
                     <div style={{ color: '#aaa', fontSize: '12px' }}>
-                      Plan: <strong style={{ color: '#FFD700', textTransform: 'capitalize' }}>{req.plan}</strong> &bull; Ref: {req.reference_number}
+                      Plan: <strong style={{ color: '#d4ff59', textTransform: 'capitalize' }}>{req.plan}</strong> &bull; Ref: {req.reference_number}
                     </div>
                   </div>
 
@@ -315,9 +317,9 @@ export default function AdminDashboard() {
                       disabled={processingId === req.id}
                       className="start-btn"
                       style={{ 
-                        background: processingId === req.id ? 'transparent' : '#FFD700', 
+                        background: processingId === req.id ? 'transparent' : '#d4ff59', 
                         color: processingId === req.id ? '#888' : '#000', 
-                        borderColor: processingId === req.id ? '#555' : '#FFD700',
+                        borderColor: processingId === req.id ? '#555' : '#d4ff59',
                         padding: '8px 12px', 
                         fontSize: '11px', 
                         display: 'flex', 
@@ -457,7 +459,7 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '350px', overflowY: 'auto', paddingRight: '10px' }}>
-              <div style={{ fontSize: "12px", color: "#FFD700", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>
+              <div style={{ fontSize: "12px", color: "#d4ff59", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>
                 Paid Users & Remaining Credits ({paidUsers.length})
               </div>
               
@@ -472,7 +474,7 @@ export default function AdminDashboard() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ background: '#222', padding: '8px 16px', borderRadius: '4px', border: '1px solid #444', color: '#FFD700', fontWeight: '600', fontSize: '14px' }}>
+                    <div style={{ background: '#222', padding: '8px 16px', borderRadius: '4px', border: '1px solid #444', color: '#d4ff59', fontWeight: '600', fontSize: '14px' }}>
                       {u.credits} Traces
                     </div>
                   </div>
@@ -485,7 +487,7 @@ export default function AdminDashboard() {
 
         {/* Footer Text */}
         <div style={{ marginTop: '40px', color: '#555', fontSize: '12px', textAlign: 'center' }}>
-          Auto-Tracer Admin Panel &copy; 2026 &nbsp;·&nbsp;
+          Syncraft Admin Panel &copy; 2026 &nbsp;·&nbsp;
           <span style={{ color: '#2a6', fontSize: '11px' }}>⚡ Live — Realtime notifications active</span>
         </div>
 

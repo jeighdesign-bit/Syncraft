@@ -35,7 +35,7 @@
           border: 1px solid #555;
           color: #d5d5d5;
           padding: 10px 20px;
-          border-radius: 0;
+          border-radius: 12px;
           font-size: 13px;
           text-transform: uppercase;
           letter-spacing: 1px;
@@ -46,7 +46,7 @@
 
         .start-btn:hover:not(.disabled) {
           background: #3a3a3a;
-          border-color: #FFD700;
+          border-color: #d4ff59;
         }
 
         .start-btn.disabled {
@@ -58,7 +58,7 @@
           width: 600px;
           height: 120px;
           border: 1px solid #444;
-          border-radius: 0;
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -99,12 +99,12 @@
 
         .recent-grid::-webkit-scrollbar-track {
           background: #1a1a1a;
-          border-radius: 0;
+          border-radius: 12px;
         }
 
         .recent-grid::-webkit-scrollbar-thumb {
           background: #444;
-          border-radius: 0;
+          border-radius: 12px;
         }
 
         .recent-grid::-webkit-scrollbar-thumb:hover {
@@ -113,7 +113,7 @@
 
         .recent-card {
           background: #2a2a2a;
-          border-radius: 0;
+          border-radius: 12px;
           overflow: hidden;
           cursor: pointer;
           border: 1px solid #444;
@@ -121,7 +121,7 @@
         }
 
         .recent-card:hover {
-          border-color: #FFD700;
+          border-color: #d4ff59;
         }
 
         .recent-thumb {
@@ -162,7 +162,7 @@
           color: #888;
           cursor: pointer;
           padding: 4px;
-          border-radius: 0;
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -170,7 +170,7 @@
         }
 
         .dots-btn:hover {
-          color: #FFD700;
+          color: #d4ff59;
         }
 
         .dropdown-menu {
@@ -180,7 +180,7 @@
           margin-bottom: 5px;
           background: #2a2a2a;
           border: 1px solid #444;
-          border-radius: 0;
+          border-radius: 12px;
           padding: 4px;
           display: flex;
           flex-direction: column;
@@ -200,7 +200,7 @@
           text-transform: uppercase;
           letter-spacing: 0.5px;
           cursor: pointer;
-          border-radius: 0;
+          border-radius: 12px;
           display: flex;
           align-items: center;
           gap: 6px;
@@ -230,13 +230,13 @@
           color: #fff;
           font-size: 12px;
           padding: 4px 6px;
-          border-radius: 0;
+          border-radius: 12px;
           outline: none;
           width: 50%;
         }
 
         .inline-edit input:focus {
-          border-color: #FFD700;
+          border-color: #d4ff59;
         }
 
         .save-btn,
@@ -273,7 +273,7 @@
         .modal-content {
           background: #262626;
           border: 1px solid #444;
-          border-radius: 0;
+          border-radius: 12px;
           padding: 24px;
           width: 500px;
           max-width: 90vw;
@@ -303,14 +303,14 @@
           border: 1px solid #444;
           color: #fff;
           padding: 10px;
-          border-radius: 0;
+          border-radius: 12px;
           font-size: 14px;
           box-sizing: border-box;
           transition: border-color 0.2s;
         }
 
         .modal-input:focus {
-          border-color: #FFD700;
+          border-color: #d4ff59;
           outline: none;
         }
 
@@ -323,7 +323,7 @@
         .trace-card {
           background: #1a1a1a;
           border: 1px solid #444;
-          border-radius: 0;
+          border-radius: 12px;
           padding: 15px;
           cursor: pointer;
           transition: all 0.2s;
@@ -335,8 +335,8 @@
         }
 
         .trace-card.selected {
-          border-color: #FFD700;
-          background: rgba(255, 215, 0, 0.05);
+          border-color: #d4ff59;
+          background: rgba(212, 255, 89, 0.05);
         }
 
         .trace-icon {
@@ -346,7 +346,7 @@
         }
 
         .trace-card.selected .trace-icon {
-          color: #FFD700;
+          color: #d4ff59;
         }
 
         .trace-card h4 {
@@ -374,7 +374,7 @@
           border: 1px solid #555;
           color: #ccc;
           padding: 8px 16px;
-          border-radius: 0;
+          border-radius: 12px;
           cursor: pointer;
         }
 
@@ -383,11 +383,11 @@
         }
 
         .btn-primary {
-          background: #FFD700;
+          background: #d4ff59;
           color: #000;
           border: none;
           padding: 8px 16px;
-          border-radius: 0;
+          border-radius: 12px;
           font-weight: 600;
           cursor: pointer;
         }
@@ -410,7 +410,7 @@
           height: 180px;
           background: #222;
           border-bottom: 1px solid #333;
-          border-radius: 0;
+          border-radius: 12px;
           position: relative;
           overflow: hidden;
         }
@@ -425,7 +425,7 @@
           height: 14px;
           background: #333;
           width: 60%;
-          border-radius: 0;
+          border-radius: 12px;
           position: relative;
           overflow: hidden;
         }
@@ -489,7 +489,7 @@
           width: 100%;
           background: #2a2a2a;
           border: 2px dashed #555;
-          border-radius: 0;
+          border-radius: 12px;
           padding: 30px;
           display: flex;
           flex-direction: column;
@@ -499,7 +499,7 @@
         }
 
         .hero-upload-box:hover {
-          border-color: #FFD700;
+          border-color: #d4ff59;
           background: #2c2c2c;
         }
 
@@ -515,7 +515,7 @@
           max-width: 400px;
           height: auto;
           box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-          border-radius: 0;
+          border-radius: 12px;
           border: 1px solid #444;
           background: #111;
           padding: 20px;
@@ -545,7 +545,7 @@
         }
 
         .footer-link:hover {
-          color: #FFD700;
+          color: #d4ff59;
         }
 
         /* Marquee Animation */

@@ -5,6 +5,6 @@ export default function robots() {
       allow: '/',
       disallow: ['/admin', '/api/', '/workspace/', '/mobile'],
     },
-    sitemap: 'https://desaynclaw.com/sitemap.xml',
+    sitemap: 'https://syncraft.com/sitemap.xml',
   }
 }

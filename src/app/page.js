@@ -9,7 +9,7 @@ import { createClient } from "@/utils/supabase/client";
 import { toast } from "@/components/Toast";
 import { compressImageClientSide } from "@/utils/imageUtils";
 
-import { ImageIcon, Monitor, LogIn, FilePlus, User, Trash2, LogOut, CheckCircle2, X, Loader2, Scan, Scissors, ShieldCheck, Code2 } from "lucide-react";
+import { ImageIcon, Monitor, LogIn, FilePlus, User, Trash2, LogOut, CheckCircle2, X, Loader2, Scan, Scissors, ShieldCheck, Code2, Upload } from "lucide-react";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 import "./globals.css";
@@ -66,7 +66,7 @@ function AnimatedCounter() {
       padding: "60px 40px",
       background: "linear-gradient(145deg, #161616, #111)",
       border: "1px solid #222",
-      borderRadius: "0",
+      borderRadius: "12px",
       textAlign: "center",
       display: "flex",
       flexDirection: "column",
@@ -74,7 +74,7 @@ function AnimatedCounter() {
       gap: "12px",
       boxShadow: "0 20px 40px rgba(0,0,0,0.4)"
     }}>
-      <div style={{ color: "#FFD700", fontSize: "12px", fontWeight: "800", letterSpacing: "3px", textTransform: "uppercase" }}>
+      <div style={{ color: "#d4ff59", fontSize: "12px", fontWeight: "800", letterSpacing: "3px", textTransform: "uppercase" }}>
         TRUSTED NATIONWIDE
       </div>
       <div style={{ 
@@ -427,7 +427,7 @@ export default function StartScreen() {
       {/* Global Drag & Drop Overlay */}
       {isDraggingGlobal && (
         <div
-          style={{ position: "fixed", inset: 0, background: "rgba(26,26,26,0.95)", zIndex: 99999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: "4px dashed #FFD700" }}
+          style={{ position: "fixed", inset: 0, background: "rgba(26,26,26,0.95)", zIndex: 99999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: "4px dashed #d4ff59" }}
           onDragOver={(e) => e.preventDefault()}
           onDragLeave={() => setIsDraggingGlobal(false)}
           onDrop={(e) => {
@@ -438,8 +438,8 @@ export default function StartScreen() {
             }
           }}
         >
-          <div style={{ background: "#FFD700", padding: "24px", borderRadius: "50%", marginBottom: "24px" }}><ImageIcon size={48} color="#000" /></div>
-          <h2 style={{ color: "#FFD700", fontSize: "32px", margin: 0, fontWeight: "800" }}>Drop your image anywhere</h2>
+          <div style={{ background: "#d4ff59", padding: "24px", borderRadius: "50%", marginBottom: "24px" }}><ImageIcon size={48} color="#000" /></div>
+          <h2 style={{ color: "#d4ff59", fontSize: "32px", margin: 0, fontWeight: "800" }}>Drop your image anywhere</h2>
           <p style={{ color: "#aaa", fontSize: "16px", marginTop: "12px" }}>Release to start tracing instantly.</p>
         </div>
       )}
@@ -450,7 +450,7 @@ export default function StartScreen() {
         <div style={{ display: "flex", width: "100%", maxWidth: "1200px", alignItems: "center", justifyContent: "space-between" }}>
           {/* Left: Brand/Logo Mini (Hidden at top to avoid redundancy) */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", opacity: scrolled ? 1 : 0, pointerEvents: scrolled ? "auto" : "none", transition: "opacity 0.3s ease" }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <img src="/nav bar logo.png" alt="DesaynClaw Navbar Logo" style={{ height: "32px", width: "auto" }} />
+            <img src="/logo.svg" alt="DesaynClaw Navbar Logo" style={{ height: "32px", width: "auto" }} />
           </div>
 
           {/* Right: Auth & Credits */}
@@ -458,16 +458,16 @@ export default function StartScreen() {
             {user ? (
               <>
                 {/* Premium Credits Badge */}
-                <div onClick={() => setShowTopUpModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", background: "#2a2a2a", padding: "6px 12px", borderRadius: "0", cursor: "pointer", border: "1px solid #444", transition: "border-color 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor = "#FFD700"} onMouseOut={e => e.currentTarget.style.borderColor = "#444"}>
-                  <span style={{ color: "#FFD700", fontWeight: "bold", fontSize: "14px", fontFamily: "monospace" }}>{credits}</span>
+                <div onClick={() => setShowTopUpModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", background: "#2a2a2a", padding: "6px 12px", borderRadius: "12px", cursor: "pointer", border: "1px solid #444", transition: "border-color 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor = "#d4ff59"} onMouseOut={e => e.currentTarget.style.borderColor = "#444"}>
+                  <span style={{ color: "#d4ff59", fontWeight: "bold", fontSize: "14px", fontFamily: "monospace" }}>{credits}</span>
                   <span style={{ color: "#888", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>CREDITS</span>
                 </div>
 
                 {/* Profile Pill */}
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.05)", padding: "4px 12px 4px 4px", borderRadius: "0", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.05)", padding: "4px 12px 4px 4px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
                   {user.user_metadata?.avatar_url ? (
-                    <img src={user.user_metadata.avatar_url} referrerPolicy="no-referrer" style={{ width: 24, height: 24, borderRadius: "0" }} alt="Avatar" />
-                  ) : <div style={{ width: 24, height: 24, borderRadius: "0", background: "#333", display: "flex", alignItems: "center", justifyContent: "center" }}><User size={14} color="#aaa" /></div>}
+                    <img src={user.user_metadata.avatar_url} referrerPolicy="no-referrer" style={{ width: 24, height: 24, borderRadius: "12px" }} alt="Avatar" />
+                  ) : <div style={{ width: 24, height: 24, borderRadius: "12px", background: "#333", display: "flex", alignItems: "center", justifyContent: "center" }}><User size={14} color="#aaa" /></div>}
                   <span style={{ fontSize: "13px", color: "#ddd", fontWeight: "500", textTransform: "uppercase", letterSpacing: "1px" }}>{user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0]}</span>
                 </div>
 
@@ -477,7 +477,7 @@ export default function StartScreen() {
                 </button>
               </>
             ) : (
-              <button onClick={handleLogin} className="start-btn" style={{ background: "#FFD700", color: "#000", borderColor: "#FFD700", display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", padding: "8px 16px", borderRadius: "0", textTransform: "uppercase", letterSpacing: "1px" }}>
+              <button onClick={handleLogin} className="start-btn" style={{ background: "#d4ff59", color: "#000", borderColor: "#d4ff59", display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", padding: "8px 16px", borderRadius: "12px", textTransform: "uppercase", letterSpacing: "1px" }}>
                 <LogIn size={16} /> Log In
               </button>
             )}
@@ -490,7 +490,7 @@ export default function StartScreen() {
         {showCopyrightNotice && (
           <div style={{ position: "absolute", top: 0, left: 0, width: "100%", background: "#111", borderBottom: "1px solid rgba(255,255,255,0.08)", zIndex: 3 }}>
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "center", gap: "14px", color: "#d8d8d8", fontSize: "12px", lineHeight: "1.5", textAlign: "center" }}>
-              <ShieldCheck size={15} color="#FFD700" style={{ flexShrink: 0 }} />
+              <ShieldCheck size={15} color="#d4ff59" style={{ flexShrink: 0 }} />
               <span>
                 Copyright reminder: only upload or generate designs you own, are authorized to use, or have rights to process. Unauthorized copyrighted or trademarked content may be removed.
               </span>
@@ -514,7 +514,7 @@ export default function StartScreen() {
             {/* LOGO AND UPLOAD BOX (ALWAYS VISIBLE) */}
             <div className="hero-left" style={{ margin: "0" }}>
               <div className="start-logo" style={{ marginBottom: "30px", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-                <img src="/logo.png" alt="DesaynClaw Logo" style={{ width: "350px", maxWidth: "100%", height: "auto", margin: 0 }} />
+                <img src="/logo.svg" alt="DesaynClaw Logo" style={{ width: "350px", maxWidth: "100%", height: "auto", margin: 0 }} />
                 <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.8)", margin: "5px 0 0 0", fontWeight: "500" }}>Developed by desaynbro</p>
 
                 {/* PUBLIC STATS */}
@@ -559,33 +559,44 @@ export default function StartScreen() {
                 <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } router.push('/upscale'); }} disabled={isUploading} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", transition: "all 0.2s", whiteSpace: "nowrap" }}>
                   <ImageIcon size={14} /> Image Upscale
                 </button>
-                <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } bgRemoveInputRef.current.click(); }} disabled={isUploading} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#FFD700", border: "1px solid rgba(255, 215, 0, 0.4)", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "700", transition: "all 0.2s", whiteSpace: "nowrap", boxShadow: "0 0 10px rgba(255,215,0,0.1)" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(255,215,0,0.1)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                  <Scissors size={14} color="#FFD700" /> BG Remover
+                <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } bgRemoveInputRef.current.click(); }} disabled={isUploading} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d4ff59", border: "1px solid rgba(212, 255, 89, 0.4)", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "700", transition: "all 0.2s", whiteSpace: "nowrap", boxShadow: "0 0 10px rgba(212, 255, 89,0.1)" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(212, 255, 89,0.1)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                  <Scissors size={14} color="#d4ff59" /> BG Remover
                 </button>
               </div>
 
               <div className="hero-upload-box"
-                style={{ flex: 1, background: "#2a2a2a", padding: "30px", borderRadius: "0", border: "2px dashed #444", boxShadow: "none", textAlign: "center" }}
-                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (e.dataTransfer.files?.length > 0) {
-                    openModalWithFile(e.dataTransfer.files[0]);
-                  }
-                }}
+                style={{ flex: 1, background: "#161616", padding: "32px", borderRadius: "24px", display: "flex", flexDirection: "column", gap: "24px", boxShadow: "0 10px 30px rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.03)" }}
               >
-                <div style={{ marginBottom: "20px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                  <input type="checkbox" id="aiEnhance" defaultChecked style={{ width: "16px", height: "16px", accentColor: "#FFD700" }} />
-                  <label htmlFor="aiEnhance" style={{ fontSize: "14px", color: "#ccc", cursor: "pointer" }}><strong>Enhance image with AI</strong> (Removes noise)</label>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+                  <input type="checkbox" id="aiEnhance" defaultChecked style={{ width: "16px", height: "16px", accentColor: "#007AFF", cursor: "pointer" }} />
+                  <label htmlFor="aiEnhance" style={{ fontSize: "14px", color: "#fff", cursor: "pointer", fontWeight: "600", letterSpacing: "0.3px" }}>Enhance Image with AI <span style={{ color: "#888", fontWeight: "400" }}>(Removes noise)</span></label>
                 </div>
 
-                <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } fileInputRef.current.click(); }} disabled={isUploading} style={{ background: "transparent", color: "#e0e0e0", border: "1px solid #444", borderRadius: "0", fontSize: "16px", padding: "16px 24px", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", fontWeight: "500", transition: "all 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.background = "#333"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
-                  {isUploading ? <><Monitor size={18} className="animate-pulse" /> Uploading...</> : <><Monitor size={18} /> Upload Images</>}
-                </button>
-                <div style={{ marginTop: "15px", display: "flex", flexDirection: "column", gap: "4px", alignItems: "center" }}>
-                  <span style={{ color: "#888", fontSize: "14px" }}>or drop an image</span>
-                  <span style={{ color: "#555", fontSize: "12px", fontFamily: "monospace" }}>.png, .jpg, .jpeg, .webp</span>
+                <div 
+                  style={{ width: "100%", flex: 1, background: "#0e0e0e", borderRadius: "16px", padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.2s", border: "1px solid #1a1a1a" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#121212"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "#0e0e0e"}
+                  onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } fileInputRef.current.click(); }}
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.dataTransfer.files?.length > 0) {
+                      openModalWithFile(e.dataTransfer.files[0]);
+                    }
+                  }}
+                >
+
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#fff", fontWeight: "700", fontSize: "18px", letterSpacing: "0.5px", marginBottom: "24px" }}>
+                    {isUploading ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}
+                    {isUploading ? "UPLOADING..." : "UPLOAD IMAGES"}
+                  </div>
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "center" }}>
+                    <span style={{ color: "#777", fontSize: "14px" }}>or drop an image</span>
+                    <span style={{ color: "#555", fontSize: "13px" }}>.png, .jpg, .jpeg, .webp</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -630,12 +641,8 @@ export default function StartScreen() {
           </div>
         </div>
 
-        {/* CURVED WAVE SVG DIVIDER (Matching the app background) */}
-        <div style={{ position: "absolute", bottom: "-1px", left: 0, width: "100%", overflow: "hidden", lineHeight: 0 }}>
-          <svg viewBox="0 0 1440 320" xmlns="http://www.w3.org/2000/svg" style={{ display: "block", width: "100%", height: "auto" }}>
-            <path fill="#262626" fillOpacity="1" d="M0,160L48,170.7C96,181,192,203,288,197.3C384,192,480,160,576,149.3C672,139,768,149,864,170.7C960,192,1056,224,1152,213.3C1248,203,1344,149,1392,122.7L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-          </svg>
-        </div>
+        {/* CLEAN STRAIGHT DIVIDER (Replaced curved wave for new UI) */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: "1px", background: "linear-gradient(to right, transparent, #333, transparent)" }}></div>
       </div>
 
       {/* Main Content Wrapper (For the rest of the page) */}
@@ -694,7 +701,7 @@ export default function StartScreen() {
           {/* Section Header */}
           <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "32px" }}>
             <div style={{
-              background: "#FFD700",
+              background: "#d4ff59",
               color: "#000",
               fontSize: "11px",
               fontWeight: "800",
@@ -717,6 +724,8 @@ export default function StartScreen() {
             gap: "1px",
             background: "#333",
             border: "1px solid #333",
+            borderRadius: "16px",
+            overflow: "hidden",
           }}>
 
             {/* Card 1 — Sublimation Print Shops */}
@@ -732,8 +741,8 @@ export default function StartScreen() {
               onMouseEnter={e => e.currentTarget.style.background = "#252525"}
               onMouseLeave={e => e.currentTarget.style.background = "#1e1e1e"}
             >
-              <div style={{ width: "44px", height: "44px", background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFD700" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
+              <div style={{ width: "44px", height: "44px", background: "rgba(212, 255, 89,0.08)", border: "1px solid rgba(212, 255, 89,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4ff59" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
               </div>
               <div>
                 <div style={{ fontSize: "15px", fontWeight: "700", color: "#fff", marginBottom: "8px", letterSpacing: "0.3px" }}>Sublimation Print Shops</div>
@@ -754,8 +763,8 @@ export default function StartScreen() {
               onMouseEnter={e => e.currentTarget.style.background = "#252525"}
               onMouseLeave={e => e.currentTarget.style.background = "#1e1e1e"}
             >
-              <div style={{ width: "44px", height: "44px", background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFD700" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+              <div style={{ width: "44px", height: "44px", background: "rgba(212, 255, 89,0.08)", border: "1px solid rgba(212, 255, 89,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4ff59" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
               </div>
               <div>
                 <div style={{ fontSize: "15px", fontWeight: "700", color: "#fff", marginBottom: "8px", letterSpacing: "0.3px" }}>Logos &amp; Branding</div>
@@ -776,8 +785,8 @@ export default function StartScreen() {
               onMouseEnter={e => e.currentTarget.style.background = "#252525"}
               onMouseLeave={e => e.currentTarget.style.background = "#1e1e1e"}
             >
-              <div style={{ width: "44px", height: "44px", background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFD700" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+              <div style={{ width: "44px", height: "44px", background: "rgba(212, 255, 89,0.08)", border: "1px solid rgba(212, 255, 89,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4ff59" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
               </div>
               <div>
                 <div style={{ fontSize: "15px", fontWeight: "700", color: "#fff", marginBottom: "8px", letterSpacing: "0.3px" }}>School &amp; Sports Uniforms</div>
@@ -798,8 +807,8 @@ export default function StartScreen() {
               onMouseEnter={e => e.currentTarget.style.background = "#252525"}
               onMouseLeave={e => e.currentTarget.style.background = "#1e1e1e"}
             >
-              <div style={{ width: "44px", height: "44px", background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFD700" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 4V2" /><path d="M15 16v-2" /><path d="M8 9h2" /><path d="M20 9h2" /><path d="M17.8 11.8 19 13" /><path d="M15 9h.01" /><path d="M17.8 6.2 19 5" /><path d="m3 21 9-9" /><path d="M12.2 6.2 11 5" /></svg>
+              <div style={{ width: "44px", height: "44px", background: "rgba(212, 255, 89,0.08)", border: "1px solid rgba(212, 255, 89,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4ff59" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 4V2" /><path d="M15 16v-2" /><path d="M8 9h2" /><path d="M20 9h2" /><path d="M17.8 11.8 19 13" /><path d="M15 9h.01" /><path d="M17.8 6.2 19 5" /><path d="m3 21 9-9" /><path d="M12.2 6.2 11 5" /></svg>
               </div>
               <div>
                 <div style={{ fontSize: "15px", fontWeight: "700", color: "#fff", marginBottom: "8px", letterSpacing: "0.3px" }}>Freelance Designers</div>
@@ -810,17 +819,17 @@ export default function StartScreen() {
           </div>
         </div>
         
-        {/* Animated Counter Section */}
-        <AnimatedCounter />
-
         {/* ────────────────────────────────────────────────────────────────────── */}
+        <div style={{ width: "100%", maxWidth: "1200px", margin: "60px auto 40px", padding: "0 20px" }}>
+          <img src="/Banner.png" alt="Banner" style={{ width: "100%", height: "auto", borderRadius: "12px", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }} />
+        </div>
 
         <EduSection />
 
         {/* Feature Cards below Hero */}
         <div id="samples-section" style={{ marginTop: '80px', marginBottom: '60px' }}>
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <h3 style={{ color: "#FFD700", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1.5px", margin: 0, fontWeight: "bold" }}>Sample Extractions</h3>
+            <h3 style={{ color: "#d4ff59", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1.5px", margin: 0, fontWeight: "bold" }}>Sample Extractions</h3>
             <h2 style={{ color: "#fff", fontSize: "24px", margin: "8px 0 0 0", fontWeight: "700" }}>Pixel-Perfect Vectorization</h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
@@ -960,7 +969,7 @@ export default function StartScreen() {
         {isUploading && !showModal && (
           <div className="modal-overlay" style={{ zIndex: 9999 }}>
             <div className="modal-content" style={{ maxWidth: "340px", textAlign: "center", padding: "40px 30px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <Loader2 size={32} color="#FFD700" className="animate-spin" style={{ marginBottom: "20px" }} />
+              <Loader2 size={32} color="#d4ff59" className="animate-spin" style={{ marginBottom: "20px" }} />
               <div style={{ fontSize: "16px", color: "#fff", fontWeight: "600", marginBottom: "8px" }}>Preparing Image...</div>
               <p style={{ color: "#aaa", margin: 0, fontSize: "13px", lineHeight: "1.6" }}>
                 Transferring your photo to the workspace.
@@ -970,9 +979,11 @@ export default function StartScreen() {
         )}
 
 
-        <footer style={{ marginTop: "100px", borderTop: "1px solid #222", padding: "40px 0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "20px" }}>
+        <AnimatedCounter />
+
+        <footer style={{ marginTop: "60px", borderTop: "1px solid #222", padding: "40px 0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "20px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-            <img src="/logo.png" alt="DesaynClaw Logo" style={{ width: "140px", height: "auto", filter: "grayscale(100%) opacity(0.7)" }} />
+            <img src="/logo.svg" alt="DesaynClaw Logo" style={{ width: "140px", height: "auto", filter: "grayscale(100%) opacity(0.7)" }} />
             <span style={{ color: "#555", fontSize: "13px" }}>© 2024-2026</span>
           </div>
 
@@ -984,7 +995,7 @@ export default function StartScreen() {
             <a href="/privacy" className="footer-link">FAQ</a>
             <a href="/refunds" className="footer-link">Refund Policy</a>
             <a href="https://m.me/105884602605306" target="_blank" rel="noreferrer" className="footer-link">Contact</a>
-            <a href="https://m.me/105884602605306" target="_blank" rel="noreferrer" className="footer-link" style={{ color: "#FFD700" }}>Customer Support</a>
+            <a href="https://m.me/105884602605306" target="_blank" rel="noreferrer" className="footer-link" style={{ color: "#d4ff59" }}>Customer Support</a>
           </div>
         </footer>
 

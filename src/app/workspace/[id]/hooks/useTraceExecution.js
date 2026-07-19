@@ -42,7 +42,7 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
   const handleExecuteTrace = useCallback(async (vectorColors = "auto") => {
     if (!project || traceState !== "idle") return;
 
-    if (userCredits !== null && userCredits <= 0) {
+    if (userCredits !== null && userCredits < 12) {
       onNoCredits?.();
       return;
     }
@@ -50,8 +50,7 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
     // Reset per-node errors
     setNodeErrors({ step1: null, step2: null, step3: null });
 
-    // Deduct locally in UI for immediate feedback
-    if (userCredits > 0) setUserCredits(prev => prev - 1);
+    if (userCredits >= 12) setUserCredits(prev => prev - 12);
 
     // Fetch auth token once — used for all secure API calls in this pipeline
     let authToken = null;
@@ -59,13 +58,19 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       const { data: { session } } = await supabase.auth.getSession();
       authToken = session?.access_token || null;
     } catch {
-      // Token fetch failed — save-asset calls will still work via server-side project check
+      // Token fetch failed
+    }
+
+    if (!authToken) {
+      setTraceState("idle");
+      setNodeErrors(prev => ({ ...prev, step1: "You must be logged in to trace." }));
+      return;
     }
 
     try {
       // ─── Step 1: Gemini ───────────────────────────────────────────────
       setTraceState("step1");
-      clearConsole("[Step 1] Analyzing Image with DesaynVision™...");
+      clearConsole("[Step 1] Analyzing Image with SyncraftVision™...");
 
       const res1 = await fetch("/api/trace", {
         method: "POST",
@@ -77,9 +82,11 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       });
 
       if (!res1.ok) {
-        const errData = res1.headers.get("content-type")?.includes("application/json")
-          ? await res1.json()
-          : { error: res1.status === 504 ? "504 Timeout" : `Server Error ${res1.status}` };
+        let errData = {};
+        const rawText = await res1.text();
+        try { errData = JSON.parse(rawText); } catch {
+          errData = { error: res1.status === 504 ? "504 Timeout" : `Server Error ${res1.status}` };
+        }
         const msg = errData.error || `Error ${res1.status}`;
         if (msg === "INSUFFICIENT_CREDITS") {
           setUserCredits(0);
@@ -91,7 +98,9 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
         throw new Error(msg);
       }
 
-      const data1 = await res1.json();
+      const rawData1 = await res1.text();
+      let data1;
+      try { data1 = JSON.parse(rawData1); } catch { throw new Error("Invalid response from server (Step 1)"); }
       logToConsole("[Step 1.5] Saving extracted image...", "normal");
 
       const save1 = await fetch("/api/save-asset", {
@@ -106,7 +115,7 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       const saveData1 = await save1.json();
 
       setProject(prev => ({ ...prev, generated_image_url: saveData1.url }));
-      logToConsole("[Success] Image Extracted by DesaynVision™!", "success");
+      logToConsole("[Success] Image Extracted by SyncraftVision™!", "success");
 
       // ─── Step 2: Upscale ─────────────────────────────────────────────
       setTraceState("step2");
@@ -122,15 +131,19 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       });
 
       if (!res2.ok) {
-        const errData = res2.headers.get("content-type")?.includes("application/json")
-          ? await res2.json()
-          : { error: res2.status === 504 ? "504 Timeout" : `Server Error ${res2.status}` };
+        let errData = {};
+        const rawText = await res2.text();
+        try { errData = JSON.parse(rawText); } catch {
+          errData = { error: res2.status === 504 ? "504 Timeout" : `Server Error ${res2.status}` };
+        }
         const msg = errData.error || `Error ${res2.status}`;
         setNodeErrors(prev => ({ ...prev, step2: msg }));
         throw new Error(msg);
       }
 
-      const data2 = await res2.json();
+      const rawData2 = await res2.text();
+      let data2;
+      try { data2 = JSON.parse(rawData2); } catch { throw new Error("Invalid response from server (Step 2)"); }
       logToConsole("[Step 2.5] Saving upscaled image...", "normal");
 
       const save2 = await fetch("/api/save-asset", {
@@ -161,15 +174,19 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       });
 
       if (!res3.ok) {
-        const errData = res3.headers.get("content-type")?.includes("application/json")
-          ? await res3.json()
-          : { error: res3.status === 504 ? "504 Timeout" : `Server Error ${res3.status}` };
+        let errData = {};
+        const rawText = await res3.text();
+        try { errData = JSON.parse(rawText); } catch {
+          errData = { error: res3.status === 504 ? "504 Timeout" : `Server Error ${res3.status}` };
+        }
         const msg = errData.error || `Error ${res3.status}`;
         setNodeErrors(prev => ({ ...prev, step3: msg }));
         throw new Error(msg);
       }
 
-      const data3 = await res3.json();
+      const rawData3 = await res3.text();
+      let data3;
+      try { data3 = JSON.parse(rawData3); } catch { throw new Error("Invalid response from server (Step 3)"); }
       setProject(prev => ({ ...prev, svg_url: data3.svg_url }));
       logToConsole("[Success] Vectorization Complete!", "success");
 
@@ -195,8 +212,8 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
           });
           const refundData = await refundRes.json();
           if (refundData.success) {
-            logToConsole("[System] Generation failed. 1 Credit has been refunded.", "success");
-            if (userCredits !== null) setUserCredits(prev => prev + 1);
+            logToConsole("[System] Generation failed. 12 Credits have been refunded.", "success");
+            if (userCredits !== null) setUserCredits(prev => prev + 12);
           }
         }
       } catch {

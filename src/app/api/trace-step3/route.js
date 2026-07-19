@@ -114,10 +114,10 @@ export async function POST(request) {
     const vectorizeFormData = new FormData();
     vectorizeFormData.append('image', blob, 'image.png');
 
-    console.log("[Step 3] Sending to Recraft vectorize (RECRAFT_API_KEY)...");
+    console.log("[Step 3] Sending to Recraft vectorize (RECRAFT_API_TOKEN)...");
     const recraftVectorRes = await fetchWithRetry("https://external.api.recraft.ai/v1/images/vectorize", {
       method: "POST",
-      headers: { "Authorization": `Bearer ${process.env.RECRAFT_API_KEY}` },
+      headers: { "Authorization": `Bearer ${process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY}` },
       body: vectorizeFormData,
       signal: AbortSignal.timeout(110000), // 110s — large images need time to upload + process
     });

@@ -19,30 +19,30 @@ export const metadata = {
     "upscale jpg",
     "print ready image upscaler",
     "sublimation upscale tool",
-    "desaynclaw upscaler",
+    "syncraft upscaler",
   ],
   alternates: {
-    canonical: "https://desaynclaw.com/upscale",
+    canonical: "https://syncraft.com/upscale",
   },
   openGraph: {
-    title: "AI 4K Image Upscaler | DesaynClaw",
+    title: "AI 4K Image Upscaler | Syncraft",
     description:
       "Upscale any jersey design, logo, or photo to 4K using AI. Ideal for sublimation and DTF print shops needing high-res artwork.",
-    url: "https://desaynclaw.com/upscale",
+    url: "https://syncraft.com/upscale",
     images: [
       {
-        url: "/DESAYNCLAW-Image.JPG",
+        url: "/SYNCRAFT-Image.JPG",
         width: 1230,
         height: 807,
-        alt: "DesaynClaw AI 4K Image Upscaler",
+        alt: "Syncraft AI 4K Image Upscaler",
       },
     ],
   },
   twitter: {
-    title: "AI 4K Image Upscaler | DesaynClaw",
+    title: "AI 4K Image Upscaler | Syncraft",
     description:
       "Upscale low-res jersey designs and logos to 4K quality using AI. Built for sublimation print shops.",
-    images: ["/DESAYNCLAW-Image.JPG"],
+    images: ["/SYNCRAFT-Image.JPG"],
   },
 };
 

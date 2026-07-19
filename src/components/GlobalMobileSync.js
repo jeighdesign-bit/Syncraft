@@ -69,7 +69,7 @@ export default function GlobalMobileSync() {
       <div style={{ background: "#1a1a1a", border: "1px solid #444", width: "100%", maxWidth: "800px", display: "flex", flexDirection: "column", boxShadow: "0 20px 40px rgba(0,0,0,0.5)", borderRadius: "12px" }}>
         
         <div style={{ padding: "16px 24px", borderBottom: "1px solid #444", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#222", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
-          <span style={{ fontSize: "12px", color: "#FFD700", textTransform: "uppercase", letterSpacing: "2px", fontWeight: "bold" }}>Incoming Mobile Uplink</span>
+          <span style={{ fontSize: "12px", color: "#d4ff59", textTransform: "uppercase", letterSpacing: "2px", fontWeight: "bold" }}>Incoming Mobile Uplink</span>
           <button onClick={() => setReceivedImage(null)} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <X size={20} />
           </button>
@@ -87,10 +87,10 @@ export default function GlobalMobileSync() {
             <div
               onClick={() => handleRoute("garment")}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "20px 16px", border: "2px solid #444", borderRadius: 10, cursor: "pointer", background: "transparent", transition: "all 0.18s", textAlign: "center" }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#FFD700"; e.currentTarget.style.background = "rgba(255,215,0,0.06)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.background = "rgba(212, 255, 89,0.06)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.background = "transparent"; }}
             >
-              <div style={{ color: "#FFD700" }}><Shirt size={40} strokeWidth={1.2} /></div>
+              <div style={{ color: "#d4ff59" }}><Shirt size={40} strokeWidth={1.2} /></div>
               <div>
                 <p style={{ margin: "0 0 4px 0", color: "#fff", fontSize: "15px", fontWeight: 700 }}>Garment</p>
                 <p style={{ margin: 0, fontSize: "11px", color: "#888", lineHeight: 1.5 }}>Extract the flat pattern as SVG.</p>
@@ -100,10 +100,10 @@ export default function GlobalMobileSync() {
             <div
               onClick={() => handleRoute("logo")}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "20px 16px", border: "2px solid #444", borderRadius: 10, cursor: "pointer", background: "transparent", transition: "all 0.18s", textAlign: "center" }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#FFD700"; e.currentTarget.style.background = "rgba(255,215,0,0.06)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.background = "rgba(212, 255, 89,0.06)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.background = "transparent"; }}
             >
-              <div style={{ color: "#FFD700" }}><LogoIcon /></div>
+              <div style={{ color: "#d4ff59" }}><LogoIcon /></div>
               <div>
                 <p style={{ margin: "0 0 4px 0", color: "#fff", fontSize: "15px", fontWeight: 700 }}>Logo / Wordmark</p>
                 <p style={{ margin: 0, fontSize: "11px", color: "#888", lineHeight: 1.5 }}>Vectorize with exact color.</p>
@@ -113,11 +113,11 @@ export default function GlobalMobileSync() {
             <div
               onClick={() => handleRoute("bg_remover")}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "20px 16px", border: "2px solid #444", borderRadius: 10, cursor: "pointer", background: "transparent", transition: "all 0.18s", textAlign: "center", position: "relative" }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#FFD700"; e.currentTarget.style.background = "rgba(255,215,0,0.06)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.background = "rgba(212, 255, 89,0.06)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.background = "transparent"; }}
             >
-              <div style={{ position: "absolute", top: 8, right: 8, background: "#FFD700", color: "#000", fontSize: "9px", fontWeight: 800, padding: "2px 6px", borderRadius: 4, letterSpacing: "0.5px" }}>AI</div>
-              <div style={{ color: "#FFD700" }}><Scissors size={40} strokeWidth={1.2} /></div>
+              <div style={{ position: "absolute", top: 8, right: 8, background: "#d4ff59", color: "#000", fontSize: "9px", fontWeight: 800, padding: "2px 6px", borderRadius: 4, letterSpacing: "0.5px" }}>AI</div>
+              <div style={{ color: "#d4ff59" }}><Scissors size={40} strokeWidth={1.2} /></div>
               <div>
                 <p style={{ margin: "0 0 4px 0", color: "#fff", fontSize: "15px", fontWeight: 700 }}>BG Remover</p>
                 <p style={{ margin: 0, fontSize: "11px", color: "#888", lineHeight: 1.5 }}>Remove backgrounds instantly.</p>

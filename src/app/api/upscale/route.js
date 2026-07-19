@@ -50,14 +50,14 @@ export async function POST(request) {
       .eq('id', userId)
       .single();
 
-    if (profileErr || !profile || profile.credits <= 0) {
+    if (profileErr || !profile || profile.credits < 12) {
       return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
     }
 
-    // Deduct 1 Credit
+    // Deduct 12 Credits
     const { error: deductErr, data: updatedData } = await adminSupabase
       .from('profiles')
-      .update({ credits: profile.credits - 1 })
+      .update({ credits: profile.credits - 12 })
       .eq('id', userId)
       .eq('credits', profile.credits)
       .select();
@@ -71,7 +71,7 @@ export async function POST(request) {
     await adminSupabase.from('credit_logs').insert({
       user_id: userId,
       action: 'AI Upscale (4K)',
-      amount: -1
+      amount: -12
     });
 
     // Process via fal.ai
@@ -123,7 +123,13 @@ export async function POST(request) {
     if (creditDeducted && userId) {
       await safeRefundCredit(userId);
     }
-    const safeMessage = error.message?.includes('fal') ? 'AI processing failed. Your credit has been refunded.' : (error.message || 'Failed to process upscale');
+    const safeMessage =
+      error.message?.toLowerCase().includes('fal') ||
+      error.message?.toLowerCase().includes('api') ||
+      error.message?.toLowerCase().includes('key') ||
+      error.message === 'Unauthorized'
+        ? 'AI provider authentication failed (Unauthorized/Keys). Your credit has been refunded automatically.'
+        : (error.message || 'Failed to upscale image');
     return NextResponse.json({ error: safeMessage }, { status: 500 });
   }
 }

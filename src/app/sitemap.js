@@ -1,5 +1,5 @@
 export default function sitemap() {
-  const baseUrl = 'https://desaynclaw.com';
+  const baseUrl = 'https://syncraft.com';
   const now = new Date();
 
   return [
