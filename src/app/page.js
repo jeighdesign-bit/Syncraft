@@ -830,18 +830,23 @@ export default function StartScreen() {
         <EduSection />
 
         {/* Feature Cards below Hero */}
-        <div id="samples-section" style={{ marginTop: '80px', marginBottom: '60px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <h3 style={{ color: "#d4ff59", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1.5px", margin: 0, fontWeight: "bold" }}>Sample Extractions</h3>
-            <h2 style={{ color: "#fff", fontSize: "24px", margin: "8px 0 0 0", fontWeight: "700" }}>Pixel-Perfect Vectorization</h2>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
-            <BeforeAfterSlider
-              title="Custom Pattern (Flat Extracted)"
-              rasterUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/users/08bafd26-e228-4a97-9efa-84a930c90098/1784601880631_crop_1784601878596.jpg"
-              vectorUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/projects/6b65be66-7696-4cd1-9ef5-ddb220c200fa/vector_1784601963265.svg"
-              objectFit="cover"
-            />
+        <div id="samples-section" style={{ width: "100%", maxWidth: "1200px", margin: "80px auto 60px", padding: "0 20px" }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '60px', alignItems: 'center' }}>
+            <div style={{ width: "100%" }}>
+              <BeforeAfterSlider
+                title="Custom Pattern (Flat Extracted)"
+                rasterUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/users/08bafd26-e228-4a97-9efa-84a930c90098/1784601880631_crop_1784601878596.jpg"
+                vectorUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/projects/6b65be66-7696-4cd1-9ef5-ddb220c200fa/vector_1784601963265.svg"
+                objectFit="cover"
+              />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <h3 style={{ color: "#d4ff59", fontSize: "14px", textTransform: "uppercase", letterSpacing: "1.5px", margin: 0, fontWeight: "bold" }}>Sample Extractions</h3>
+              <h2 style={{ color: "#fff", fontSize: "40px", margin: "16px 0", fontWeight: "700", lineHeight: "1.2" }}>Image to Vector</h2>
+              <p style={{ color: "#a0a0a0", fontSize: "18px", lineHeight: "1.6", margin: 0 }}>
+                Experience pixel-perfect vectorization with our advanced AI. We instantly transform your low-resolution raster images (PNG, JPG) into infinitely scalable, ultra-clean SVG files—ready for printing, editing, or scaling to any size without losing quality.
+              </p>
+            </div>
           </div>
         </div>
         <TestimonialSection />
