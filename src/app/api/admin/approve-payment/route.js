@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
 import { Resend } from "resend";
+import { CREDIT_PLANS } from "@/lib/paymentPlans";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 const PLAN_CREDITS = {
-  tingi: 24,    // 2 generates
-  basic: 48,    // 4 generates
-  starter: 96,  // 8 generates
-  pro: 168,     // 14 generates
-  elite: 360    // 30 generates
+  tingi: CREDIT_PLANS.tingi.credits,
+  basic: CREDIT_PLANS.basic.credits,
+  starter: CREDIT_PLANS.starter.credits,
+  pro: CREDIT_PLANS.pro.credits,
+  elite: CREDIT_PLANS.elite.credits
 };
 
 export async function POST(request) {
