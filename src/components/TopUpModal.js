@@ -12,7 +12,8 @@ const PLANS_META = {
   tingi:   { desc: 'Small package for quick tests.',                          features: ['2 HD Vector Traces', 'Standard Processing'] },
   basic:   { desc: 'Great for hobbyists printing occasionally.',               features: ['4 HD Vector Traces', 'Standard Processing'] },
   starter: { desc: 'Ideal for small businesses taking their first steps.',     features: ['13 HD Vector Traces', 'Priority Processing', 'Email support'] },
-  pro:     { desc: 'Perfect for print shops & growing design studios.',        best: true, features: ['45 HD Vector Traces', 'Highest Priority Queue', 'Unlimited storage', 'Priority support'] },
+  pro:     { desc: 'Perfect for print shops & growing design studios.',        best: true, features: ['25 HD Vector Traces', 'Highest Priority Queue', 'Unlimited storage', 'Priority support'] },
+  elite:   { desc: 'For high-volume agencies & power users.',                  features: ['45 HD Vector Traces', 'Dedicated Queue', 'Unlimited storage', 'Premium support'] },
 };
 
 const PLANS = Object.values(CREDIT_PLANS).map((plan) => ({

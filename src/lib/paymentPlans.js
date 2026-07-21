@@ -22,7 +22,7 @@ export const CREDIT_PLANS = {
   starter: {
     key: "starter",
     label: "Starter",
-    credits: 96,        // 8 generates × 12 tokens
+    credits: 156,       // 13 generates × 12 tokens
     price: "₱299",
     amount: 29900,
     currency: "PHP",
@@ -32,7 +32,7 @@ export const CREDIT_PLANS = {
   pro: {
     key: "pro",
     label: "Pro",
-    credits: 168,       // 14 generates × 12 tokens
+    credits: 300,       // 25 generates × 12 tokens
     price: "₱499",
     amount: 49900,
     currency: "PHP",
@@ -42,7 +42,7 @@ export const CREDIT_PLANS = {
   elite: {
     key: "elite",
     label: "Elite",
-    credits: 360,       // 30 generates × 12 tokens
+    credits: 540,       // 45 generates × 12 tokens
     price: "₱799",
     amount: 79900,
     currency: "PHP",

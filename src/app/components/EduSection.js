@@ -6,40 +6,40 @@ const EduSection = memo(function EduSection() {
   return (
     <>
       {/* HOW TO USE / DEMO VIDEO SECTION */}
-      <div className="demo-section" style={{ marginTop: "60px", width: "100%", display: "flex", gap: "60px", alignItems: "center", background: "transparent", padding: "0" }}>
+      <div className="demo-section" style={{ marginTop: "60px", width: "100%", display: "flex", flexDirection: "column", gap: "40px", alignItems: "center", background: "transparent", padding: "0" }}>
         
-        {/* Video Left */}
-        <div style={{ flex: "1 1 50%" }}>
+        {/* Video Top */}
+        <div style={{ width: "100%", maxWidth: "1000px", overflow: "hidden", borderRadius: "12px", border: "1px solid #333", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}>
           <video 
-            src="/demo.mp4" 
+            src="/TUTORIAL.mp4" 
             autoPlay 
             muted 
             loop 
             playsInline 
-            style={{ width: "100%", borderRadius: "8px", border: "1px solid #333" }} 
+            style={{ width: "100%", display: "block" }} 
           />
         </div>
 
-        {/* Text Details Right */}
-        <div style={{ flex: "1 1 50%", textAlign: "left", display: "flex", flexDirection: "column", gap: "20px" }}>
+        {/* Text Details Bottom */}
+        <div style={{ width: "100%", maxWidth: "800px", textAlign: "center", display: "flex", flexDirection: "column", gap: "20px", alignItems: "center" }}>
           <h3 style={{ color: "#d4ff59", fontSize: "14px", textTransform: "uppercase", letterSpacing: "1.5px", margin: 0, fontWeight: "bold" }}>How to Use Syncraft</h3>
-          <h2 style={{ color: "#fff", fontSize: "28px", margin: 0, fontWeight: "700", lineHeight: "1.2" }}>Convert images in seconds.</h2>
-          <p style={{ color: "#aaa", fontSize: "16px", lineHeight: "1.6", margin: 0 }}>
+          <h2 style={{ color: "#fff", fontSize: "32px", margin: 0, fontWeight: "700", lineHeight: "1.2" }}>Convert images in seconds.</h2>
+          <p style={{ color: "#aaa", fontSize: "18px", lineHeight: "1.6", margin: 0 }}>
             Our advanced AI handles the complex tracing process for you. No manual pen tool required.
           </p>
           
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "15px" }}>
+          <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "15px", alignItems: "flex-start", textAlign: "left", width: "100%", maxWidth: "500px" }}>
             <li style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
               <div style={{ background: "#333", color: "#d4ff59", width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold", flexShrink: 0 }}>1</div>
-              <div style={{ color: "#d5d5d5", fontSize: "14px", lineHeight: "1.5" }}>Upload any PNG or JPEG logo, sketch, or photo.</div>
+              <div style={{ color: "#d5d5d5", fontSize: "15px", lineHeight: "1.5" }}>Upload any PNG or JPEG logo, sketch, or photo.</div>
             </li>
             <li style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
               <div style={{ background: "#333", color: "#d4ff59", width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold", flexShrink: 0 }}>2</div>
-              <div style={{ color: "#d5d5d5", fontSize: "14px", lineHeight: "1.5" }}>Our neural engine cleans noise and traces perfect vector paths.</div>
+              <div style={{ color: "#d5d5d5", fontSize: "15px", lineHeight: "1.5" }}>Our neural engine cleans noise and traces perfect vector paths.</div>
             </li>
             <li style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
               <div style={{ background: "#333", color: "#d4ff59", width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold", flexShrink: 0 }}>3</div>
-              <div style={{ color: "#d5d5d5", fontSize: "14px", lineHeight: "1.5" }}>Download your crisp, infinitely scalable SVG instantly.</div>
+              <div style={{ color: "#d5d5d5", fontSize: "15px", lineHeight: "1.5" }}>Download your crisp, infinitely scalable SVG instantly.</div>
             </li>
           </ul>
         </div>

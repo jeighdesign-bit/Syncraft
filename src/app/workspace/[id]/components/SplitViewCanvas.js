@@ -260,8 +260,8 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
     else if (traceState === "step2") setActiveTab("upscaled");
     else if (traceState === "step3") setActiveTab("svg");
     else if (traceState === "idle") {
-      if (project?.svg_url) setActiveTab("svg");
-      else if (project?.upscaled_image_url) setActiveTab("upscaled");
+      if (project?.upscaled_image_url) setActiveTab("upscaled");
+      else if (project?.svg_url) setActiveTab("svg");
       else if (project?.generated_image_url) setActiveTab("generated");
     }
   }, [traceState, project?.svg_url, project?.upscaled_image_url, project?.generated_image_url]);

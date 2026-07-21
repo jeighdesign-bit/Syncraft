@@ -624,16 +624,18 @@ export default function StartScreen() {
               <div className="hero-right" style={{ width: "100%", display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
                   <BeforeAfterSlider
-                    title="Untitled Design 2"
-                    rasterUrl="/samples/esports-original.jpg"
-                    vectorUrl="/samples/esports-vector.png"
+                    title="Custom Design 2"
+                    rasterUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/users/08bafd26-e228-4a97-9efa-84a930c90098/1784548330290_crop_1784548327816.jpg"
+                    vectorUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/projects/91cfc49d-010c-4c10-b1de-4d568edd6b9e/vector_1784548431214.svg"
                     height="220px"
+                    objectFit="cover"
                   />
                   <BeforeAfterSlider
-                    title="Polo Shirt Pattern"
-                    rasterUrl="/samples/polo-original.png"
-                    vectorUrl="/samples/polo-vector.png"
+                    title="Custom Pattern"
+                    rasterUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/users/08bafd26-e228-4a97-9efa-84a930c90098/1784601880631_crop_1784601878596.jpg"
+                    vectorUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/projects/6b65be66-7696-4cd1-9ef5-ddb220c200fa/vector_1784601963265.svg"
                     height="220px"
+                    objectFit="cover"
                   />
                 </div>
               </div>
@@ -650,48 +652,49 @@ export default function StartScreen() {
 
         {/* SCROLLING TRUST MARQUEE (MINIMAL & ALIGNED) */}
         <div className="marquee-container" style={{ 
-          padding: "10px 0",
-          background: "transparent", 
-          borderTop: "1px solid #2a2a2a",
-          borderBottom: "1px solid #2a2a2a",
+          padding: "20px 0",
+          background: "linear-gradient(to right, transparent, rgba(255,255,255,0.02), transparent)", 
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
           width: "100%",
-          marginBottom: "0px"
+          marginBottom: "0px",
+          marginTop: "20px"
         }}>
           <div className="marquee-content">
             {/* 1st Set */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 50px", color: "#777" }}>
-              <ShieldCheck size={16} color="#777" />
-              <span style={{ fontSize: "13px", fontWeight: "600", letterSpacing: "1.5px", textTransform: "uppercase" }}>100% Private & Secure</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
+              <ShieldCheck size={22} color="#999" />
+              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>100% Private & Secure</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 50px", color: "#777" }}>
-              <Trash2 size={16} color="#777" />
-              <span style={{ fontSize: "13px", fontWeight: "600", letterSpacing: "1.5px", textTransform: "uppercase" }}>Auto-deletes after 3 days</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
+              <Trash2 size={22} color="#999" />
+              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>Auto-deletes after 3 days</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 50px", color: "#777" }}>
-              <Code2 size={16} color="#777" />
-              <span style={{ fontSize: "13px", fontWeight: "600", letterSpacing: "1.5px", textTransform: "uppercase" }}>Built by Real Developers</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
+              <Code2 size={22} color="#999" />
+              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>Built by Real Developers</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 50px", color: "#777" }}>
-              <Monitor size={16} color="#777" />
-              <span style={{ fontSize: "13px", fontWeight: "600", letterSpacing: "1.5px", textTransform: "uppercase" }}>Highly Scalable Infrastructure</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
+              <Monitor size={22} color="#999" />
+              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>Highly Scalable Infrastructure</span>
             </div>
             
             {/* 2nd Set (Duplicate for seamless loop) */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 50px", color: "#777" }}>
-              <ShieldCheck size={16} color="#777" />
-              <span style={{ fontSize: "13px", fontWeight: "600", letterSpacing: "1.5px", textTransform: "uppercase" }}>100% Private & Secure</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
+              <ShieldCheck size={22} color="#999" />
+              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>100% Private & Secure</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 50px", color: "#777" }}>
-              <Trash2 size={16} color="#777" />
-              <span style={{ fontSize: "13px", fontWeight: "600", letterSpacing: "1.5px", textTransform: "uppercase" }}>Auto-deletes after 3 days</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
+              <Trash2 size={22} color="#999" />
+              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>Auto-deletes after 3 days</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 50px", color: "#777" }}>
-              <Code2 size={16} color="#777" />
-              <span style={{ fontSize: "13px", fontWeight: "600", letterSpacing: "1.5px", textTransform: "uppercase" }}>Built by Real Developers</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
+              <Code2 size={22} color="#999" />
+              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>Built by Real Developers</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 50px", color: "#777" }}>
-              <Monitor size={16} color="#777" />
-              <span style={{ fontSize: "13px", fontWeight: "600", letterSpacing: "1.5px", textTransform: "uppercase" }}>Highly Scalable Infrastructure</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
+              <Monitor size={22} color="#999" />
+              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>Highly Scalable Infrastructure</span>
             </div>
           </div>
         </div>
@@ -834,14 +837,10 @@ export default function StartScreen() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
             <BeforeAfterSlider
-              title="Esports Gaming Apparel (Flat Extracted)"
-              rasterUrl="/samples/esports-original.jpg"
-              vectorUrl="/samples/esports-vector.png"
-            />
-            <BeforeAfterSlider
-              title="Polo Shirt Pattern (Flat Extracted)"
-              rasterUrl="/samples/polo-original.png"
-              vectorUrl="/samples/polo-vector.png"
+              title="Custom Pattern (Flat Extracted)"
+              rasterUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/users/08bafd26-e228-4a97-9efa-84a930c90098/1784601880631_crop_1784601878596.jpg"
+              vectorUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/projects/6b65be66-7696-4cd1-9ef5-ddb220c200fa/vector_1784601963265.svg"
+              objectFit="cover"
             />
           </div>
         </div>
@@ -1002,11 +1001,11 @@ export default function StartScreen() {
       </div>
 
 
-      {/* Promo Popup */}
-      <PromoModal onBuyClick={() => window.open('https://m.me/105884602605306', '_blank')} />
+      {/* Promo Popup (Removed) */}
+      {/* <PromoModal onBuyClick={() => window.open('https://m.me/105884602605306', '_blank')} /> */}
 
-      {/* AI Guidelines Popup */}
-      <AIDisclaimerModal />
+      {/* AI Guidelines Popup (Removed) */}
+      {/* <AIDisclaimerModal /> */}
 
       {/* ─── SEO: FAQ Structured Data (JSON-LD) ─────────────────────────────── */}
       <script

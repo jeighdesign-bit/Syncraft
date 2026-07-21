@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 
 /** Fetches SVG text and injects inline for reliable cross-browser SVG rendering */
-function InlineSVG({ url, style }) {
+function InlineSVG({ url, style, objectFit = 'cover' }) {
   const [svgHtml, setSvgHtml] = useState(null);
   const [isSvg, setIsSvg] = useState(true);
 
@@ -44,7 +44,8 @@ function InlineSVG({ url, style }) {
                 clean += ` viewBox="0 0 ${w} ${h}"`;
               }
             }
-            return `<svg${clean} style="width:100%;height:100%;display:block;" preserveAspectRatio="xMidYMid meet">`;
+            const preserve = objectFit === 'contain' ? 'xMidYMid meet' : 'xMidYMid slice';
+            return `<svg${clean} style="width:100%;height:100%;display:block;" preserveAspectRatio="${preserve}">`;
           });
           setSvgHtml(scaled);
         } else {
@@ -66,7 +67,7 @@ function InlineSVG({ url, style }) {
   return <div style={{ ...style, overflow: 'hidden' }} dangerouslySetInnerHTML={{ __html: svgHtml }} />;
 }
 
-export default function BeforeAfterSlider({ title, rasterUrl, vectorUrl, height = '400px' }) {
+export default function BeforeAfterSlider({ title, rasterUrl, vectorUrl, height = '400px', objectFit = 'cover' }) {
   const [sliderPosition, setSliderPosition] = useState(50);
 
   return (
@@ -90,14 +91,15 @@ export default function BeforeAfterSlider({ title, rasterUrl, vectorUrl, height 
           <img 
             src={rasterUrl} 
             alt="Original Photo" 
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} 
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit }} 
           />
           <span style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.7)', padding: '4px 10px', fontSize: '11px', color: '#fff', borderRadius: '0', zIndex: 1 }}>Original Photo</span>
           
           {/* Vectorized SVG (Foreground / Left Side) */}
           <InlineSVG 
             url={vectorUrl} 
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`, zIndex: 2 }} 
+            objectFit={objectFit}
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit, clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`, zIndex: 2 }} 
           />
           <span style={{ position: 'absolute', top: 12, left: 12, background: '#d4ff59', padding: '4px 10px', fontSize: '11px', color: '#000', fontWeight: 'bold', borderRadius: '0', zIndex: 3, opacity: sliderPosition > 10 ? 1 : 0, transition: 'opacity 0.2s' }}>Vectorized SVG</span>
 
