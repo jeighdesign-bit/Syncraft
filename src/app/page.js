@@ -999,6 +999,7 @@ export default function StartScreen() {
             <a href="/privacy" className="footer-link">FAQ</a>
             <a href="/refunds" className="footer-link">Refund Policy</a>
             <a href="https://m.me/105884602605306" target="_blank" rel="noreferrer" className="footer-link">Contact</a>
+            <a href="/api-dashboard" className="footer-link" style={{ fontWeight: "bold" }}>API</a>
             <a href="https://m.me/105884602605306" target="_blank" rel="noreferrer" className="footer-link" style={{ color: "#d4ff59" }}>Customer Support</a>
           </div>
         </footer>
