@@ -74,17 +74,20 @@ const CropModal = memo(function CropModal({
         return;
       }
 
-      const formData = new FormData();
-      formData.append("file", new File([blob], `crop_${Date.now()}.jpg`, { type: "image/jpeg" }));
-
-      const uploadRes = await fetch("/api/upload-direct", {
+      const urlRes = await fetch("/api/upload-url", {
         method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: formData,
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ fileName: `crop_${Date.now()}.jpg`, contentType: "image/jpeg" }),
       });
-      const urlData = await uploadRes.json();
-      if (!uploadRes.ok || !urlData.publicUrl) throw new Error(urlData.error || "Failed to upload crop");
+      const urlData = await urlRes.json();
+      if (!urlRes.ok || !urlData.uploadUrl) throw new Error(urlData.error || "Failed to get upload URL");
 
+      const putRes = await fetch(urlData.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "image/jpeg" },
+        body: blob,
+      });
+      if (!putRes.ok) throw new Error("Failed to upload crop to storage");
 
       const res = await fetch("/api/crop", {
         method: "POST",

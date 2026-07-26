@@ -133,18 +133,22 @@ export default function UpscalePage() {
       const token = sessionRes.data.session?.access_token;
       if (!token) throw new Error("Unauthorized");
 
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/upload-direct", {
+      const res = await fetch("/api/upload-url", {
         method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: formData,
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ fileName, contentType: file.type }),
       });
       const data = await res.json();
-      if (!res.ok || !data.publicUrl) throw new Error("Failed to upload image");
+      if (!res.ok || !data.uploadUrl) throw new Error("Failed to get upload URL");
       
-      const { publicUrl } = data;
+      const { uploadUrl, publicUrl } = data;
+
+      const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error("Failed to upload image to S3");
       return publicUrl;
     } catch (error) {
       console.error(error);

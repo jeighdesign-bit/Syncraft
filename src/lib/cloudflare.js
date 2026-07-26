@@ -10,7 +10,6 @@ export const publicUrl = process.env.CLOUDFLARE_PUBLIC_URL || process.env.CF_R2_
 export const s3Client = new S3Client({
   region: "auto",
   endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-  forcePathStyle: true,
   credentials: {
     accessKeyId,
     secretAccessKey,

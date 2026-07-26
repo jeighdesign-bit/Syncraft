@@ -123,9 +123,8 @@ export function isAllowedStorageUrl(urlString, { userId, projectId } = {}) {
     if (!allowedHosts.includes(parsed.hostname.toLowerCase())) return false;
 
     const decodedPath = decodeURIComponent(parsed.pathname);
-    // Support both R2 paths (/users/...) and Supabase Storage paths (/storage/v1/.../users/...)
-    if (userId && !decodedPath.includes(`/users/${userId}/`)) return false;
-    if (projectId && !decodedPath.includes(`/projects/${projectId}/`)) return false;
+    if (userId && !decodedPath.startsWith(`/users/${userId}/`)) return false;
+    if (projectId && !decodedPath.startsWith(`/projects/${projectId}/`)) return false;
     return true;
   } catch {
     return false;
