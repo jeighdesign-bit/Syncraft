@@ -355,21 +355,17 @@ export default function StartScreen() {
       const token = sessionRes.data.session?.access_token;
       if (!token) { setIsUploading(false); handleLogin(); return; }
 
-      const urlRes = await fetch("/api/upload-url", {
+      const formData = new FormData();
+      formData.append("file", fileToUpload);
+
+      const uploadRes = await fetch("/api/upload-direct", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ fileName: fileToUpload.name, contentType: fileToUpload.type })
+        headers: { "Authorization": `Bearer ${token}` },
+        body: formData
       });
 
-      const urlData = await urlRes.json();
-      if (!urlRes.ok || !urlData.uploadUrl) throw new Error(urlData.error || "Failed to get upload URL");
-
-      const putRes = await fetch(urlData.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": fileToUpload.type },
-        body: fileToUpload
-      });
-      if (!putRes.ok) throw new Error("Failed to upload image to storage");
+      const urlData = await uploadRes.json();
+      if (!uploadRes.ok || !urlData.publicUrl) throw new Error(urlData.error || "Failed to upload image");
 
       const finalTraceType = isBgRemover ? "bg_remover" : (mobileTraceType || modalTraceType);
 

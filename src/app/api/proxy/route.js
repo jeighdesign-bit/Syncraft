@@ -16,12 +16,19 @@ const LEGACY_R2_HOSTS = [
   "pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev", // old Syncraft R2 domain
 ];
 
+// Supabase Storage host — used as fallback when R2 S3 endpoint is unreachable (local dev)
+const SUPABASE_HOST = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
+  : null;
+
 const ALLOWED_HOSTS = [
   R2_PUBLIC_HOST,
   // R2 S3-compatible endpoint — images uploaded via presigned URLs may have this as source
   ...(R2_STORAGE_HOST ? [R2_STORAGE_HOST] : []),
   // Legacy domains for backward compatibility with old project URLs
   ...LEGACY_R2_HOSTS,
+  // Supabase Storage fallback
+  ...(SUPABASE_HOST ? [SUPABASE_HOST] : []),
 ];
 
 export async function GET(request) {

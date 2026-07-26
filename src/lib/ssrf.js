@@ -23,6 +23,14 @@ function configuredR2Hosts() {
   }
 
   hosts.add('pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev');
+
+  // Allow Supabase Storage as fallback (used when R2 S3 endpoint is unreachable locally)
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    try {
+      hosts.add(new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname.toLowerCase());
+    } catch {}
+  }
+
   return [...hosts];
 }
 
@@ -115,8 +123,9 @@ export function isAllowedStorageUrl(urlString, { userId, projectId } = {}) {
     if (!allowedHosts.includes(parsed.hostname.toLowerCase())) return false;
 
     const decodedPath = decodeURIComponent(parsed.pathname);
-    if (userId && !decodedPath.startsWith(`/users/${userId}/`)) return false;
-    if (projectId && !decodedPath.startsWith(`/projects/${projectId}/`)) return false;
+    // Support both R2 paths (/users/...) and Supabase Storage paths (/storage/v1/.../users/...)
+    if (userId && !decodedPath.includes(`/users/${userId}/`)) return false;
+    if (projectId && !decodedPath.includes(`/projects/${projectId}/`)) return false;
     return true;
   } catch {
     return false;

@@ -10,6 +10,7 @@ export const publicUrl = process.env.CLOUDFLARE_PUBLIC_URL || process.env.CF_R2_
 export const s3Client = new S3Client({
   region: "auto",
   endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+  forcePathStyle: true,
   credentials: {
     accessKeyId,
     secretAccessKey,
@@ -33,16 +34,43 @@ export async function getUploadUrl(fileName, contentType) {
 }
 
 export async function uploadToR2(buffer, fileName, contentType) {
-  const command = new PutObjectCommand({
-    Bucket: bucketName,
-    Key: fileName,
-    Body: buffer,
-    ContentType: contentType,
-  });
+  try {
+    const command = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: fileName,
+      Body: buffer,
+      ContentType: contentType,
+    });
 
-  await s3Client.send(command);
-  
-  return `${publicUrl}/${fileName}`;
+    await s3Client.send(command);
+    
+    return `${publicUrl}/${fileName}`;
+  } catch (s3Error) {
+    // Fallback to Supabase Storage when R2 S3 endpoint is unreachable (e.g. local TLS issues)
+    console.warn('[uploadToR2] S3 failed, falling back to Supabase Storage:', s3Error.code || s3Error.message);
+    
+    const { adminSupabase } = await import('@/lib/supabase');
+    const storageBucket = 'project-assets';
+    
+    const { data: storageData, error: storageError } = await adminSupabase
+      .storage
+      .from(storageBucket)
+      .upload(fileName, buffer, {
+        contentType,
+        upsert: false,
+      });
+
+    if (storageError) {
+      throw new Error(`Supabase Storage upload also failed: ${storageError.message} (original R2 error: ${s3Error.message})`);
+    }
+
+    const { data: urlData } = adminSupabase
+      .storage
+      .from(storageBucket)
+      .getPublicUrl(storageData.path);
+
+    return urlData.publicUrl;
+  }
 }
 
 export function getR2KeyFromUrl(fileUrl) {
