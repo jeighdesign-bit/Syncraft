@@ -8,6 +8,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import TopUpModal from "@/components/TopUpModal";
 import { compressImageClientSide } from "@/utils/imageUtils";
+import { uploadImageToStorage } from "@/utils/uploadClient";
 import FeedbackWidget from "@/app/workspace/[id]/components/FeedbackWidget";
 import "../globals.css";
 import "../home.css";
@@ -133,23 +134,7 @@ export default function UpscalePage() {
       const token = sessionRes.data.session?.access_token;
       if (!token) throw new Error("Unauthorized");
 
-      const res = await fetch("/api/upload-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ fileName, contentType: file.type }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.uploadUrl) throw new Error("Failed to get upload URL");
-      
-      const { uploadUrl, publicUrl } = data;
-
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      if (!uploadRes.ok) throw new Error("Failed to upload image to S3");
-      return publicUrl;
+      return await uploadImageToStorage(file, { token, fileName });
     } catch (error) {
       console.error(error);
       throw new Error("Image upload failed");

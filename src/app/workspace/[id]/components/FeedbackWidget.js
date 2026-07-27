@@ -60,7 +60,7 @@ export default function FeedbackWidget({ projectId, initialRating = null }) {
             title={`${value} Star${value > 1 ? 's' : ''}`}
           >
             <Star
-              size={28}
+              size={20}
               fill={(hoverRating || rating) >= value ? "#fbbf24" : "transparent"}
               color={(hoverRating || rating) >= value ? "#fbbf24" : "#555"}
               strokeWidth={1.5}
@@ -70,7 +70,7 @@ export default function FeedbackWidget({ projectId, initialRating = null }) {
         ))}
       </div>
       
-      <div className={styles.optionalFeedback} style={{ animation: "none", marginTop: "12px" }}>
+      <div className={styles.optionalFeedback} style={{ animation: "none" }}>
         <textarea
           placeholder="Tell us what you liked or how we can improve... (Optional)"
           value={feedbackText}

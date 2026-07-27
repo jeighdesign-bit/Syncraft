@@ -2,6 +2,7 @@
 
 import { memo, useState, useRef, useCallback, useEffect } from "react";
 import { Eraser, X, Save } from "lucide-react";
+import { uploadImageToStorage } from "@/utils/uploadClient";
 
 /**
  * EraseModal — Isolated canvas drawing modal.
@@ -123,36 +124,26 @@ const EraseModal = memo(function EraseModal({
         return;
       }
 
-      // 1. Get pre-signed upload URL
-      const urlRes = await fetch("/api/upload-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ fileName: `erased_${Date.now()}.jpg`, contentType: "image/jpeg" }),
+      // 1. Upload the erased image
+      const erasedImageUrl = await uploadImageToStorage(blob, {
+        token,
+        fileName: `erased_${Date.now()}.jpg`,
+        contentType: "image/jpeg",
       });
-      const urlData = await urlRes.json();
-      if (!urlRes.ok || !urlData.uploadUrl) throw new Error(urlData.error || "Failed to get upload URL");
 
-      // 2. Upload to R2 directly from client
-      const putRes = await fetch(urlData.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": "image/jpeg" },
-        body: blob,
-      });
-      if (!putRes.ok) throw new Error("Failed to upload erased image to storage");
-
-      // 3. Update original_image_url
+      // 2. Update original_image_url
       const res = await fetch("/api/crop", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}` // Required: route now verifies auth
         },
-        body: JSON.stringify({ projectId: project.id, croppedImageUrl: urlData.publicUrl }),
+        body: JSON.stringify({ projectId: project.id, croppedImageUrl: erasedImageUrl }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      onEraseApplied?.(urlData.publicUrl);
+      onEraseApplied?.(erasedImageUrl);
       onClose();
     } catch (err) {
       setErrorMsg(err.message);

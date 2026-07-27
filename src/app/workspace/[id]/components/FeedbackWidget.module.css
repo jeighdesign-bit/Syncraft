@@ -1,34 +1,32 @@
+/* Flush with the rest of the panel — no nested card chrome. The parent
+   PropertiesPanel section already supplies padding + a border-bottom
+   divider, so this stays a plain block to avoid a card-in-card look. */
 .feedbackContainer {
-  margin-top: 24px;
-  padding: 16px;
-  background-color: var(--card-bg, #1a1a1a);
-  border: 1px solid var(--border-color, #333);
-  border-radius: 8px;
-  text-align: center;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 10px;
   animation: fadeIn 0.4s ease-out;
 }
 
 .title {
   margin: 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary, #a1a1aa);
+  font-size: 11px;
+  font-weight: 600;
+  color: #999;
+  line-height: 1.4;
 }
 
 .starsRow {
   display: flex;
-  gap: 8px;
-  justify-content: center;
+  gap: 6px;
+  justify-content: flex-start;
 }
 
 .starBtn {
   background: none;
   border: none;
-  padding: 4px;
+  padding: 2px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -50,58 +48,65 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--text-primary, #fff);
-  margin-bottom: 8px;
+  color: #ddd;
 }
 
 .optionalFeedback {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 400px;
   gap: 8px;
-  margin-top: 8px;
   animation: slideDown 0.3s ease-out;
 }
 
 .optionalFeedback textarea {
   width: 100%;
-  min-height: 60px;
-  padding: 10px;
-  border-radius: 6px;
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-color, #333);
-  color: #fff;
+  min-height: 56px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background-color: #212121;
+  border: 1px solid #333;
+  color: #ddd;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 11.5px;
+  line-height: 1.5;
   resize: vertical;
+}
+
+.optionalFeedback textarea::placeholder {
+  color: #666;
 }
 
 .optionalFeedback textarea:focus {
   outline: none;
-  border-color: var(--accent, #3b82f6);
+  border-color: #d4ff59;
 }
 
 .submitBtn {
-  align-self: flex-end;
-  background-color: var(--accent, #3b82f6);
-  color: white;
-  border: none;
+  width: 100%;
+  background-color: #d4ff59;
+  color: #0a0a0a;
+  border: 1px solid #d4ff59;
   border-radius: 4px;
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 500;
+  padding: 10px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: background-color 0.2s;
 }
 
 .submitBtn:hover:not(:disabled) {
-  opacity: 0.9;
+  background-color: #bfe650;
 }
 
 .submitBtn:disabled {
-  opacity: 0.5;
+  background-color: rgba(212, 255, 89, 0.08);
+  border-color: #333;
+  color: #555;
   cursor: not-allowed;
 }
 

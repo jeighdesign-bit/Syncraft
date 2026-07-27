@@ -9,27 +9,39 @@ export const DEFAULT_MAX_UPSCALED_IMAGE_BYTES = 60 * 1024 * 1024;
 export const DEFAULT_MAX_SVG_BYTES = 8 * 1024 * 1024;
 export const DEFAULT_MAX_ZIP_BYTES = 120 * 1024 * 1024;
 
+function supabaseStorageHost() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return null;
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
 function configuredR2Hosts() {
   const hosts = new Set();
 
-  if (process.env.CLOUDFLARE_PUBLIC_URL) {
+  // Accept both env var spellings, matching lib/cloudflare.js — the deployment
+  // defines CF_R2_*, so reading only CLOUDFLARE_* left the real public bucket
+  // host out of the allowlist and rejected every R2-hosted image.
+  const publicUrl = process.env.CLOUDFLARE_PUBLIC_URL || process.env.CF_R2_PUBLIC_URL;
+  if (publicUrl) {
     try {
-      hosts.add(new URL(process.env.CLOUDFLARE_PUBLIC_URL).hostname.toLowerCase());
+      hosts.add(new URL(publicUrl).hostname.toLowerCase());
     } catch {}
   }
 
-  if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_BUCKET_NAME) {
-    hosts.add(`${process.env.CLOUDFLARE_BUCKET_NAME}.${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`.toLowerCase());
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID;
+  const bucketName = process.env.CLOUDFLARE_BUCKET_NAME || process.env.CF_R2_BUCKET_NAME;
+  if (accountId && bucketName) {
+    hosts.add(`${bucketName}.${accountId}.r2.cloudflarestorage.com`.toLowerCase());
   }
 
   hosts.add('pub-c1f9daa772cc48a394341ecc043e63a5.r2.dev');
 
   // Allow Supabase Storage as fallback (used when R2 S3 endpoint is unreachable locally)
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    try {
-      hosts.add(new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname.toLowerCase());
-    } catch {}
-  }
+  const supabaseHost = supabaseStorageHost();
+  if (supabaseHost) hosts.add(supabaseHost);
 
   return [...hosts];
 }
@@ -115,16 +127,34 @@ export function normalizeUserImageUrl(urlString, requestOrigin) {
   return trimmed;
 }
 
+// R2 serves an object at the root of its public host (/users/<id>/file.png), while
+// Supabase Storage nests the same key under /storage/v1/object/<mode>/<bucket>/.
+// Reduce both to the bare object key so ownership stays an exact prefix match.
+const SUPABASE_STORAGE_PREFIX = /^\/storage\/v1\/object\/(?:public|authenticated|sign)\/[^/]+/;
+
 export function isAllowedStorageUrl(urlString, { userId, projectId } = {}) {
   try {
     const parsed = new URL(urlString);
     const allowedHosts = getAllowedStorageHosts();
+    const host = parsed.hostname.toLowerCase();
     if (!['http:', 'https:'].includes(parsed.protocol)) return false;
-    if (!allowedHosts.includes(parsed.hostname.toLowerCase())) return false;
+    if (!allowedHosts.includes(host)) return false;
 
+    // new URL() collapses literal dot segments, but percent-encoded ones survive
+    // until the decode below — reject those rather than prefix-matching past them.
     const decodedPath = decodeURIComponent(parsed.pathname);
-    if (userId && !decodedPath.startsWith(`/users/${userId}/`)) return false;
-    if (projectId && !decodedPath.startsWith(`/projects/${projectId}/`)) return false;
+    if (decodedPath.split('/').includes('..')) return false;
+
+    let objectPath = decodedPath;
+    if (host === supabaseStorageHost()) {
+      // On the Supabase host only real storage paths are objects — everything else
+      // is API surface and must never satisfy an ownership check.
+      if (!SUPABASE_STORAGE_PREFIX.test(decodedPath)) return false;
+      objectPath = decodedPath.replace(SUPABASE_STORAGE_PREFIX, '');
+    }
+
+    if (userId && !objectPath.startsWith(`/users/${userId}/`)) return false;
+    if (projectId && !objectPath.startsWith(`/projects/${projectId}/`)) return false;
     return true;
   } catch {
     return false;

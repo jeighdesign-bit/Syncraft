@@ -4,6 +4,7 @@ import { memo, useState, useRef, useCallback } from "react";
 import { Scissors, X } from "lucide-react";
 import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
+import { uploadImageToStorage } from "@/utils/uploadClient";
 
 /**
  * CropModal — Isolated crop modal with its own state.
@@ -74,20 +75,11 @@ const CropModal = memo(function CropModal({
         return;
       }
 
-      const urlRes = await fetch("/api/upload-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ fileName: `crop_${Date.now()}.jpg`, contentType: "image/jpeg" }),
+      const croppedImageUrl = await uploadImageToStorage(blob, {
+        token,
+        fileName: `crop_${Date.now()}.jpg`,
+        contentType: "image/jpeg",
       });
-      const urlData = await urlRes.json();
-      if (!urlRes.ok || !urlData.uploadUrl) throw new Error(urlData.error || "Failed to get upload URL");
-
-      const putRes = await fetch(urlData.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": "image/jpeg" },
-        body: blob,
-      });
-      if (!putRes.ok) throw new Error("Failed to upload crop to storage");
 
       const res = await fetch("/api/crop", {
         method: "POST",
@@ -95,12 +87,12 @@ const CropModal = memo(function CropModal({
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}` // Required: route now verifies auth
         },
-        body: JSON.stringify({ projectId: project.id, croppedImageUrl: urlData.publicUrl }),
+        body: JSON.stringify({ projectId: project.id, croppedImageUrl: croppedImageUrl }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      onCropApplied?.(urlData.publicUrl);
+      onCropApplied?.(croppedImageUrl);
     } catch (err) {
       onCropApplied?.(null, err.message);
     } finally {

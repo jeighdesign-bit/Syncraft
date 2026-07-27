@@ -51,6 +51,12 @@ export async function POST(request) {
       .single();
 
     if (projError || !project) {
+      // Log the denial — this branch covers "row missing", "owned by someone
+      // else" and "malformed id" alike, which are indistinguishable from the
+      // client's 404 and previously left no server-side trace.
+      console.warn(
+        `[Trace] Ownership check failed — projectId=${projectId} requestUser=${user.id} dbError=${projError?.message || 'none'}`
+      );
       return NextResponse.json({ error: "Project not found or access denied" }, { status: 404 });
     }
 
@@ -127,11 +133,17 @@ export async function POST(request) {
         amount: -12
       });
 
-      await adminSupabase
+      // Surface failures here — this flag is what makes the refund path in the
+      // catch block eligible, so losing it silently means the user is charged
+      // with no way to be refunded.
+      const { error: flagErr } = await adminSupabase
         .from('projects')
         .update({ credit_deducted: true })
         .eq('id', projectId)
         .eq('user_id', user.id);
+      if (flagErr) {
+        console.error(`[Billing] Could not set credit_deducted for project ${projectId}:`, flagErr.message);
+      }
     }
 
     if (step === 1) {
@@ -664,6 +676,7 @@ If any difference is detected, continue refining until the reconstruction is vis
     console.error(`[Trace API Error]:`, error.message);
 
     // Attempt automatic refund on server-side failure
+    let refundIssued = false;
     try {
       if (projectId) {
         let refundQuery = adminSupabase
@@ -675,10 +688,17 @@ If any difference is detected, continue refining until the reconstruction is vis
         if (userId) {
           refundQuery = refundQuery.eq('user_id', userId);
         }
-        const { data: updatedProj } = await refundQuery.select('user_id');
+        // The error here was previously discarded, so a failing refund looked
+        // identical to a successful one and the user was told they were repaid.
+        const { data: updatedProj, error: refundQueryErr } = await refundQuery.select('user_id');
 
-        if (updatedProj && updatedProj.length > 0) {
-          await safeRefundCredit(updatedProj[0].user_id);
+        if (refundQueryErr) {
+          console.error(`[Billing] Refund query failed for project ${projectId}:`, refundQueryErr.message);
+        } else if (updatedProj && updatedProj.length > 0) {
+          refundIssued = await safeRefundCredit(updatedProj[0].user_id);
+          if (!refundIssued) {
+            console.error(`[Billing] safeRefundCredit did not apply for user ${updatedProj[0].user_id} (project ${projectId})`);
+          }
         }
       }
     } catch (refundErr) {
@@ -686,8 +706,11 @@ If any difference is detected, continue refining until the reconstruction is vis
     }
 
     // Never expose raw internal error messages (API keys, stack traces) to the client
-    const safeMessage = error.message?.includes('FAL') || error.message?.includes('fal') || error.message?.includes('API') || error.message === 'Unauthorized'
-      ? 'AI provider authentication failed (Unauthorized/Keys). Your credit has been refunded automatically.'
+    const isProviderAuthError = error.message?.includes('FAL') || error.message?.includes('fal') || error.message?.includes('API') || error.message === 'Unauthorized';
+    const safeMessage = isProviderAuthError
+      ? `AI provider authentication failed (Unauthorized/Keys). ${refundIssued
+          ? 'Your credit has been refunded automatically.'
+          : 'Your credit could NOT be refunded automatically — please contact support.'}`
       : (error.message || 'Failed to process trace step');
     return NextResponse.json({ error: safeMessage }, { status: 500 });
   }

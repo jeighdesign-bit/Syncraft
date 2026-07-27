@@ -119,7 +119,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
 
   const handleSubmit = useCallback(async () => {
     if (!form.txnRef.trim() || !form.screenshotFile) {
-      toast.error("Please enter your GCash number and upload proof of payment.");
+      toast.error("Please enter the GCash reference number and upload proof of payment.");
       return;
     }
     if (!user) {
@@ -475,9 +475,9 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', color: '#aaa', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>GCASH PHONE NUMBER *</label>
-                    <input type="tel" placeholder="e.g. 09171234567" value={form.txnRef} onChange={e => setForm(f => ({ ...f, txnRef: e.target.value }))} style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '8px', padding: '16px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = '#d4ff59'} onBlur={e => e.target.style.borderColor = '#444'} />
-                    <div style={{ color: '#888', fontSize: '11px', marginTop: '6px' }}>Enter the GCash number you used to send the payment.</div>
+                    <label style={{ display: 'block', color: '#aaa', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>GCASH REFERENCE NUMBER *</label>
+                    <input type="tel" inputMode="numeric" placeholder="e.g. 1234567890123" value={form.txnRef} onChange={e => setForm(f => ({ ...f, txnRef: e.target.value }))} style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '8px', padding: '16px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = '#d4ff59'} onBlur={e => e.target.style.borderColor = '#444'} />
+                    <div style={{ color: '#888', fontSize: '11px', marginTop: '6px' }}>Found in your GCash receipt or transaction history. Each payment has its own reference number — not your phone number.</div>
                   </div>
                   <div>
                     <label style={{ display: 'block', color: '#aaa', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Upload Proof of Payment *</label>

@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "@/components/Toast";
 import { compressImageClientSide } from "@/utils/imageUtils";
+import { uploadImageToStorage } from "@/utils/uploadClient";
 
 import { ImageIcon, Monitor, LogIn, FilePlus, User, Trash2, LogOut, CheckCircle2, X, Loader2, Scan, Scissors, ShieldCheck, Code2, Upload } from "lucide-react";
 
@@ -355,21 +356,7 @@ export default function StartScreen() {
       const token = sessionRes.data.session?.access_token;
       if (!token) { setIsUploading(false); handleLogin(); return; }
 
-      const urlRes = await fetch("/api/upload-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ fileName: fileToUpload.name, contentType: fileToUpload.type })
-      });
-
-      const urlData = await urlRes.json();
-      if (!urlRes.ok || !urlData.uploadUrl) throw new Error(urlData.error || "Failed to get upload URL");
-
-      const putRes = await fetch(urlData.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": fileToUpload.type },
-        body: fileToUpload
-      });
-      if (!putRes.ok) throw new Error("Failed to upload image to storage");
+      const uploadedImageUrl = await uploadImageToStorage(fileToUpload, { token });
 
       const finalTraceType = isBgRemover ? "bg_remover" : (mobileTraceType || modalTraceType);
 
@@ -380,7 +367,7 @@ export default function StartScreen() {
           "Authorization": `Bearer ${token}` // Required: server verifies user server-side
         },
         body: JSON.stringify({
-          imageUrl: urlData.publicUrl,
+          imageUrl: uploadedImageUrl,
           projectName: isBgRemover ? fileToUpload.name.replace(/\.[^/.]+$/, "") : (modalProjectName || file.name),
           traceType: finalTraceType
           // userId intentionally omitted — server reads from verified token

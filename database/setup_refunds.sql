@@ -3,6 +3,10 @@ ALTER TABLE projects ADD COLUMN IF NOT EXISTS credit_deducted boolean DEFAULT fa
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS refunded boolean DEFAULT false;
 
 -- 2. Create a secure function to handle refunds
+-- NOTE: the application does not call this function — the refund path in
+-- src/app/api/trace/route.js uses safeRefundCredit() from src/lib/supabase.js.
+-- Kept for manual/SQL-side use; the amount below must stay in step with the
+-- 12-credit deduction in the trace route.
 CREATE OR REPLACE FUNCTION refund_credit(target_user_id uuid, target_project_id uuid)
 RETURNS void
 LANGUAGE plpgsql
@@ -17,10 +21,11 @@ BEGIN
       AND credit_deducted = true 
       AND refunded = false;
 
-    -- If the above update actually changed a row (meaning it was a valid refund condition), add 1 credit
+    -- If the above update actually changed a row (meaning it was a valid refund
+    -- condition), return the 12 credits taken by the trace route.
     IF FOUND THEN
         UPDATE profiles
-        SET credits = credits + 1
+        SET credits = credits + 12
         WHERE id = target_user_id;
     END IF;
 END;
