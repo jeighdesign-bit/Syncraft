@@ -14,7 +14,21 @@ export function getDodoClient() {
 }
 
 export function getSiteUrl(request) {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL;
+  // 1. Check explicit env vars first
+  const configured = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL;
   if (configured) return configured.replace(/\/$/, "");
-  return new URL(request.url).origin;
+
+  // 2. Build from request headers (works reliably on Vercel)
+  const host = request.headers.get("host");
+  if (host) {
+    const proto = request.headers.get("x-forwarded-proto") || "https";
+    return `${proto}://${host}`;
+  }
+
+  // 3. Last resort: parse request.url
+  try {
+    return new URL(request.url).origin;
+  } catch {
+    return "https://syncraftech.com";
+  }
 }

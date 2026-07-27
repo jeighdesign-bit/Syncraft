@@ -64,6 +64,7 @@ export async function POST(request) {
     }
 
     const siteUrl = getSiteUrl(request);
+    console.log("[Dodo Checkout] siteUrl resolved:", siteUrl);
     const client = getDodoClient();
     const session = await client.checkoutSessions.create({
       product_cart: [{ product_id: productId, quantity: 1 }],
@@ -99,7 +100,7 @@ export async function POST(request) {
 
     return NextResponse.json({ checkoutUrl });
   } catch (error) {
-    console.error("[Dodo Checkout] Error:", error);
+    console.error("[Dodo Checkout] Error:", error?.message, error?.status, JSON.stringify(error?.error || {}));
     return NextResponse.json({ error: error.message || "Failed to create Dodo checkout" }, { status: 500 });
   }
 }
