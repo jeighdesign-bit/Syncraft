@@ -6,9 +6,10 @@ export function getDodoClient() {
     throw new Error("DODO_PAYMENTS_API_KEY is not configured");
   }
 
+  const isTest = process.env.DODO_PAYMENTS_ENVIRONMENT === "test_mode";
   return new DodoPayments({
     bearerToken: apiKey,
-    environment: process.env.DODO_PAYMENTS_ENVIRONMENT || "live_mode",
+    baseURL: isTest ? "https://test.dodopayments.com" : "https://live.dodopayments.com",
   });
 }
 
