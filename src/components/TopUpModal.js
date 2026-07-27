@@ -53,6 +53,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
   const [activeTab, setActiveTab] = useState("plans");
   const [logs, setLogs] = useState([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [qrExpanded, setQrExpanded] = useState(false);
 
   useEffect(() => {
     if (activeTab === "history" && user) {
@@ -176,7 +177,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
 
   return (
     <div className="modal-overlay" onClick={handleClose} style={{ padding: '24px' }}>
-      <div className="modal-content" style={{ maxWidth: '1250px', width: '100%', maxHeight: 'calc(100vh - 48px)', padding: '0', overflow: 'hidden', borderRadius: '0', border: '1px solid #444', background: '#111', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" style={{ maxWidth: (activeTab === 'plans' && step === 1) ? '1250px' : '520px', width: '100%', maxHeight: 'calc(100vh - 48px)', padding: '0', overflow: 'hidden', borderRadius: '16px', border: '1px solid #333', background: '#111', display: 'flex', flexDirection: 'column', transition: 'max-width 0.3s ease', margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
         
         {/* Modal Header */}
         <div style={{ background: '#18181b', borderBottom: '1px solid #444', padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -282,7 +283,6 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                     <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '32px', fontWeight: '700', color: '#fff', letterSpacing: '-1px' }}>{p.gcashPrice}</span>
-                        {p.dodoPrice && <span style={{ fontSize: '14px', fontWeight: '600', color: '#d4ff59' }}>({p.dodoPrice})</span>}
                       </div>
                       <span style={{ fontSize: '12px', color: '#888' }}>{p.traces} credits</span>
                     </div>
@@ -296,7 +296,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                           return;
                         }
                         setForm(f => ({ ...f, plan: p.key })); 
-                        setStep(3); 
+                        setStep(2); 
                       }}
                       style={{ width: '100%', padding: '12px 8px', background: p.best ? '#d4ff59' : 'transparent', color: p.best ? '#000' : '#d5d5d5', border: p.best ? 'none' : '1px solid #555', fontWeight: '600', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginBottom: '32px', borderRadius: '4px', whiteSpace: 'nowrap' }} 
                       onMouseOver={e => { e.target.style.opacity = '0.9'; if (!p.best) { e.target.style.background = '#3a3a3a'; e.target.style.borderColor = '#777'; } }} 
@@ -335,38 +335,110 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                 )}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', margin: '0 auto 24px' }}>
                 <button
                   type="button"
                   onClick={() => setStep(3)}
-                  style={{ background: '#18181b', border: '1px solid #444', color: '#fff', padding: '24px', textAlign: 'left', cursor: 'pointer', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '12px' }}
+                  style={{
+                    background: '#18181b',
+                    border: '1px solid #333',
+                    color: '#fff',
+                    padding: '20px 24px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '20px',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.borderColor = '#d4ff59';
+                    e.currentTarget.style.background = '#222226';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.borderColor = '#333';
+                    e.currentTarget.style.background = '#18181b';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
                 >
-                  <Smartphone size={26} color="#d4ff59" />
-                  <span style={{ fontSize: '18px', fontWeight: '700' }}>GCash Manual</span>
-                  <span style={{ color: '#aaa', fontSize: '13px', lineHeight: 1.5 }}>Scan the QR code, upload payment proof, then wait for admin approval. Best for Philippine GCash users.</span>
-                  <span style={{ color: '#d4ff59', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manual approval</span>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(212, 255, 89, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Smartphone size={24} color="#d4ff59" />
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>GCash Manual</span>
+                    <span style={{ alignSelf: 'flex-start', background: '#27272a', color: '#aaa', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manual Approval</span>
+                    <span style={{ color: '#888', fontSize: '13px', lineHeight: '1.4' }}>Scan QR code, upload payment proof, and receive credits in 10-30 mins. Best for PH users.</span>
+                  </div>
+                  <ArrowRight size={18} color="#666" style={{ flexShrink: 0 }} />
                 </button>
 
                 <button
                   type="button"
                   onClick={handleStartDodoCheckout}
                   disabled={isStartingDodo || form.plan === 'tingi'}
-                  style={{ background: '#222', border: '1px solid #d4ff59', color: '#fff', padding: '24px', textAlign: 'left', cursor: (isStartingDodo || form.plan === 'tingi') ? 'not-allowed' : 'pointer', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '12px', opacity: (isStartingDodo || form.plan === 'tingi') ? 0.55 : 1 }}
+                  style={{
+                    background: form.plan === 'tingi' ? '#141416' : '#18181b',
+                    border: '1px solid #333',
+                    color: '#fff',
+                    padding: '20px 24px',
+                    textAlign: 'left',
+                    cursor: (isStartingDodo || form.plan === 'tingi') ? 'not-allowed' : 'pointer',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '20px',
+                    opacity: (isStartingDodo || form.plan === 'tingi') ? 0.5 : 1,
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                  }}
+                  onMouseOver={(e) => {
+                    if (!isStartingDodo && form.plan !== 'tingi') {
+                      e.currentTarget.style.borderColor = '#d4ff59';
+                      e.currentTarget.style.background = '#222226';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (!isStartingDodo && form.plan !== 'tingi') {
+                      e.currentTarget.style.borderColor = '#333';
+                      e.currentTarget.style.background = '#18181b';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }
+                  }}
                 >
-                  <CreditCard size={26} color="#d4ff59" />
-                  <span style={{ fontSize: '18px', fontWeight: '700' }}>Card / International</span>
-                  <span style={{ color: '#aaa', fontSize: '13px', lineHeight: 1.5 }}>
-                    {form.plan === 'tingi'
-                      ? 'Not available for Mini because card fees are too high for micro-payments.'
-                      : 'Pay through Dodo Payments hosted checkout. Credits are added automatically after payment confirmation.'}
-                  </span>
-                  <span style={{ color: '#d4ff59', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    {form.plan === 'tingi' ? 'Choose Basic or higher' : isStartingDodo ? 'Starting checkout...' : 'Automated checkout'}
-                  </span>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(212, 255, 89, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CreditCard size={24} color="#d4ff59" />
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>Card / International</span>
+                    <span style={{ alignSelf: 'flex-start', background: 'rgba(212, 255, 89, 0.15)', color: '#d4ff59', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      {form.plan === 'tingi' ? 'Basic+' : isStartingDodo ? 'Loading...' : 'Instant Auto-Credit'}
+                    </span>
+                    <span style={{ color: '#888', fontSize: '13px', lineHeight: '1.4' }}>
+                      {form.plan === 'tingi'
+                        ? 'Not available for Mini due to high card transaction fees.'
+                        : `Pay instantly via Credit/Debit card. Automatic token crediting right after checkout. Price: ${PLAN_DODO_PRICES[form.plan]}`}
+                    </span>
+                  </div>
+                  <ArrowRight size={18} color="#666" style={{ flexShrink: 0 }} />
                 </button>
-              </div>
 
-              <button onClick={() => setStep(1)} disabled={isStartingDodo} style={{ padding: '12px 24px', background: 'transparent', color: '#d5d5d5', border: '1px solid #555', borderRadius: '6px', cursor: isStartingDodo ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '500' }}>Back</button>
+                {form.plan !== 'tingi' && (
+                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #2a2a2a', borderRadius: '10px', padding: '14px 18px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <AlertTriangle size={16} color="#888" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <span style={{ color: '#777', fontSize: '12px', lineHeight: '1.5' }}>
+                      International card payments are priced in USD and may cost slightly more than GCash due to card processing fees, currency conversion, and applicable taxes. This ensures instant automated crediting of your tokens.
+                    </span>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '12px' }}>
+                  <button onClick={() => setStep(1)} disabled={isStartingDodo} style={{ padding: '10px 20px', background: 'transparent', color: '#aaa', border: '1px solid #444', borderRadius: '8px', cursor: isStartingDodo ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '500', transition: 'all 0.2s' }}>← Back to Plans</button>
+                </div>
+              </div>
             </>
           ) : (
             <>
@@ -380,18 +452,32 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                   <strong style={{ color: '#d4ff59' }}>Manual GCash is not automated.</strong> Submit only once after paying. Duplicate or repeated proof submissions after credits are already added may be blocked for 7 days. Use the same email/account you want credited.
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', marginBottom: '24px', alignItems: 'start' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ background: '#fff', borderRadius: '16px', padding: '8px', display: 'inline-block', marginBottom: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
-                    <img src="/Gcash-qr-code.jpg" alt="GCash QR" style={{ width: '100%', maxWidth: '380px', height: 'auto', objectFit: 'contain', display: 'block', transform: 'scale(1.05)' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#18181b', border: '1px solid #333', borderRadius: '10px', padding: '12px 16px', cursor: 'pointer', transition: 'all 0.2s' }} onClick={() => setQrExpanded(true)} onMouseOver={e => e.currentTarget.style.borderColor = '#d4ff59'} onMouseOut={e => e.currentTarget.style.borderColor = '#333'}>
+                  <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', background: '#fff', padding: '4px', flexShrink: 0 }}>
+                    <img src="/Gcash-qr-code.jpg" alt="GCash QR" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                   </div>
-                  <p style={{ color: '#d4ff59', fontSize: '14px', margin: '0 0 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Smartphone size={18} style={{ marginRight: '6px' }} /> Scan with GCash</p>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '2px' }}>GCash QR Code</div>
+                    <div style={{ fontSize: '12px', color: '#888' }}>Tap to view full QR code for scanning</div>
+                  </div>
+                  <Smartphone size={18} color="#d4ff59" style={{ flexShrink: 0 }} />
                 </div>
+
+                {qrExpanded && (
+                  <div onClick={() => setQrExpanded(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
+                    <div style={{ background: '#fff', borderRadius: '16px', padding: '12px', maxWidth: '360px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }} onClick={e => e.stopPropagation()}>
+                      <img src="/Gcash-qr-code.jpg" alt="GCash QR" style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '8px' }} />
+                      <p style={{ textAlign: 'center', margin: '12px 0 4px', fontSize: '13px', color: '#333', fontWeight: '600' }}>Scan with GCash app</p>
+                      <button onClick={() => setQrExpanded(false)} style={{ width: '100%', padding: '10px', background: '#111', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', marginTop: '8px' }}>Close</button>
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', color: '#aaa', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>GCASH REFERENCE NO. *</label>
-                    <input type="text" placeholder="e.g. 1000123456789" value={form.txnRef} onChange={e => setForm(f => ({ ...f, txnRef: e.target.value }))} style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '8px', padding: '16px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = '#d4ff59'} onBlur={e => e.target.style.borderColor = '#444'} />
-                    <div style={{ color: '#888', fontSize: '11px', marginTop: '6px' }}>Find this 13-digit number on your GCash receipt.</div>
+                    <label style={{ display: 'block', color: '#aaa', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>GCASH PHONE NUMBER *</label>
+                    <input type="tel" placeholder="e.g. 09171234567" value={form.txnRef} onChange={e => setForm(f => ({ ...f, txnRef: e.target.value }))} style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '8px', padding: '16px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = '#d4ff59'} onBlur={e => e.target.style.borderColor = '#444'} />
+                    <div style={{ color: '#888', fontSize: '11px', marginTop: '6px' }}>Enter the GCash number you used to send the payment.</div>
                   </div>
                   <div>
                     <label style={{ display: 'block', color: '#aaa', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Upload Proof of Payment *</label>
