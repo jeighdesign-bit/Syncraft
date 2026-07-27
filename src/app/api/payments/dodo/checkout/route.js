@@ -51,8 +51,8 @@ export async function POST(request) {
         email: user.email,
         plan: plan.key,
         credits: plan.credits,
-        amount: plan.amount,
-        currency: plan.currency,
+        amount: plan.dodoAmount || plan.amount,
+        currency: plan.dodoCurrency || plan.currency,
         status: "pending",
       })
       .select("*")

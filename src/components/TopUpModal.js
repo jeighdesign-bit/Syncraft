@@ -17,13 +17,15 @@ const PLANS_META = {
 };
 
 const PLANS = Object.values(CREDIT_PLANS).map((plan) => ({
-  key:      plan.key,
-  label:    plan.label,
-  traces:   plan.credits,
-  price:    plan.price,
-  desc:     PLANS_META[plan.key]?.desc || '',
-  best:     PLANS_META[plan.key]?.best || false,
-  features: PLANS_META[plan.key]?.features || [],
+  key:        plan.key,
+  label:      plan.label,
+  traces:     plan.credits,
+  price:      plan.price,
+  gcashPrice: plan.gcashPrice || plan.price,
+  dodoPrice:  plan.dodoPrice,
+  desc:       PLANS_META[plan.key]?.desc || '',
+  best:       PLANS_META[plan.key]?.best || false,
+  features:   PLANS_META[plan.key]?.features || [],
 }));
 
 const PLAN_LABELS = Object.fromEntries(
@@ -31,6 +33,9 @@ const PLAN_LABELS = Object.fromEntries(
 );
 const PLAN_PRICES = Object.fromEntries(
   Object.values(CREDIT_PLANS).map((p) => [p.key, p.price])
+);
+const PLAN_DODO_PRICES = Object.fromEntries(
+  Object.values(CREDIT_PLANS).map((p) => [p.key, p.dodoPrice || p.price])
 );
 const DODO_ENABLED_PLANS = new Set(
   Object.values(CREDIT_PLANS).filter((p) => p.dodoEnabled).map((p) => p.key)
@@ -274,9 +279,12 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                       {p.best && <div style={{ background: '#d4ff59', color: '#000', fontSize: '11px', fontWeight: '800', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '4px', whiteSpace: 'nowrap' }}><CheckCircle size={12} /> Most popular</div>}
                     </div>
 
-                    <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                      <span style={{ fontSize: '36px', fontWeight: '700', color: '#fff', letterSpacing: '-1px' }}>{p.price}</span>
-                      <span style={{ fontSize: '12px', color: '#888' }}>/ {p.traces} credits</span>
+                    <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '32px', fontWeight: '700', color: '#fff', letterSpacing: '-1px' }}>{p.gcashPrice}</span>
+                        {p.dodoPrice && <span style={{ fontSize: '14px', fontWeight: '600', color: '#d4ff59' }}>({p.dodoPrice})</span>}
+                      </div>
+                      <span style={{ fontSize: '12px', color: '#888' }}>{p.traces} credits</span>
                     </div>
                     
                     <p style={{ color: '#aaa', fontSize: '13px', lineHeight: '1.5', margin: '0 0 24px', minHeight: '40px' }}>{p.desc}</p>
