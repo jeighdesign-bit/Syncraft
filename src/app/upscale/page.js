@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import QRCode from "react-qr-code";
-import { Monitor, ArrowLeft, Loader2, Download, ImageIcon, Sparkles, Wand2, Home, Keyboard, ShieldAlert, Clock, Scan, ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { Monitor, ArrowLeft, Loader2, Download, ImageIcon, Sparkles, Wand2, Home, Keyboard, ShieldAlert, Clock, Scan, ZoomIn, ZoomOut, Maximize, Upload } from "lucide-react";
 import { toast } from "@/components/Toast";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
@@ -210,14 +210,14 @@ export default function UpscalePage() {
 
       {/* Top Menu Bar */}
       <header style={{ padding: "16px 32px", display: "flex", alignItems: "center", borderBottom: "1px solid #444", background: "#1a1a1a" }}>
-        <button onClick={() => router.push('/')} style={{ display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color="#d4ff59"} onMouseLeave={e => e.currentTarget.style.color="#666"}>
-          <img src="/favicon.svg" alt="Syncraft Home" style={{ width: "24px", height: "24px", opacity: 0.8 }} />
+        <button onClick={() => router.push('/')} style={{ display: "flex", alignItems: "center", gap: "7px", background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "color 0.2s", padding: "6px 10px" }} onMouseEnter={e => e.currentTarget.style.color="#d4ff59"} onMouseLeave={e => e.currentTarget.style.color="#555"}>
+          <img src="/logo.svg" alt="Syncraft Home" style={{ height: "18px", width: "auto", opacity: 0.9 }} />
         </button>
         <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "10px" }}>
           <h1 style={{ fontSize: "14px", fontWeight: "600", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>UPSCALE STUDIO</h1>
         </div>
         <div style={{ width: "200px", display: "flex", justifyContent: "flex-end", gap: "16px", alignItems: "center" }}>
-          <div onClick={() => setShowTopUpModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", background: "#2a2a2a", padding: "6px 12px", borderRadius: "0", cursor: "pointer", border: "1px solid #444", transition: "border-color 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor = "#d4ff59"} onMouseOut={e => e.currentTarget.style.borderColor = "#444"}>
+          <div onClick={() => setShowTopUpModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", background: "#2a2a2a", padding: "6px 14px", borderRadius: "14px", cursor: "pointer", border: "1px solid #444", transition: "border-color 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor = "#d4ff59"} onMouseOut={e => e.currentTarget.style.borderColor = "#444"}>
             <span style={{ color: "#d4ff59", fontWeight: "bold", fontSize: "14px", fontFamily: "monospace" }}>{credits !== null ? credits : "-"}</span>
             <span style={{ color: "#888", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>CREDITS</span>
           </div>
@@ -228,10 +228,10 @@ export default function UpscalePage() {
       <main className="main-workspace" style={{ padding: 0 }}>
         
         {/* Split View Workspace */}
-        <div className="canvas-area" style={{ padding: 0, display: "flex", flexDirection: "column", background: "url('/checkerboard.png')", backgroundColor: "#111" }}>
+        <div className="canvas-area" style={{ padding: 0, display: "flex", flexDirection: "column", backgroundColor: "#0a0a0a", backgroundImage: "radial-gradient(rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px)", backgroundSize: "24px 24px" }}>
           
-          <div style={{ display: "flex", borderBottom: "1px solid #222", background: "#1a1a1a", height: "40px" }}>
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", borderRight: "1px solid #222", color: !upscaledImage ? "#d4ff59" : "#666", fontWeight: "700", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase", whiteSpace: "nowrap", padding: "0 10px" }}>
+          <div style={{ display: "flex", borderBottom: "1px solid #1f1f1f", background: "#0a0a0a", height: "40px" }}>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", borderRight: "1px solid #1f1f1f", color: !upscaledImage ? "#d4ff59" : "#666", fontWeight: "700", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase", whiteSpace: "nowrap", padding: "0 10px" }}>
               1. ORIGINAL UPLOAD
             </div>
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: upscaledImage ? "#d4ff59" : "#666", fontWeight: "700", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase", whiteSpace: "nowrap", padding: "0 10px" }}>
@@ -244,37 +244,137 @@ export default function UpscalePage() {
               <div className="hero-upload-box"
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
-                style={{ maxWidth: "460px", width: "100%", padding: "32px 24px", borderRadius: "0", border: "1px solid #333" }}
+                style={{ 
+                  maxWidth: "420px", 
+                  width: "100%", 
+                  background: "rgba(20, 20, 20, 0.8)", 
+                  backdropFilter: "blur(20px)",
+                  padding: "16px", 
+                  borderRadius: "24px", 
+                  display: "flex", 
+                  flexDirection: "column", 
+                  boxShadow: "0 20px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)", 
+                  border: "1px solid rgba(255,255,255,0.08)" 
+                }}
               >
-                <div style={{ display: "flex", gap: "8px", width: "100%", marginBottom: "12px", flexWrap: "nowrap" }}>
-                  <button
-                    onClick={() => fileInputRef.current.click()}
-                    style={{ flex: 1, background: "#d4ff59", color: "#111", border: "none", borderRadius: "0", fontSize: "12px", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontWeight: "700", letterSpacing: "0.5px", textTransform: "uppercase", transition: "all 0.2s", cursor: "pointer", whiteSpace: "nowrap" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "#e6c200"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "#d4ff59"; }}
-                  >
-                    <Monitor size={14} /> Open PC File
-                  </button>
-                  <button
-                    onClick={() => setUploadMode(prev => prev === "qr" ? "file" : "qr")}
-                    style={{ flex: 1, background: uploadMode === "qr" ? "rgba(212, 255, 89,0.08)" : "transparent", color: uploadMode === "qr" ? "#d4ff59" : "#999", border: uploadMode === "qr" ? "1px solid #d4ff59" : "1px solid #444", borderRadius: "0", fontSize: "12px", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontWeight: "600", letterSpacing: "0.5px", textTransform: "uppercase", transition: "all 0.2s", cursor: "pointer", whiteSpace: "nowrap" }}
-                    onMouseEnter={(e) => { if (uploadMode !== "qr") { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.color = "#d4ff59"; } }}
-                    onMouseLeave={(e) => { if (uploadMode !== "qr") { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.color = "#999"; } }}
-                  >
-                    <Scan size={14} /> Scan Phone
-                  </button>
-                </div>
-                
-                <input type="file" ref={fileInputRef} onChange={(e) => handleFileSelected(e.target.files[0])} accept="image/*" style={{ display: "none" }} />
-                
-                {uploadMode === "qr" ? (
-                  <div style={{ background: "#111", border: "1px solid #333", borderRadius: "0", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-                    <div style={{ background: "#fff", padding: "10px", marginBottom: "14px" }}><QRCode value={`https://syncraft.com/m/${syncSessionId}`} size={130} /></div>
-                    <p style={{ color: "#888", margin: 0, fontSize: "12px", textAlign: "center", lineHeight: 1.5 }}>Scan with your mobile camera to upload directly.</p>
+                <div 
+                  style={{ 
+                    width: "100%", 
+                    flex: 1, 
+                    background: "transparent", 
+                    borderRadius: "16px", 
+                    padding: "20px", 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    alignItems: "center" 
+                  }}
+                >
+                  {/* Selector Buttons Row */}
+                  <div style={{ display: "flex", gap: "6px", width: "100%", marginBottom: "24px", flexWrap: "nowrap", background: "rgba(0,0,0,0.4)", padding: "4px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                    <button
+                      onClick={() => setUploadMode("file")}
+                      style={{
+                        flex: 1,
+                        background: uploadMode !== "qr" ? "#2a2a2a" : "transparent",
+                        color: uploadMode !== "qr" ? "#ffffff" : "#888",
+                        border: "none",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        padding: "10px 14px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px",
+                        fontWeight: "600",
+                        letterSpacing: "0.2px",
+                        transition: "all 0.2s ease",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        boxShadow: uploadMode !== "qr" ? "0 2px 8px rgba(0,0,0,0.2)" : "none"
+                      }}
+                      onMouseEnter={(e) => {
+                        if (uploadMode === "qr") e.currentTarget.style.color = "#ccc";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (uploadMode === "qr") e.currentTarget.style.color = "#888";
+                      }}
+                    >
+                      <Monitor size={14} /> Open PC File
+                    </button>
+                    <button
+                      onClick={() => setUploadMode("qr")}
+                      style={{
+                        flex: 1,
+                        background: uploadMode === "qr" ? "#2a2a2a" : "transparent",
+                        color: uploadMode === "qr" ? "#ffffff" : "#888",
+                        border: "none",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        padding: "10px 14px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px",
+                        fontWeight: "600",
+                        letterSpacing: "0.2px",
+                        transition: "all 0.2s ease",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        boxShadow: uploadMode === "qr" ? "0 2px 8px rgba(0,0,0,0.2)" : "none"
+                      }}
+                      onMouseEnter={(e) => {
+                        if (uploadMode !== "qr") e.currentTarget.style.color = "#ccc";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (uploadMode !== "qr") e.currentTarget.style.color = "#888";
+                      }}
+                    >
+                      <Scan size={14} /> Scan Phone
+                    </button>
                   </div>
-                ) : (
-                  <div style={{ marginTop: "12px", color: "#555", fontSize: "12px", textAlign: "center" }}>or drop an image anywhere here</div>
-                )}
+                  
+                  <input type="file" ref={fileInputRef} onChange={(e) => handleFileSelected(e.target.files[0])} accept="image/*" style={{ display: "none" }} />
+                  
+                  {uploadMode === "qr" ? (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: "12px" }}>
+                      <div style={{ background: "#ffffff", padding: "12px", borderRadius: "14px", border: "1px solid rgba(0,0,0,0.1)" }}>
+                        <QRCode value={`https://syncraft.com/m/${syncSessionId}`} size={120} />
+                      </div>
+                      <p style={{ color: "#888", margin: 0, fontSize: "12px", textAlign: "center", lineHeight: 1.5 }}>
+                        Scan with your mobile camera to upload directly.
+                      </p>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current.click()}
+                      style={{ 
+                        width: "100%", 
+                        minHeight: "140px", 
+                        border: "1.5px dashed rgba(255,255,255,0.15)", 
+                        borderRadius: "14px", 
+                        display: "flex", 
+                        flexDirection: "column", 
+                        alignItems: "center", 
+                        justifyContent: "center", 
+                        gap: "10px", 
+                        cursor: "pointer", 
+                        transition: "all 0.2s ease"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "#ffffff";
+                        e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.02)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
+                        e.currentTarget.style.backgroundColor = "transparent";
+                      }}
+                    >
+                      <Upload size={20} color="#888" />
+                      <span style={{ color: "#aaa", fontSize: "13px", fontWeight: "600" }}>Upload Image file</span>
+                      <span style={{ color: "#555", fontSize: "11px" }}>or drop file here</span>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
@@ -297,19 +397,25 @@ export default function UpscalePage() {
         </div>
 
         {/* Right Properties Panel */}
-        <div style={{ width: "320px", background: "#1a1a1a", borderLeft: "1px solid #222", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+        <div style={{ width: "280px", background: "#181818", borderLeft: "1px solid #2a2a2a", display: "flex", flexDirection: "column", overflowY: "auto", flexShrink: 0 }}>
           
-          <div style={{ padding: "16px", borderBottom: "1px solid #222" }}>
-            <div style={{ fontSize: "10px", color: "#888", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "16px", display: "flex", justifyContent: "space-between" }}>
-              <span>ACTIONS</span>
+          <div style={{ padding: "16px", borderBottom: "1px solid #2a2a2a" }}>
+            <div style={{ fontSize: "10px", color: "#8a8a8a", letterSpacing: "1.2px", textTransform: "uppercase", marginBottom: "12px", display: "flex", justifyContent: "space-between", fontWeight: 700 }}>
+              <span>Actions</span>
             </div>
             
             <button 
+              className={isProcessing || (!previewImage && !upscaledImage) ? "btn-primary" : "btn-primary highlight"}
               onClick={handleUpscale} 
               disabled={isProcessing || (!previewImage && !upscaledImage)}
-              style={{ width: "100%", marginBottom: "8px", background: "rgba(212, 255, 89, 0.1)", color: "#d4ff59", border: "1px solid #d4ff59", borderRadius: "0", padding: "10px 16px", transition: "all 0.2s", fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px", opacity: (isProcessing || (!previewImage && !upscaledImage)) ? 0.5 : 1, cursor: (isProcessing || (!previewImage && !upscaledImage)) ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
-              onMouseOver={e => { if(!isProcessing && (previewImage || upscaledImage)) e.currentTarget.style.background = "rgba(212, 255, 89, 0.2)"; }}
-              onMouseOut={e => { if(!isProcessing && (previewImage || upscaledImage)) e.currentTarget.style.background = "rgba(212, 255, 89, 0.1)"; }}
+              style={{ 
+                width: "100%", marginBottom: "8px", padding: "12px 16px", 
+                fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", 
+                gap: "8px", fontWeight: 700, borderRadius: "4px",
+                border: isProcessing || (!previewImage && !upscaledImage) ? "1px solid #333" : "1px solid #d4ff59",
+                background: isProcessing || (!previewImage && !upscaledImage) ? "rgba(212,255,89,0.08)" : "#d4ff59",
+                color: isProcessing || (!previewImage && !upscaledImage) ? "#555" : "#0a0a0a",
+              }}
             >
               {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />} GENERATE 4K UPSCALE
             </button>
@@ -319,9 +425,17 @@ export default function UpscalePage() {
                 if(upscaledImage) handleDownload(upscaledImage);
               }}
               disabled={!upscaledImage}
-              style={{ width: "100%", marginBottom: "16px", background: "#1a1a1a", color: "#aaa", border: "1px solid #444", borderRadius: "0", padding: "8px 16px", transition: "all 0.2s", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px", opacity: !upscaledImage ? 0.4 : 1, cursor: !upscaledImage ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
-              onMouseOver={e => { if(upscaledImage) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
-              onMouseOut={e => { if(upscaledImage) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
+              style={{ 
+                width: "100%", marginBottom: "16px", padding: "10px 16px", 
+                fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px", 
+                background: "#1e1e1e", color: !upscaledImage ? "#5a5a5a" : "#bbb", 
+                border: "1px solid #2a2a2a", borderRadius: "4px", 
+                cursor: !upscaledImage ? "not-allowed" : "pointer", 
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                opacity: !upscaledImage ? 0.45 : 1, transition: "all 0.2s"
+              }}
+              onMouseOver={e => { if(upscaledImage) e.currentTarget.style.borderColor = "#484848"; }}
+              onMouseOut={e => { if(upscaledImage) e.currentTarget.style.borderColor = "#2a2a2a"; }}
             >
               <Download size={14} /> DOWNLOAD RESULT
             </button>
@@ -334,22 +448,22 @@ export default function UpscalePage() {
           </div>
 
           <div style={{ padding: "16px" }}>
-            <div style={{ fontSize: "10px", color: "#888", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-              <span>HISTORY</span>
+            <div style={{ fontSize: "10px", color: "#8a8a8a", letterSpacing: "1.2px", textTransform: "uppercase", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px", fontWeight: 700 }}>
+              <span>History</span>
             </div>
 
             {/* Privacy Notice */}
-            <div style={{ background: "rgba(212, 255, 89,0.04)", border: "1px solid rgba(212, 255, 89,0.15)", borderRadius: "0", padding: "12px", marginBottom: "20px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
+            <div style={{ background: "linear-gradient(90deg, rgba(212, 255, 89, 0.05) 0%, rgba(212, 255, 89, 0.01) 100%)", borderLeft: "2px solid #d4ff59", borderRadius: "0 8px 8px 0", padding: "12px", marginBottom: "20px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
               <ShieldAlert size={14} color="#d4ff59" style={{ flexShrink: 0, marginTop: "2px" }} />
               <div>
                 <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#d4ff59" }}>Privacy First</p>
-                <p style={{ margin: 0, fontSize: "10px", color: "#aaa", lineHeight: 1.4 }}>All uploaded and generated images are permanently deleted after 3 days to protect your privacy.</p>
+                <p style={{ margin: 0, fontSize: "10.5px", color: "#888", lineHeight: 1.4 }}>All uploaded and generated images are permanently deleted after 3 days to protect your privacy.</p>
               </div>
             </div>
             
             {recentUpscales.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "30px 0", border: "1px dashed #2a2a2a", background: "#111" }}>
-                <Clock size={24} color="#444" style={{ margin: "0 auto 8px" }} />
+              <div style={{ textAlign: "center", padding: "30px 0", border: "1px dashed #333", background: "transparent", borderRadius: "8px" }}>
+                <Clock size={24} color="#555" style={{ margin: "0 auto 8px" }} />
                 <p style={{ margin: 0, color: "#666", fontSize: "11px" }}>No recent upscales</p>
               </div>
             ) : (

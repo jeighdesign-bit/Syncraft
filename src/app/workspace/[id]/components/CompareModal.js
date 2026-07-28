@@ -80,15 +80,17 @@ const CompareModal = memo(function CompareModal({
       onMouseUp={() => { isDraggingCompare.current = false; }}
       onMouseLeave={() => { isDraggingCompare.current = false; }}
     >
-      <div className="modal-content" style={{ maxWidth: "1400px", width: "fit-content", padding: "0", overflow: "hidden" }}>
+      <div className="modal-content" style={{ maxWidth: "1400px", width: "fit-content", padding: "0", overflow: "hidden", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)", background: "#111", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.75)" }}>
         {/* Header */}
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid #2a2a2a", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <CheckCircle size={18} color="#888" />
-            <span style={{ fontWeight: "700", fontSize: "15px", color: "#fff" }}>Generation Complete!</span>
-            <span style={{ color: "#666", fontSize: "12px", marginLeft: "10px" }}>Drag slider to compare</span>
+        <div style={{ padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(10,10,10,0.8)", backdropFilter: "blur(10px)", borderBottom: "1px solid rgba(255,255,255,0.05)", zIndex: 20, position: "relative" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <CheckCircle size={18} color="#d4ff59" />
+            <span style={{ fontWeight: "600", fontSize: "15px", color: "#fff", letterSpacing: "0.5px" }}>Trace Complete</span>
+            <span style={{ color: "#666", fontSize: "13px", marginLeft: "8px", fontWeight: "400" }}>Drag slider to compare</span>
           </div>
-          <button className="icon-btn-small" onClick={onClose}><X size={16} /></button>
+          <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "6px", borderRadius: "50%", transition: "all 0.2s" }} onMouseOver={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }} onMouseOut={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.background = "transparent"; }}>
+            <X size={18} />
+          </button>
         </div>
 
         {/* Slider Compare Area */}
@@ -185,31 +187,7 @@ const CompareModal = memo(function CompareModal({
           </div>
         </div>
 
-        {/* Download actions */}
-        <div style={{ padding: "14px 20px", borderTop: "1px solid #2a2a2a", display: "flex", gap: "10px" }}>
-          <button
-            onClick={() => { onDownloadAll(); onClose(); }}
-            style={{ flex: 1, padding: "12px", background: "#2a2a2a", color: "#fff", border: "1px solid #444", borderRadius: "6px", fontWeight: "800", fontSize: "13px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
-            onMouseOver={e => e.currentTarget.style.background = "#333"}
-            onMouseOut={e => e.currentTarget.style.background = "#2a2a2a"}
-          >
-            <FolderDown size={15} /> Download All (ZIP)
-          </button>
-          <button
-            onClick={onDownloadSvg}
-            style={{ flex: 1, padding: "12px", background: "#111", color: "#e0e0e0", border: "1px solid #444", borderRadius: "6px", fontWeight: "800", fontSize: "13px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
-            onMouseOver={e => { e.currentTarget.style.background = "#1a1a1a"; e.currentTarget.style.color = "#fff"; }}
-            onMouseOut={e => { e.currentTarget.style.background = "#111"; e.currentTarget.style.color = "#e0e0e0"; }}
-          >
-            <Download size={15} /> SVG Only
-          </button>
-          <button
-            onClick={onClose}
-            style={{ padding: "11px 16px", background: "transparent", color: "#666", border: "1px solid #333", borderRadius: "8px", cursor: "pointer", fontSize: "13px" }}
-          >
-            Close
-          </button>
-        </div>
+
       </div>
     </div>
   );

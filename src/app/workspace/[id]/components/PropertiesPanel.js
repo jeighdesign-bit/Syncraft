@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useState } from "react";
-import { Download, Monitor, ChevronDown, FolderDown, Loader2, X } from "lucide-react";
+import { Download, Monitor, ChevronDown, FolderDown, Loader2, X, ImageMinus, Eraser, Scissors } from "lucide-react";
 import FeedbackWidget from "./FeedbackWidget";
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
@@ -27,10 +27,11 @@ const SPACE = { xs: 4, sm: 8, md: 12, lg: 16 };
 const RADIUS = 4;
 
 const eyebrowStyle = {
-  fontSize: "10px",
-  fontWeight: 700,
-  color: COLOR.textMuted,
-  letterSpacing: "1.2px",
+  fontSize: "11px",
+  fontWeight: 600,
+  color: "#fff",
+  opacity: 0.8,
+  letterSpacing: "1px",
   textTransform: "uppercase",
 };
 
@@ -61,60 +62,63 @@ const sectionStyle = {
 };
 
 const fieldLabelStyle = {
-  fontSize: "10px",
-  fontWeight: 600,
-  color: COLOR.textMuted,
+  fontSize: "11px",
+  fontWeight: 500,
+  color: "#fff",
+  opacity: 0.6,
   textTransform: "uppercase",
-  letterSpacing: "1px",
+  letterSpacing: "0.5px",
   display: "block",
   marginBottom: SPACE.sm,
 };
 
 const selectStyle = {
   width: "100%",
-  background: COLOR.inputBg,
-  border: `1px solid ${COLOR.inputBorder}`,
-  borderRadius: RADIUS,
-  color: COLOR.text,
-  padding: "9px 32px 9px 10px",
-  fontSize: "12px",
+  background: "rgba(255,255,255,0.03)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: "8px",
+  color: "#fff",
+  padding: "10px 32px 10px 12px",
+  fontSize: "13px",
   appearance: "none",
   cursor: "pointer",
   outline: "none",
-  transition: "border-color 0.2s",
+  transition: "all 0.2s",
 };
 
 const helpTextStyle = {
   marginTop: SPACE.sm,
-  fontSize: "10.5px",
-  color: COLOR.textFaint,
+  fontSize: "11px",
+  color: "#777",
   lineHeight: 1.5,
+  fontWeight: 400,
 };
 
 const noticeStyle = {
   display: "flex",
-  gap: SPACE.sm,
+  gap: "10px",
   alignItems: "flex-start",
-  background: COLOR.dangerBg,
-  borderLeft: `2px solid ${COLOR.dangerBorder}`,
-  borderRadius: `0 ${RADIUS}px ${RADIUS}px 0`,
-  padding: `${SPACE.sm}px ${SPACE.md}px`,
-  fontSize: "10.5px",
-  color: COLOR.dangerText,
+  background: "rgba(255,255,255,0.03)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: "8px",
+  padding: "12px",
+  fontSize: "11px",
+  color: "#aaa",
   lineHeight: 1.5,
 };
 
 const noticeIconStyle = {
   flexShrink: 0,
-  width: 14,
-  height: 14,
+  width: 16,
+  height: 16,
   borderRadius: "50%",
-  background: "rgba(255,68,68,0.2)",
+  background: "rgba(255,255,255,0.1)",
+  color: "#fff",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  fontWeight: 700,
-  fontSize: "9.5px",
+  fontWeight: "bold",
+  fontSize: "10px"
 };
 
 /**
@@ -134,6 +138,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
   onOpenCompare,
   onOpenCrop,
   onOpenRemoveBg,
+  onOpenErase,
   onOpenTopUp,
 }) {
   const [vectorColors, setVectorColors] = useState("auto");
@@ -165,7 +170,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
     ? "Get More Credits"
     : !isCropped
     ? "Crop Image First"
-    : "Run Auto-Trace  (−12 Credits)";
+    : "Run Syncraft (−12 Credits)";
 
   // "Unlocked" mirrors the original enable condition exactly — kept as its
   // own branch because this button has a 3-state style (busy / unlocked /
@@ -221,9 +226,49 @@ const PropertiesPanel = memo(function PropertiesPanel({
         </div>
       </div>
 
+      {/* ── Activity Log ─────────────────────────────────────── */}
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, borderBottom: `1px solid ${COLOR.border}` }}>
+        <span style={{ ...eyebrowStyle, padding: `${SPACE.md}px ${SPACE.lg}px ${SPACE.sm}px` }}>Activity Log</span>
+        <div className="console-area" ref={consoleRef} style={{ flex: 1, minHeight: "120px" }} />
+      </div>
+
       {/* ── Actions ────────────────────────────────────────── */}
       <div style={{ ...sectionStyle, flexShrink: 0 }}>
         <span style={{ ...eyebrowStyle, display: "block", marginBottom: SPACE.md }}>Actions</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: SPACE.sm }}>
+          <button
+            onClick={onOpenRemoveBg}
+            disabled={isBusy}
+            style={secondaryBtnStyle(!isBusy)}
+            onMouseOver={e => { if (!isBusy) e.currentTarget.style.borderColor = "#484848"; }}
+            onMouseOut={e => { if (!isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
+          >
+            <ImageMinus size={14} /> Remove BG
+          </button>
+          <button
+            onClick={onOpenErase}
+            disabled={isBusy}
+            style={secondaryBtnStyle(!isBusy)}
+            onMouseOver={e => { if (!isBusy) e.currentTarget.style.borderColor = "#484848"; }}
+            onMouseOut={e => { if (!isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
+          >
+            <Eraser size={14} /> Erase Noise
+          </button>
+          <button
+            onClick={onOpenCrop}
+            disabled={isBusy}
+            style={secondaryBtnStyle(!isBusy)}
+            onMouseOver={e => { if (!isBusy) e.currentTarget.style.borderColor = "#484848"; }}
+            onMouseOut={e => { if (!isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
+          >
+            <Scissors size={14} /> Crop Region
+          </button>
+        </div>
+      </div>
+
+      {/* ── Exportation ────────────────────────────────────────── */}
+      <div style={{ ...sectionStyle, flexShrink: 0, borderBottom: "none" }}>
+        <span style={{ ...eyebrowStyle, display: "block", marginBottom: SPACE.md }}>Exportation</span>
 
         <div style={{ display: "flex", flexDirection: "column", gap: SPACE.sm }}>
 
@@ -238,15 +283,14 @@ const PropertiesPanel = memo(function PropertiesPanel({
               disabled={isBusy || (!isCropped && !noCredits)}
               style={{
                 width: "100%",
-                background: isBusy ? "rgba(212,255,89,0.08)" : traceUnlocked ? COLOR.accent : COLOR.surface,
-                border: "1px solid " + (isBusy ? "#333" : traceUnlocked ? COLOR.accent : COLOR.inputBorder),
-                borderRadius: RADIUS,
-                color: isBusy ? "#666" : traceUnlocked ? COLOR.accentText : "#555",
-                padding: "12px 16px",
-                fontSize: "11px",
-                fontWeight: 800,
-                textTransform: "uppercase",
-                letterSpacing: "1.2px",
+                background: isBusy ? "rgba(255,255,255,0.02)" : traceUnlocked ? "#ffffff" : "rgba(255,255,255,0.05)",
+                border: isBusy ? "1px solid rgba(255,255,255,0.05)" : traceUnlocked ? "1px solid #ffffff" : "1px solid rgba(255,255,255,0.1)",
+                borderRadius: "8px",
+                color: isBusy ? "#555" : traceUnlocked ? "#000000" : "#666",
+                padding: "14px 16px",
+                fontSize: "13px",
+                fontWeight: 600,
+                letterSpacing: "0.3px",
                 whiteSpace: "nowrap",
                 cursor: (!isBusy && traceUnlocked) ? "pointer" : "not-allowed",
                 display: "flex",
@@ -255,9 +299,10 @@ const PropertiesPanel = memo(function PropertiesPanel({
                 gap: SPACE.sm,
                 opacity: isBusy ? 0.6 : 1,
                 transition: "all 0.2s",
+                boxShadow: (!isBusy && traceUnlocked) ? "0 4px 12px rgba(255,255,255,0.15)" : "none",
               }}
-              onMouseOver={e => { if (!isBusy && traceUnlocked) e.currentTarget.style.background = COLOR.accentHover; }}
-              onMouseOut={e => { if (!isBusy && traceUnlocked) e.currentTarget.style.background = COLOR.accent; }}
+              onMouseOver={e => { if (!isBusy && traceUnlocked) e.currentTarget.style.background = "#e5e5e5"; }}
+              onMouseOut={e => { if (!isBusy && traceUnlocked) e.currentTarget.style.background = "#ffffff"; }}
             >
               {traceButtonLabel}
             </button>
@@ -266,8 +311,8 @@ const PropertiesPanel = memo(function PropertiesPanel({
               onClick={() => handleDownloadClick('svg', onDownloadSvg)}
               disabled={!project?.svg_url || !!downloading}
               style={primaryBtnStyle(svgActive)}
-              onMouseOver={e => { if (svgActive) e.currentTarget.style.background = COLOR.accentHover; }}
-              onMouseOut={e => { if (svgActive) e.currentTarget.style.background = COLOR.accent; }}
+              onMouseOver={e => { if (svgActive) e.currentTarget.style.background = "#e5e5e5"; }}
+              onMouseOut={e => { if (svgActive) e.currentTarget.style.background = "#ffffff"; }}
             >
               {downloading === 'svg' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} strokeWidth={2.5} />}
               Export as SVG
@@ -310,22 +355,6 @@ const PropertiesPanel = memo(function PropertiesPanel({
 
         </div>
       </div>
-
-      {/* ── Feedback ─────────────────────────────────────────── */}
-      {project?.svg_url && (
-        <div style={sectionStyle}>
-          <FeedbackWidget
-            projectId={project.id}
-            initialRating={project.rating}
-          />
-        </div>
-      )}
-
-      {/* ── Activity Log ─────────────────────────────────────── */}
-      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-        <span style={{ ...eyebrowStyle, padding: `${SPACE.md}px ${SPACE.lg}px ${SPACE.sm}px` }}>Activity Log</span>
-        <div className="console-area" ref={consoleRef} style={{ flex: 1 }} />
-      </div>
     </aside>
   );
 });
@@ -333,21 +362,21 @@ const PropertiesPanel = memo(function PropertiesPanel({
 function primaryBtnStyle(active) {
   return {
     width: "100%",
-    background: active ? COLOR.accent : "rgba(212,255,89,0.08)",
-    border: "1px solid " + (active ? COLOR.accent : COLOR.inputBorder),
-    borderRadius: RADIUS,
-    color: active ? COLOR.accentText : "#555",
-    padding: "12px 16px",
-    fontSize: "12px",
-    fontWeight: 700,
-    textTransform: "uppercase",
-    letterSpacing: "1px",
+    background: active ? "#ffffff" : "rgba(255,255,255,0.05)",
+    border: active ? "1px solid #ffffff" : "1px solid rgba(255,255,255,0.1)",
+    borderRadius: "8px",
+    color: active ? "#000000" : "#666",
+    padding: "14px 16px",
+    fontSize: "13px",
+    fontWeight: 600,
+    letterSpacing: "0.3px",
     cursor: active ? "pointer" : "not-allowed",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: SPACE.sm,
     transition: "all 0.2s",
+    boxShadow: active ? "0 4px 12px rgba(255,255,255,0.15)" : "none",
   };
 }
 

@@ -24,6 +24,15 @@
   margin: 0;
 }
 
+select option {
+  background-color: #222;
+  color: #fff;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+}
+
 html, body {
   background-color: var(--bg-app);
   color: var(--text-primary);
@@ -582,7 +591,6 @@ html, body {
 
 /* Action Buttons */
 .btn-primary {
-  width: 100%;
   background-color: #3e3e3e;
   color: var(--text-bright);
   border: 1px solid var(--border-light);
@@ -618,28 +626,95 @@ html, body {
   cursor: not-allowed;
 }
 
-/* Information Console (Bottom of panel) */
+/* =========================================
+   ACTIVITY LOG STYLES
+   ========================================= */
 .console-area {
   flex: 1;
   background-color: #1a1a1a;
   border-top: 1px solid #111;
-  padding: 10px;
-  font-family: Consolas, monospace;
-  font-size: 11px;
+  padding: 16px 20px;
+  font-family: var(--font-geist-sans), "Inter", sans-serif;
+  font-size: 12px;
   color: var(--text-muted);
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+}
+
+/* Timeline left line */
+.console-area::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  top: 16px;
+  bottom: 16px;
+  width: 1px;
+  background: #333;
+  z-index: 0;
 }
 
 .console-msg {
-  margin-bottom: 4px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+  animation: logSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  transform: translateY(4px);
 }
 
-.console-msg.success {
+@keyframes logSlideIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.console-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #2a2a2a;
+  color: #888;
+  border: 1px solid #3a3a3a;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 50px;
+  text-align: center;
+  box-shadow: 0 0 0 4px #1a1a1a; /* masks the timeline line */
+}
+
+.console-text {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #ccc;
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+.console-msg.success .console-badge {
+  background: rgba(74, 222, 128, 0.1);
   color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.3);
+}
+.console-msg.success .console-text {
+  color: #d4ff59;
 }
 
-.console-msg.error {
+.console-msg.error .console-badge {
+  background: rgba(248, 113, 113, 0.1);
   color: #f87171;
+  border-color: rgba(248, 113, 113, 0.3);
+}
+.console-msg.error .console-text {
+  color: #ff9d9d;
 }
 
 /* =========================================
@@ -722,4 +797,3 @@ html, body {
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
 ::-webkit-scrollbar-corner { background: transparent; }
-

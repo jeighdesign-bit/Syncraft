@@ -1,0 +1,127 @@
+<!DOCTYPE html><html lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Folder View Interface</title>
+<!-- Tailwind CSS v3 CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style data-purpose="custom-fonts">
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+<style data-purpose="folder-card-styles">
+    /* Custom shadow and shape for the folder cards to match the reference image */
+    .folder-card {
+      aspect-ratio: 1 / 1;
+      border-radius: 2.5rem;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    /* The specific notch-like shape for the folder labels */
+    .folder-tab {
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%);
+      border-radius: 1.5rem 1.5rem 0 0;
+    }
+    /* Gradient backgrounds for the top half */
+    .bg-gradient-blue {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    .bg-gradient-red {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+  </style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" data-snapdom="injected-import"></head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-8">
+<!-- BEGIN: MainContainer -->
+<main class="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-5xl w-full" data-purpose="folder-grid">
+<!-- BEGIN: BlueFolderCard -->
+<section class="folder-card bg-[#1a1a1a] flex flex-col relative" data-purpose="work-files-folder-blue">
+<!-- Top Gradient Header Area -->
+<div class="h-1/2 w-full bg-gradient-blue relative flex items-end justify-center px-6 overflow-hidden">
+<!-- Visual Document Elements (Stacked white cards) -->
+<div class="flex space-x-[-20px] mb-[-20px] transform translate-y-4">
+<div class="w-32 h-40 bg-white rounded-xl shadow-lg transform rotate-[-5deg]"></div>
+<div class="w-32 h-40 bg-white rounded-xl shadow-lg transform z-10"></div>
+<div class="w-32 h-40 bg-white rounded-xl shadow-lg transform rotate-[5deg]"></div>
+</div>
+</div>
+<!-- Content Area -->
+<div class="h-1/2 w-full p-8 flex flex-col justify-between text-white relative">
+<!-- Folder Header Info -->
+<div class="flex justify-between items-start">
+<div>
+<h2 class="text-2xl font-semibold mb-1">FILE NAME</h2>
+<p class="text-gray-400 text-lg">DATE OF THE FILE</p>
+</div>
+<!-- More Options (Three Dots) -->
+<button aria-label="More options" class="p-2 hover:bg-gray-800 rounded-full transition-colors">
+<svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+<circle cx="5" cy="12" r="2"></circle>
+<circle cx="12" cy="12" r="2"></circle>
+<circle cx="19" cy="12" r="2"></circle>
+</svg>
+</button>
+</div>
+<!-- Footer Info -->
+<div class="flex items-center space-x-2 text-gray-400 text-lg">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="">1</span>
+</div>
+</div>
+<!-- Thumbnail Overlay (Absolute Positioned for style) -->
+<div class="absolute top-4 left-4 w-12 h-12 rounded-lg overflow-hidden border border-white/20">
+
+</div>
+</section>
+<!-- END: BlueFolderCard -->
+<!-- BEGIN: RedFolderCard -->
+<section class="folder-card bg-[#1a1a1a] flex flex-col relative" data-purpose="work-files-folder-red">
+<!-- Top Gradient Header Area -->
+<div class="h-1/2 w-full bg-gradient-red relative flex items-end justify-center px-6 overflow-hidden">
+<!-- Visual Document Elements (Stacked white cards) -->
+<div class="flex space-x-[-20px] mb-[-20px] transform translate-y-4">
+<div class="w-32 h-40 bg-white rounded-xl shadow-lg transform rotate-[-5deg]"></div>
+<div class="w-32 h-40 bg-white rounded-xl shadow-lg transform z-10"></div>
+<div class="w-32 h-40 bg-white rounded-xl shadow-lg transform rotate-[5deg]"></div>
+</div>
+</div>
+<!-- Content Area -->
+<div class="h-1/2 w-full p-8 flex flex-col justify-between text-white">
+<!-- Folder Header Info -->
+<div class="flex justify-between items-start">
+<div>
+<h2 class="text-2xl font-semibold mb-1">Work files</h2>
+<p class="text-gray-400 text-lg">Notes &amp; More</p>
+</div>
+<!-- More Options -->
+<button aria-label="More options" class="p-2 hover:bg-gray-800 rounded-full transition-colors">
+<svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+<circle cx="5" cy="12" r="2"></circle>
+<circle cx="12" cy="12" r="2"></circle>
+<circle cx="19" cy="12" r="2"></circle>
+</svg>
+</button>
+</div>
+<!-- Footer Info -->
+<div class="flex items-center space-x-2 text-gray-400 text-lg">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="">2 386 Files</span>
+</div>
+</div>
+<!-- Thumbnail Overlay (Different thumbnail from same source) -->
+<div class="absolute top-4 left-4 w-12 h-12 rounded-lg overflow-hidden border border-white/20">
+<!-- Using the same source as per instructions, visual difference implied by clipping or selection if possible, otherwise same src -->
+<img alt="Thumbnail" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFiKZI7xXSN0tfLA73mpG7ekHUML31W8kP0gejwXk2Y0pqkCNpJR-OFlvAbNuIjcD0FAwct85aIBRTzobCmhlaLX89KC2Pks24jom4twrYQpBQpf-DNachD3nWUo0LnlwQNsUUU8UGv_MmQULLvj0YxgeBavbVQ1S20oQkLlemFRzLFLBDNB1LFU1pRdQM77wBaFWZba4gnkL7f3lc8bpjKdEbmarH0Lm1OoxOqhboS8FbRMOZ5e6FrJyywP-GxrSYsKGnhJDQQdzZ">
+</div>
+</section>
+<!-- END: RedFolderCard -->
+</main>
+<!-- END: MainContainer -->
+
+
+</body></html>

@@ -43,15 +43,15 @@ const RecentProjects = memo(function RecentProjects({
 
     return (
       <div className="recent-projects">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <h3 style={{ margin: 0, marginBottom: "4px" }}>Recent Projects</h3>
-            <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "#888", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              <Clock size={10} /> Auto-deleted after 3 days
+            <h3 style={{ margin: 0, marginBottom: "4px", borderBottom: "none", paddingBottom: 0, fontSize: "16px", color: "#fff", fontWeight: "700" }}>RECENT PROJECTS</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#666", fontSize: "11px", fontWeight: "500", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              <Clock size={11} /> Auto-deleted after 3 days
             </div>
           </div>
-          <div style={{ position: "relative", width: "240px" }}>
-            <Search size={14} color="#888" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }} />
+          <div style={{ position: "relative", width: "260px" }}>
+            <Search size={14} color="#666" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
             <input 
               type="text" 
               placeholder="Search projects..." 
@@ -59,27 +59,27 @@ const RecentProjects = memo(function RecentProjects({
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: "100%",
-                background: "#1a1a1a",
-                border: "1px solid #333",
+                background: "#161616",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
                 color: "#e0e0e0",
-                padding: "8px 12px 8px 34px",
-                borderRadius: "0",
+                padding: "10px 14px 10px 38px",
+                borderRadius: "99px",
                 fontSize: "13px",
                 outline: "none",
-                transition: "border-color 0.2s"
+                transition: "all 0.25s ease-out"
               }}
-              onFocus={(e) => e.target.style.borderColor = "#d4ff59"}
-              onBlur={(e) => e.target.style.borderColor = "#333"}
+              onFocus={(e) => { e.target.style.borderColor = "#d4ff59"; e.target.style.background = "#1a1a1a"; e.target.style.boxShadow = "0 0 0 3px rgba(212, 255, 89, 0.1)"; }}
+              onBlur={(e) => { e.target.style.borderColor = "rgba(255, 255, 255, 0.1)"; e.target.style.background = "#161616"; e.target.style.boxShadow = "none"; }}
             />
           </div>
         </div>
 
         {/* Privacy Notice for main projects */}
-        <div style={{ background: "rgba(212, 255, 89,0.05)", border: "1px solid rgba(212, 255, 89,0.2)", borderRadius: "8px", padding: "12px", marginBottom: "20px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
-          <ShieldAlert size={14} color="#d4ff59" style={{ flexShrink: 0, marginTop: "2px" }} />
+        <div style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.05)", borderRadius: "14px", padding: "12px 16px", marginBottom: "24px", display: "flex", gap: "12px", alignItems: "center" }}>
+          <ShieldAlert size={16} color="#d4ff59" style={{ flexShrink: 0 }} />
           <div>
-            <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#d4ff59" }}>Privacy First</p>
-            <p style={{ margin: 0, fontSize: "10px", color: "#aaa", lineHeight: 1.4 }}>All uploaded and generated projects are permanently deleted after 3 days to protect your privacy.</p>
+            <p style={{ margin: "0 0 2px", fontSize: "12px", fontWeight: "600", color: "#e0e0e0" }}>Privacy First</p>
+            <p style={{ margin: 0, fontSize: "11px", color: "#888", lineHeight: 1.4 }}>All uploaded and generated projects are permanently deleted after 3 days to protect your privacy.</p>
           </div>
         </div>
 

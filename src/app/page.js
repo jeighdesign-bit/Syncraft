@@ -10,7 +10,7 @@ import { toast } from "@/components/Toast";
 import { compressImageClientSide } from "@/utils/imageUtils";
 import { uploadImageToStorage } from "@/utils/uploadClient";
 
-import { ImageIcon, Monitor, LogIn, FilePlus, User, Trash2, LogOut, CheckCircle2, X, Loader2, Scan, Scissors, ShieldCheck, Code2, Upload } from "lucide-react";
+import { ImageIcon, Monitor, LogIn, User, Trash2, LogOut, CheckCircle2, X, Loader2, Scan, Scissors, ShieldCheck, Code2, Upload } from "lucide-react";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 import "./globals.css";
@@ -23,11 +23,14 @@ import NewProjectModal from "./components/NewProjectModal";
 import OnboardingModal from "./components/OnboardingModal";
 import RecentProjects from "./components/RecentProjects";
 import EduSection from "./components/EduSection";
+import SamplesSection from "./components/SamplesSection";
 import BeforeAfterSlider from "./components/BeforeAfterSlider";
 import PromoModal from "./components/PromoModal";
 import AIDisclaimerModal from "./components/AIDisclaimerModal";
 import TestimonialSection from "./components/TestimonialSection";
+import GreatForSection from "./components/GreatForSection";
 import QRCode from "react-qr-code";
+import FeedbackWidget from "@/app/workspace/[id]/components/FeedbackWidget";
 
 function AnimatedCounter() {
   const [count, setCount] = useState(0);
@@ -62,38 +65,81 @@ function AnimatedCounter() {
   }, []);
 
   return (
-    <div style={{
-      marginTop: "60px",
-      padding: "60px 40px",
-      background: "linear-gradient(145deg, #161616, #111)",
-      border: "1px solid #222",
-      borderRadius: "12px",
+    <div style={{ 
+      maxWidth: "700px",
+      margin: "60px auto 0",
+      padding: "56px 40px",
+      background: "rgba(255, 255, 255, 0.02)",
+      backdropFilter: "blur(24px)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      borderRadius: "24px",
       textAlign: "center",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      gap: "12px",
-      boxShadow: "0 20px 40px rgba(0,0,0,0.4)"
+      gap: "20px",
+      boxShadow: "0 40px 80px -20px rgba(0,0,0,0.7)"
     }}>
-      <div style={{ color: "#d4ff59", fontSize: "12px", fontWeight: "800", letterSpacing: "3px", textTransform: "uppercase" }}>
-        TRUSTED NATIONWIDE
+      <div style={{ 
+        display: "inline-flex", 
+        alignItems: "center", 
+        gap: "8px", 
+        background: "rgba(212, 255, 89, 0.1)", 
+        border: "1px solid rgba(212, 255, 89, 0.2)", 
+        padding: "8px 16px", 
+        borderRadius: "100px",
+        color: "#d4ff59", 
+        fontSize: "12px", 
+        fontWeight: "700", 
+        letterSpacing: "1px", 
+        textTransform: "uppercase" 
+      }}>
+        <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#d4ff59", boxShadow: "0 0 12px #d4ff59" }} />
+        Trusted Nationwide
       </div>
       <div style={{ 
-        fontSize: "72px", 
-        fontWeight: "900", 
-        color: "#fff", 
-        lineHeight: "1",
-        letterSpacing: "-2px",
+        fontSize: "88px", 
+        fontWeight: "700", 
+        background: "linear-gradient(180deg, #ffffff 0%, #888888 100%)",
+        WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        lineHeight: "1.1",
+        letterSpacing: "-4px",
         fontVariantNumeric: "tabular-nums"
       }}>
         {count.toLocaleString()}+
       </div>
-      <div style={{ color: "#888", fontSize: "15px", maxWidth: "400px", lineHeight: "1.6" }}>
+      <div style={{ color: "#aaa", fontSize: "16px", maxWidth: "440px", lineHeight: "1.6", fontWeight: "400" }}>
         Designs successfully extracted and vectorized by print shops and freelancers.
       </div>
     </div>
   );
 }
+
+const getPremiumAvatar = (url, index) => {
+  const premiumPlaceholders = [
+    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80"
+  ];
+  
+  if (!url) return premiumPlaceholders[index % premiumPlaceholders.length];
+  
+  const lowerUrl = url.toLowerCase();
+  const isDefault = 
+    (url.includes("googleusercontent.com/a/") && !url.includes("googleusercontent.com/a-/")) ||
+    lowerUrl.includes("default") ||
+    lowerUrl.includes("gravatar.com/avatar") ||
+    lowerUrl.includes("ui-avatars.com");
+    
+  if (isDefault) {
+    return premiumPlaceholders[index % premiumPlaceholders.length];
+  }
+  
+  return url;
+};
 
 export default function StartScreen() {
   const router = useRouter();
@@ -290,26 +336,44 @@ export default function StartScreen() {
   // ─── Project Actions ────────────────────────────────────────────────────────
   const saveRename = async (e, id) => {
     e.stopPropagation();
-    if (!editValue.trim() || editValue === recentProjects.find(p => p.id === id).name) {
+
+    const originalProject = recentProjects.find(p => p.id === id);
+    const originalName = originalProject?.name;
+    const newName = editValue.trim();
+
+    if (!newName || newName === originalName) {
       setEditingId(null);
       return;
     }
+
+    // 1. Optimistic Update (update UI first, close editor)
+    setRecentProjects(prev => prev.map(p => p.id === id ? { ...p, name: newName } : p));
+    setEditingId(null);
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
+      
+      // 2. Background Request
       const res = await fetch("/api/project", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ projectId: id, newName: editValue })
+        body: JSON.stringify({ projectId: id, newName: newName })
       });
-      if (res.ok) setRecentProjects(prev => prev.map(p => p.id === id ? { ...p, name: editValue } : p));
+
+      // 3. Rollback if server responds with error
+      if (!res.ok) {
+        console.error("Failed to rename project on server. Reverting UI.");
+        setRecentProjects(prev => prev.map(p => p.id === id ? { ...p, name: originalName } : p));
+      }
     } catch (err) {
-      console.error("Failed to rename", err);
+      // 3. Rollback if network error occurs
+      console.error("Network error while renaming project. Reverting UI.", err);
+      setRecentProjects(prev => prev.map(p => p.id === id ? { ...p, name: originalName } : p));
     }
-    setEditingId(null);
   };
 
   const deleteProject = async () => {
@@ -502,67 +566,133 @@ export default function StartScreen() {
             <div className="hero-left" style={{ margin: "0" }}>
               <div className="start-logo" style={{ marginBottom: "30px", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
                 <img src="/logo.svg" alt="DesaynClaw Logo" style={{ width: "350px", maxWidth: "100%", height: "auto", margin: 0 }} />
-                <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.8)", margin: "5px 0 0 0", fontWeight: "500" }}>Developed by desaynbro</p>
 
-                {/* PUBLIC STATS */}
+                {/* DEVELOPED BY BADGE */}
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "12px", background: "rgba(255,255,255,0.02)", padding: "4px 12px", borderRadius: "20px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#d4ff59", boxShadow: "0 0 10px rgba(212,255,89,0.5)" }} />
+                  <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", margin: 0, fontWeight: "500", letterSpacing: "0.5px" }}>Developed by <span style={{ color: "#fff", fontWeight: "700" }}>desaynbro</span></p>
+                </div>
+
+                {/* PUBLIC STATS BADGE */}
                 {publicStats.totalUsers > 0 && (
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginTop: "24px", gap: "16px" }}>
+                  <div style={{ 
+                    display: "inline-flex", 
+                    alignItems: "center", 
+                    background: "linear-gradient(135deg, rgba(212, 255, 89, 0.08) 0%, rgba(20,20,20,0) 100%)", 
+                    border: "1px solid rgba(212, 255, 89, 0.15)", 
+                    padding: "6px 16px 6px 6px", 
+                    borderRadius: "99px", 
+                    marginTop: "24px", 
+                    gap: "14px",
+                    boxShadow: "0 8px 32px rgba(212, 255, 89, 0.05)",
+                    backdropFilter: "blur(10px)"
+                  }}>
 
-                    {/* FlyonUI-style Avatar Group (Avatars ONLY) */}
+                    {/* Avatar Group (Real User Profiles) */}
                     <div style={{ display: "flex", alignItems: "center" }}>
                       {publicStats.avatars.length > 0 && publicStats.avatars.map((url, i) => (
-                        <img key={i} src={url} alt="User" style={{ width: "42px", height: "42px", borderRadius: "50%", border: "2px solid #1a1a1a", marginLeft: i > 0 ? "-16px" : "0", backgroundColor: "#333", objectFit: "cover", zIndex: 10 - i, boxShadow: "0 0 0 1px rgba(0,0,0,0.1)" }} />
+                        <img 
+                          key={i} 
+                          src={url} 
+                          alt="User" 
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23888888'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>";
+                          }}
+                          style={{ 
+                            width: "32px", 
+                            height: "32px", 
+                            borderRadius: "50%", 
+                            border: "2px solid #111", 
+                            marginLeft: i > 0 ? "-14px" : "0", 
+                            backgroundColor: "#222", 
+                            objectFit: "cover", 
+                            zIndex: 10 - i, 
+                            boxShadow: "0 4px 10px rgba(0,0,0,0.4)"
+                          }} 
+                        />
                       ))}
                     </div>
 
-                    {/* Clean Text Label */}
-                    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "left" }}>
-                      <div style={{ fontSize: "14px", color: "#e0e0e0", fontWeight: "600", letterSpacing: "-0.2px" }}>
-                        {publicStats.totalUsers.toLocaleString()}+ creatives
-                      </div>
-                      <div style={{ fontSize: "13px", color: "#888", fontWeight: "500" }}>
-                        joined the beta
-                      </div>
+                    {/* Stats Info (Modern Layout) */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "#aaa", fontWeight: "500", letterSpacing: "0.2px" }}>
+                      <span style={{ color: "#d4ff59", fontWeight: "700" }}>
+                        {publicStats.totalUsers.toLocaleString()}+
+                      </span>
+                      Creatives using the Beta
                     </div>
-
                   </div>
                 )}
 
-                <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.9)", textAlign: "center", marginTop: "20px", maxWidth: "550px", lineHeight: "1.6", textWrap: "balance", fontWeight: "500" }}>
+                <p style={{ 
+                  fontSize: "15px", 
+                  color: "#e2e2e2", 
+                  textAlign: "center", 
+                  marginTop: "24px", 
+                  maxWidth: "580px", 
+                  lineHeight: "1.6", 
+                  textWrap: "balance", 
+                  fontWeight: "600"
+                }}>
                   Instantly transform your raster images (PNG, JPG) into ultra-clean, scalable vector graphics (SVG) using our advanced AI neural engine.
                 </p>
               </div>
 
-              <div style={{ display: "flex", gap: "6px", marginBottom: "20px", flexWrap: "nowrap", justifyContent: "space-between", width: "100%", overflowX: "auto" }}>
-                <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } setShowModal(true); }} disabled={isUploading} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", transition: "all 0.2s", whiteSpace: "nowrap" }}>
-                  {isUploading ? <><Monitor size={14} className="animate-pulse" /> Creating...</> : <><FilePlus size={14} /> New Project</>}
+              <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "nowrap", justifyContent: "center", width: "100%", overflowX: "auto" }}>
+                {/* "New Project" and "Open PC" were removed — both landed on the exact
+                    same category-picker modal as clicking the upload box below, just
+                    in a different order. The upload box remains the single entry point
+                    for that flow. */}
+                <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } setShowQrModal(true); }} disabled={isUploading} style={actionBtnStyle({ disabled: isUploading })} {...actionBtnHover({ disabled: isUploading })}>
+                  <Scan size={13} /> Scan Phone
                 </button>
-                <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } fileInputRef.current.click(); }} disabled={isUploading} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", transition: "all 0.2s", whiteSpace: "nowrap" }}>
-                  {isUploading ? <><Monitor size={14} className="animate-pulse" /> Uploading...</> : <><Monitor size={14} /> Open PC</>}
+                <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } router.push('/upscale'); }} disabled={isUploading} style={actionBtnStyle({ disabled: isUploading })} {...actionBtnHover({ disabled: isUploading })}>
+                  <ImageIcon size={13} /> Image Upscale
                 </button>
-                <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } setShowQrModal(true); }} disabled={isUploading} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", transition: "all 0.2s", whiteSpace: "nowrap" }}>
-                  <Scan size={14} /> Scan Phone
-                </button>
-                <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } router.push('/upscale'); }} disabled={isUploading} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", transition: "all 0.2s", whiteSpace: "nowrap" }}>
-                  <ImageIcon size={14} /> Image Upscale
-                </button>
-                <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } bgRemoveInputRef.current.click(); }} disabled={isUploading} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "transparent", color: "#d4ff59", border: "1px solid rgba(212, 255, 89, 0.4)", padding: "8px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "700", transition: "all 0.2s", whiteSpace: "nowrap", boxShadow: "0 0 10px rgba(212, 255, 89,0.1)" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(212, 255, 89,0.1)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                  <Scissors size={14} color="#d4ff59" /> BG Remover
+                <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } bgRemoveInputRef.current.click(); }} disabled={isUploading} style={actionBtnStyle({ accent: true, disabled: isUploading })} {...actionBtnHover({ accent: true, disabled: isUploading })}>
+                  <Scissors size={13} /> BG Remover
                 </button>
               </div>
 
               <div className="hero-upload-box"
-                style={{ flex: 1, background: "#161616", padding: "32px", borderRadius: "24px", display: "flex", flexDirection: "column", gap: "24px", boxShadow: "0 10px 30px rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.03)" }}
+                style={{ 
+                  flex: 1, 
+                  background: "#262626", 
+                  padding: "16px", 
+                  borderRadius: "28px", 
+                  display: "flex", 
+                  flexDirection: "column", 
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.1)", 
+                  border: "1px solid rgba(255,255,255,0.05)"
+                }}
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
-                  <input type="checkbox" id="aiEnhance" defaultChecked style={{ width: "16px", height: "16px", accentColor: "#007AFF", cursor: "pointer" }} />
-                  <label htmlFor="aiEnhance" style={{ fontSize: "14px", color: "#fff", cursor: "pointer", fontWeight: "600", letterSpacing: "0.3px" }}>Enhance Image with AI <span style={{ color: "#888", fontWeight: "400" }}>(Removes noise)</span></label>
-                </div>
-
                 <div 
-                  style={{ width: "100%", flex: 1, background: "#0e0e0e", borderRadius: "16px", padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.2s", border: "1px solid #1a1a1a" }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#121212"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "#0e0e0e"}
+                  style={{ 
+                    width: "100%", 
+                    flex: 1, 
+                    background: "#111111", 
+                    backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px)",
+                    borderRadius: "20px", 
+                    padding: "36px 24px", 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    alignItems: "center", 
+                    justifyContent: "center", 
+                    cursor: "pointer", 
+                    transition: "all 0.2s ease", 
+                    border: "1px solid rgba(255,255,255,0.05)",
+                    position: "relative"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#161616";
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                    e.currentTarget.style.backgroundImage = "repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 10px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#111111";
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)";
+                    e.currentTarget.style.backgroundImage = "repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px)";
+                  }}
                   onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } fileInputRef.current.click(); }}
                   onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                   onDrop={(e) => {
@@ -573,16 +703,68 @@ export default function StartScreen() {
                     }
                   }}
                 >
-
-
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#fff", fontWeight: "700", fontSize: "18px", letterSpacing: "0.5px", marginBottom: "24px" }}>
-                    {isUploading ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}
-                    {isUploading ? "UPLOADING..." : "UPLOAD IMAGES"}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", color: "#fff", marginBottom: "20px" }}>
+                    <div style={{ 
+                      width: "48px", 
+                      height: "48px", 
+                      borderRadius: "50%", 
+                      background: "rgba(255,255,255,0.05)", 
+                      display: "flex", 
+                      alignItems: "center", 
+                      justifyContent: "center", 
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      marginBottom: "8px"
+                    }}>
+                      {isUploading ? <Loader2 size={20} className="animate-spin" color="#ffffff" /> : <Upload size={20} color="#ffffff" />}
+                    </div>
+                    <div style={{ fontWeight: "700", fontSize: "16px", letterSpacing: "0.5px" }}>
+                      {isUploading ? "UPLOADING..." : "UPLOAD IMAGES"}
+                    </div>
                   </div>
                   
-                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "center" }}>
-                    <span style={{ color: "#777", fontSize: "14px" }}>or drop an image</span>
-                    <span style={{ color: "#555", fontSize: "13px" }}>.png, .jpg, .jpeg, .webp</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "center" }}>
+                    <span style={{ color: "#777", fontSize: "13px" }}>or drop an image here</span>
+                    <span style={{ color: "#555", fontSize: "11px", letterSpacing: "0.5px" }}>PNG, JPG, JPEG, WEBP</span>
+                  </div>
+
+                  {/* Elegant checkbox placement inside the dark box */}
+                  <div 
+                    style={{ 
+                      marginTop: "24px",
+                      paddingTop: "16px",
+                      borderTop: "1px solid rgba(255,255,255,0.06)",
+                      width: "100%",
+                      maxWidth: "280px",
+                      display: "flex", 
+                      alignItems: "center", 
+                      justifyContent: "center", 
+                      gap: "8px"
+                    }}
+                    onClick={(e) => e.stopPropagation()} // prevent triggering file upload when clicking checkbox container
+                  >
+                    <input 
+                      type="checkbox" 
+                      id="aiEnhance" 
+                      defaultChecked 
+                      style={{ 
+                        width: "15px", 
+                        height: "15px", 
+                        accentColor: "#ffffff", 
+                        cursor: "pointer" 
+                      }} 
+                    />
+                    <label 
+                      htmlFor="aiEnhance" 
+                      style={{ 
+                        fontSize: "12px", 
+                        color: "#888", 
+                        cursor: "pointer", 
+                        fontWeight: "500", 
+                        userSelect: "none" 
+                      }}
+                    >
+                      Enhance with AI <span style={{ color: "#555" }}>(Removes noise)</span>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -608,23 +790,74 @@ export default function StartScreen() {
                 />
               </div>
             ) : (
-              <div className="hero-right" style={{ width: "100%", display: "flex", flexDirection: "column", gap: "16px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
-                  <BeforeAfterSlider
-                    title="Custom Design 2"
-                    rasterUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/users/08bafd26-e228-4a97-9efa-84a930c90098/1784548330290_crop_1784548327816.jpg"
-                    vectorUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/projects/91cfc49d-010c-4c10-b1de-4d568edd6b9e/vector_1784548431214.svg"
-                    height="220px"
-                    objectFit="cover"
-                  />
-                  <BeforeAfterSlider
-                    title="Custom Pattern"
-                    rasterUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/users/08bafd26-e228-4a97-9efa-84a930c90098/1784601880631_crop_1784601878596.jpg"
-                    vectorUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/projects/6b65be66-7696-4cd1-9ef5-ddb220c200fa/vector_1784601963265.svg"
-                    height="220px"
-                    objectFit="cover"
-                  />
+              <div className="hero-right" style={{ width: "100%", display: "flex", flexDirection: "column", gap: "24px", alignItems: "center" }}>
+                
+                {/* First Slider */}
+                <div style={{
+                  position: 'relative',
+                  borderRadius: '24px',
+                  padding: '16px',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  backdropFilter: 'blur(24px)',
+                  WebkitBackdropFilter: 'blur(24px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderLeft: '1px solid rgba(255, 255, 255, 0.15)',
+                  boxShadow: '0 30px 60px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
+                  width: '100%',
+                  maxWidth: '380px'
+                }}>
+                  <div style={{
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.5)',
+                    position: 'relative',
+                    zIndex: 2,
+                    background: 'transparent'
+                  }}>
+                    <BeforeAfterSlider
+                      title="Custom Design 2"
+                      rasterUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/users/08bafd26-e228-4a97-9efa-84a930c90098/1784548330290_crop_1784548327816.jpg"
+                      vectorUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/projects/91cfc49d-010c-4c10-b1de-4d568edd6b9e/vector_1784548431214.svg"
+                      height="240px"
+                      objectFit="cover"
+                    />
+                  </div>
                 </div>
+
+                {/* Second Slider */}
+                <div style={{
+                  position: 'relative',
+                  borderRadius: '24px',
+                  padding: '16px',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  backdropFilter: 'blur(24px)',
+                  WebkitBackdropFilter: 'blur(24px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderLeft: '1px solid rgba(255, 255, 255, 0.15)',
+                  boxShadow: '0 30px 60px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
+                  width: '100%',
+                  maxWidth: '380px'
+                }}>
+                  <div style={{
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.5)',
+                    position: 'relative',
+                    zIndex: 2,
+                    background: 'transparent'
+                  }}>
+                    <BeforeAfterSlider
+                      title="Custom Pattern"
+                      rasterUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/users/08bafd26-e228-4a97-9efa-84a930c90098/1784601880631_crop_1784601878596.jpg"
+                      vectorUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/projects/6b65be66-7696-4cd1-9ef5-ddb220c200fa/vector_1784601963265.svg"
+                      height="240px"
+                      objectFit="cover"
+                    />
+                  </div>
+                </div>
+
               </div>
             )}
           </div>
@@ -639,175 +872,63 @@ export default function StartScreen() {
 
         {/* SCROLLING TRUST MARQUEE (MINIMAL & ALIGNED) */}
         <div className="marquee-container" style={{ 
-          padding: "20px 0",
+          padding: "24px 0",
           background: "linear-gradient(to right, transparent, rgba(255,255,255,0.02), transparent)", 
           borderTop: "1px solid rgba(255,255,255,0.06)",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
           width: "100%",
           marginBottom: "0px",
-          marginTop: "20px"
+          marginTop: "40px"
         }}>
           <div className="marquee-content">
             {/* 1st Set */}
-            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
-              <ShieldCheck size={22} color="#999" />
-              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>100% Private & Secure</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
+              <ShieldCheck size={20} color="#d4ff59" />
+              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>100% Private & Secure</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
-              <Trash2 size={22} color="#999" />
-              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>Auto-deletes after 3 days</span>
+            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
+              <Trash2 size={20} color="#d4ff59" />
+              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>Auto-deletes after 3 days</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
-              <Code2 size={22} color="#999" />
-              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>Built by Real Developers</span>
+            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
+              <Code2 size={20} color="#d4ff59" />
+              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>Built by Real Developers</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
-              <Monitor size={22} color="#999" />
-              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>Highly Scalable Infrastructure</span>
+            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
+              <Monitor size={20} color="#d4ff59" />
+              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>Highly Scalable Infrastructure</span>
             </div>
+            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
             
             {/* 2nd Set (Duplicate for seamless loop) */}
-            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
-              <ShieldCheck size={22} color="#999" />
-              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>100% Private & Secure</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
+              <ShieldCheck size={20} color="#d4ff59" />
+              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>100% Private & Secure</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
-              <Trash2 size={22} color="#999" />
-              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>Auto-deletes after 3 days</span>
+            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
+              <Trash2 size={20} color="#d4ff59" />
+              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>Auto-deletes after 3 days</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
-              <Code2 size={22} color="#999" />
-              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>Built by Real Developers</span>
+            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
+              <Code2 size={20} color="#d4ff59" />
+              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>Built by Real Developers</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 60px", color: "#999" }}>
-              <Monitor size={22} color="#999" />
-              <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", color: "#ccc" }}>Highly Scalable Infrastructure</span>
+            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
+              <Monitor size={20} color="#d4ff59" />
+              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>Highly Scalable Infrastructure</span>
             </div>
+            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
           </div>
         </div>
 
         {/* ─── GREAT FOR SECTION ────────────────────────────────────────────── */}
-        <div style={{ marginTop: "40px", marginBottom: "0" }}>
-          {/* Section Header */}
-          <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "32px" }}>
-            <div style={{
-              background: "#d4ff59",
-              color: "#000",
-              fontSize: "11px",
-              fontWeight: "800",
-              letterSpacing: "1.5px",
-              textTransform: "uppercase",
-              padding: "6px 14px",
-              transform: "skewX(-8deg)",
-              display: "inline-block",
-              whiteSpace: "nowrap",
-            }}>
-              <span style={{ display: "inline-block", transform: "skewX(8deg)" }}>Great For</span>
-            </div>
-            <div style={{ flex: 1, height: "1px", background: "linear-gradient(to right, #444, transparent)" }} />
-          </div>
-
-          {/* Cards Grid */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "1px",
-            background: "#333",
-            border: "1px solid #333",
-            borderRadius: "16px",
-            overflow: "hidden",
-          }}>
-
-            {/* Card 1 — Sublimation Print Shops */}
-            <div style={{
-              background: "#1e1e1e",
-              padding: "28px 24px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "14px",
-              transition: "background 0.2s",
-              cursor: "default",
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = "#252525"}
-              onMouseLeave={e => e.currentTarget.style.background = "#1e1e1e"}
-            >
-              <div style={{ width: "44px", height: "44px", background: "rgba(212, 255, 89,0.08)", border: "1px solid rgba(212, 255, 89,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4ff59" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
-              </div>
-              <div>
-                <div style={{ fontSize: "15px", fontWeight: "700", color: "#fff", marginBottom: "8px", letterSpacing: "0.3px" }}>Sublimation Print Shops</div>
-                <div style={{ fontSize: "13px", color: "#888", lineHeight: "1.6" }}>Extract flat sublimation-ready files from jersey mockups. Save hours of manual Photoshop work. Output clean, print-ready rectangles straight to your RIP software.</div>
-              </div>
-            </div>
-
-            {/* Card 2 — Logos & Branding */}
-            <div style={{
-              background: "#1e1e1e",
-              padding: "28px 24px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "14px",
-              transition: "background 0.2s",
-              cursor: "default",
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = "#252525"}
-              onMouseLeave={e => e.currentTarget.style.background = "#1e1e1e"}
-            >
-              <div style={{ width: "44px", height: "44px", background: "rgba(212, 255, 89,0.08)", border: "1px solid rgba(212, 255, 89,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4ff59" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-              </div>
-              <div>
-                <div style={{ fontSize: "15px", fontWeight: "700", color: "#fff", marginBottom: "8px", letterSpacing: "0.3px" }}>Logos &amp; Branding</div>
-                <div style={{ fontSize: "13px", color: "#888", lineHeight: "1.6" }}>Vectorize low-resolution logos into crisp, scalable SVGs. Enhance old or blurry brand marks into professional vector files ready for Illustrator, CorelDRAW, or embroidery.</div>
-              </div>
-            </div>
-
-            {/* Card 3 — School & Sports Uniforms */}
-            <div style={{
-              background: "#1e1e1e",
-              padding: "28px 24px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "14px",
-              transition: "background 0.2s",
-              cursor: "default",
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = "#252525"}
-              onMouseLeave={e => e.currentTarget.style.background = "#1e1e1e"}
-            >
-              <div style={{ width: "44px", height: "44px", background: "rgba(212, 255, 89,0.08)", border: "1px solid rgba(212, 255, 89,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4ff59" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-              </div>
-              <div>
-                <div style={{ fontSize: "15px", fontWeight: "700", color: "#fff", marginBottom: "8px", letterSpacing: "0.3px" }}>School &amp; Sports Uniforms</div>
-                <div style={{ fontSize: "13px", color: "#888", lineHeight: "1.6" }}>Reproduce barangay, basketball, volleyball, and school uniform designs from mockup photos. Get editable flat files for any sport — without touching the original artwork.</div>
-              </div>
-            </div>
-
-            {/* Card 4 — Freelance Designers */}
-            <div style={{
-              background: "#1e1e1e",
-              padding: "28px 24px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "14px",
-              transition: "background 0.2s",
-              cursor: "default",
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = "#252525"}
-              onMouseLeave={e => e.currentTarget.style.background = "#1e1e1e"}
-            >
-              <div style={{ width: "44px", height: "44px", background: "rgba(212, 255, 89,0.08)", border: "1px solid rgba(212, 255, 89,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4ff59" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 4V2" /><path d="M15 16v-2" /><path d="M8 9h2" /><path d="M20 9h2" /><path d="M17.8 11.8 19 13" /><path d="M15 9h.01" /><path d="M17.8 6.2 19 5" /><path d="m3 21 9-9" /><path d="M12.2 6.2 11 5" /></svg>
-              </div>
-              <div>
-                <div style={{ fontSize: "15px", fontWeight: "700", color: "#fff", marginBottom: "8px", letterSpacing: "0.3px" }}>Freelance Designers</div>
-                <div style={{ fontSize: "13px", color: "#888", lineHeight: "1.6" }}>Remove backgrounds, upscale to 4K, and vectorize client artwork in minutes — not hours. Take on more orders and deliver faster without sacrificing quality.</div>
-              </div>
-            </div>
-
-          </div>
-        </div>
+        <GreatForSection />
         
         {/* ────────────────────────────────────────────────────────────────────── */}
         <div style={{ width: "100%", maxWidth: "1200px", margin: "60px auto 40px", padding: "0 20px" }}>
@@ -817,25 +938,7 @@ export default function StartScreen() {
         <EduSection />
 
         {/* Feature Cards below Hero */}
-        <div id="samples-section" style={{ width: "100%", maxWidth: "1200px", margin: "80px auto 60px", padding: "0 20px" }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '60px', alignItems: 'center' }}>
-            <div style={{ width: "100%" }}>
-              <BeforeAfterSlider
-                title="Custom Pattern (Flat Extracted)"
-                rasterUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/users/08bafd26-e228-4a97-9efa-84a930c90098/1784601880631_crop_1784601878596.jpg"
-                vectorUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/projects/6b65be66-7696-4cd1-9ef5-ddb220c200fa/vector_1784601963265.svg"
-                objectFit="cover"
-              />
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
-              <h3 style={{ color: "#d4ff59", fontSize: "14px", textTransform: "uppercase", letterSpacing: "1.5px", margin: 0, fontWeight: "bold" }}>Sample Extractions</h3>
-              <h2 style={{ color: "#fff", fontSize: "40px", margin: "16px 0", fontWeight: "700", lineHeight: "1.2" }}>Image to Vector</h2>
-              <p style={{ color: "#a0a0a0", fontSize: "18px", lineHeight: "1.6", margin: 0 }}>
-                Experience pixel-perfect vectorization with our advanced AI. We instantly transform your low-resolution raster images (PNG, JPG) into infinitely scalable, ultra-clean SVG files—ready for printing, editing, or scaling to any size without losing quality.
-              </p>
-            </div>
-          </div>
-        </div>
+        <SamplesSection />
         <TestimonialSection />
         {/* Hidden File Input — shows type-selector modal before uploading */}
         <input type="file" ref={fileInputRef} onChange={(e) => { if (e.target.files[0]) openModalWithFile(e.target.files[0]); e.target.value = ""; }} accept="image/*" style={{ display: "none" }} />
@@ -980,6 +1083,7 @@ export default function StartScreen() {
 
 
           <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
+            <a href="#" className="footer-link">Feedback</a>
             <a href="/privacy" className="footer-link">Privacy Policy</a>
             <a href="/terms" className="footer-link">Terms of Service</a>
             <a href="#" className="footer-link">Cookie Policy</a>
@@ -1068,6 +1172,9 @@ export default function StartScreen() {
           }),
         }}
       />
+      
+
+
       {/* ─── SEO: HowTo Structured Data ─────────────────────────────────────── */}
       <script
         type="application/ld+json"
@@ -1118,4 +1225,68 @@ export default function StartScreen() {
       />
     </div>
   );
+}
+
+// ─── Hero action row ─────────────────────────────────────────────────────────
+// Monochrome "product card" look — dark textured chips with a light frame
+// border, one inverted (white-on-black) primary instead of a colour accent.
+// Hover lives in JS rather than the .start-btn CSS rule because an inline
+// `background` outranks a stylesheet :hover, which is why the old row never
+// highlighted.
+
+const ACTION_BTN = {
+  bg: "#111111",
+  bgHover: "#1a1a1a",
+  border: "rgba(255,255,255,0.14)",
+  borderHover: "rgba(255,255,255,0.32)",
+  text: "#e8e8e8",
+  primaryBg: "#262626",
+  primaryBgHover: "#333333",
+  primaryText: "#ffffff",
+};
+
+// Faint diagonal hairlines, matching the subtle texture on the dark card in
+// the reference — kept off the inverted (white) primary button, which stays
+// flat like the card's plain white frame.
+const ACTION_BTN_TEXTURE =
+  "repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 9px)";
+
+function actionBtnStyle({ accent = false, disabled = false } = {}) {
+  return {
+    flex: 1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    padding: "12px 20px",
+    borderRadius: "12px",
+    fontSize: "12px",
+    fontWeight: "800",
+    letterSpacing: "0.5px",
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.45 : 1,
+    backgroundColor: "#111111",
+    border: "1px solid #555555",
+    color: "#ffffff",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+    transition: "all 0.25s ease-out",
+  };
+}
+
+function actionBtnHover({ accent = false, disabled = false } = {}) {
+  if (disabled) return {};
+  return {
+    onMouseEnter: (e) => {
+      e.currentTarget.style.backgroundColor = "#1a1a1a";
+      e.currentTarget.style.borderColor = "#777777";
+      e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.3)";
+    },
+    onMouseLeave: (e) => {
+      e.currentTarget.style.backgroundColor = "#111111";
+      e.currentTarget.style.borderColor = "#555555";
+      e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)";
+    },
+  };
 }

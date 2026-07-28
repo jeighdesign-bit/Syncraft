@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo, useState, useRef, useEffect, useLayoutEffect } from "react";
-import { Scissors, ZoomIn, ZoomOut, Maximize, AlertCircle, Eraser, Loader2, ImageMinus } from "lucide-react";
+import { Scissors, ZoomIn, ZoomOut, Maximize, AlertCircle, Eraser, Loader2, ImageMinus, Zap } from "lucide-react";
 
 /**
  * InlineSVG — Fetches SVG text and injects it directly into the DOM.
@@ -66,9 +66,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
   project,
   traceState,
   nodeErrors,
-  onCropOpen,
-  onEraseOpen,
-  onRemoveBgOpen,
+  leftControls,
 }) {
   const [activeTab, setActiveTab] = useState("generated");
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -283,7 +281,6 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
       return (
         <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: '#1a1a1a' }}>
           <div 
-            className="processing-scan-wrapper"
             style={proxyOriginal ? { 
               maskImage: `url(${proxyOriginal})`, 
               maskSize: 'contain', 
@@ -304,14 +301,13 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
               />
             )}
           </div>
-          <div style={{ position: 'absolute', bottom: '30px', left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#fff', background: 'rgba(0,0,0,0.9)', padding: '16px 32px', borderRadius: '4px', border: '1px solid rgba(212, 255, 89,0.3)', boxShadow: '0 4px 20px rgba(212, 255, 89,0.1)' }}>
-            <div style={{ fontSize: "14px", color: "#d4ff59", fontWeight: "600", marginBottom: "4px", letterSpacing: '1px', textTransform: 'uppercase' }}>
-              <Loader2 size={14} className="animate-spin" style={{ display: 'inline-block', marginRight: '8px', verticalAlign: 'middle' }} />
-              Executing Neural Scan
-            </div>
-            <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.6)", textTransform: 'uppercase', letterSpacing: '2px' }}>
-              {traceState === 'step1' ? 'Extracting geometry...' : traceState === 'step2' ? 'Enhancing resolution...' : 'Generating SVG paths...'}
-            </span>
+          <div style={{ position: 'absolute', inset: 0, zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(10, 10, 10, 0.75)', backdropFilter: 'blur(6px)' }}>
+            <img 
+              src="/Syncraft Logo-14.svg" 
+              alt="Loading" 
+              className="animate-spin" 
+              style={{ width: '100px', height: '100px', filter: 'brightness(0) invert(0.6)', animationDuration: '2.5s', animationTimingFunction: 'linear' }} 
+            />
           </div>
         </div>
       );
@@ -326,11 +322,10 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
     }
     if (!activeUrl) {
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666', gap: '12px' }}>
-          <div style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '12px', fontWeight: '500' }}>Click</span>
-            <span style={{ background: 'linear-gradient(135deg, #d4ff59 0%, #bfe650 100%)', color: '#000', padding: '4px 10px', fontSize: '11px', fontWeight: 'bold' }}>Run Auto-Trace</span>
-            <span style={{ fontSize: '12px', fontWeight: '500' }}>to begin</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666', gap: '16px' }}>
+          <Zap size={24} strokeWidth={1.5} style={{ color: '#444' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '400', letterSpacing: '0.3px', color: '#666' }}>
+            Awaiting <span style={{ color: '#d4ff59', fontWeight: '500', opacity: 0.8 }}>Auto-Trace</span>
           </div>
         </div>
       );
@@ -348,88 +343,72 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
   return (
     <div ref={containerRef} style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", backgroundColor: "#1a1a1a", position: "relative" }}>
 
-      {/* ── Sub-toolbar: tool buttons LEFT, zoom controls CENTER ── */}
-      <div style={{ display: "flex", alignItems: "center", padding: "0 16px", background: "#1e1e1e", borderBottom: "1px solid #333", height: "38px", flexShrink: 0, gap: "8px" }}>
+      {/* ── Sub-toolbar: tool buttons LEFT, Tabs CENTER, zoom controls RIGHT ── */}
+      <div style={{ display: "flex", alignItems: "center", padding: "0 16px", background: "#1a1a1a", borderBottom: "1px solid #2a2a2a", height: "48px", flexShrink: 0, gap: "12px", justifyContent: "space-between" }}>
 
         {/* Left: tool buttons (only in idle) */}
-        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-          <span style={{ color: "#555", fontSize: "10px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "1px", marginRight: "4px" }}>ORIGINAL UPLOAD</span>
-          {traceState === "idle" && (
-            <>
-              <button onClick={onRemoveBgOpen} style={toolBtnStyle} onMouseOver={e => e.currentTarget.style.borderColor="#ccc"} onMouseOut={e => e.currentTarget.style.borderColor="#444"}>
-                <ImageMinus size={11} /> Remove BG
-              </button>
-              <button onClick={onEraseOpen} style={toolBtnStyle} onMouseOver={e => e.currentTarget.style.borderColor="#ccc"} onMouseOut={e => e.currentTarget.style.borderColor="#444"}>
-                <Eraser size={11} /> Erase Noise
-              </button>
-              <button onClick={onCropOpen} style={{ ...toolBtnStyle, background: "rgba(212, 255, 89,0.08)", borderColor: "#d4ff59", color: "#d4ff59" }} onMouseOver={e => e.currentTarget.style.background="rgba(212, 255, 89,0.18)"} onMouseOut={e => e.currentTarget.style.background="rgba(212, 255, 89,0.08)"}>
-                <Scissors size={11} /> Crop Region
-              </button>
-            </>
-          )}
+        <div style={{ display: "flex", flex: 1, gap: "8px", alignItems: "center" }}>
+          {leftControls}
+          {leftControls && <div style={{ width: "1px", height: "14px", background: "#333", margin: "0 8px" }} />}
+          <span style={{ color: "#666", fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px", marginRight: "6px" }}>ORIGINAL UPLOAD</span>
         </div>
 
-        {/* Center: zoom */}
-        <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "6px" }}>
-          <button onClick={() => setZoomLevel(z => Math.max(0.25, z - 0.25))} style={zoomBtnStyle} onMouseOver={e => e.currentTarget.style.borderColor="#d4ff59"} onMouseOut={e => e.currentTarget.style.borderColor="#333"}>−</button>
-          <span style={{ color: "#d4ff59", fontSize: "11px", minWidth: "42px", textAlign: "center", fontWeight: "600", fontFamily: "monospace" }}>{Math.round(zoomLevel * 100)}%</span>
-          <button onClick={() => setZoomLevel(z => Math.min(5, z + 0.25))} style={zoomBtnStyle} onMouseOver={e => e.currentTarget.style.borderColor="#d4ff59"} onMouseOut={e => e.currentTarget.style.borderColor="#333"}>+</button>
-          <div style={{ width: "1px", height: "14px", background: "#333", margin: "0 4px" }} />
-          <button onClick={() => setZoomLevel(1)} style={{ ...zoomBtnStyle, border: "none", color: "#888", padding: "4px 8px" }} onMouseOver={e => e.currentTarget.style.color="#d4ff59"} onMouseOut={e => e.currentTarget.style.color="#888"}>
-            <Maximize size={12} style={{ display: "inline", marginRight: "4px", verticalAlign: "middle" }} />Fit
-          </button>
-        </div>
-
-        {/* Right: right-panel tab label */}
-        <div style={{ display: "flex", gap: "0", alignItems: "stretch", height: "100%" }}>
+        {/* Center: right-panel tab label (Segmented Control) */}
+        <div style={{ display: "flex", background: "#0a0a0a", borderRadius: "10px", padding: "4px", gap: "2px", border: "1px solid #222", boxShadow: "inset 0 1px 4px rgba(0,0,0,0.5)" }}>
           {tabs.map((tab, i) => (
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); setShowSvgAlert(false); }}
               style={{
-                padding: "0 14px",
-                background: activeTab === tab.id ? "#111" : "transparent",
-                border: "none",
-                borderLeft: i > 0 ? "1px solid #333" : "1px solid #333",
-                borderRight: i === tabs.length - 1 ? "1px solid #333" : "none",
-                color: activeTab === tab.id ? "#d4ff59" : tab.hasContent ? "#888" : "#444",
-                fontSize: "10px",
+                padding: "6px 18px",
+                background: activeTab === tab.id ? "rgba(255,255,255,0.08)" : "transparent",
+                border: "1px solid",
+                borderColor: activeTab === tab.id ? "rgba(255,255,255,0.15)" : "transparent",
+                borderRadius: "8px",
+                color: activeTab === tab.id ? "#ffffff" : tab.hasContent ? "#888" : "#444",
+                fontSize: "11px",
                 letterSpacing: "0.5px",
                 textTransform: "uppercase",
-                fontWeight: activeTab === tab.id ? "700" : "600",
+                fontWeight: activeTab === tab.id ? "600" : "500",
                 cursor: "pointer",
-                transition: "all 0.2s",
+                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                 position: "relative",
                 whiteSpace: "nowrap",
+                boxShadow: activeTab === tab.id ? "0 2px 10px rgba(0,0,0,0.2)" : "none"
               }}
-              onMouseOver={e => { if (activeTab !== tab.id) e.currentTarget.style.color = "#ccc"; }}
-              onMouseOut={e => { if (activeTab !== tab.id) e.currentTarget.style.color = tab.hasContent ? "#888" : "#444"; }}
+              onMouseOver={e => { if (activeTab !== tab.id) { e.currentTarget.style.color = "#ccc"; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; } }}
+              onMouseOut={e => { if (activeTab !== tab.id) { e.currentTarget.style.color = tab.hasContent ? "#888" : "#444"; e.currentTarget.style.background = "transparent"; } }}
             >
               {tab.label}
-              {/* Active indicator line at bottom */}
-              {activeTab === tab.id && (
-                <span style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "2px", background: "#d4ff59" }} />
-              )}
-              {/* SVG ready tooltip */}
-              {tab.id === "svg" && showSvgAlert && (
-                <div style={{
-                  position: "absolute", top: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
-                  background: "#d4ff59", color: "#000", padding: "6px 12px",
-                  fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px", whiteSpace: "nowrap", zIndex: 100,
-                  boxShadow: "0 4px 16px rgba(212, 255, 89, 0.4)", pointerEvents: "none"
-                }}>
-                  <div style={{ position: "absolute", top: "-5px", left: "50%", transform: "translateX(-50%)", borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderBottom: "5px solid #d4ff59" }} />
-                  Vector is Ready! Click here.
-                </div>
-              )}
             </button>
           ))}
+        </div>
+
+        {/* Right: zoom controls */}
+        <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "6px" }}>
+          <button onClick={() => setZoomLevel(z => Math.max(0.25, z - 0.25))} style={{ ...zoomBtnStyle, borderRadius: "6px" }} onMouseOver={e => { e.currentTarget.style.borderColor="#666"; e.currentTarget.style.color="#fff"; }} onMouseOut={e => { e.currentTarget.style.borderColor="#333"; e.currentTarget.style.color="#ccc"; }}>−</button>
+          <span style={{ color: "#fff", fontSize: "11px", minWidth: "42px", textAlign: "center", fontWeight: "600", fontFamily: "monospace" }}>{Math.round(zoomLevel * 100)}%</span>
+          <button onClick={() => setZoomLevel(z => Math.min(5, z + 0.25))} style={{ ...zoomBtnStyle, borderRadius: "6px" }} onMouseOver={e => { e.currentTarget.style.borderColor="#666"; e.currentTarget.style.color="#fff"; }} onMouseOut={e => { e.currentTarget.style.borderColor="#333"; e.currentTarget.style.color="#ccc"; }}>+</button>
+          <div style={{ width: "1px", height: "14px", background: "#333", margin: "0 4px" }} />
+          <button onClick={() => setZoomLevel(1)} style={{ ...zoomBtnStyle, border: "none", color: "#888", padding: "4px 8px", borderRadius: "6px" }} onMouseOver={e => { e.currentTarget.style.color="#fff"; e.currentTarget.style.background="rgba(255,255,255,0.08)"; }} onMouseOut={e => { e.currentTarget.style.color="#888"; e.currentTarget.style.background="transparent"; }}>
+            <Maximize size={14} style={{ display: "inline", marginRight: "4px", verticalAlign: "middle" }} />Fit
+          </button>
         </div>
       </div>
 
       {/* ── Main canvas area ── */}
       <div 
-        style={{ display: "flex", flex: 1, overflow: "hidden", cursor: isGrabbing ? "grabbing" : (zoomLevel > 1 ? "grab" : "default"), userSelect: "none" }}
+        style={{ 
+          display: "flex", 
+          flex: 1, 
+          overflow: "hidden", 
+          cursor: isGrabbing ? "grabbing" : (zoomLevel > 1 ? "grab" : "default"), 
+          userSelect: "none",
+          backgroundColor: "#111111",
+          backgroundImage: "radial-gradient(rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px)",
+          backgroundSize: "24px 24px",
+          backgroundPosition: "0 0"
+        }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -437,7 +416,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
       >
         {/* LEFT PANEL: Original Image */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: "1px solid #2a2a2a" }}>
-          <div ref={leftScrollRef} onScroll={handleLeftScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "#1a1a1a", position: "relative" }}>
+          <div ref={leftScrollRef} onScroll={handleLeftScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "transparent", position: "relative" }}>
             {/* Canvas label */}
             <div style={{ position: "absolute", top: "14px", left: "14px", zIndex: 5, fontSize: "10px", fontWeight: "700", color: "#444", letterSpacing: "1.5px", textTransform: "uppercase", pointerEvents: "none" }}>ORIGINAL</div>
             {proxyOriginal ? (
@@ -454,7 +433,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
 
         {/* RIGHT PANEL: Outputs */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <div ref={rightScrollRef} onScroll={handleRightScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "#1c1c1c", position: "relative" }}>
+          <div ref={rightScrollRef} onScroll={handleRightScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "rgba(255,255,255,0.02)", position: "relative" }}>
             {/* Canvas label */}
             <div style={{ position: "absolute", top: "14px", left: "14px", zIndex: 5, fontSize: "10px", fontWeight: "700", color: activeTab === "svg" ? "rgba(212, 255, 89,0.35)" : "#444", letterSpacing: "1.5px", textTransform: "uppercase", pointerEvents: "none" }}>{rightLabel}</div>
             {activeUrl && traceState === "idle" ? (
@@ -486,30 +465,29 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
 
 // ── Shared micro-styles ──────────────────────────────────────────────────────
 const toolBtnStyle = {
-  background: "#1a1a1a",
-  border: "1px solid #444",
-  color: "#bbb",
-  padding: "4px 10px",
+  background: "rgba(255, 255, 255, 0.03)",
+  border: "1px solid rgba(255, 255, 255, 0.1)",
+  color: "#ccc",
+  padding: "6px 12px",
   cursor: "pointer",
-  fontSize: "10px",
-  textTransform: "uppercase",
-  letterSpacing: "0.5px",
+  fontSize: "11px",
+  textTransform: "capitalize",
   display: "flex",
   alignItems: "center",
-  gap: "5px",
-  transition: "all 0.15s",
-  fontWeight: "600",
+  gap: "6px",
+  transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+  fontWeight: "500",
 };
 
 const zoomBtnStyle = {
-  background: "#1a1a1a",
+  background: "transparent",
   border: "1px solid #333",
   color: "#ccc",
   padding: "4px 10px",
   cursor: "pointer",
-  fontSize: "12px",
-  fontWeight: "600",
-  transition: "all 0.15s",
+  fontSize: "14px",
+  fontWeight: "500",
+  transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
   lineHeight: 1,
 };
 

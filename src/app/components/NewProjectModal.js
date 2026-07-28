@@ -16,24 +16,29 @@ function TraceOptionCard({ value, current, onChange, title, description }) {
     <div
       onClick={() => onChange(value)}
       style={{
-        display: "flex", alignItems: "flex-start", gap: "12px",
-        padding: "12px 15px",
-        border: active ? "2px solid #d4ff59" : "2px solid #444",
-        borderRadius: "8px", cursor: "pointer",
-        background: active ? "rgba(212, 255, 89,0.08)" : "transparent",
-        transition: "all 0.15s",
+        display: "flex", alignItems: "flex-start", gap: "14px",
+        padding: "16px 18px",
+        border: active ? "1px solid #d4ff59" : "1px solid #333",
+        borderRadius: "10px", cursor: "pointer",
+        background: active ? "linear-gradient(180deg, rgba(212, 255, 89, 0.08) 0%, rgba(212, 255, 89, 0.02) 100%)" : "linear-gradient(180deg, #1a1a1a 0%, #151515 100%)",
+        boxShadow: active ? "0 4px 20px rgba(212, 255, 89, 0.08)" : "none",
+        transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
       }}
+      onMouseEnter={(e) => { if (!active) e.currentTarget.style.borderColor = "#555"; }}
+      onMouseLeave={(e) => { if (!active) e.currentTarget.style.borderColor = "#333"; }}
     >
       <div style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
         width: 18, height: 18, borderRadius: "50%", flexShrink: 0, marginTop: 2,
-        border: active ? "5px solid #1a1a1a" : "2px solid #555",
-        background: active ? "#d4ff59" : "transparent",
-        outline: active ? "2px solid #d4ff59" : "none",
-        transition: "all 0.15s",
-      }} />
+        border: active ? "1px solid #d4ff59" : "1px solid #555",
+        background: active ? "rgba(212, 255, 89, 0.2)" : "transparent",
+        transition: "all 0.2s",
+      }}>
+        {active && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#d4ff59", boxShadow: "0 0 6px rgba(212,255,89,0.8)" }} />}
+      </div>
       <div>
-        <p style={{ margin: "0 0 2px 0", color: active ? "#fff" : "#ccc", fontSize: "13px", fontWeight: 600 }}>{title}</p>
-        <p style={{ margin: 0, fontSize: "11px", color: "#888", lineHeight: 1.5 }}>{description}</p>
+        <p style={{ margin: "0 0 4px 0", color: active ? "#fff" : "#e2e2e2", fontSize: "14px", fontWeight: 600, letterSpacing: "0.2px" }}>{title}</p>
+        <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", lineHeight: 1.5 }}>{description}</p>
       </div>
     </div>
   );
@@ -84,7 +89,7 @@ const NewProjectModal = memo(function NewProjectModal({
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: step === "category" ? 800 : 480, position: "relative", transition: "max-width 0.3s ease", width: "100%" }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: step === "category" ? 540 : 480, position: "relative", transition: "max-width 0.3s ease", width: "100%" }}>
 
         <button
           onClick={handleClose}
@@ -97,47 +102,53 @@ const NewProjectModal = memo(function NewProjectModal({
 
         {step === "category" && (
           <>
-            <h2 style={{ margin: "0 0 6px 0" }}>What are you tracing?</h2>
-            <p style={{ margin: "0 0 24px 0", color: "#888", fontSize: "13px" }}>Choose a category to get started.</p>
+            <h2 style={{ margin: "0 0 8px 0", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.5px", color: "#fff" }}>What are you tracing?</h2>
+            <p style={{ margin: "0 0 28px 0", color: "#9ca3af", fontSize: "14px", letterSpacing: "0.2px" }}>Choose a category to get started.</p>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div
                 onClick={() => handleCategorySelect("garment")}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "20px 24px", border: "2px solid #444", borderRadius: 10, cursor: "pointer", background: "transparent", transition: "all 0.18s", textAlign: "center", aspectRatio: "1 / 1" }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.background = "rgba(212, 255, 89,0.06)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.background = "transparent"; }}
+                style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", border: "1px solid #333", borderRadius: 12, cursor: "pointer", background: "linear-gradient(180deg, #1a1a1a 0%, #151515 100%)", transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)", position: "relative", overflow: "hidden" }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.4)"; e.currentTarget.children[0].style.background = "rgba(212, 255, 89, 0.1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#333"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.children[0].style.background = "#222"; }}
               >
-                <div style={{ color: "#d4ff59" }}><Shirt size={40} strokeWidth={1.2} /></div>
-                <div>
-                  <p style={{ margin: "0 0 4px 0", color: "#fff", fontSize: "15px", fontWeight: 700 }}>Garment</p>
-                  <p style={{ margin: 0, fontSize: "11px", color: "#888", lineHeight: 1.5 }}>Jerseys, shirts, mockups — extract the flat pattern as SVG.</p>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48, height: 48, borderRadius: 10, background: "#222", color: "#d4ff59", transition: "background 0.2s", flexShrink: 0 }}>
+                  <Shirt size={22} strokeWidth={1.5} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flex: 1 }}>
+                  <p style={{ margin: "0 0 6px 0", color: "#fff", fontSize: "15px", fontWeight: 600, letterSpacing: "0px" }}>Garment Pattern Extraction</p>
+                  <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", lineHeight: 1.5 }}>Jerseys, shirts, mockups — extract the flat pattern as a production-ready SVG.</p>
                 </div>
               </div>
 
               <div
                 onClick={() => handleCategorySelect("logo")}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "20px 24px", border: "2px solid #444", borderRadius: 10, cursor: "pointer", background: "transparent", transition: "all 0.18s", textAlign: "center", aspectRatio: "1 / 1" }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.background = "rgba(212, 255, 89,0.06)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.background = "transparent"; }}
+                style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", border: "1px solid #333", borderRadius: 12, cursor: "pointer", background: "linear-gradient(180deg, #1a1a1a 0%, #151515 100%)", transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)", position: "relative", overflow: "hidden" }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.4)"; e.currentTarget.children[0].style.background = "rgba(212, 255, 89, 0.1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#333"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.children[0].style.background = "#222"; }}
               >
-                <div style={{ color: "#d4ff59" }}><LogoIcon /></div>
-                <div>
-                  <p style={{ margin: "0 0 4px 0", color: "#fff", fontSize: "15px", fontWeight: 700 }}>Logo / Wordmark</p>
-                  <p style={{ margin: 0, fontSize: "11px", color: "#888", lineHeight: 1.5 }}>Icons, emblems, wordmarks — vectorize with exact color and text.</p>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48, height: 48, borderRadius: 10, background: "#222", color: "#d4ff59", transition: "background 0.2s", flexShrink: 0 }}>
+                  <LogoIcon />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flex: 1 }}>
+                  <p style={{ margin: "0 0 6px 0", color: "#fff", fontSize: "15px", fontWeight: 600, letterSpacing: "0px" }}>Logo / Wordmark Tracing</p>
+                  <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", lineHeight: 1.5 }}>Icons, emblems, wordmarks — vectorize with exact mathematical color and text precision.</p>
                 </div>
               </div>
 
               <div
                 onClick={() => handleCategorySelect("bg_remover")}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "20px 24px", border: "2px solid #444", borderRadius: 10, cursor: "pointer", background: "transparent", transition: "all 0.18s", textAlign: "center", position: "relative", aspectRatio: "1 / 1" }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.background = "rgba(212, 255, 89,0.06)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.background = "transparent"; }}
+                style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", border: "1px solid #333", borderRadius: 12, cursor: "pointer", background: "linear-gradient(180deg, #1a1a1a 0%, #151515 100%)", transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)", position: "relative", overflow: "hidden" }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.4)"; e.currentTarget.children[0].style.background = "rgba(212, 255, 89, 0.1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#333"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.children[0].style.background = "#222"; }}
               >
-                <div style={{ position: "absolute", top: 8, right: 8, background: "#d4ff59", color: "#000", fontSize: "9px", fontWeight: 800, padding: "2px 6px", borderRadius: 4, letterSpacing: "0.5px" }}>AI</div>
-                <div style={{ color: "#d4ff59" }}><Scissors size={40} strokeWidth={1.2} /></div>
-                <div>
-                  <p style={{ margin: "0 0 4px 0", color: "#fff", fontSize: "15px", fontWeight: 700 }}>BG Remover</p>
-                  <p style={{ margin: 0, fontSize: "11px", color: "#888", lineHeight: 1.5 }}>Remove backgrounds instantly with AI — perfect for products &amp; portraits.</p>
+                <div style={{ position: "absolute", top: 18, right: 20, background: "rgba(212, 255, 89, 0.15)", color: "#d4ff59", fontSize: "10px", fontWeight: 700, padding: "3px 8px", borderRadius: 6, letterSpacing: "0.5px", border: "1px solid rgba(212, 255, 89, 0.3)" }}>AI</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48, height: 48, borderRadius: 10, background: "#222", color: "#d4ff59", transition: "background 0.2s", flexShrink: 0 }}>
+                  <Scissors size={22} strokeWidth={1.5} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flex: 1, paddingRight: 40 }}>
+                  <p style={{ margin: "0 0 6px 0", color: "#fff", fontSize: "15px", fontWeight: 600, letterSpacing: "0px" }}>Background Remover</p>
+                  <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", lineHeight: 1.5 }}>Remove backgrounds instantly with AI — perfect for products & portraits.</p>
                 </div>
               </div>
             </div>
@@ -148,31 +159,34 @@ const NewProjectModal = memo(function NewProjectModal({
           <>
             <button
               onClick={handleBack}
-              style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: "12px", padding: "0 0 16px 0", display: "flex", alignItems: "center", gap: 6, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600, transition: "color 0.2s" }}
-              onMouseEnter={(e) => e.currentTarget.style.color = "#fff"}
-              onMouseLeave={(e) => e.currentTarget.style.color = "#888"}
+              style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: "12px", padding: "0 0 20px 0", display: "flex", alignItems: "center", gap: 6, textTransform: "uppercase", letterSpacing: "1px", fontWeight: 600, transition: "all 0.2s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.transform = "translateX(-2px)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "#888"; e.currentTarget.style.transform = "translateX(0)"; }}
             >
               ← Back
             </button>
 
-            <h2 style={{ margin: "0 0 20px 0" }}>
+            <h2 style={{ margin: "0 0 24px 0", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.5px", color: "#fff" }}>
               {category === "logo" ? "Logo / Wordmark Trace" : "Garment Trace"}
             </h2>
 
-            <div className="form-group" style={{ marginBottom: 20 }}>
-              <label style={{ display: "block", marginBottom: 8, color: "#aaa", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.8px" }}>Project Name</label>
+            <div className="form-group" style={{ marginBottom: 24 }}>
+              <label style={{ display: "block", marginBottom: 8, color: "#9ca3af", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 600 }}>Project Name</label>
               <input
                 type="text"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 className="modal-input"
                 placeholder="e.g. Guardians Jersey 2025"
+                style={{ width: "100%", background: "#1a1a1a", border: "1px solid #333", padding: "12px 14px", borderRadius: 8, color: "#fff", fontSize: "14px", transition: "border-color 0.2s", outline: "none" }}
+                onFocus={(e) => e.target.style.borderColor = "#d4ff59"}
+                onBlur={(e) => e.target.style.borderColor = "#333"}
               />
             </div>
 
             {category === "garment" && (
-              <div className="form-group" style={{ marginBottom: 20 }}>
-                <label style={{ display: "block", marginBottom: 10, color: "#aaa", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.8px" }}>Extraction Mode</label>
+              <div className="form-group" style={{ marginBottom: 24 }}>
+                <label style={{ display: "block", marginBottom: 12, color: "#9ca3af", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 600 }}>Extraction Mode</label>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <TraceOptionCard
                     value="mockup_erase"
@@ -193,9 +207,9 @@ const NewProjectModal = memo(function NewProjectModal({
             )}
 
             {category === "logo" && (
-              <div style={{ background: "rgba(212, 255, 89,0.06)", border: "1px solid rgba(212, 255, 89,0.2)", borderRadius: 8, padding: "12px 14px", marginBottom: 20 }}>
-                <p style={{ margin: 0, fontSize: "12px", color: "#aaa", lineHeight: 1.6 }}>
-                  Works for <strong style={{ color: "#d4ff59" }}>icons, emblems, combined logos, and text-only wordmarks.</strong> All text and colors will be preserved exactly as in the reference.
+              <div style={{ background: "linear-gradient(90deg, rgba(212, 255, 89, 0.05) 0%, rgba(212, 255, 89, 0.01) 100%)", borderLeft: "3px solid #d4ff59", borderRadius: "0 8px 8px 0", padding: "14px 16px", marginBottom: 24 }}>
+                <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", lineHeight: 1.6 }}>
+                  Works for <strong style={{ color: "#d4ff59", fontWeight: 600 }}>icons, emblems, combined logos, and text-only wordmarks.</strong> All text and colors will be preserved exactly as in the reference.
                 </p>
               </div>
             )}

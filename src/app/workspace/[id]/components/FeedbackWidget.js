@@ -16,6 +16,13 @@ export default function FeedbackWidget({ projectId, initialRating = null }) {
     setIsSubmitting(true);
 
     try {
+      if (!projectId || projectId === "landing") {
+        // Just simulate a successful submission for the landing page UI
+        await new Promise(r => setTimeout(r, 600));
+        setSubmitted(true);
+        return;
+      }
+
       const res = await fetch(`/api/projects/${projectId}/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

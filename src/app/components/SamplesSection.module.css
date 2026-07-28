@@ -1,0 +1,125 @@
+.showcaseWrapper {
+  width: 100%;
+  max-width: 1200px;
+  margin: 120px auto;
+  padding: 0 20px;
+  position: relative;
+}
+
+/* Removed glowBackground per user request */
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 80px;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* The sleek "glass bezel" for the slider */
+.glassBezel {
+  position: relative;
+  border-radius: 24px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 30px 60px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.glassBezel:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 
+    0 40px 80px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(212, 255, 89, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.sliderInner {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.5);
+  position: relative;
+  z-index: 2;
+  background: transparent;
+}
+
+/* Editorial Typography */
+.textContent {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-right: 20px;
+}
+
+.subtitle {
+  color: #d4ff59;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0 0 16px 0;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.subtitle::before {
+  content: "";
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: #d4ff59;
+}
+
+.title {
+  font-size: 48px;
+  margin: 0 0 24px 0;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #ffffff 0%, #a0a0a0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+}
+
+.description {
+  color: #a0a0a0;
+  font-size: 18px;
+  line-height: 1.7;
+  margin: 0;
+  font-weight: 400;
+}
+
+@media (max-width: 992px) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+
+  .textContent {
+    padding-right: 0;
+    text-align: center;
+  }
+  
+  .subtitle {
+    justify-content: center;
+  }
+  
+  .subtitle::before {
+    display: none;
+  }
+  
+  .title {
+    font-size: 36px;
+  }
+}

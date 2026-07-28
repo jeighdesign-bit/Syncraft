@@ -20,9 +20,29 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
   const logToConsole = useCallback((text, type = "normal") => {
     const container = consoleRef.current;
     if (!container) return;
+    
     const el = document.createElement("div");
     el.className = `console-msg${type === "success" ? " success" : type === "error" ? " error" : ""}`;
-    el.textContent = text;
+    
+    // Parse [Prefix] Message pattern
+    const match = text.match(/^\[(.*?)\] (.*)$/);
+    if (match) {
+      const badge = document.createElement("span");
+      badge.className = "console-badge";
+      badge.textContent = match[1];
+      el.appendChild(badge);
+      
+      const msgText = document.createElement("span");
+      msgText.className = "console-text";
+      msgText.textContent = match[2];
+      el.appendChild(msgText);
+    } else {
+      const msgText = document.createElement("span");
+      msgText.className = "console-text";
+      msgText.textContent = text;
+      el.appendChild(msgText);
+    }
+
     container.appendChild(el);
     container.scrollTop = container.scrollHeight;
   }, []);
@@ -32,12 +52,9 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
     if (!container) return;
     container.innerHTML = "";
     if (initialMsg) {
-      const el = document.createElement("div");
-      el.className = "console-msg";
-      el.textContent = initialMsg;
-      container.appendChild(el);
+      logToConsole(initialMsg);
     }
-  }, []);
+  }, [logToConsole]);
 
   const handleExecuteTrace = useCallback(async (vectorColors = "auto") => {
     if (!project || traceState !== "idle") return;

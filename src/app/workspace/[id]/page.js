@@ -48,6 +48,8 @@ export default function Workspace() {
   const [showTopUpModal, setShowTopUpModal] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isSavingCrop, setIsSavingCrop] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitleValue, setEditTitleValue] = useState("");
 
   // ─── Hooks ────────────────────────────────────────────────────────────────
   const {
@@ -99,7 +101,19 @@ export default function Workspace() {
   // Auto-switch away from loading state (if any was needed)
   useEffect(() => {
     if (!project) return;
-  }, [project?.id]);
+    
+    // Initialize console log so it doesn't look empty
+    if (consoleRef.current && consoleRef.current.children.length === 0) {
+      logToConsole(`[System] Workspace initialized for ${project.name}`);
+      if (project.svg_url) {
+        logToConsole(`[System] Previous vector data loaded`, "success");
+      } else if (project.generated_image_url) {
+        logToConsole(`[System] Processed image ready for vectorization`, "normal");
+      } else {
+        logToConsole(`[System] Ready for background extraction`, "normal");
+      }
+    }
+  }, [project, logToConsole, consoleRef]);
 
   // ─── Download Handlers ────────────────────────────────────────────────────
   const forceDownload = useCallback(async (url, filename) => {
@@ -242,36 +256,25 @@ export default function Workspace() {
     <div className="app-container">
 
       {/* ── Top Menu Bar ─────────────────────────────────────────────── */}
-      <header style={{ padding: "0 20px", height: "42px", display: "flex", alignItems: "center", borderBottom: "1px solid #2a2a2a", background: "#181818", flexShrink: 0 }}>
+      <header style={{ padding: "0 24px", height: "54px", display: "flex", alignItems: "center", borderBottom: "1px solid #2a2a2a", background: "#181818", flexShrink: 0 }}>
         <button onClick={() => router.push('/')} style={{ display: "flex", alignItems: "center", gap: "7px", background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "color 0.2s", padding: "6px 10px" }} onMouseEnter={e => e.currentTarget.style.color="#d4ff59"} onMouseLeave={e => e.currentTarget.style.color="#555"}>
-          <img src="/favicon.svg" alt="Syncraft Home" style={{ width: "24px", height: "24px", opacity: 0.8 }} />
+          <img src="/logo.svg" alt="Syncraft Home" style={{ height: "18px", width: "auto", opacity: 0.9 }} />
         </button>
         <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <h1 style={{ fontSize: "12px", fontWeight: "700", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "3px" }}>WORKSPACE</h1>
+          <h1 style={{ fontSize: "13px", fontWeight: "600", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>WORKSPACE</h1>
         </div>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", alignItems: "center" }}>
-          <button onClick={() => setShowShortcuts(true)} style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "1px solid #2e2e2e", color: "#555", cursor: "pointer", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "all 0.2s", padding: "5px 10px" }} onMouseEnter={e => { e.currentTarget.style.color="#ccc"; e.currentTarget.style.borderColor="#444"; }} onMouseLeave={e => { e.currentTarget.style.color="#555"; e.currentTarget.style.borderColor="#2e2e2e"; }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", alignItems: "center" }}>
+          <button onClick={() => setShowShortcuts(true)} style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "1px solid #2e2e2e", color: "#888", cursor: "pointer", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "all 0.2s", padding: "6px 12px", borderRadius: "6px" }} onMouseEnter={e => { e.currentTarget.style.color="#fff"; e.currentTarget.style.borderColor="#555"; }} onMouseLeave={e => { e.currentTarget.style.color="#888"; e.currentTarget.style.borderColor="#2e2e2e"; }}>
             <Keyboard size={12} /> Shortcuts
           </button>
-          <div onClick={() => setShowTopUpModal(true)} style={{ display: "flex", alignItems: "center", gap: "7px", background: "#d4ff59", padding: "5px 12px", cursor: "pointer", border: "none", transition: "background 0.2s" }} onMouseOver={e => e.currentTarget.style.background = "#bfe650"} onMouseOut={e => e.currentTarget.style.background = "#d4ff59"}>
-            <span style={{ color: "#000", fontWeight: "800", fontSize: "14px", fontFamily: "monospace" }}>{userCredits !== null ? userCredits : "-"}</span>
-            <span style={{ color: "rgba(0,0,0,0.7)", fontSize: "9px", textTransform: "uppercase", letterSpacing: "1.5px", fontWeight: "700" }}>CREDITS</span>
+          <div onClick={() => setShowTopUpModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", background: "#212121", padding: "6px 14px", cursor: "pointer", border: "1px solid #333", borderRadius: "6px", transition: "all 0.2s" }} onMouseOver={e => { e.currentTarget.style.background = "#2a2a2a"; e.currentTarget.style.borderColor = "#555"; }} onMouseOut={e => { e.currentTarget.style.background = "#212121"; e.currentTarget.style.borderColor = "#333"; }}>
+            <span style={{ color: "#fff", fontWeight: "700", fontSize: "13px", fontFamily: "inherit" }}>{userCredits !== null ? userCredits : "-"}</span>
+            <span style={{ color: "#888", fontSize: "9px", textTransform: "uppercase", letterSpacing: "1.2px", fontWeight: "600" }}>Credits</span>
           </div>
         </div>
       </header>
 
-      {/* ── Project Bar ──────────────────────────────────────────────── */}
-      {project && (
-        <div style={{ height: "34px", background: "#161616", borderBottom: "1px solid #242424", display: "flex", alignItems: "center", padding: "0 16px", gap: "10px", flexShrink: 0 }}>
-          <span style={{ fontSize: "11px", fontWeight: "600", color: "#ccc", letterSpacing: "0.3px" }}>
-            {project.name || "Untitled Project"}
-          </span>
-          <Pencil size={11} color="#444" style={{ cursor: "pointer" }} />
-          {savedAgo && (
-            <span style={{ fontSize: "10px", color: "#444", marginLeft: "4px" }}>{savedAgo}</span>
-          )}
-        </div>
-      )}
+
 
 
       <main className="main-workspace" style={{ padding: 0 }}>
@@ -286,9 +289,59 @@ export default function Workspace() {
               project={project}
               traceState={traceState}
               nodeErrors={nodeErrors}
-              onCropOpen={() => setShowCropModal(true)}
-              onEraseOpen={() => setShowEraseModal(true)}
-              onRemoveBgOpen={() => setShowRemoveBgModal(true)}
+              leftControls={
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  {isEditingTitle ? (
+                    <input
+                      autoFocus
+                      value={editTitleValue}
+                      onChange={(e) => setEditTitleValue(e.target.value)}
+                      onBlur={async () => {
+                        setIsEditingTitle(false);
+                        if (editTitleValue.trim() !== project.name) {
+                          const { error } = await supabase.from('projects').update({ name: editTitleValue.trim() }).eq('id', project.id);
+                          if (!error) setProject(prev => ({ ...prev, name: editTitleValue.trim() }));
+                        }
+                      }}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter') {
+                          e.target.blur();
+                        }
+                      }}
+                      style={{
+                        background: "#0a0a0a",
+                        border: "1px solid #fff",
+                        color: "#fff",
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        padding: "4px 8px",
+                        borderRadius: "4px",
+                        outline: "none",
+                        width: "200px",
+                        letterSpacing: "0.5px"
+                      }}
+                    />
+                  ) : (
+                    <div 
+                      onClick={() => {
+                        setEditTitleValue(project.name || "Untitled Project");
+                        setIsEditingTitle(true);
+                      }}
+                      style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", padding: "4px 8px", borderRadius: "6px", transition: "all 0.2s" }}
+                      onMouseOver={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#fff"; }}
+                      onMouseOut={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#ccc"; }}
+                    >
+                      <span style={{ fontSize: "13px", fontWeight: "500", color: "inherit", letterSpacing: "0.5px" }}>
+                        {project.name || "Untitled Project"}
+                      </span>
+                      <Pencil size={11} color="inherit" />
+                    </div>
+                  )}
+                  {savedAgo && (
+                    <span style={{ fontSize: "10px", color: "#666", marginLeft: "4px" }}>{savedAgo}</span>
+                  )}
+                </div>
+              }
             />
           )}
         </div>
@@ -307,6 +360,7 @@ export default function Workspace() {
           onOpenCompare={() => setShowCompare(true)}
           onOpenCrop={() => setShowCropModal(true)}
           onOpenRemoveBg={() => setShowRemoveBgModal(true)}
+          onOpenErase={() => setShowEraseModal(true)}
           onOpenTopUp={() => setShowTopUpModal(true)}
         />
       </main>

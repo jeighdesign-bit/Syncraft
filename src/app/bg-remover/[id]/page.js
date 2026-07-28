@@ -197,8 +197,8 @@ export default function BgRemoverPage() {
     <div className="app-container">
       {/* Top Menu Bar */}
       <header style={{ padding: "16px 32px", display: "flex", alignItems: "center", borderBottom: "1px solid #444", background: "#1a1a1a" }}>
-        <button onClick={() => router.push('/')} style={{ width: "200px", display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color="#d4ff59"} onMouseLeave={e => e.currentTarget.style.color="#666"}>
-          <img src="/favicon.svg" alt="Syncraft Home" style={{ width: "24px", height: "24px", opacity: 0.8 }} />
+        <button onClick={() => router.push('/')} style={{ display: "flex", alignItems: "center", gap: "7px", background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "color 0.2s", padding: "6px 10px" }} onMouseEnter={e => e.currentTarget.style.color="#d4ff59"} onMouseLeave={e => e.currentTarget.style.color="#555"}>
+          <img src="/logo.svg" alt="Syncraft Home" style={{ height: "18px", width: "auto", opacity: 0.9 }} />
         </button>
         <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "10px" }}>
           <h1 style={{ fontSize: "16px", fontWeight: "700", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>BACKGROUND REMOVER</h1>
@@ -221,7 +221,9 @@ export default function BgRemoverPage() {
             display: "flex", 
             alignItems: "center", 
             justifyContent: "center", 
-            background: "#111",
+            backgroundColor: "#0a0a0a",
+            backgroundImage: "radial-gradient(rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px)",
+            backgroundSize: "24px 24px",
             position: "relative",
             overflow: "hidden"
           }}
@@ -371,13 +373,13 @@ export default function BgRemoverPage() {
         </div>
 
         {/* Sidebar Properties Panel */}
-        <aside className="properties-panel" style={{ width: "320px", display: "flex", flexDirection: "column", background: "#0a0a0a", borderLeft: "1px solid #1a1a1a", zIndex: 10 }}>
+        <aside className="properties-panel" style={{ width: "280px", display: "flex", flexDirection: "column", background: "#181818", borderLeft: "1px solid #2a2a2a", zIndex: 10, flexShrink: 0 }}>
           {/* PROPERTIES SECTION */}
-          <div className="panel-section">
-            <div className="section-header" style={{ background: "#222", borderBottom: "1px solid #444", padding: "12px 16px", fontSize: "11px", letterSpacing: "1px", color: "#888", textTransform: "uppercase" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><ImageIcon size={14} color="#888"/> IMAGE PROPERTIES</span>
+          <div className="panel-section" style={{ padding: "16px", borderBottom: "1px solid #2a2a2a" }}>
+            <div className="section-header" style={{ fontSize: "10px", color: "#8a8a8a", letterSpacing: "1.2px", textTransform: "uppercase", marginBottom: "12px", display: "flex", justifyContent: "space-between", fontWeight: 700 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><ImageIcon size={14} color="#8a8a8a"/> Image Properties</span>
             </div>
-            <div className="section-content" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div className="section-content" style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "12px", color: "#ccc" }}>
               <div className="property-row">
                 <span className="property-label">Filename</span>
                 <span className="property-value" title={project.name} style={{ maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -392,9 +394,9 @@ export default function BgRemoverPage() {
           </div>
 
           {/* ACTIONS SECTION */}
-          <div className="panel-section">
-            <div className="section-header" style={{ background: "#222", borderBottom: "1px solid #444", padding: "12px 16px", fontSize: "11px", letterSpacing: "1px", color: "#888", textTransform: "uppercase" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><Settings2 size={14} color="#888"/> ACTIONS</span>
+          <div className="panel-section" style={{ padding: "16px" }}>
+            <div className="section-header" style={{ fontSize: "10px", color: "#8a8a8a", letterSpacing: "1.2px", textTransform: "uppercase", marginBottom: "12px", display: "flex", justifyContent: "space-between", fontWeight: 700 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><Settings2 size={14} color="#8a8a8a"/> Actions</span>
             </div>
             <div className="section-content" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {errorMsg && (
@@ -405,20 +407,18 @@ export default function BgRemoverPage() {
 
               {!isCompleted ? (
                 <button
-                  className="btn-primary"
                   onClick={handleRemoveBg}
                   disabled={isProcessing || (userCredits !== null && userCredits <= 0)}
-                  style={{
-                    width: "100%", padding: "14px 16px", borderRadius: "0", border: "1px solid #d4ff59",
-                    background: (userCredits !== null && userCredits <= 0) ? "#1a1a1a" : "#1a1a1a",
-                    color: "#d4ff59",
-                    fontWeight: "600", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase",
-                    cursor: isProcessing || (userCredits !== null && userCredits <= 0) ? "not-allowed" : "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                    transition: "all 0.2s", opacity: isProcessing ? 0.7 : 1
+                  style={{ 
+                    width: "100%", padding: "12px 16px", 
+                    fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", 
+                    gap: "8px", fontWeight: 700, borderRadius: "4px",
+                    border: isProcessing || (userCredits !== null && userCredits <= 0) ? "1px solid #333" : "1px solid #d4ff59",
+                    background: isProcessing || (userCredits !== null && userCredits <= 0) ? "rgba(212,255,89,0.08)" : "#d4ff59",
+                    color: isProcessing || (userCredits !== null && userCredits <= 0) ? "#555" : "#0a0a0a",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: isProcessing || (userCredits !== null && userCredits <= 0) ? "not-allowed" : "pointer"
                   }}
-                  onMouseOver={e => !isProcessing && (e.currentTarget.style.background = "rgba(212, 255, 89, 0.1)")}
-                  onMouseOut={e => !isProcessing && (e.currentTarget.style.background = "#1a1a1a")}
                 >
                   {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <Scissors size={14} />}
                   {isProcessing ? "Processing..." : "Remove Background (-12 Credits)"}
@@ -426,19 +426,18 @@ export default function BgRemoverPage() {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                   <button
-                    className="btn-primary"
                     onClick={handleDownload}
                     disabled={isDownloading}
-                    style={{
-                      width: "100%", padding: "10px 16px", borderRadius: "0", border: "1px solid #d4ff59",
-                      background: "rgba(212, 255, 89, 0.1)", color: "#d4ff59",
-                      fontWeight: "600", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase",
-                      cursor: isDownloading ? "not-allowed" : "pointer",
-                      display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                      transition: "all 0.2s", opacity: isDownloading ? 0.7 : 1
+                    style={{ 
+                      width: "100%", padding: "12px 16px", 
+                      fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", 
+                      gap: "8px", fontWeight: 700, borderRadius: "4px",
+                      border: isDownloading ? "1px solid #333" : "1px solid #d4ff59",
+                      background: isDownloading ? "rgba(212,255,89,0.08)" : "#d4ff59",
+                      color: isDownloading ? "#555" : "#0a0a0a",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: isDownloading ? "not-allowed" : "pointer"
                     }}
-                    onMouseOver={e => !isDownloading && (e.currentTarget.style.background = "rgba(212, 255, 89, 0.2)")}
-                    onMouseOut={e => !isDownloading && (e.currentTarget.style.background = "rgba(212, 255, 89, 0.1)")}
                   >
                     {isDownloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
                     Download Transparent PNG

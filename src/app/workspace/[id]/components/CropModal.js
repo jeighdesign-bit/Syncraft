@@ -103,16 +103,21 @@ const CropModal = memo(function CropModal({
   if (!show || !project) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: "1000px", width: "95%", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-        <h3 style={{ marginBottom: "15px" }}>
-          <Scissors size={18} style={{ verticalAlign: "text-bottom", marginRight: "8px" }} />
-          Crop Pattern Region
-        </h3>
+    <div className="modal-overlay" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}>
+      <div className="modal-content" style={{ maxWidth: "1000px", width: "95%", maxHeight: "90vh", display: "flex", flexDirection: "column", background: "rgba(18, 18, 18, 0.85)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.75)", borderRadius: "16px", padding: "24px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+          <h3 style={{ margin: 0, display: "flex", alignItems: "center", fontSize: "18px", fontWeight: "600", color: "#fff", letterSpacing: "0.5px" }}>
+            <Scissors size={18} style={{ marginRight: "10px", color: "#d4ff59" }} />
+            Crop Pattern Region
+          </h3>
+          <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "4px", borderRadius: "50%", transition: "all 0.2s" }} onMouseOver={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }} onMouseOut={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.background = "transparent"; }}>
+            <X size={20} />
+          </button>
+        </div>
 
         <div style={{ display: "flex", gap: "20px", flex: 1, minHeight: 0, flexDirection: "row" }}>
           {/* Left Column: The Cropper */}
-          <div style={{ flex: "1 1 65%", backgroundColor: "#0f0f0f", border: "1px solid #2a2a2a", borderRadius: "8px", display: "flex", justifyContent: "center", alignItems: "center", padding: "16px", minHeight: "400px", overflow: "hidden" }}>
+          <div style={{ flex: "1 1 65%", backgroundColor: "#0a0a0a", backgroundImage: "radial-gradient(rgba(255, 255, 255, 0.1) 1.5px, transparent 1.5px)", backgroundSize: "24px 24px", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "12px", display: "flex", justifyContent: "center", alignItems: "center", padding: "16px", minHeight: "400px", overflow: "hidden" }}>
             <ReactCrop
               crop={crop}
               onChange={c => { setCrop(c); setCropError(""); }}
@@ -131,77 +136,80 @@ const CropModal = memo(function CropModal({
           </div>
 
           {/* Right Column: The Guide */}
-          <div style={{ flex: "0 0 320px", backgroundColor: "#0a0a0a", border: "1px solid #1f1f1f", borderRadius: "8px", padding: "24px 20px", display: "flex", flexDirection: "column", gap: "24px", overflowY: "auto" }}>
+          <div style={{ flex: "0 0 320px", backgroundColor: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "12px", padding: "24px 20px", display: "flex", flexDirection: "column", gap: "24px", overflowY: "auto" }}>
             <div>
-              <h4 style={{ margin: "0 0 6px", color: "#fff", fontSize: "14px", fontWeight: "600", letterSpacing: "0.3px" }}>Crop Guide</h4>
-              <p style={{ fontSize: "12px", color: "#666", margin: 0, lineHeight: 1.5 }}>Help the AI focus by isolating the pattern correctly.</p>
+              <h4 style={{ margin: "0 0 6px", color: "#fff", fontSize: "14px", fontWeight: "600", letterSpacing: "0.3px", display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ width: "8px", height: "8px", borderRadius: "2px", background: "#d4ff59" }} />
+                Crop Guide
+              </h4>
+              <p style={{ fontSize: "12px", color: "#888", margin: 0, lineHeight: 1.5 }}>Help the AI focus by isolating the pattern correctly.</p>
             </div>
             {project?.trace_type === 'logo' ? (
               <>
                 <div>
-                  <div style={{ color: "#ececec", fontWeight: "500", fontSize: "13px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ color: "#fff", fontWeight: "600", fontSize: "13px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
                     <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#4ade80" }} />
                     DO: Crop Tightly Around Logo
                   </div>
-                  <p style={{ fontSize: "12px", color: "#666", margin: "0 0 12px", lineHeight: 1.5 }}>Remove as much empty background as possible. Keep the box snug to the logo edges.</p>
+                  <p style={{ fontSize: "12px", color: "#888", margin: "0 0 12px", lineHeight: 1.5 }}>Remove as much empty background as possible. Keep the box snug to the logo edges.</p>
                   <svg viewBox="5 5 90 90" width="100%" height="140" style={{ display: "block", backgroundColor: "#111", borderRadius: "6px", padding: "10px", boxSizing: "border-box" }}>
-                    <circle cx="50" cy="50" r="20" fill="#d4ff59" />
+                    <circle cx="50" cy="50" r="20" fill="#fff" />
                     <path d="M 40 50 L 60 50 M 50 40 L 50 60" stroke="#000" strokeWidth="4" />
-                    <rect x="28" y="28" width="44" height="44" fill="transparent" stroke="#4ade80" strokeWidth="1.5" strokeDasharray="3 3" />
-                    <rect x="26" y="26" width="4" height="4" fill="#4ade80" />
-                    <rect x="70" y="26" width="4" height="4" fill="#4ade80" />
-                    <rect x="26" y="70" width="4" height="4" fill="#4ade80" />
-                    <rect x="70" y="70" width="4" height="4" fill="#4ade80" />
+                    <rect x="28" y="28" width="44" height="44" fill="transparent" stroke="#fff" strokeWidth="1.5" strokeDasharray="3 3" />
+                    <rect x="26" y="26" width="4" height="4" fill="#fff" />
+                    <rect x="70" y="26" width="4" height="4" fill="#fff" />
+                    <rect x="26" y="70" width="4" height="4" fill="#fff" />
+                    <rect x="70" y="70" width="4" height="4" fill="#fff" />
                   </svg>
                 </div>
                 <div>
-                  <div style={{ color: "#ececec", fontWeight: "500", fontSize: "13px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ color: "#fff", fontWeight: "600", fontSize: "13px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
                     <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#ff4444" }} />
                     DON'T: Include Extra Space
                   </div>
-                  <p style={{ fontSize: "12px", color: "#666", margin: "0 0 12px", lineHeight: 1.5 }}>Do not leave huge margins around the logo. This reduces the AI resolution.</p>
+                  <p style={{ fontSize: "12px", color: "#888", margin: "0 0 12px", lineHeight: 1.5 }}>Do not leave huge margins around the logo. This reduces the AI resolution.</p>
                   <svg viewBox="5 5 90 90" width="100%" height="140" style={{ display: "block", backgroundColor: "#111", borderRadius: "6px", padding: "10px", boxSizing: "border-box" }}>
-                    <circle cx="50" cy="50" r="20" fill="#d4ff59" />
-                    <path d="M 40 50 L 60 50 M 50 40 L 50 60" stroke="#000" strokeWidth="4" />
-                    <rect x="5" y="5" width="90" height="90" fill="rgba(255, 68, 68, 0.05)" stroke="#ff4444" strokeWidth="1.5" strokeDasharray="3 3" />
-                    <rect x="3" y="3" width="4" height="4" fill="#ff4444" />
-                    <rect x="93" y="3" width="4" height="4" fill="#ff4444" />
-                    <rect x="3" y="93" width="4" height="4" fill="#ff4444" />
-                    <rect x="93" y="93" width="4" height="4" fill="#ff4444" />
+                    <circle cx="50" cy="50" r="20" fill="#666" />
+                    <path d="M 40 50 L 60 50 M 50 40 L 50 60" stroke="#111" strokeWidth="4" />
+                    <rect x="5" y="5" width="90" height="90" fill="rgba(255, 255, 255, 0.02)" stroke="#555" strokeWidth="1.5" strokeDasharray="3 3" />
+                    <rect x="3" y="3" width="4" height="4" fill="#555" />
+                    <rect x="93" y="3" width="4" height="4" fill="#555" />
+                    <rect x="3" y="93" width="4" height="4" fill="#555" />
+                    <rect x="93" y="93" width="4" height="4" fill="#555" />
                   </svg>
                 </div>
               </>
             ) : (
               <>
                 <div>
-                  <div style={{ color: "#ececec", fontWeight: "500", fontSize: "13px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ color: "#fff", fontWeight: "600", fontSize: "13px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
                     <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#4ade80" }} />
                     DO: Crop Torso Only
                   </div>
-                  <p style={{ fontSize: "12px", color: "#666", margin: "0 0 12px", lineHeight: 1.5 }}>Exclude sleeves. Keep the box tight to the main body.</p>
+                  <p style={{ fontSize: "12px", color: "#888", margin: "0 0 12px", lineHeight: 1.5 }}>Exclude sleeves. Keep the box tight to the main body.</p>
                   <svg viewBox="5 5 90 90" width="100%" height="140" style={{ display: "block", backgroundColor: "#111", borderRadius: "6px", padding: "10px", boxSizing: "border-box" }}>
                     <path d="M 20 20 L 40 10 L 60 10 L 80 20 L 90 40 L 75 45 L 70 90 L 30 90 L 25 45 L 10 40 Z" fill="#1a1a1a" stroke="#333" strokeWidth="1" />
                     <path d="M 35 30 L 65 50 M 35 50 L 65 70 M 35 70 L 65 90" stroke="#222" strokeWidth="1.5" />
-                    <rect x="25" y="10" width="50" height="80" fill="rgba(74, 222, 128, 0.05)" stroke="#4ade80" strokeWidth="1.5" strokeDasharray="3 3" />
-                    <rect x="23" y="8" width="4" height="4" fill="#4ade80" />
-                    <rect x="73" y="8" width="4" height="4" fill="#4ade80" />
-                    <rect x="23" y="88" width="4" height="4" fill="#4ade80" />
-                    <rect x="73" y="88" width="4" height="4" fill="#4ade80" />
+                    <rect x="25" y="10" width="50" height="80" fill="rgba(255, 255, 255, 0.05)" stroke="#fff" strokeWidth="1.5" strokeDasharray="3 3" />
+                    <rect x="23" y="8" width="4" height="4" fill="#fff" />
+                    <rect x="73" y="8" width="4" height="4" fill="#fff" />
+                    <rect x="23" y="88" width="4" height="4" fill="#fff" />
+                    <rect x="73" y="88" width="4" height="4" fill="#fff" />
                   </svg>
                 </div>
                 <div>
-                  <div style={{ color: "#ececec", fontWeight: "500", fontSize: "13px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ color: "#fff", fontWeight: "600", fontSize: "13px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
                     <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#ff4444" }} />
                     DON'T: Include Sleeves
                   </div>
-                  <p style={{ fontSize: "12px", color: "#666", margin: "0 0 12px", lineHeight: 1.5 }}>If you include sleeves, the AI will draw a shirt.</p>
+                  <p style={{ fontSize: "12px", color: "#888", margin: "0 0 12px", lineHeight: 1.5 }}>If you include sleeves, the AI will draw a shirt.</p>
                   <svg viewBox="5 5 90 90" width="100%" height="140" style={{ display: "block", backgroundColor: "#111", borderRadius: "6px", padding: "10px", boxSizing: "border-box" }}>
                     <path d="M 20 20 L 40 10 L 60 10 L 80 20 L 90 40 L 75 45 L 70 90 L 30 90 L 25 45 L 10 40 Z" fill="#1a1a1a" stroke="#333" strokeWidth="1" />
-                    <rect x="5" y="5" width="90" height="90" fill="rgba(255, 68, 68, 0.05)" stroke="#ff4444" strokeWidth="1.5" strokeDasharray="3 3" />
-                    <rect x="3" y="3" width="4" height="4" fill="#ff4444" />
-                    <rect x="93" y="3" width="4" height="4" fill="#ff4444" />
-                    <rect x="3" y="93" width="4" height="4" fill="#ff4444" />
-                    <rect x="93" y="93" width="4" height="4" fill="#ff4444" />
+                    <rect x="5" y="5" width="90" height="90" fill="rgba(255, 255, 255, 0.02)" stroke="#555" strokeWidth="1.5" strokeDasharray="3 3" />
+                    <rect x="3" y="3" width="4" height="4" fill="#555" />
+                    <rect x="93" y="3" width="4" height="4" fill="#555" />
+                    <rect x="3" y="93" width="4" height="4" fill="#555" />
+                    <rect x="93" y="93" width="4" height="4" fill="#555" />
                   </svg>
                 </div>
               </>
@@ -210,15 +218,41 @@ const CropModal = memo(function CropModal({
         </div>
 
         {cropError && (
-          <div style={{ color: "#ff4444", fontSize: "13px", marginTop: "12px", textAlign: "center", fontWeight: "bold" }}>
+          <div style={{ color: "#ff9d9d", fontSize: "13px", marginTop: "16px", textAlign: "center", fontWeight: "600", background: "rgba(255,68,68,0.1)", padding: "10px", borderRadius: "8px", border: "1px solid rgba(255,68,68,0.2)" }}>
             {cropError}
           </div>
         )}
-        <div className="modal-actions" style={{ marginTop: "20px" }}>
-          {project?.generated_image_url && (
-            <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          )}
-          <button className="btn-primary" onClick={handleApply} disabled={isSaving}>
+        <div className="modal-actions" style={{ marginTop: "24px", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+          <button 
+            onClick={onClose} 
+            style={{ padding: "12px 24px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#aaa", cursor: "pointer", fontWeight: "600", fontSize: "13px", transition: "all 0.2s" }}
+            onMouseOver={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#fff"; }}
+            onMouseOut={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#aaa"; }}
+          >
+            {project?.generated_image_url ? "Cancel" : "Keep Original (Skip Crop)"}
+          </button>
+          <button 
+            onClick={handleApply} 
+            disabled={isSaving}
+            style={{ 
+              padding: "12px 24px", borderRadius: "8px", 
+              border: "1px solid #d4ff59", 
+              background: "#d4ff59", 
+              color: "#0a0a0a", 
+              fontWeight: "700", 
+              fontSize: "13px",
+              cursor: isSaving ? "not-allowed" : "pointer", 
+              transition: "all 0.2s",
+              boxShadow: "0 4px 14px rgba(212, 255, 89, 0.2)",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              opacity: isSaving ? 0.7 : 1
+            }}
+            onMouseOver={e => { if (!isSaving) e.currentTarget.style.background = "#bfe650"; }}
+            onMouseOut={e => { if (!isSaving) e.currentTarget.style.background = "#d4ff59"; }}
+          >
+            {isSaving && <div className="animate-spin" style={{ width: "14px", height: "14px", border: "2px solid #0a0a0a", borderTopColor: "transparent", borderRadius: "50%" }} />}
             {isSaving ? "Saving..." : "Apply Crop & Extract"}
           </button>
         </div>

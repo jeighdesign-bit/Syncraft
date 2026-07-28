@@ -58,16 +58,32 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
   useEffect(() => {
     if (activeTab === "history" && user) {
       setIsLoadingLogs(true);
-      supabase
-        .from("credit_logs")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(50)
-        .then(({ data, error }) => {
-          if (!error && data) setLogs(data);
+      
+      const fetchLogs = async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) throw new Error("No session");
+
+          const response = await fetch("/api/credit-logs", {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          const data = await response.json();
+          if (response.ok && data.logs) {
+            setLogs(data.logs);
+          } else {
+            console.error("Failed to fetch logs:", data.error);
+          }
+        } catch (err) {
+          console.error("Error fetching logs:", err);
+        } finally {
           setIsLoadingLogs(false);
-        });
+        }
+      };
+
+      fetchLogs();
     }
   }, [activeTab, user, supabase]);
 

@@ -63,7 +63,14 @@ function InlineSVG({ url, style, objectFit = 'cover' }) {
     return <img src={url} alt="" style={style} />;
   }
 
-  if (!svgHtml) return null;
+  if (!svgHtml) {
+    return (
+      <div style={{ ...style, background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ color: '#888', fontSize: '11px', letterSpacing: '1px' }}>LOADING VECTOR...</span>
+      </div>
+    );
+  }
+
   return <div style={{ ...style, overflow: 'hidden' }} dangerouslySetInnerHTML={{ __html: svgHtml }} />;
 }
 
@@ -71,65 +78,46 @@ export default function BeforeAfterSlider({ title, rasterUrl, vectorUrl, height 
   const [sliderPosition, setSliderPosition] = useState(50);
 
   return (
-    <div style={{ textAlign: 'center', height: '100%' }}>
+    <div style={{ textAlign: 'center', width: '100%' }}>
       
-      <div style={{ 
-        width: '100%',
-        height: '100%',
-        background: '#1a1a1a', 
-        border: '1px solid rgba(255,255,255,0.08)',
-        padding: '8px',
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: '8px',
-        borderRadius: '16px',
-        textAlign: 'left'
-      }}>
-        <div style={{ position: 'relative', height, background: '#000', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px' }}>
-          
-          {/* Original Image (Background / Right Side) */}
-          <img 
-            src={rasterUrl} 
-            alt="Original Photo" 
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit }} 
-          />
-          <span style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.7)', padding: '4px 10px', fontSize: '11px', color: '#fff', borderRadius: '0', zIndex: 1 }}>Original Photo</span>
-          
-          {/* Vectorized SVG (Foreground / Left Side) */}
-          <InlineSVG 
-            url={vectorUrl} 
-            objectFit={objectFit}
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit, clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`, zIndex: 2 }} 
-          />
-          <span style={{ position: 'absolute', top: 12, left: 12, background: '#d4ff59', padding: '4px 10px', fontSize: '11px', color: '#000', fontWeight: 'bold', borderRadius: '0', zIndex: 3, opacity: sliderPosition > 10 ? 1 : 0, transition: 'opacity 0.2s' }}>Vectorized SVG</span>
-
-          {/* Slider Divider Line */}
-          <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${sliderPosition}%`, width: '2px', background: '#d4ff59', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none' }}></div>
-          
-          {/* Slider Handle Visual */}
-          <div style={{ position: 'absolute', top: '50%', left: `${sliderPosition}%`, transform: 'translate(-50%, -50%)', width: '32px', height: '32px', background: '#d4ff59', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3, pointerEvents: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
-            <div style={{ display: 'flex', gap: '2px' }}>
-              <div style={{ width: '2px', height: '12px', background: '#000' }}></div>
-              <div style={{ width: '2px', height: '12px', background: '#000' }}></div>
-            </div>
-          </div>
-
-          {/* Invisible Range Input for Interaction */}
-          <input 
-            type="range" 
-            min="0" max="100" 
-            value={sliderPosition} 
-            onChange={e => setSliderPosition(e.target.value)} 
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'ew-resize', zIndex: 4, margin: 0 }} 
-          />
-          
-        </div>
+      <div style={{ position: 'relative', width: '100%', height, background: 'transparent', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px' }}>
         
-        <div>
-          <div style={{ fontSize: '15px', color: '#fff', fontWeight: 'bold' }}>{title}</div>
-          <div style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>Slide to compare the original photo vs. the extracted vector SVG.</div>
+        {/* Original Image (Background / Right Side) */}
+        <img 
+          src={rasterUrl} 
+          alt="Original Photo" 
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit }} 
+        />
+        <span style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.7)', padding: '4px 10px', fontSize: '11px', color: '#fff', borderRadius: '0', zIndex: 1 }}>Original Photo</span>
+        
+        {/* Vectorized SVG (Foreground / Left Side) */}
+        <InlineSVG 
+          url={vectorUrl} 
+          objectFit={objectFit}
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit, clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`, zIndex: 2 }} 
+        />
+        <span style={{ position: 'absolute', top: 12, left: 12, background: '#d4ff59', padding: '4px 10px', fontSize: '11px', color: '#000', fontWeight: 'bold', borderRadius: '0', zIndex: 3, opacity: sliderPosition > 10 ? 1 : 0, transition: 'opacity 0.2s' }}>Vectorized SVG</span>
+
+        {/* Slider Divider Line */}
+        <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${sliderPosition}%`, width: '2px', background: '#d4ff59', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none' }}></div>
+        
+        {/* Slider Handle Visual */}
+        <div style={{ position: 'absolute', top: '50%', left: `${sliderPosition}%`, transform: 'translate(-50%, -50%)', width: '32px', height: '32px', background: '#d4ff59', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3, pointerEvents: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+          <div style={{ display: 'flex', gap: '2px' }}>
+            <div style={{ width: '2px', height: '12px', background: '#000' }}></div>
+            <div style={{ width: '2px', height: '12px', background: '#000' }}></div>
+          </div>
         </div>
 
+        {/* Invisible Range Input for Interaction */}
+        <input 
+          type="range" 
+          min="0" max="100" 
+          value={sliderPosition} 
+          onChange={e => setSliderPosition(e.target.value)} 
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'ew-resize', zIndex: 4, margin: 0 }} 
+        />
+        
       </div>
     </div>
   );
