@@ -281,7 +281,7 @@ export default function AdminDashboard() {
                     </div>
                     <div style={{ fontSize: '14px', fontWeight: '500', color: '#fff', marginBottom: '4px' }}>{req.email}</div>
                     <div style={{ color: '#aaa', fontSize: '12px' }}>
-                      Plan: <strong style={{ color: '#d4ff59', textTransform: 'capitalize' }}>{req.plan}</strong> &bull; Ref: {req.reference_number}
+                      Plan: <strong style={{ color: '#d4ff59', textTransform: 'capitalize' }}>{req.plan}</strong> &bull; Phone: {req.reference_number}
                     </div>
                   </div>
 
@@ -360,7 +360,7 @@ export default function AdminDashboard() {
                     </div>
                     <div style={{ fontSize: '14px', fontWeight: '500', color: '#aaa', marginBottom: '4px' }}>{req.email}</div>
                     <div style={{ color: '#888', fontSize: '12px' }}>
-                      Plan: <strong style={{ color: '#4ade80', textTransform: 'capitalize' }}>{req.plan}</strong> &bull; Ref: {req.reference_number}
+                      Plan: <strong style={{ color: '#4ade80', textTransform: 'capitalize' }}>{req.plan}</strong> &bull; Phone: {req.reference_number}
                     </div>
                   </div>
 

@@ -175,7 +175,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
       const data = await response.json();
 
       if (data.alreadyApproved) {
-        toast.error("❌ This Reference Number was already used. Please enter the NEW Reference Number from your recent payment.");
+        toast.error("❌ This Transaction was already used. Please enter the NEW Phone/Ref Number from your recent payment.");
         return;
       }
 
@@ -269,7 +269,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
               <p style={{ color: '#888', fontSize: '13px', margin: '0 0 8px' }}>We received your payment request.</p>
               <div style={{ background: '#111', border: '1px solid #18181b', borderRadius: '8px', padding: '14px', margin: '16px 0', textAlign: 'left' }}>
                 <p style={{ margin: '0 0 8px', color: '#aaa', fontSize: '12px', display: 'flex', alignItems: 'center' }}><Package size={14} style={{ marginRight: '6px', color: '#888' }} /> Package: <strong style={{ color: '#d4ff59', marginLeft: '6px' }}>{PLAN_LABELS[form.plan]}</strong></p>
-                <p style={{ margin: '0 0 8px', color: '#aaa', fontSize: '12px', display: 'flex', alignItems: 'center' }}><Tag size={14} style={{ marginRight: '6px', color: '#888' }} /> Ref No: <strong style={{ color: '#fff', marginLeft: '6px' }}>{form.txnRef || '—'}</strong></p>
+                <p style={{ margin: '0 0 8px', color: '#aaa', fontSize: '12px', display: 'flex', alignItems: 'center' }}><Tag size={14} style={{ marginRight: '6px', color: '#888' }} /> Phone No: <strong style={{ color: '#fff', marginLeft: '6px' }}>{form.txnRef || '—'}</strong></p>
                 <p style={{ margin: 0, color: '#aaa', fontSize: '12px', display: 'flex', alignItems: 'center' }}><Mail size={14} style={{ marginRight: '6px', color: '#888' }} /> Account: <strong style={{ color: '#fff', marginLeft: '6px' }}>{user?.email}</strong></p>
               </div>
               <p style={{ color: '#666', fontSize: '12px', margin: '0 0 20px' }}>Credits are usually added within <strong style={{ color: '#4ade80' }}>10-30 minutes</strong>. Thank you.</p>
@@ -491,9 +491,9 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', color: '#aaa', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>GCASH REFERENCE NUMBER *</label>
-                    <input type="tel" inputMode="numeric" placeholder="e.g. 1234567890123" value={form.txnRef} onChange={e => setForm(f => ({ ...f, txnRef: e.target.value }))} style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '8px', padding: '16px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = '#d4ff59'} onBlur={e => e.target.style.borderColor = '#444'} />
-                    <div style={{ color: '#888', fontSize: '11px', marginTop: '6px' }}>Found in your GCash receipt or transaction history. Each payment has its own reference number — not your phone number.</div>
+                    <label style={{ display: 'block', color: '#aaa', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>GCASH SENDER PHONE NUMBER *</label>
+                    <input type="tel" inputMode="numeric" placeholder="e.g. 09123456789" value={form.txnRef} onChange={e => setForm(f => ({ ...f, txnRef: e.target.value }))} style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '8px', padding: '16px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = '#d4ff59'} onBlur={e => e.target.style.borderColor = '#444'} />
+                    <div style={{ color: '#888', fontSize: '11px', marginTop: '6px' }}>Enter the GCash number you used to send the payment.</div>
                   </div>
                   <div>
                     <label style={{ display: 'block', color: '#aaa', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Upload Proof of Payment *</label>
@@ -507,7 +507,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                     <label style={{ display: 'block', color: '#888', fontSize: '13px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Your Email (auto-filled)</label>
                     <input type="text" value={user?.email || ''} readOnly style={{ width: '100%', background: '#1a1a1a', border: '1px solid #222', borderRadius: '8px', padding: '16px', color: '#666', fontSize: '16px', outline: 'none', boxSizing: 'border-box', cursor: 'not-allowed' }} />
                   </div>
-                  <p style={{ margin: '12px 0 0', color: '#aaa', fontSize: '13px', lineHeight: 1.6 }}>After paying, fill in the reference number, attach your screenshot above and submit. Credits arrive within <strong style={{ color: '#d4ff59' }}>10–30 minutes</strong>.</p>
+                  <p style={{ margin: '12px 0 0', color: '#aaa', fontSize: '13px', lineHeight: 1.6 }}>After paying, fill in the phone number, attach your screenshot above and submit. Credits arrive within <strong style={{ color: '#d4ff59' }}>10–30 minutes</strong>.</p>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
