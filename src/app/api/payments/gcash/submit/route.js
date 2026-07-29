@@ -63,30 +63,37 @@ export async function POST(request) {
       );
     }
 
-    const since = new Date(Date.now() - MANUAL_BLOCK_DAYS * 24 * 60 * 60_000).toISOString();
-    const { data: duplicateApproved, error: duplicateErr } = await adminSupabase
-      .from("payment_requests")
-      .select("id, created_at")
-      .eq("user_id", user.id)
-      .eq("status", "approved")
-      .eq("reference_number", normalizedReference)
-      .gte("created_at", since)
-      .limit(1)
-      .maybeSingle();
+    // Only perform duplicate reference check if the reference number does NOT look like a phone number.
+    // Many users mistakenly enter their 11-digit phone number (e.g., 09xxxxxxxxx) instead of the 13-digit GCash ref.
+    // If we block them for reusing their phone number, they can never top up again.
+    const isPhoneLike = normalizedReference.length <= 11 || normalizedReference.startsWith("09") || normalizedReference.startsWith("+63");
 
-    if (duplicateErr) {
-      console.error("[GCash Submit] Duplicate reference check failed:", duplicateErr);
-      return NextResponse.json({ error: "Failed to verify payment reference." }, { status: 500 });
-    }
+    if (!isPhoneLike) {
+      const since = new Date(Date.now() - MANUAL_BLOCK_DAYS * 24 * 60 * 60_000).toISOString();
+      const { data: duplicateApproved, error: duplicateErr } = await adminSupabase
+        .from("payment_requests")
+        .select("id, created_at")
+        .eq("user_id", user.id)
+        .eq("status", "approved")
+        .eq("reference_number", normalizedReference)
+        .gte("created_at", since)
+        .limit(1)
+        .maybeSingle();
 
-    if (duplicateApproved) {
-      return NextResponse.json(
-        {
-          error: "This GCash reference was already approved and your credits have been added. Please check your balance. If you believe this is wrong, contact support.",
-          alreadyApproved: true,
-        },
-        { status: 409 }
-      );
+      if (duplicateErr) {
+        console.error("[GCash Submit] Duplicate reference check failed:", duplicateErr);
+        return NextResponse.json({ error: "Failed to verify payment reference." }, { status: 500 });
+      }
+
+      if (duplicateApproved) {
+        return NextResponse.json(
+          {
+            error: "This GCash reference was already approved and your credits have been added. Please check your balance. If you believe this is wrong, contact support.",
+            alreadyApproved: true,
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const { error: insertErr } = await adminSupabase.from("payment_requests").insert({
