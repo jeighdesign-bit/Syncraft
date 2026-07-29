@@ -227,7 +227,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
       </div>
 
       {/* ── Activity Log ─────────────────────────────────────── */}
-      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, borderBottom: `1px solid ${COLOR.border}` }}>
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: "160px", borderBottom: `1px solid ${COLOR.border}` }}>
         <span style={{ ...eyebrowStyle, padding: `${SPACE.md}px ${SPACE.lg}px ${SPACE.sm}px` }}>Activity Log</span>
         <div className="console-area" ref={consoleRef} style={{ flex: 1, minHeight: "120px" }} />
       </div>

@@ -705,13 +705,27 @@ If any difference is detected, continue refining until the reconstruction is vis
       console.error(`[Billing] Refund failed:`, refundErr.message);
     }
 
+    // Extract the actual error message from fal-ai/client ApiError objects
+    let actualErrorMsg = error.message;
+    if (!actualErrorMsg && error.body) {
+      if (Array.isArray(error.body.detail) && error.body.detail[0]?.msg) {
+        actualErrorMsg = error.body.detail[0].msg;
+      } else if (typeof error.body.detail === 'string') {
+        actualErrorMsg = error.body.detail;
+      } else {
+        actualErrorMsg = JSON.stringify(error.body);
+      }
+    }
+
+    console.error(`[Trace API Error]:`, actualErrorMsg || error);
+
     // Never expose raw internal error messages (API keys, stack traces) to the client
-    const isProviderAuthError = error.message?.includes('FAL') || error.message?.includes('fal') || error.message?.includes('API') || error.message === 'Unauthorized';
+    const isProviderAuthError = actualErrorMsg?.includes('FAL') || actualErrorMsg?.includes('fal') || actualErrorMsg?.includes('API') || actualErrorMsg === 'Unauthorized';
     const safeMessage = isProviderAuthError
       ? `AI provider authentication failed (Unauthorized/Keys). ${refundIssued
           ? 'Your credit has been refunded automatically.'
           : 'Your credit could NOT be refunded automatically — please contact support.'}`
-      : (error.message || 'Failed to process trace step');
+      : (actualErrorMsg || 'Failed to process trace step');
     return NextResponse.json({ error: safeMessage }, { status: 500 });
   }
 }
