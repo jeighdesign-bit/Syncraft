@@ -94,11 +94,25 @@ async function markPaymentStatus(payment, status) {
     currency: payment?.currency || undefined,
   };
 
-  await adminSupabase
+  const { error } = await adminSupabase
     .from("dodo_payments")
     .update(update)
     .eq(query.column, query.value)
     .neq("status", "paid");
+
+  if (error) throw error;
+}
+
+async function markAbandonedCheckout(data) {
+  if (!data?.payment_id) return;
+
+  const { error } = await adminSupabase
+    .from("dodo_payments")
+    .update({ status: "cancelled", dodo_payment_id: data.payment_id })
+    .eq("dodo_payment_id", data.payment_id)
+    .neq("status", "paid");
+
+  if (error) throw error;
 }
 
 async function handlePaymentSucceeded(payment) {
@@ -173,8 +187,12 @@ export async function POST(request) {
 
     if (event.type === "payment.succeeded") {
       await handlePaymentSucceeded(event.data);
+    } else if (event.type === "payment.processing") {
+      await markPaymentStatus(event.data, "pending");
     } else if (event.type === "payment.failed" || event.type === "payment.cancelled") {
       await markPaymentStatus(event.data, "failed");
+    } else if (event.type === "abandoned_checkout.detected") {
+      await markAbandonedCheckout(event.data);
     }
 
     return NextResponse.json({ received: true });

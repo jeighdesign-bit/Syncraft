@@ -7,6 +7,9 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 export const runtime = "nodejs";
 
 export async function POST(request) {
+  let localPayment = null;
+  let checkoutSessionCreated = false;
+
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader) {
@@ -44,7 +47,7 @@ export async function POST(request) {
       return NextResponse.json({ error: `${plan.dodoProductEnv} is not configured` }, { status: 500 });
     }
 
-    const { data: localPayment, error: insertErr } = await adminSupabase
+    const { data: insertedPayment, error: insertErr } = await adminSupabase
       .from("dodo_payments")
       .insert({
         user_id: user.id,
@@ -58,10 +61,11 @@ export async function POST(request) {
       .select("*")
       .single();
 
-    if (insertErr || !localPayment) {
+    if (insertErr || !insertedPayment) {
       console.error("[Dodo Checkout] Failed to create local payment:", insertErr);
       return NextResponse.json({ error: "Failed to prepare checkout" }, { status: 500 });
     }
+    localPayment = insertedPayment;
 
     const siteUrl = getSiteUrl(request);
     console.log("[Dodo Checkout] siteUrl resolved:", siteUrl);
@@ -81,6 +85,7 @@ export async function POST(request) {
       return_url: `${siteUrl}/?topup=dodo-return`,
       cancel_url: `${siteUrl}/?topup=dodo-cancelled`,
     });
+    checkoutSessionCreated = Boolean(session?.session_id);
 
     const checkoutUrl = session.checkout_url;
     if (!checkoutUrl) {
@@ -92,14 +97,34 @@ export async function POST(request) {
       return NextResponse.json({ error: "Dodo checkout did not return a checkout URL" }, { status: 502 });
     }
 
-    await adminSupabase
+    const { error: sessionUpdateError } = await adminSupabase
       .from("dodo_payments")
       .update({ dodo_checkout_session_id: session.session_id })
       .eq("id", localPayment.id)
       .eq("user_id", user.id);
 
+    if (sessionUpdateError) {
+      // The checkout metadata contains local_payment_id, so the webhook can
+      // still reconcile this payment even if this non-critical update fails.
+      console.error("[Dodo Checkout] Failed to save checkout session ID:", sessionUpdateError);
+    }
+
     return NextResponse.json({ checkoutUrl });
   } catch (error) {
+    // The local row is inserted before Dodo is called. Without this cleanup,
+    // a Dodo/API/network failure leaves an orphan row stuck at PENDING forever.
+    if (localPayment && !checkoutSessionCreated) {
+      const { error: cleanupError } = await adminSupabase
+        .from("dodo_payments")
+        .update({ status: "failed" })
+        .eq("id", localPayment.id)
+        .eq("status", "pending");
+
+      if (cleanupError) {
+        console.error("[Dodo Checkout] Failed to mark checkout as failed:", cleanupError);
+      }
+    }
+
     console.error("[Dodo Checkout] Error:", error?.message, error?.status, JSON.stringify(error?.error || {}));
     return NextResponse.json({ error: error.message || "Failed to create Dodo checkout" }, { status: 500 });
   }

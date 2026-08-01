@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { deleteFromR2, s3Client, bucketName } from '@/lib/cloudflare';
+import { reconcilePendingDodoPayments } from '@/lib/dodoPaymentService';
 import { ListObjectsV2Command } from '@aws-sdk/client-s3';
 
 // Ensure this route doesn't run at the Edge since it uses AWS SDK heavily
@@ -56,6 +57,12 @@ export async function GET(request) {
   const deadline = () => Date.now() - start >= DEADLINE_MS;
 
   const results = {
+    dodoPaymentsScanned: 0,
+    dodoPaymentsCredited: 0,
+    dodoPaymentsFailed: 0,
+    dodoPaymentsCancelled: 0,
+    dodoPaymentsStillPending: 0,
+    dodoPaymentErrors: 0,
     projectsDeleted: 0,
     projectsFailed:  0,
     mobileSyncDeleted: 0,
@@ -64,6 +71,22 @@ export async function GET(request) {
   };
 
   try {
+    // Reconcile missed webhooks and abandoned/failed checkout sessions first.
+    if (!deadline()) {
+      try {
+        const dodoResults = await reconcilePendingDodoPayments({ deadline });
+        results.dodoPaymentsScanned = dodoResults.scanned;
+        results.dodoPaymentsCredited = dodoResults.credited;
+        results.dodoPaymentsFailed = dodoResults.failed;
+        results.dodoPaymentsCancelled = dodoResults.cancelled;
+        results.dodoPaymentsStillPending = dodoResults.stillPending;
+        results.dodoPaymentErrors = dodoResults.errors;
+      } catch (error) {
+        results.dodoPaymentErrors++;
+        console.warn('[Cron] Dodo payment reconciliation failed (non-fatal):', error.message);
+      }
+    }
+
     // ─── 1. Delete projects older than 3 days (loop until done or deadline) ──
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
@@ -167,7 +190,9 @@ export async function GET(request) {
     console.log(
       `[Cron] Done in ${elapsed}s — projects deleted: ${results.projectsDeleted}, ` +
       `failed: ${results.projectsFailed}, mobile purged: ${results.mobileSyncDeleted}, ` +
-      `ZIP cache purged: ${results.zipCacheDeleted}` +
+      `ZIP cache purged: ${results.zipCacheDeleted}, Dodo scanned: ${results.dodoPaymentsScanned}, ` +
+      `Dodo credited: ${results.dodoPaymentsCredited}, Dodo failed: ${results.dodoPaymentsFailed}, ` +
+      `Dodo cancelled: ${results.dodoPaymentsCancelled}` +
       (results.timedOut ? ' (timed out — more work pending)' : '')
     );
 
