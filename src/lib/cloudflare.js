@@ -10,6 +10,9 @@ export const publicUrl = process.env.CLOUDFLARE_PUBLIC_URL || process.env.CF_R2_
 export const s3Client = new S3Client({
   region: "auto",
   endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+  // Keep the bucket in the URL path. R2's TLS certificate covers the account
+  // endpoint, not <bucket>.<account>.r2.cloudflarestorage.com.
+  forcePathStyle: true,
   credentials: {
     accessKeyId,
     secretAccessKey,

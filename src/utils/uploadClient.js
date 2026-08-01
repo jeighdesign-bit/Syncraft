@@ -1,5 +1,7 @@
 // src/utils/uploadClient.js
 
+import { createClient } from "@/utils/supabase/client";
+
 /**
  * Uploads an image to storage from the browser.
  *
@@ -19,16 +21,65 @@
  * @param {string} [options.contentType] - MIME type. Defaults to the file's own type.
  * @returns {Promise<string>} The public URL of the uploaded image.
  */
+export class AuthSessionError extends Error {
+  constructor(message = "Your login session expired. Please log in again.") {
+    super(message);
+    this.name = "AuthSessionError";
+    this.code = "AUTH_SESSION_EXPIRED";
+  }
+}
+
+async function refreshAccessToken() {
+  const supabase = createClient();
+  const { data, error } = await supabase.auth.refreshSession();
+  const refreshedToken = data?.session?.access_token;
+
+  if (error || !refreshedToken) {
+    // Clear only this browser's stale session. The UI will ask for login again.
+    await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+    throw new AuthSessionError();
+  }
+
+  return refreshedToken;
+}
+
+function withBearer(init, token) {
+  const headers = new Headers(init?.headers || {});
+  headers.set("Authorization", `Bearer ${token}`);
+  return { ...init, headers };
+}
+
+/**
+ * Fetch an authenticated API route and refresh a stale Supabase token once.
+ * The returned token lets a multi-step operation reuse the refreshed session.
+ */
+export async function fetchWithAuthRetry(input, init = {}, token) {
+  let activeToken = token;
+  if (!activeToken) throw new AuthSessionError();
+
+  let response = await fetch(input, withBearer(init, activeToken));
+  if (response.status !== 401) return { response, token: activeToken };
+
+  activeToken = await refreshAccessToken();
+  response = await fetch(input, withBearer(init, activeToken));
+
+  if (response.status === 401) throw new AuthSessionError();
+  return { response, token: activeToken };
+}
+
 export async function uploadImageToStorage(file, { token, fileName, contentType } = {}) {
   const name = fileName || file.name;
   const type = contentType || file.type;
+  let activeToken = token;
 
   try {
-    const urlRes = await fetch("/api/upload-url", {
+    const authResult = await fetchWithAuthRetry("/api/upload-url", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fileName: name, contentType: type }),
-    });
+    }, activeToken);
+    const urlRes = authResult.response;
+    activeToken = authResult.token;
     const urlData = await urlRes.json();
     if (!urlRes.ok || !urlData.uploadUrl) throw new Error(urlData.error || "Failed to get upload URL");
 
@@ -41,17 +92,18 @@ export async function uploadImageToStorage(file, { token, fileName, contentType 
 
     return urlData.publicUrl;
   } catch (presignedErr) {
+    if (presignedErr?.code === "AUTH_SESSION_EXPIRED") throw presignedErr;
     console.warn("[upload] Pre-signed upload failed, retrying server-side:", presignedErr.message);
   }
 
   const formData = new FormData();
   formData.append("file", file, name);
 
-  const fallbackRes = await fetch("/api/upload-direct", {
+  const fallbackResult = await fetchWithAuthRetry("/api/upload-direct", {
     method: "POST",
-    headers: { "Authorization": `Bearer ${token}` },
     body: formData,
-  });
+  }, activeToken);
+  const fallbackRes = fallbackResult.response;
   const fallbackData = await fallbackRes.json();
   if (!fallbackRes.ok || !fallbackData.publicUrl) {
     throw new Error(fallbackData.error || "Failed to upload image to storage");

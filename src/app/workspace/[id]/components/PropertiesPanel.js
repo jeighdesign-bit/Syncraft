@@ -1,7 +1,8 @@
 "use client";
 
 import { memo, useState } from "react";
-import { Download, Monitor, ChevronDown, FolderDown, Loader2, X, ImageMinus, Eraser, Scissors } from "lucide-react";
+import { Download, Monitor, ChevronDown, FolderDown, Loader2, X, ImageMinus, Eraser, Scissors, Expand } from "lucide-react";
+import { CREDIT_COST } from "@/lib/pricing";
 import FeedbackWidget from "./FeedbackWidget";
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
@@ -132,6 +133,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
   userCredits,
   consoleRef,
   onExecuteTrace,
+  onRetryVector,
   onDownloadSvg,
   onDownloadRaster,
   onDownloadAll,
@@ -140,15 +142,29 @@ const PropertiesPanel = memo(function PropertiesPanel({
   onOpenRemoveBg,
   onOpenErase,
   onOpenTopUp,
+  // Lifted to page.js: Extend Design re-runs the vectorize stage from there, so
+  // the colour setting can no longer live only in this component.
+  vectorColors,
+  onVectorColorsChange,
+  // Extend Design (in-canvas). The "Extend Design" action button becomes the
+  // Proceed button while extendMode is on — same spot, per the requested flow.
+  extendMode = false,
+  extendProcessing = false,
+  extendCanProceed = false,
+  onEnterExtend,
+  onProceedExtend,
+  onCancelExtend,
 }) {
-  const [vectorColors, setVectorColors] = useState("auto");
   const [downloading, setDownloading] = useState(null);
 
   const isUnauthenticated = userCredits === null;
-  const noCredits = !isUnauthenticated && userCredits < 12;
+  const noCredits = !isUnauthenticated && userCredits < CREDIT_COST.trace;
   const isCropped = project?.original_image_url?.includes("crop") || project?.generated_image_url;
-  const isBusy = traceState !== "idle" || isSavingCrop;
+  const isBusy = traceState !== "idle" || isSavingCrop || extendMode;
   const hasSvg = !!project?.svg_url;
+  const canRetryVector = !!project?.upscaled_image_url && !hasSvg;
+  // 'REFUNDED' is the sentinel a failed trace leaves in generated_image_url.
+  const canExtend = !!project?.generated_image_url && project.generated_image_url !== "REFUNDED";
 
   const handleDownloadClick = async (type, handler) => {
     if (downloading) return;
@@ -164,18 +180,20 @@ const PropertiesPanel = memo(function PropertiesPanel({
     ? "Saving Crop..."
     : traceState !== "idle"
     ? "Processing..."
+    : canRetryVector
+    ? "Retry Vector SVG (Free)"
     : isUnauthenticated
     ? "Login to Trace"
     : noCredits
     ? "Get More Credits"
     : !isCropped
     ? "Crop Image First"
-    : "Run Syncraft (−12 Credits)";
+    : `Run Syncraft (−${CREDIT_COST.trace} Credits)`;
 
   // "Unlocked" mirrors the original enable condition exactly — kept as its
   // own branch because this button has a 3-state style (busy / unlocked /
   // locked) that the simpler active/inactive secondary buttons don't need.
-  const traceUnlocked = noCredits || isCropped;
+  const traceUnlocked = canRetryVector || noCredits || isCropped;
 
   const svgActive = !!project?.svg_url && !downloading;
   const zipActive = !!project?.original_image_url && !downloading;
@@ -197,7 +215,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
         <div style={{ position: "relative" }}>
           <select
             value={vectorColors}
-            onChange={(e) => setVectorColors(e.target.value)}
+            onChange={(e) => onVectorColorsChange(e.target.value)}
             style={selectStyle}
             onFocus={e => e.target.style.borderColor = COLOR.accent}
             onBlur={e => e.target.style.borderColor = COLOR.inputBorder}
@@ -263,6 +281,45 @@ const PropertiesPanel = memo(function PropertiesPanel({
           >
             <Scissors size={14} /> Crop Region
           </button>
+          {/* Extend operates on the flat extract rather than the original upload,
+              so it only unlocks once Stage 1 has produced one. In extend mode this
+              same button becomes the Proceed/generate action (per the requested
+              flow), with a Cancel beneath it. */}
+          {!extendMode ? (
+            <button
+              onClick={onEnterExtend}
+              disabled={isBusy || !canExtend}
+              style={secondaryBtnStyle(!isBusy && canExtend)}
+              onMouseOver={e => { if (!isBusy && canExtend) e.currentTarget.style.borderColor = "#484848"; }}
+              onMouseOut={e => { if (!isBusy && canExtend) e.currentTarget.style.borderColor = COLOR.border; }}
+              title={canExtend ? "Drag the canvas edges to add space, then generate" : "Run Syncraft first — Extend works on the flat extract"}
+            >
+              <Expand size={14} /> Extend Design
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={onProceedExtend}
+                disabled={!extendCanProceed || extendProcessing}
+                style={primaryExtendBtnStyle(extendCanProceed && !extendProcessing)}
+              >
+                {extendProcessing ? (
+                  <><Loader2 size={14} className="animate-spin" /> Extending…</>
+                ) : (
+                  <><Expand size={14} /> Extend Design (−{CREDIT_COST.extend})</>
+                )}
+              </button>
+              <button
+                onClick={onCancelExtend}
+                disabled={extendProcessing}
+                style={secondaryBtnStyle(!extendProcessing)}
+                onMouseOver={e => { if (!extendProcessing) e.currentTarget.style.borderColor = "#484848"; }}
+                onMouseOut={e => { if (!extendProcessing) e.currentTarget.style.borderColor = COLOR.border; }}
+              >
+                <X size={14} /> Cancel
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -277,6 +334,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
             <button
               onClick={() => {
                 if (isBusy) return;
+                if (canRetryVector) { onRetryVector?.(vectorColors); return; }
                 if (isUnauthenticated || noCredits) { onOpenTopUp?.(); return; }
                 if (isCropped) onExecuteTrace(vectorColors);
               }}
@@ -398,6 +456,28 @@ function secondaryBtnStyle(active) {
     justifyContent: "center",
     gap: SPACE.sm,
     opacity: active ? 1 : 0.45,
+    transition: "all 0.2s",
+  };
+}
+
+// Accent "Proceed" button shown in the Actions slot during extend mode.
+function primaryExtendBtnStyle(active) {
+  return {
+    width: "100%",
+    background: active ? COLOR.accent : "rgba(212,255,89,0.15)",
+    border: `1px solid ${active ? COLOR.accent : "rgba(212,255,89,0.3)"}`,
+    borderRadius: RADIUS,
+    color: active ? COLOR.accentText : "#7a7f6a",
+    padding: "10px 16px",
+    fontSize: "11px",
+    fontWeight: 800,
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    cursor: active ? "pointer" : "not-allowed",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: SPACE.sm,
     transition: "all 0.2s",
   };
 }

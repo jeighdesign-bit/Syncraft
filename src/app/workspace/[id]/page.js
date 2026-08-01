@@ -1,7 +1,7 @@
 "use client";
 
 // ─── React & Routing ──────────────────────────────────────────────────────────
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 // ─── Data & Auth ──────────────────────────────────────────────────────────────
@@ -24,6 +24,10 @@ import NoCreditsModal from "./components/NoCreditsModal";
 import TopUpModal from "@/components/TopUpModal";
 import ShortcutsModal from "./components/ShortcutsModal";
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+import { CREDIT_COST } from "@/lib/pricing";
+import { evaluateExtendIntent } from "@/lib/aspectRatio";
+
 // ─── Supabase client — created ONCE at module level, not inside the component ─
 const supabase = createClient();
 
@@ -38,11 +42,20 @@ export default function Workspace() {
   const [user, setUser] = useState(null);
   const [userCredits, setUserCredits] = useState(null);
   const [activeTool, setActiveTool] = useState("pointer");
+  // Lifted out of PropertiesPanel: Extend Design re-runs the vectorize stage from
+  // here, so it needs the colour setting too.
+  const [vectorColors, setVectorColors] = useState("auto");
 
   // ─── Modal State ──────────────────────────────────────────────────────────
   const [showCropModal, setShowCropModal] = useState(false);
   const [showEraseModal, setShowEraseModal] = useState(false);
   const [showRemoveBgModal, setShowRemoveBgModal] = useState(false);
+
+  // ─── Extend Design (in-canvas) State ──────────────────────────────────────
+  const [extendMode, setExtendMode] = useState(false);
+  const [extendPads, setExtendPads] = useState({ top: 0, right: 0, bottom: 0, left: 0 });
+  const [extendSource, setExtendSource] = useState(null); // { width, height } of the flat extract
+  const [extendProcessing, setExtendProcessing] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
   const [showNoCreditsModal, setShowNoCreditsModal] = useState(false);
   const [showTopUpModal, setShowTopUpModal] = useState(false);
@@ -55,7 +68,7 @@ export default function Workspace() {
   const {
 
     traceState, nodeErrors, consoleRef,
-    logToConsole, clearConsole, handleExecuteTrace,
+    logToConsole, clearConsole, handleExecuteTrace, handleResumeFromStep2, handleRetryVector,
   } = useTraceExecution({
     project,
     setProject,
@@ -228,10 +241,104 @@ export default function Workspace() {
         upscaled_image_url: null,
         svg_url: null,
       }));
-      setUserCredits(prev => (prev > 0 ? prev - 1 : 0));
+      // The server charges CREDIT_COST.removeBg — this used to decrement by 1,
+      // so the header count disagreed with the actual balance until a reload.
+      setUserCredits(prev => (prev !== null ? Math.max(0, prev - CREDIT_COST.removeBg) : prev));
       logToConsole("[Success] Background removed! You can now re-trace.", "success");
     }
   }, [logToConsole]);
+
+  // Live validity of the current drag — drives the Proceed button's enabled
+  // state. Same helper the canvas and the server use, so all three agree.
+  const extendPlan = useMemo(() => (
+    extendSource ? evaluateExtendIntent({ width: extendSource.width, height: extendSource.height, rawPads: extendPads }) : null
+  ), [extendSource, extendPads]);
+
+  const handleEnterExtend = useCallback(() => {
+    if (!project?.generated_image_url || project.generated_image_url === "REFUNDED") return;
+    setExtendPads({ top: 0, right: 0, bottom: 0, left: 0 });
+    setExtendSource(null);
+    setExtendMode(true);
+  }, [project?.generated_image_url]);
+
+  const handleCancelExtend = useCallback(() => {
+    setExtendMode(false);
+    setExtendProcessing(false);
+  }, []);
+
+  // Runs the actual generation from the current in-canvas crop. Extend replaces
+  // the flat extract, invalidating only stages 2 and 3 (the original upload stays
+  // put), then chains straight into re-running them since they are free.
+  const handleProceedExtend = useCallback(async () => {
+    if (!project?.id || !extendPlan?.ok || extendProcessing) return;
+    setExtendProcessing(true);
+    // Log the whole extend run so the activity log isn't silent during the ~30–60s
+    // generation (the normal trace logs each step; extend should too).
+    logToConsole("[Extend] Generating extended design (this can take 30–60s)...", "normal");
+    try {
+      const sendExtendRequest = (accessToken) => fetch("/api/extend-design", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ projectId: project.id, pads: extendPads }),
+      });
+
+      // Refresh before a paid, long-running action instead of trusting a
+      // possibly stale token cached by getSession().
+      let { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      let token = refreshData?.session?.access_token;
+      if (refreshError || !token) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        token = sessionData?.session?.access_token;
+      }
+      if (!token) throw new Error("Your session expired. Please log in again.");
+
+      let res = await sendExtendRequest(token);
+      // Authentication is checked before credits are touched, so one refreshed
+      // retry on 401 is safe and cannot double-charge the user.
+      if (res.status === 401) {
+        const { data: retryData, error: retryError } = await supabase.auth.refreshSession();
+        const retryToken = retryData?.session?.access_token;
+        if (!retryError && retryToken) {
+          res = await sendExtendRequest(retryToken);
+        }
+      }
+      const rawText = await res.text();
+      let data = {};
+      try { data = JSON.parse(rawText); } catch {
+        throw new Error(!res.ok ? `Server error ${res.status}` : "Invalid response from server.");
+      }
+      if (!res.ok) throw new Error(data.message || data.error || "Failed to extend design.");
+
+      setProject(prev => ({
+        ...prev,
+        generated_image_url: data.generated_image_url,
+        upscaled_image_url: null,
+        svg_url: null,
+        zip_url: null,
+        zip_signature: null,
+        zip_generated_at: null,
+      }));
+      setUserCredits(prev => (prev !== null ? Math.max(0, prev - CREDIT_COST.extend) : prev));
+
+      logToConsole(`[Extend] Canvas extended to ${data.final.width}×${data.final.height} (${data.aspect_ratio}).`, "success");
+      logToConsole("[Extend] Re-running upscale and vectorize (no extra credits)...", "normal");
+
+      // Stay in extend mode through the re-run so the canvas keeps showing the
+      // simple extend overlay instead of reverting to the big trace spinner. Only
+      // leave once everything is finished. Compare modal deliberately NOT opened —
+      // extend is its own flow, kept simple.
+      await handleResumeFromStep2(vectorColors);
+      setExtendMode(false);
+    } catch (err) {
+      logToConsole(`[Error] Failed to extend design: ${err.message}`, "error");
+      // Stay in extend mode on failure so the crop is preserved for a retry.
+    } finally {
+      setExtendProcessing(false);
+    }
+  }, [project?.id, extendPlan, extendProcessing, extendPads, supabase, logToConsole, handleResumeFromStep2, vectorColors]);
 
   const handleLogin = useCallback(async () => {
     await supabase.auth.signInWithOAuth({
@@ -289,6 +396,12 @@ export default function Workspace() {
               project={project}
               traceState={traceState}
               nodeErrors={nodeErrors}
+              extendMode={extendMode}
+              extendPads={extendPads}
+              extendSource={extendSource}
+              extendProcessing={extendProcessing}
+              onExtendPadsChange={setExtendPads}
+              onExtendSourceLoad={setExtendSource}
               leftControls={
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   {isEditingTitle ? (
@@ -354,6 +467,7 @@ export default function Workspace() {
           userCredits={userCredits}
           consoleRef={consoleRef}
           onExecuteTrace={onExecuteTrace}
+          onRetryVector={handleRetryVector}
           onDownloadSvg={handleDownloadSvg}
           onDownloadRaster={handleDownloadUpscaled}
           onDownloadAll={handleDownloadAll}
@@ -362,6 +476,14 @@ export default function Workspace() {
           onOpenRemoveBg={() => setShowRemoveBgModal(true)}
           onOpenErase={() => setShowEraseModal(true)}
           onOpenTopUp={() => setShowTopUpModal(true)}
+          vectorColors={vectorColors}
+          onVectorColorsChange={setVectorColors}
+          extendMode={extendMode}
+          extendProcessing={extendProcessing}
+          extendCanProceed={!!extendPlan?.ok}
+          onEnterExtend={handleEnterExtend}
+          onProceedExtend={handleProceedExtend}
+          onCancelExtend={handleCancelExtend}
         />
       </main>
 

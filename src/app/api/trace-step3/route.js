@@ -7,11 +7,12 @@ import { segmentSvgLayers } from "@/lib/svgSegmenter";
 import { DEFAULT_MAX_IMAGE_BYTES, DEFAULT_MAX_SVG_BYTES, DEFAULT_MAX_UPSCALED_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 
 export const runtime = 'nodejs';
-export const maxDuration = 120; // 120s needed: ESRGAN output is large, Recraft vectorize takes time
+export const maxDuration = 240; // Complex extended artwork can take over 2 minutes to vectorize.
 
 export async function POST(request) {
   let projectId;
   let userId;
+  let skipRefund = false;
   try {
     // ─── Auth: verify the caller owns the project ─────────────────────────────
     const authHeader = request.headers.get('authorization');
@@ -38,6 +39,11 @@ export async function POST(request) {
     const body = await request.json();
     projectId = body.projectId;
     const colors = body.colors || "auto";
+    // Set by callers re-running this stage on an already-paid project (e.g.
+    // after Extend Design). This route never charges, so it must not refund on
+    // behalf of a charge it did not make. Declining a refund can never gain the
+    // caller credits, so it is safe to honour from the client.
+    skipRefund = body.skipRefund === true;
 
     if (colors !== "auto") {
       const colorLimit = parseInt(colors, 10);
@@ -119,8 +125,9 @@ export async function POST(request) {
       method: "POST",
       headers: { "Authorization": `Bearer ${process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY}` },
       body: vectorizeFormData,
-      signal: AbortSignal.timeout(110000), // 110s — large images need time to upload + process
-    });
+      // One long request avoids retrying an already-consumed multipart stream.
+      signal: AbortSignal.timeout(210000),
+    }, 1);
 
     if (!recraftVectorRes.ok) {
       const errText = await recraftVectorRes.text();
@@ -202,9 +209,15 @@ export async function POST(request) {
   } catch (error) {
     console.error(`[Trace Step 3 Error]:`, error.message);
     
-    // Attempt automatic refund on server-side failure
+    // Attempt automatic refund on server-side failure.
+    //
+    // skipRefund is set when this stage is being re-run on a project that was
+    // already paid for (e.g. after Extend Design). Without that opt-out, the
+    // update below would overwrite generated_image_url with the 'REFUNDED'
+    // sentinel — destroying work the user paid for — and refund credits this
+    // re-run never charged.
     try {
-      if (projectId) {
+      if (projectId && !skipRefund) {
         const { data: updatedProj } = await adminSupabase
           .from('projects')
           .update({ generated_image_url: 'REFUNDED', refunded: true })
@@ -222,6 +235,16 @@ export async function POST(request) {
       console.error(`[Billing] Refund failed:`, refundErr.message);
     }
 
-    return NextResponse.json({ error: error.message || "Failed to process trace step" }, { status: 500 });
+    const timedOut = error?.name === 'TimeoutError' ||
+      /aborted|timeout/i.test(error?.message || '');
+    return NextResponse.json(
+      {
+        error: timedOut ? "VECTORIZE_TIMEOUT" : (error.message || "Failed to process trace step"),
+        message: timedOut
+          ? "Vectorization took too long. The upscaled design is safe; retry Vector SVG."
+          : undefined,
+      },
+      { status: timedOut ? 504 : 500 },
+    );
   }
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { memo, useMemo, useState, useRef, useEffect, useLayoutEffect } from "react";
-import { Scissors, ZoomIn, ZoomOut, Maximize, AlertCircle, Eraser, Loader2, ImageMinus, Zap } from "lucide-react";
+import { Scissors, ZoomIn, ZoomOut, Maximize, AlertCircle, Eraser, Loader2, ImageMinus, Zap, Expand } from "lucide-react";
+import ExtendCanvas from "./ExtendCanvas";
 
 /**
  * InlineSVG — Fetches SVG text and injects it directly into the DOM.
@@ -67,6 +68,14 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
   traceState,
   nodeErrors,
   leftControls,
+  // Extend Design in-canvas editor. When extendMode is on, the output pane
+  // becomes the drag-to-expand surface instead of the normal image view.
+  extendMode = false,
+  extendPads,
+  extendSource,
+  extendProcessing = false,
+  onExtendPadsChange,
+  onExtendSourceLoad,
 }) {
   const [activeTab, setActiveTab] = useState("generated");
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -81,9 +90,13 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
   const pendingScrollRef = useRef(null);
 
   // Scroll to zoom to pointer
+  const extendModeRef = useRef(extendMode);
+  extendModeRef.current = extendMode;
+
   useEffect(() => {
     const handleWheel = (e) => {
       e.preventDefault();
+      if (extendModeRef.current) return; // no zoom while extending
       const z = currentZoom.current;
       const delta = Math.sign(e.deltaY) * 0.25;
       const newZ = Math.min(Math.max(0.25, z - delta), 5);
@@ -154,6 +167,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
 
   const handlePointerDown = (e) => {
     if (e.button !== 0) return;
+    if (extendMode) return; // the extend editor owns pointer input
     if (e.target.closest('button')) return;
     setIsGrabbing(true);
     lastPos.current = { x: e.clientX, y: e.clientY };
@@ -252,8 +266,14 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
   const hasShownSvgAlert = useRef(false);
   const [showSvgAlert, setShowSvgAlert] = useState(false);
 
+  // Extend operates on the flat extract — force that tab while editing.
+  useEffect(() => {
+    if (extendMode) setActiveTab("generated");
+  }, [extendMode]);
+
   // Auto-switch tabs when new stages complete OR start
   useEffect(() => {
+    if (extendMode) return; // don't fight the forced tab during extend
     if (traceState === "step1") setActiveTab("generated");
     else if (traceState === "step2") setActiveTab("upscaled");
     else if (traceState === "step3") setActiveTab("svg");
@@ -262,7 +282,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
       else if (project?.svg_url) setActiveTab("svg");
       else if (project?.generated_image_url) setActiveTab("generated");
     }
-  }, [traceState, project?.svg_url, project?.upscaled_image_url, project?.generated_image_url]);
+  }, [extendMode, traceState, project?.svg_url, project?.upscaled_image_url, project?.generated_image_url]);
 
   useEffect(() => {
     if (project?.svg_url && !hasShownSvgAlert.current && activeTab !== "svg") {
@@ -358,7 +378,8 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
           {tabs.map((tab, i) => (
             <button
               key={tab.id}
-              onClick={() => { setActiveTab(tab.id); setShowSvgAlert(false); }}
+              disabled={extendMode}
+              onClick={() => { if (extendMode) return; setActiveTab(tab.id); setShowSvgAlert(false); }}
               style={{
                 padding: "6px 18px",
                 background: activeTab === tab.id ? "rgba(255,255,255,0.08)" : "transparent",
@@ -384,15 +405,23 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
           ))}
         </div>
 
-        {/* Right: zoom controls */}
+        {/* Right: zoom controls — replaced by an Extend-mode hint while editing */}
         <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "6px" }}>
-          <button onClick={() => setZoomLevel(z => Math.max(0.25, z - 0.25))} style={{ ...zoomBtnStyle, borderRadius: "6px" }} onMouseOver={e => { e.currentTarget.style.borderColor="#666"; e.currentTarget.style.color="#fff"; }} onMouseOut={e => { e.currentTarget.style.borderColor="#333"; e.currentTarget.style.color="#ccc"; }}>−</button>
-          <span style={{ color: "#fff", fontSize: "11px", minWidth: "42px", textAlign: "center", fontWeight: "600", fontFamily: "monospace" }}>{Math.round(zoomLevel * 100)}%</span>
-          <button onClick={() => setZoomLevel(z => Math.min(5, z + 0.25))} style={{ ...zoomBtnStyle, borderRadius: "6px" }} onMouseOver={e => { e.currentTarget.style.borderColor="#666"; e.currentTarget.style.color="#fff"; }} onMouseOut={e => { e.currentTarget.style.borderColor="#333"; e.currentTarget.style.color="#ccc"; }}>+</button>
-          <div style={{ width: "1px", height: "14px", background: "#333", margin: "0 4px" }} />
-          <button onClick={() => setZoomLevel(1)} style={{ ...zoomBtnStyle, border: "none", color: "#888", padding: "4px 8px", borderRadius: "6px" }} onMouseOver={e => { e.currentTarget.style.color="#fff"; e.currentTarget.style.background="rgba(255,255,255,0.08)"; }} onMouseOut={e => { e.currentTarget.style.color="#888"; e.currentTarget.style.background="transparent"; }}>
-            <Maximize size={14} style={{ display: "inline", marginRight: "4px", verticalAlign: "middle" }} />Fit
-          </button>
+          {extendMode ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#d4ff59", fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px" }}>
+              <Expand size={13} /> EXTEND MODE
+            </div>
+          ) : (
+            <>
+              <button onClick={() => setZoomLevel(z => Math.max(0.25, z - 0.25))} style={{ ...zoomBtnStyle, borderRadius: "6px" }} onMouseOver={e => { e.currentTarget.style.borderColor="#666"; e.currentTarget.style.color="#fff"; }} onMouseOut={e => { e.currentTarget.style.borderColor="#333"; e.currentTarget.style.color="#ccc"; }}>−</button>
+              <span style={{ color: "#fff", fontSize: "11px", minWidth: "42px", textAlign: "center", fontWeight: "600", fontFamily: "monospace" }}>{Math.round(zoomLevel * 100)}%</span>
+              <button onClick={() => setZoomLevel(z => Math.min(5, z + 0.25))} style={{ ...zoomBtnStyle, borderRadius: "6px" }} onMouseOver={e => { e.currentTarget.style.borderColor="#666"; e.currentTarget.style.color="#fff"; }} onMouseOut={e => { e.currentTarget.style.borderColor="#333"; e.currentTarget.style.color="#ccc"; }}>+</button>
+              <div style={{ width: "1px", height: "14px", background: "#333", margin: "0 4px" }} />
+              <button onClick={() => setZoomLevel(1)} style={{ ...zoomBtnStyle, border: "none", color: "#888", padding: "4px 8px", borderRadius: "6px" }} onMouseOver={e => { e.currentTarget.style.color="#fff"; e.currentTarget.style.background="rgba(255,255,255,0.08)"; }} onMouseOut={e => { e.currentTarget.style.color="#888"; e.currentTarget.style.background="transparent"; }}>
+                <Maximize size={14} style={{ display: "inline", marginRight: "4px", verticalAlign: "middle" }} />Fit
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -435,8 +464,17 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <div ref={rightScrollRef} onScroll={handleRightScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "rgba(255,255,255,0.02)", position: "relative" }}>
             {/* Canvas label */}
-            <div style={{ position: "absolute", top: "14px", left: "14px", zIndex: 5, fontSize: "10px", fontWeight: "700", color: activeTab === "svg" ? "rgba(212, 255, 89,0.35)" : "#444", letterSpacing: "1.5px", textTransform: "uppercase", pointerEvents: "none" }}>{rightLabel}</div>
-            {activeUrl && traceState === "idle" ? (
+            <div style={{ position: "absolute", top: "14px", left: "14px", zIndex: 5, fontSize: "10px", fontWeight: "700", color: extendMode ? "#d4ff59" : activeTab === "svg" ? "rgba(212, 255, 89,0.35)" : "#444", letterSpacing: "1.5px", textTransform: "uppercase", pointerEvents: "none" }}>{extendMode ? "EXTEND — FLAT EXTRACT" : rightLabel}</div>
+            {extendMode ? (
+              <ExtendCanvas
+                proxyUrl={proxyGenerated}
+                rawPads={extendPads}
+                onPadsChange={onExtendPadsChange}
+                source={extendSource}
+                onSourceLoad={onExtendSourceLoad}
+                busy={extendProcessing}
+              />
+            ) : activeUrl && traceState === "idle" ? (
               <div style={{ position: "relative", width: `${Math.max(100, zoomLevel * 100)}%`, height: `${Math.max(100, zoomLevel * 100)}%`, minWidth: "100%", minHeight: "100%" }}>
                 <div style={{ position: "absolute", top: "50%", left: "50%", width: `${100 / Math.max(1, zoomLevel)}%`, height: `${100 / Math.max(1, zoomLevel)}%`, transform: `translate(-50%, -50%) scale(${zoomLevel})`, padding: "24px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
                   {activeTab === "svg" ? (

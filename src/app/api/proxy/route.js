@@ -3,12 +3,15 @@ import { DEFAULT_MAX_IMAGE_BYTES, DEFAULT_MAX_SVG_BYTES, DEFAULT_MAX_UPSCALED_IM
 
 // SSRF Protection: only allow proxying from our own Cloudflare R2 domains.
 // Never fetch arbitrary URLs from the server — that opens internal metadata attacks.
-const R2_PUBLIC_HOST = process.env.CLOUDFLARE_PUBLIC_URL
-  ? new URL(process.env.CLOUDFLARE_PUBLIC_URL).hostname
+const R2_PUBLIC_URL = process.env.CLOUDFLARE_PUBLIC_URL || process.env.CF_R2_PUBLIC_URL;
+const R2_PUBLIC_HOST = R2_PUBLIC_URL
+  ? new URL(R2_PUBLIC_URL).hostname
   : "pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev";
 
-const R2_STORAGE_HOST = process.env.CLOUDFLARE_ACCOUNT_ID
-  ? `${process.env.CLOUDFLARE_BUCKET_NAME}.${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`
+const R2_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID;
+const R2_BUCKET_NAME = process.env.CLOUDFLARE_BUCKET_NAME || process.env.CF_R2_BUCKET_NAME;
+const R2_STORAGE_HOST = R2_ACCOUNT_ID && R2_BUCKET_NAME
+  ? `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
   : null;
 
 // Legacy R2 domains from previous deployments — needed so old project thumbnails still load
@@ -32,6 +35,9 @@ const ALLOWED_HOSTS = [
 ];
 
 export async function GET(request) {
+  let safeUpstreamUrl = null;
+  let isDownload = false;
+
   try {
     // NOTE: This route intentionally has no auth check.
     // It is used in browser <img src="..."> tags which cannot send auth headers.
@@ -41,6 +47,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const url = searchParams.get('url');
     const downloadName = searchParams.get('download');
+    isDownload = Boolean(downloadName);
 
     if (!url) {
       return new NextResponse('Missing URL parameter', { status: 400 });
@@ -58,6 +65,7 @@ export async function GET(request) {
       console.warn(`[Proxy] Blocked request to unauthorized host: ${parsedUrl.hostname}`);
       return new NextResponse('Forbidden: URL not from an allowed host', { status: 403 });
     }
+    safeUpstreamUrl = parsedUrl.href;
 
     const lowerPath = parsedUrl.pathname.toLowerCase();
     const maxBytes = lowerPath.endsWith('.svg')
@@ -138,6 +146,18 @@ export async function GET(request) {
       }
     });
   } catch (error) {
+    // Local development and restricted runtimes can block server-side outbound
+    // fetches even though the user's browser can reach the public storage URL.
+    // Redirect only URLs that already passed the strict storage-host allowlist.
+    // Downloads still require the server proxy so Content-Disposition is preserved.
+    if (
+      safeUpstreamUrl &&
+      !isDownload &&
+      error instanceof TypeError &&
+      error.message === 'fetch failed'
+    ) {
+      return NextResponse.redirect(safeUpstreamUrl, 307);
+    }
     console.error('[Proxy Error]:', error);
     if (error.message === 'Remote file is too large') {
       return new NextResponse('File too large', { status: 413 });

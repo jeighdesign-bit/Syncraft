@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "@/components/Toast";
 import { compressImageClientSide } from "@/utils/imageUtils";
-import { uploadImageToStorage } from "@/utils/uploadClient";
+import { fetchWithAuthRetry, uploadImageToStorage } from "@/utils/uploadClient";
 
 import { ImageIcon, Monitor, LogIn, User, Trash2, LogOut, CheckCircle2, X, Loader2, Scan, Scissors, ShieldCheck, Code2, Upload } from "lucide-react";
 
@@ -424,11 +424,10 @@ export default function StartScreen() {
 
       const finalTraceType = isBgRemover ? "bg_remover" : (mobileTraceType || modalTraceType);
 
-      const response = await fetch("/api/upload", {
+      const uploadResult = await fetchWithAuthRetry("/api/upload", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}` // Required: server verifies user server-side
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           imageUrl: uploadedImageUrl,
@@ -436,10 +435,11 @@ export default function StartScreen() {
           traceType: finalTraceType
           // userId intentionally omitted — server reads from verified token
         })
-      });
+      }, token);
+      const response = uploadResult.response;
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.details || "Project creation failed");
+      if (!response.ok) throw new Error(data.error || data.details || "Project creation failed");
 
       if (isBgRemover) {
         router.push(`/bg-remover/${data.projectId}`);
@@ -448,7 +448,14 @@ export default function StartScreen() {
       }
     } catch (error) {
       console.error("Upload error:", error);
-      toast.error("Failed to create project: " + error.message);
+      if (error?.code === "AUTH_SESSION_EXPIRED") {
+        setUser(null);
+        setRecentProjects([]);
+        setShowLoginModal(true);
+        toast.error("Your login session expired. Please log in again, then retry.");
+      } else {
+        toast.error("Failed to create project: " + error.message);
+      }
       setIsUploading(false);
     }
   };

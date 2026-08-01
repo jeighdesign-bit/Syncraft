@@ -2,9 +2,19 @@ import { NextResponse } from 'next/server'
 // The client you created from the Server-Side Auth instructions
 import { createClient } from '@/utils/supabase/server'
 
+function classifyExchangeError(error) {
+  const message = String(error?.message || '').toLowerCase()
+  if (message.includes('code verifier') || message.includes('pkce')) return 'pkce-verifier-missing'
+  if (message.includes('expired') || message.includes('invalid grant')) return 'code-expired'
+  if (message.includes('fetch') || message.includes('network')) return 'auth-network-error'
+  return error?.code || 'exchange-failed'
+}
+
 export async function GET(request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const providerError = searchParams.get('error')
+  const providerErrorDescription = searchParams.get('error_description')
   // if "next" is in param, use it as the redirect URL
   let next = searchParams.get('next') ?? '/'
 
@@ -23,8 +33,29 @@ export async function GET(request) {
         return NextResponse.redirect(`${origin}/`)
       }
     }
+
+    // Never include the OAuth code in logs. The error code/message is safe and
+    // essential for distinguishing a missing PKCE verifier from provider or
+    // redirect configuration failures during local development.
+    console.error('[Auth Callback] Session exchange failed:', {
+      code: error?.code || 'exchange_failed',
+      message: error?.message || 'Unknown exchange error',
+      origin,
+    })
+    const reason = classifyExchangeError(error)
+    return NextResponse.redirect(`${origin}/?error=auth-failed&reason=${encodeURIComponent(reason)}`)
   }
 
-  // return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/?error=auth-failed`)
+  if (providerError || providerErrorDescription) {
+    console.error('[Auth Callback] OAuth provider returned an error:', {
+      error: providerError || 'provider_error',
+      description: providerErrorDescription || 'No description',
+      origin,
+    })
+    const reason = providerError || 'provider-error'
+    return NextResponse.redirect(`${origin}/?error=auth-failed&reason=${encodeURIComponent(reason)}`)
+  }
+
+  console.error('[Auth Callback] Missing authorization code:', { origin })
+  return NextResponse.redirect(`${origin}/?error=auth-failed&reason=missing-code`)
 }

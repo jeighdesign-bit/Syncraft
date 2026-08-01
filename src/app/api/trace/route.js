@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminSupabase, safeRefundCredit } from "@/lib/supabase";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
+import { snapToAllowedAspectRatio } from "@/lib/aspectRatio";
 
 // IMPORTANT: Must use Node.js runtime (not edge) so we get real 120s timeouts.
 // Edge runtime on Vercel has a hard 30s cap which causes all Gemini generations to fail.
@@ -11,6 +12,10 @@ export const maxDuration = 120; // Vercel Pro plan allows up to 300s; 120s is sa
 export async function POST(request) {
   let projectId;
   let userId;
+  // Hoisted out of the try so the catch block can tell which step failed.
+  // Only step 1 charges credits, so only step 1 may refund — see the catch block.
+  let step;
+  let skipRefund = false;
   try {
     // ─── Auth: verify caller identity server-side ─────────────────────────────
     const authHeader = request.headers.get('authorization');
@@ -36,7 +41,12 @@ export async function POST(request) {
 
     const body = await request.json();
     projectId = body.projectId;
-    const { step, croppedImageUrl } = body;
+    step = body.step;
+    // Set by callers re-running a stage on an already-paid project (e.g. after
+    // Extend Design). Declining a refund can never gain the caller credits, so
+    // it is safe to honour from the client.
+    skipRefund = body.skipRefund === true;
+    const { croppedImageUrl } = body;
 
     if (!projectId || !step) {
       return NextResponse.json({ error: "Missing required fields (projectId, step)" }, { status: 400 });
@@ -156,22 +166,7 @@ export async function POST(request) {
       const metadata = await sharp(rawSourceBuffer).metadata();
 
       // Calculate closest aspect ratio for fal.ai Nano Banana Pro
-      let targetAspectRatio = "auto";
-      if (metadata && metadata.width && metadata.height) {
-        const ratio = metadata.width / metadata.height;
-        const allowedRatios = {
-          "21:9": 21 / 9, "16:9": 16 / 9, "3:2": 3 / 2, "4:3": 4 / 3, "5:4": 5 / 4,
-          "1:1": 1 / 1, "4:5": 4 / 5, "3:4": 3 / 4, "2:3": 2 / 3, "9:16": 9 / 16
-        };
-        let minDiff = Infinity;
-        for (const [str, val] of Object.entries(allowedRatios)) {
-          const diff = Math.abs(ratio - val);
-          if (diff < minDiff) {
-            minDiff = diff;
-            targetAspectRatio = str;
-          }
-        }
-      }
+      const targetAspectRatio = snapToAllowedAspectRatio(metadata?.width, metadata?.height);
 
       let prompt = "";
       if (project) {
@@ -675,10 +670,17 @@ If any difference is detected, continue refining until the reconstruction is vis
   } catch (error) {
     console.error(`[Trace API Error]:`, error.message);
 
-    // Attempt automatic refund on server-side failure
+    // Attempt automatic refund on server-side failure.
+    //
+    // Gated on step 1 because that is the only step that charges credits.
+    // Without this gate, a failed step 2/3 on an already-successful project
+    // (credit_deducted=true, refunded=false — the state of EVERY completed
+    // project) would overwrite generated_image_url with the 'REFUNDED'
+    // sentinel, destroying paid work, and hand out credits this request never
+    // took. skipRefund lets a caller re-running a stage opt out entirely.
     let refundIssued = false;
     try {
-      if (projectId) {
+      if (projectId && step === 1 && !skipRefund) {
         let refundQuery = adminSupabase
           .from('projects')
           .update({ generated_image_url: 'REFUNDED', refunded: true })

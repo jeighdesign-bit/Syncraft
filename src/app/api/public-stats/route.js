@@ -11,7 +11,10 @@ export async function GET() {
 
     if (error) {
       console.error("Failed to fetch user stats", error);
-      return NextResponse.json({ success: false, error: "Failed to fetch user stats" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, totalUsers: 0, avatars: [] },
+        { status: 200 }
+      );
     }
 
     // Securely fetch real avatars without leaking emails
@@ -31,6 +34,10 @@ export async function GET() {
       avatars: realAvatars
     });
   } catch (err) {
-    return NextResponse.json({ success: false, error: "Failed to fetch user stats" }, { status: 500 });
+    console.error("Failed to fetch user stats", err);
+    return NextResponse.json(
+      { success: false, totalUsers: 0, avatars: [] },
+      { status: 200 }
+    );
   }
 }

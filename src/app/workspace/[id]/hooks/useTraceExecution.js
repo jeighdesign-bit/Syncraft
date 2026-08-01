@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { CREDIT_COST } from "@/lib/pricing";
 
 /**
  * useTraceExecution — Manages the full 3-step AI pipeline execution.
@@ -10,6 +11,10 @@ import { useState, useCallback, useRef } from "react";
  *    directly to the DOM — zero React re-renders per log line during AI runs.
  * 2. `nodeErrors` provides per-node error isolation: if Step 2 fails, only
  *    Node 3 shows an error badge. The pipeline does not crash.
+ * 3. Stages 2 and 3 are extracted into `runStep2And3` so they can be re-run on
+ *    their own — `handleResumeFromStep2` does exactly that after Extend Design
+ *    replaces the flat extract. Neither of those endpoints charges credits, so
+ *    the resume path must never charge or refund.
  */
 export function useTraceExecution({ project, setProject, userCredits, setUserCredits, supabase, onNoCredits }) {
   const [traceState, setTraceState] = useState("idle"); // idle | step1 | step2 | step3
@@ -20,10 +25,10 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
   const logToConsole = useCallback((text, type = "normal") => {
     const container = consoleRef.current;
     if (!container) return;
-    
+
     const el = document.createElement("div");
     el.className = `console-msg${type === "success" ? " success" : type === "error" ? " error" : ""}`;
-    
+
     // Parse [Prefix] Message pattern
     const match = text.match(/^\[(.*?)\] (.*)$/);
     if (match) {
@@ -31,7 +36,7 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       badge.className = "console-badge";
       badge.textContent = match[1];
       el.appendChild(badge);
-      
+
       const msgText = document.createElement("span");
       msgText.className = "console-text";
       msgText.textContent = match[2];
@@ -56,10 +61,107 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
     }
   }, [logToConsole]);
 
+  const getAuthToken = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.access_token || null;
+    } catch {
+      return null;
+    }
+  }, [supabase]);
+
+  /**
+   * The house fetch shape: read as text, then JSON.parse in a try/catch so an
+   * HTML error page or a gateway timeout still yields a usable message.
+   * Throws an Error carrying `.code` (the raw server error string) so callers can
+   * branch on things like INSUFFICIENT_CREDITS without matching on prose.
+   */
+  const postJson = useCallback(async (url, body, token, label) => {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+
+    const rawText = await res.text();
+    let data = {};
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = { error: res.status === 504 ? "504 Timeout" : `Server Error ${res.status}` };
+    }
+
+    if (!res.ok) {
+      const err = new Error(data.error || `Error ${res.status}`);
+      err.code = data.error;
+      err.status = res.status;
+      err.label = label;
+      throw err;
+    }
+    return data;
+  }, []);
+
+  /**
+   * Stages 2 and 3 against whatever `generated_image_url` currently holds.
+   * Both endpoints are free, so this never touches credits.
+   *
+   * @param {string}  authToken
+   * @param {string}  vectorColors  "auto" | "2" | "4" | "8" | "16"
+   * @param {boolean} skipRefund    true when re-running an already-paid project.
+   *   Without it the server's catch blocks would overwrite generated_image_url
+   *   with the 'REFUNDED' sentinel and hand out credits this run never charged.
+   * @throws on failure, having already recorded the per-node error
+   */
+  const runStep2And3 = useCallback(async ({ authToken, vectorColors, skipRefund = false }) => {
+    const projectId = project.id;
+
+    // ─── Step 2: Upscale ─────────────────────────────────────────────
+    setTraceState("step2");
+    logToConsole("[Step 2] Upscaling with ClawScale™ Matrix...", "normal");
+
+    let data2;
+    try {
+      data2 = await postJson("/api/trace",
+        { projectId, step: 2, ...(skipRefund ? { skipRefund: true } : {}) },
+        authToken, "step2");
+    } catch (e) {
+      setNodeErrors(prev => ({ ...prev, step2: e.message }));
+      throw e;
+    }
+
+    logToConsole("[Step 2.5] Saving upscaled image...", "normal");
+    const saveData2 = await postJson("/api/save-asset",
+      { projectId, step: 2, fileUrl: data2.fileUrl, mimeType: data2.mimeType },
+      authToken, "save2");
+
+    setProject(prev => ({ ...prev, upscaled_image_url: saveData2.url }));
+    logToConsole("[Success] Upscale Complete!", "success");
+
+    // ─── Step 3: Vectorize ───────────────────────────────────────────
+    setTraceState("step3");
+    logToConsole("[Step 3] Vectorizing with TrueVector™ Core...", "normal");
+
+    let data3;
+    try {
+      data3 = await postJson("/api/trace-step3",
+        { projectId, colors: vectorColors, ...(skipRefund ? { skipRefund: true } : {}) },
+        authToken, "step3");
+    } catch (e) {
+      setNodeErrors(prev => ({ ...prev, step3: e.message }));
+      throw e;
+    }
+
+    setProject(prev => ({ ...prev, svg_url: data3.svg_url }));
+    logToConsole("[Success] Vectorization Complete!", "success");
+  }, [project?.id, setProject, logToConsole, postJson]);
+
   const handleExecuteTrace = useCallback(async (vectorColors = "auto") => {
     if (!project || traceState !== "idle") return;
 
-    if (userCredits !== null && userCredits < 12) {
+    if (userCredits !== null && userCredits < CREDIT_COST.trace) {
       onNoCredits?.();
       return;
     }
@@ -67,16 +169,10 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
     // Reset per-node errors
     setNodeErrors({ step1: null, step2: null, step3: null });
 
-    if (userCredits >= 12) setUserCredits(prev => prev - 12);
+    if (userCredits >= CREDIT_COST.trace) setUserCredits(prev => prev - CREDIT_COST.trace);
 
     // Fetch auth token once — used for all secure API calls in this pipeline
-    let authToken = null;
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      authToken = session?.access_token || null;
-    } catch {
-      // Token fetch failed
-    }
+    const authToken = await getAuthToken();
 
     if (!authToken) {
       setTraceState("idle");
@@ -85,127 +181,34 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
     }
 
     try {
-      // ─── Step 1: Gemini ───────────────────────────────────────────────
+      // ─── Step 1: Extract ──────────────────────────────────────────────
       setTraceState("step1");
       clearConsole("[Step 1] Analyzing Image with SyncraftVision™...");
 
-      const res1 = await fetch("/api/trace", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
-        },
-        body: JSON.stringify({ projectId: project.id, step: 1 }),
-      });
-
-      if (!res1.ok) {
-        let errData = {};
-        const rawText = await res1.text();
-        try { errData = JSON.parse(rawText); } catch {
-          errData = { error: res1.status === 504 ? "504 Timeout" : `Server Error ${res1.status}` };
-        }
-        const msg = errData.error || `Error ${res1.status}`;
-        if (msg === "INSUFFICIENT_CREDITS") {
+      let data1;
+      try {
+        data1 = await postJson("/api/trace", { projectId: project.id, step: 1 }, authToken, "step1");
+      } catch (e) {
+        if (e.code === "INSUFFICIENT_CREDITS") {
           setUserCredits(0);
           onNoCredits?.();
           setTraceState("idle");
           return;
         }
-        setNodeErrors(prev => ({ ...prev, step1: msg }));
-        throw new Error(msg);
+        setNodeErrors(prev => ({ ...prev, step1: e.message }));
+        throw e;
       }
 
-      const rawData1 = await res1.text();
-      let data1;
-      try { data1 = JSON.parse(rawData1); } catch { throw new Error("Invalid response from server (Step 1)"); }
       logToConsole("[Step 1.5] Saving extracted image...", "normal");
-
-      const save1 = await fetch("/api/save-asset", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
-        },
-        body: JSON.stringify({ projectId: project.id, step: 1, base64: data1.base64, mimeType: data1.mimeType }),
-      });
-      if (!save1.ok) throw new Error("Failed to save image");
-      const saveData1 = await save1.json();
+      const saveData1 = await postJson("/api/save-asset",
+        { projectId: project.id, step: 1, base64: data1.base64, mimeType: data1.mimeType },
+        authToken, "save1");
 
       setProject(prev => ({ ...prev, generated_image_url: saveData1.url }));
       logToConsole("[Success] Image Extracted by SyncraftVision™!", "success");
 
-      // ─── Step 2: Upscale ─────────────────────────────────────────────
-      setTraceState("step2");
-      logToConsole("[Step 2] Upscaling with ClawScale™ Matrix...", "normal");
-
-      const res2 = await fetch("/api/trace", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
-        },
-        body: JSON.stringify({ projectId: project.id, step: 2 }),
-      });
-
-      if (!res2.ok) {
-        let errData = {};
-        const rawText = await res2.text();
-        try { errData = JSON.parse(rawText); } catch {
-          errData = { error: res2.status === 504 ? "504 Timeout" : `Server Error ${res2.status}` };
-        }
-        const msg = errData.error || `Error ${res2.status}`;
-        setNodeErrors(prev => ({ ...prev, step2: msg }));
-        throw new Error(msg);
-      }
-
-      const rawData2 = await res2.text();
-      let data2;
-      try { data2 = JSON.parse(rawData2); } catch { throw new Error("Invalid response from server (Step 2)"); }
-      logToConsole("[Step 2.5] Saving upscaled image...", "normal");
-
-      const save2 = await fetch("/api/save-asset", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
-        },
-        body: JSON.stringify({ projectId: project.id, step: 2, fileUrl: data2.fileUrl, mimeType: data2.mimeType }),
-      });
-      if (!save2.ok) throw new Error("Failed to save upscaled image");
-      const saveData2 = await save2.json();
-
-      setProject(prev => ({ ...prev, upscaled_image_url: saveData2.url }));
-      logToConsole("[Success] Upscale Complete!", "success");
-
-      // ─── Step 3: Vectorize ───────────────────────────────────────────
-      setTraceState("step3");
-      logToConsole("[Step 3] Vectorizing with TrueVector™ Core...", "normal");
-
-      const res3 = await fetch("/api/trace-step3", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
-        },
-        body: JSON.stringify({ projectId: project.id, colors: vectorColors }),
-      });
-
-      if (!res3.ok) {
-        let errData = {};
-        const rawText = await res3.text();
-        try { errData = JSON.parse(rawText); } catch {
-          errData = { error: res3.status === 504 ? "504 Timeout" : `Server Error ${res3.status}` };
-        }
-        const msg = errData.error || `Error ${res3.status}`;
-        setNodeErrors(prev => ({ ...prev, step3: msg }));
-        throw new Error(msg);
-      }
-
-      const rawData3 = await res3.text();
-      let data3;
-      try { data3 = JSON.parse(rawData3); } catch { throw new Error("Invalid response from server (Step 3)"); }
-      setProject(prev => ({ ...prev, svg_url: data3.svg_url }));
-      logToConsole("[Success] Vectorization Complete!", "success");
+      // ─── Steps 2 & 3 ─────────────────────────────────────────────────
+      await runStep2And3({ authToken, vectorColors, skipRefund: false });
 
       setTraceState("idle");
       return { success: true }; // Signal to page to open compare modal
@@ -229,8 +232,8 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
           });
           const refundData = await refundRes.json();
           if (refundData.success) {
-            logToConsole("[System] Generation failed. 12 Credits have been refunded.", "success");
-            if (userCredits !== null) setUserCredits(prev => prev + 12);
+            logToConsole(`[System] Generation failed. ${CREDIT_COST.trace} Credits have been refunded.`, "success");
+            if (userCredits !== null) setUserCredits(prev => prev + CREDIT_COST.trace);
           }
         }
       } catch {
@@ -250,7 +253,88 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       setTraceState("idle");
       return { success: false };
     }
-  }, [project, traceState, userCredits, setUserCredits, setProject, supabase, onNoCredits, logToConsole, clearConsole]);
+  }, [project, traceState, userCredits, setUserCredits, setProject, supabase, onNoCredits, logToConsole, clearConsole, getAuthToken, postJson, runStep2And3]);
+
+  /**
+   * Re-run stages 2 and 3 against the current flat extract, without re-running
+   * stage 1. Used after Extend Design replaces `generated_image_url`.
+   *
+   * Charges nothing and never calls /api/refund — that endpoint overwrites
+   * generated_image_url with the 'REFUNDED' sentinel, which would destroy the
+   * extension the user just paid for.
+   */
+  const handleResumeFromStep2 = useCallback(async (vectorColors = "auto") => {
+    if (!project || traceState !== "idle") return { success: false };
+
+    if (!project.generated_image_url || project.generated_image_url === "REFUNDED") {
+      logToConsole("[Error] No flat extract to process.", "error");
+      return { success: false };
+    }
+
+    // Step 1 did not re-run, so leave its badge alone.
+    setNodeErrors(prev => ({ ...prev, step2: null, step3: null }));
+
+    const authToken = await getAuthToken();
+    if (!authToken) {
+      setNodeErrors(prev => ({ ...prev, step2: "You must be logged in." }));
+      return { success: false };
+    }
+
+    try {
+      await runStep2And3({ authToken, vectorColors, skipRefund: true });
+      setTraceState("idle");
+      return { success: true };
+    } catch (error) {
+      setTraceState("idle");
+      const isTimeout = error.message?.includes("504") || error.message?.includes("Failed to fetch");
+      logToConsole(`[Error] ${isTimeout
+        ? "Request Timed Out. Your extended design is safe — retry the vectorize."
+        : error.message}`, "error");
+      return { success: false };
+    }
+  }, [project, traceState, getAuthToken, runStep2And3, logToConsole]);
+
+  /**
+   * Retry only the free vectorization stage when upscale already succeeded.
+   * This avoids charging again or needlessly re-running the expensive upscale.
+   */
+  const handleRetryVector = useCallback(async (vectorColors = "auto") => {
+    if (!project?.upscaled_image_url || traceState !== "idle") return { success: false };
+
+    const authToken = await getAuthToken();
+    if (!authToken) {
+      setNodeErrors(prev => ({ ...prev, step3: "You must be logged in." }));
+      return { success: false };
+    }
+
+    setNodeErrors(prev => ({ ...prev, step3: null }));
+    setTraceState("step3");
+    logToConsole("[Step 3] Retrying vectorization with TrueVector™ Core...", "normal");
+
+    try {
+      const data = await postJson(
+        "/api/trace-step3",
+        { projectId: project.id, colors: vectorColors, skipRefund: true },
+        authToken,
+        "step3",
+      );
+      setProject(prev => ({ ...prev, svg_url: data.svg_url }));
+      logToConsole("[Success] Vectorization Complete!", "success");
+      return { success: true };
+    } catch (error) {
+      setNodeErrors(prev => ({ ...prev, step3: error.message }));
+      const timedOut = error.status === 504 || error.code === "VECTORIZE_TIMEOUT";
+      logToConsole(
+        `[Error] ${timedOut
+          ? "Vectorization timed out. Your upscale is safe—retry Vector SVG for free."
+          : error.message}`,
+        "error",
+      );
+      return { success: false };
+    } finally {
+      setTraceState("idle");
+    }
+  }, [project?.id, project?.upscaled_image_url, traceState, getAuthToken, postJson, setProject, logToConsole]);
 
   return {
     traceState,
@@ -259,5 +343,7 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
     logToConsole,
     clearConsole,
     handleExecuteTrace,
+    handleResumeFromStep2,
+    handleRetryVector,
   };
 }
