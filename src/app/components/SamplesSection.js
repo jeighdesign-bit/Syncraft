@@ -14,8 +14,8 @@ const SamplesSection = memo(function SamplesSection() {
           <div className={styles.sliderInner}>
             <BeforeAfterSlider
               title="Custom Pattern (Flat Extracted)"
-              rasterUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/users/08bafd26-e228-4a97-9efa-84a930c90098/1784601880631_crop_1784601878596.jpg"
-              vectorUrl="https://pub-494b7f1d63984c228ff2a8b23edda7c5.r2.dev/projects/6b65be66-7696-4cd1-9ef5-ddb220c200fa/vector_1784601963265.svg"
+              rasterUrl="/samples/esports-original.jpg"
+              vectorUrl="/samples/esports-vector.png"
               objectFit="cover"
             />
           </div>

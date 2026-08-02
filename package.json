@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "storage:lifecycle:plan": "node scripts/configure-r2-lifecycle.mjs",
+    "storage:lifecycle:apply": "node scripts/configure-r2-lifecycle.mjs --apply"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1079.0",
