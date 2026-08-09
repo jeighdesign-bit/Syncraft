@@ -20,8 +20,19 @@ export const adminSupabase =
       })
     : null);
 
+export const adminStorageSupabase =
+  globalForSupabase._adminStorageSupabaseClient ??
+  (globalForSupabase._adminStorageSupabaseClient = supabaseServiceKey
+    ? createClient(supabaseUrl, supabaseServiceKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+        // Bypass legacy API-host request buffering for large asset uploads.
+        storage: { useNewHostname: true },
+      })
+    : null);
+
 // Atomic credit refund using optimistic locking retry loop
-export async function safeRefundCredit(userId) {
+export async function safeRefundCredit(userId, amount = 12) {
+  if (!Number.isFinite(amount) || amount <= 0) return false;
   let retries = 3;
   while (retries > 0) {
     const { data: profile } = await adminSupabase
@@ -34,7 +45,7 @@ export async function safeRefundCredit(userId) {
     
     const { error: updateErr, data: updatedData } = await adminSupabase
       .from('profiles')
-      .update({ credits: profile.credits + 12 })
+      .update({ credits: profile.credits + amount })
       .eq('id', userId)
       .eq('credits', profile.credits)
       .select();

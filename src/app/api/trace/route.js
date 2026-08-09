@@ -3,6 +3,7 @@ import { adminSupabase, safeRefundCredit } from "@/lib/supabase";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 import { snapToAllowedAspectRatio } from "@/lib/aspectRatio";
+import { uploadToR2 } from "@/lib/cloudflare";
 
 // IMPORTANT: Must use Node.js runtime (not edge) so we get real 120s timeouts.
 // Edge runtime on Vercel has a hard 30s cap which causes all Gemini generations to fail.
@@ -635,6 +636,50 @@ If any difference is detected, continue refining until the reconstruction is vis
       const upscaleInputUrl = normalizeUserImageUrl(project.generated_image_url, new URL(request.url).origin);
       if (!isOwnedStorageUrl(upscaleInputUrl, { userId: user.id, projectId }) || !(await validateUrlForSSRF(upscaleInputUrl, { allowedHosts: getAllowedStorageHosts() }))) {
         return NextResponse.json({ error: "Invalid or unauthorized generated image URL" }, { status: 400 });
+      }
+
+      const backgroundOnly = project.canvas_data?.universal_recovery?.mode === "UNIVERSAL_BACKGROUND_ONLY";
+      if (backgroundOnly) {
+        // Real-ESRGAN can creatively re-grade large flat-color regions (for
+        // example green into teal). Background-only extraction is already
+        // generated at 2K, so use a deterministic lossless resize here. This
+        // preserves the Nano Banana result's RGB palette while still providing
+        // the 4x raster required by the vectorization stage.
+        console.log("[API Step 2] Lossless palette-preserving upscale for Universal background-only...");
+        const { response, buffer: inputBuffer } = await fetchWithSSRFProtection(upscaleInputUrl, {
+          allowedHosts: getAllowedStorageHosts(),
+          maxBytes: DEFAULT_MAX_IMAGE_BYTES,
+          allowedContentTypes: ['image/'],
+        });
+        if (!response.ok) throw new Error("Failed to fetch generated image for lossless upscale");
+
+        const sharp = (await import('sharp')).default;
+        const metadata = await sharp(inputBuffer).metadata();
+        if (!metadata.width || !metadata.height) throw new Error("Unable to read generated image dimensions");
+        const upscaledBuffer = await sharp(inputBuffer)
+          .resize(metadata.width * 4, metadata.height * 4, {
+            fit: 'fill',
+            kernel: sharp.kernel.lanczos3,
+          })
+          .png({ compressionLevel: 9, adaptiveFiltering: false })
+          .toBuffer();
+
+        const fileName = `projects/${projectId}/upscaled_${Date.now()}.png`;
+        const finalUrl = await uploadToR2(upscaledBuffer, fileName, "image/png");
+        const { error: saveError } = await adminSupabase.from('projects')
+          .update({ upscaled_image_url: finalUrl, zip_url: null, zip_signature: null, zip_generated_at: null })
+          .eq('id', projectId)
+          .eq('user_id', user.id);
+        if (saveError) throw new Error(`Could not save palette-preserving upscale: ${saveError.message}`);
+
+        return NextResponse.json({
+          success: true,
+          step: 2,
+          fileUrl: finalUrl,
+          mimeType: "image/png",
+          alreadySaved: true,
+          palettePreserved: true,
+        });
       }
 
       console.log("[API Step 2] Upscaling with fal-ai/esrgan...");

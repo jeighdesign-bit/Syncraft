@@ -29,6 +29,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.codex-localhost*.log
+
+# Local Store source artwork. The site serves the optimized WebP previews;
+# keep editable/print originals out of Git and deployment bundles.
+/public/Store/**/*.psd
+/public/Store/DESIGN PACKS/*.jpg
+/public/Store/MOCKUPS/*.jpg
+/public/Store/FREE RESOURCES/*.jpg
+/public/Store/FREE RESOURCES/*.JPG
 
 # env files (can opt-in for committing if needed)
 .env*

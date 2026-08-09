@@ -3,16 +3,112 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
+import {
+  Check,
+  Clock,
+  ExternalLink,
+  LogOut,
+  Mail,
+  RefreshCw,
+  Star,
+  X,
+} from "lucide-react";
 import { toast } from "@/components/Toast";
-import { Check, Clock, ExternalLink, LogOut, RefreshCw } from "lucide-react";
+import {
+  PAYMENT_STATUS,
+  appearsInManualPaymentHistory,
+} from "@/lib/paymentApprovalRules.mjs";
+import styles from "./admin.module.css";
 
 import "../globals.css";
-import "../home.css";
+
+const EMPTY_REVENUE = { today: 0, month: 0, overall: 0 };
+const COST_PER_PROJECT = 2;
+const pesoFormatter = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+  maximumFractionDigits: 0,
+});
+
+function formatPeso(value) {
+  return pesoFormatter.format(Number(value || 0));
+}
+
+function formatDate(value) {
+  return new Intl.DateTimeFormat("en-PH", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function RevenueCard({ title, description, revenue, tone }) {
+  return (
+    <article className={styles.revenueCard} data-tone={tone}>
+      <div className={styles.revenueHeader}>
+        <div>
+          <p className={styles.cardEyebrow}>{title}</p>
+          <p className={styles.cardDescription}>{description}</p>
+        </div>
+      </div>
+      <div className={styles.periodGrid}>
+        <div className={styles.periodItem}>
+          <span>Today</span>
+          <strong>{formatPeso(revenue.today)}</strong>
+        </div>
+        <div className={styles.periodItem}>
+          <span>This month</span>
+          <strong>{formatPeso(revenue.month)}</strong>
+        </div>
+        <div className={`${styles.periodItem} ${styles.periodOverall}`}>
+          <span>Overall</span>
+          <strong>{formatPeso(revenue.overall)}</strong>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function MetricCard({ label, value, detail, tone = "neutral" }) {
+  return (
+    <article className={styles.metricCard} data-tone={tone}>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        {detail && <small>{detail}</small>}
+      </div>
+    </article>
+  );
+}
+
+function SectionHeader({ title, description, count }) {
+  return (
+    <div className={styles.sectionHeader}>
+      <div>
+        <h2>{title}</h2>
+        {description && <p>{description}</p>}
+      </div>
+      {typeof count === "number" && <span className={styles.countBadge}>{count}</span>}
+    </div>
+  );
+}
+
+function EmptyState({ title, description }) {
+  return (
+    <div className={styles.emptyState}>
+      <Check size={22} aria-hidden="true" />
+      <strong>{title}</strong>
+      <span>{description}</span>
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState([]);
+  const [storeRequests, setStoreRequests] = useState([]);
+  const [storeStats, setStoreStats] = useState({ pending: 0, fulfilled: 0, rejected: 0, total: 0 });
+  const [revenue, setRevenue] = useState({ syncraft: EMPTY_REVENUE, store: EMPTY_REVENUE });
   const [approvedRequests, setApprovedRequests] = useState([]);
   const [dodoPayments, setDodoPayments] = useState([]);
   const [reviews, setReviews] = useState([]);
@@ -20,23 +116,56 @@ export default function AdminDashboard() {
   const [activeCreditsTotal, setActiveCreditsTotal] = useState(0);
   const [paidUsers, setPaidUsers] = useState([]);
   const [processingId, setProcessingId] = useState(null);
+  const [storeProcessingId, setStoreProcessingId] = useState(null);
+  const [storeProcessingAction, setStoreProcessingAction] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasNewRequests, setHasNewRequests] = useState(false);
   const router = useRouter();
-
-  const PLAN_PRICES = {
-    tingi: 50,
-    basic: 100,
-    starter: 299,
-    pro: 499,
-    elite: 799
-  };
-  const COST_PER_GENERATION = 2; // Estimated PHP cost per generation
 
   const [supabase] = useState(() => createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ));
+
+  const fetchRequests = async (token, options = {}) => {
+    if (!options.silent) setLoading(true);
+    if (options.manual) setIsRefreshing(true);
+    try {
+      const response = await fetch("/api/admin/get-dashboard", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+
+      const requestRows = data.requests || [];
+      setRequests(
+        requestRows
+          .filter((request) => request.status === "pending")
+          .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      );
+      setApprovedRequests(requestRows.filter((request) => appearsInManualPaymentHistory(request.status)));
+      setStoreRequests((data.storeRequests || []).filter((request) => request.status === "pending"));
+      setStoreStats({ pending: 0, fulfilled: 0, rejected: 0, total: 0, ...(data.storeStats || {}) });
+      setRevenue({
+        syncraft: { ...EMPTY_REVENUE, ...(data.revenue?.syncraft || {}) },
+        store: { ...EMPTY_REVENUE, ...(data.revenue?.store || {}) },
+      });
+      setDodoPayments(data.dodoPayments || []);
+      setReviews(data.reviews || []);
+      setTotalProjects(Number(data.totalProjects || 0));
+      setActiveCreditsTotal(Number(data.activeCreditsTotal || 0));
+      setPaidUsers(data.paidUsers || []);
+      if (options.manual) setHasNewRequests(false);
+      return true;
+    } catch (error) {
+      toast.error(error.message || "Failed to load admin data");
+      console.error(error);
+      return false;
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     let fallbackInterval;
@@ -44,132 +173,137 @@ export default function AdminDashboard() {
 
     const checkAdmin = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'lloyddumzofficial@gmail.com';
-      if (!session || session.user.email !== adminEmail) {
-        router.push('/');
+      if (!session) {
+        setLoading(false);
+        router.push("/");
+        return;
+      }
+
+      const isAuthorized = await fetchRequests(session.access_token);
+      if (!isAuthorized) {
+        router.push("/");
         return;
       }
       setUser(session.user);
-      await fetchRequests(session.access_token);
 
-      // ── Supabase Realtime Subscription ──────────────────────────────────
-      // Fires instantly when any row in payment_requests changes,
-      // replacing the old 30-second polling loop.
       realtimeChannel = supabase
-        .channel('admin_payment_requests')
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'payment_requests' },
-          (payload) => {
-            // New payment just submitted — notify admin immediately
-            const email = payload.new?.email || 'a user';
-            const plan = payload.new?.plan || 'unknown';
-            toast.success(`🔔 New payment from ${email} (${plan})`);
-            setHasNewRequests(true);
-            fetchRequests(session.access_token, { silent: true });
-          }
-        )
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'payment_requests' },
-          () => {
-            // Status changed externally (e.g. another session approved it)
-            fetchRequests(session.access_token, { silent: true });
-          }
-        )
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            console.log('[Admin] Realtime connected — instant payment notifications active.');
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.warn('[Admin] Realtime connection issue:', status);
-          }
-        });
+        .channel("admin_payment_requests")
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "payment_requests" }, (payload) => {
+          toast.success(`New payment from ${payload.new?.email || "a user"}`);
+          setHasNewRequests(true);
+          fetchRequests(session.access_token, { silent: true });
+        })
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "payment_requests" }, () => {
+          fetchRequests(session.access_token, { silent: true });
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "store_requests" }, (payload) => {
+          toast.success(`New store request from ${payload.new?.email || "a customer"}`);
+          fetchRequests(session.access_token, { silent: true });
+        })
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "store_requests" }, () => {
+          fetchRequests(session.access_token, { silent: true });
+        })
+        .subscribe();
 
-      // ── Fallback Polling (5 min) ─────────────────────────────────────────
-      // Safety net in case the realtime WebSocket disconnects.
       fallbackInterval = setInterval(() => {
         fetchRequests(session.access_token, { silent: true });
       }, 5 * 60_000);
     };
 
     checkAdmin();
-
     return () => {
       if (fallbackInterval) clearInterval(fallbackInterval);
       if (realtimeChannel) supabase.removeChannel(realtimeChannel);
     };
   }, [supabase, router]);
 
-  const fetchRequests = async (token, options = {}) => {
-    if (!options.silent) setLoading(true);
-    if (options.manual) setIsRefreshing(true);
-    try {
-      const res = await fetch('/api/admin/get-dashboard', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      
-      if (!res.ok) throw new Error(data.error);
-
-      const reqData = data.requests || [];
-      const pending = reqData.filter(r => r.status === 'pending');
-      const approved = reqData.filter(r => r.status === 'approved');
-      
-      // Sort pending so oldest is first
-      setRequests(pending.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
-      setApprovedRequests(approved);
-      setDodoPayments(data.dodoPayments || []);
-      setReviews(data.reviews || []);
-      setTotalProjects(data.totalProjects || 0);
-      setActiveCreditsTotal(Number(data.activeCreditsTotal || 0));
-      setPaidUsers(data.paidUsers || []);
-
-      // Clear the new-request indicator after fetching
-      if (options.manual) setHasNewRequests(false);
-    } catch (err) {
-      toast.error("Failed to load admin data");
-      console.error(err);
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+  useEffect(() => {
+    const pendingTotal = requests.length + storeRequests.length;
+    document.title = pendingTotal
+      ? `(${pendingTotal}) Admin Dashboard - Syncraft`
+      : "Admin Dashboard - Syncraft";
+  }, [requests.length, storeRequests.length]);
 
   const handleManualRefresh = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      fetchRequests(session.access_token, { silent: true, manual: true });
+    if (session) fetchRequests(session.access_token, { silent: true, manual: true });
+  };
+
+  const handleStoreRequestStatus = async (request, status) => {
+    setStoreProcessingId(request.id);
+    setStoreProcessingAction(status);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Admin session expired.");
+
+      const response = await fetch("/api/admin/store-requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ requestId: request.id, status }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not update store request.");
+
+      setStoreRequests((current) => current.filter((item) => item.id !== request.id));
+      setStoreStats((current) => ({
+        ...current,
+        pending: Math.max(0, current.pending - 1),
+        [status]: current[status] + 1,
+      }));
+      if (status === "fulfilled") {
+        const amount = Number(String(request.price || "").replace(/[^0-9.-]/g, "")) || 0;
+        setRevenue((current) => ({
+          ...current,
+          store: {
+            today: current.store.today + amount,
+            month: current.store.month + amount,
+            overall: current.store.overall + amount,
+          },
+        }));
+      }
+      toast.success(status === "fulfilled" ? "Store order marked as sent." : "Store request rejected.");
+    } catch (error) {
+      toast.error(error.message || "Could not update store request.");
+    } finally {
+      setStoreProcessingId(null);
+      setStoreProcessingAction(null);
     }
+  };
+
+  const handleRejectStoreRequest = (request) => {
+    const confirmed = window.confirm(
+      `Reject the purchase request for ${request.product_name} from ${request.email}?`
+    );
+    if (confirmed) handleStoreRequestStatus(request, "rejected");
   };
 
   const handleApprove = async (request, markOnly = false) => {
     setProcessingId(request.id);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
-      const res = await fetch('/api/admin/approve-payment', {
-        method: 'POST',
+      if (!session) throw new Error("Admin session expired.");
+
+      const response = await fetch("/api/admin/approve-payment", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ requestId: request.id, markOnly })
+        body: JSON.stringify({ requestId: request.id, markOnly }),
       });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      if (markOnly) {
-        toast.success(`Marked as paid! (No credits added)`);
-      } else {
-        toast.success(`Approved! Added ${data.addedCredits} credits to ${request.email}`);
-      }
-      
-      setRequests(reqs => reqs.filter(r => r.id !== request.id));
-      setApprovedRequests(prev => [...prev, { ...request, status: 'approved' }]);
-      fetchRequests(session.access_token, { silent: true });
-    } catch (err) {
-      toast.error(err.message || "Failed to approve payment");
+      toast.success(markOnly
+        ? "Marked as paid without adding credits."
+        : `Approved and added ${data.addedCredits} credits to ${request.email}.`
+      );
+      await fetchRequests(session.access_token, { silent: true });
+    } catch (error) {
+      toast.error(error.message || "Failed to approve payment");
     } finally {
       setProcessingId(null);
     }
@@ -177,334 +311,253 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/');
+    router.push("/");
   };
 
   if (loading) {
     return (
-      <div className="start-screen-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#d4ff59', fontSize: '14px', fontWeight: '500' }}>Loading Admin Panel...</div>
-      </div>
+      <main className={styles.loadingScreen}>
+        <RefreshCw className={styles.loadingIcon} size={22} aria-hidden="true" />
+        <span>Loading dashboard</span>
+      </main>
     );
   }
-
   if (!user) return null;
 
-  const totalRevenue = approvedRequests.reduce((sum, req) => sum + (PLAN_PRICES[req.plan] || 0), 0);
-  const totalCost = totalProjects * COST_PER_GENERATION;
-  const netProfit = totalRevenue - totalCost;
-  const totalActiveCredits = activeCreditsTotal;
+  const estimatedCost = totalProjects * COST_PER_PROJECT;
+  const estimatedProfit = revenue.syncraft.overall - estimatedCost;
 
   return (
-    <div className="start-screen-container">
-      <div className="start-center-box" style={{ maxWidth: '700px', marginTop: '20px' }}>
-        
-        {/* LOGO & TITLE (Matching Homepage Exactly) */}
-        <div className="start-logo" style={{ marginBottom: "20px", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-          <img src="/logo.png" alt="Syncraft Logo" style={{ width: "300px", maxWidth: "100%", height: "auto", margin: 0, cursor: 'pointer' }} onClick={() => router.push('/')} />
-          <p style={{ fontSize: "14px", color: "#d4ff59", margin: "5px 0 0 0", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px' }}>Admin Dashboard</p>
-          <p style={{ fontSize: "14px", color: "#aaa", textAlign: "center", marginTop: "15px", maxWidth: "420px", lineHeight: "1.6" }}>
-            Review and approve pending top-up requests from users.
-          </p>
-        </div>
-
-        {/* TAB TITLE BADGE — updates browser tab with pending count */}
-        {typeof document !== 'undefined' && (() => {
-          document.title = requests.length > 0
-            ? `(${requests.length}) Admin Dashboard — Syncraft`
-            : 'Admin Dashboard — Syncraft';
-          return null;
-        })()}
-
-        {/* TOP BUTTONS */}
-        <div style={{ display: "flex", gap: "15px", marginBottom: "40px", flexWrap: "wrap", justifyContent: "center", width: "100%" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "12px 24px", borderRadius: "4px", fontSize: "16px", fontWeight: "500", whiteSpace: "nowrap" }}>
-            Revenue: <strong style={{ color: '#d4ff59', fontSize: '18px' }}>₱{totalRevenue.toLocaleString()}</strong>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "12px 24px", borderRadius: "4px", fontSize: "16px", fontWeight: "500", whiteSpace: "nowrap" }}>
-            Costs: <strong style={{ fontSize: '18px' }}>₱{totalCost.toLocaleString()}</strong>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "transparent", color: "#d5d5d5", border: "1px solid #444", padding: "12px 24px", borderRadius: "4px", fontSize: "16px", fontWeight: "500", whiteSpace: "nowrap" }}>
-            Profit: <strong style={{ color: netProfit < 0 ? '#ff4444' : '#4ade80', fontSize: '18px' }}>₱{netProfit.toLocaleString()}</strong>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "transparent", color: "#d5d5d5", border: "1px solid #5a4a00", padding: "12px 24px", borderRadius: "4px", fontSize: "16px", fontWeight: "500", whiteSpace: "nowrap" }}>
-            Active Credits: <strong style={{ color: '#d4ff59', fontSize: '18px' }}>🪙 {totalActiveCredits.toLocaleString()}</strong>
-          </div>
-          <button
-            className="start-btn"
-            onClick={handleManualRefresh}
-            disabled={isRefreshing}
-            title="Manually refresh dashboard"
-            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "12px 24px", borderRadius: "4px", fontSize: "16px", background: 'transparent', color: isRefreshing ? '#888' : '#aaa', borderColor: '#555', opacity: isRefreshing ? 0.7 : 1 }}
-          >
-            <RefreshCw size={16} style={{ animation: isRefreshing ? 'spin 1s linear infinite' : 'none' }} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <header className={styles.topbar}>
+          <button className={styles.brandButton} type="button" onClick={() => router.push("/")}>
+            <img src="/logo.svg" alt="Syncraft" />
+            <span>Admin</span>
           </button>
-          <button className="start-btn" onClick={handleLogout} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "12px 24px", borderRadius: "4px", fontSize: "16px" }}>
-            <LogOut size={16} /> Logout
-          </button>
-        </div>
+          <div className={styles.topbarActions}>
+            <button className={styles.secondaryButton} type="button" onClick={handleManualRefresh} disabled={isRefreshing}>
+              <RefreshCw size={16} className={isRefreshing ? styles.spin : ""} aria-hidden="true" />
+              {isRefreshing ? "Refreshing" : "Refresh"}
+            </button>
+            <button className={styles.iconButton} type="button" onClick={handleLogout} aria-label="Log out" title="Log out">
+              <LogOut size={18} aria-hidden="true" />
+            </button>
+          </div>
+        </header>
 
-        {/* REQUESTS BOX (Dashed like upload box) */}
-        <div className="hero-upload-box" style={{ width: '100%', padding: '20px', minHeight: '300px', justifyContent: requests.length === 0 ? 'center' : 'flex-start' }}>
-          
+        <section className={styles.intro}>
+          <div>
+            <p className={styles.kicker}>Admin dashboard</p>
+            <h1>Business overview</h1>
+            <p>Revenue, customer payments, credits, and store fulfillment in one place.</p>
+          </div>
+          <span className={styles.liveBadge}><i /> Live data</span>
+        </section>
+
+        <section className={styles.businessSection} aria-labelledby="syncraft-section-title">
+          <div className={styles.businessHeading}>
+            <div>
+              <p className={styles.kicker}>Core platform</p>
+              <h2 id="syncraft-section-title">Syncraft</h2>
+            </div>
+            <span>Philippine time</span>
+          </div>
+          <div className={styles.businessPanel} data-tone="syncraft">
+            <RevenueCard
+              title="Revenue"
+              description="Approved top-ups and paid automated plans"
+              revenue={revenue.syncraft}
+              tone="syncraft"
+            />
+            <div className={styles.businessMetrics}>
+              <MetricCard label="Pending top-ups" value={requests.length.toLocaleString()} detail="Needs review" tone={hasNewRequests ? "alert" : "neutral"} />
+              <MetricCard label="Active credits" value={activeCreditsTotal.toLocaleString()} detail="Across paid users" tone="accent" />
+              <MetricCard label="Projects" value={totalProjects.toLocaleString()} detail="Total processed" />
+              <MetricCard label="Estimated cost" value={formatPeso(estimatedCost)} detail={`${formatPeso(COST_PER_PROJECT)} per project`} />
+              <MetricCard label="Profit" value={formatPeso(estimatedProfit)} detail="Revenue less est. cost" tone="success" />
+            </div>
+            <div className={styles.businessDetails}>
+        <section className={styles.panel}>
+          <SectionHeader title="Pending top-up requests" description="Verify receipts before adding credits." count={requests.length} />
           {requests.length === 0 ? (
-            <div style={{ textAlign: 'center' }}>
-              <Check size={40} color="#d4ff59" style={{ margin: '0 auto 15px' }} />
-              <div style={{ fontSize: "16px", color: "#ccc", fontWeight: "500" }}>All caught up!</div>
-              <div style={{ marginTop: "10px", color: "#888", fontSize: "13px" }}>No pending payments to review.</div>
-            </div>
+            <EmptyState title="All caught up" description="No pending top-up payments to review." />
           ) : (
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '350px', overflowY: 'auto', paddingRight: '10px' }}>
-              <div style={{ fontSize: "12px", color: "#d4ff59", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                {hasNewRequests && (
-                  <span style={{
-                    display: 'inline-block',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: '#ff4444',
-                    boxShadow: '0 0 0 0 rgba(255,68,68,0.7)',
-                    animation: 'pulse-dot 1.5s ease-in-out infinite',
-                    flexShrink: 0
-                  }} />
-                )}
-                Pending Requests ({requests.length})
-              </div>
-              
-              {requests.map(req => (
-                <div key={req.id} style={{ background: '#222', border: '1px solid #444', borderRadius: '0', padding: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
-                  
-                  <div style={{ flex: 1, minWidth: '200px' }}>
-                    <div style={{ color: '#888', fontSize: '11px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      <Clock size={12} /> {new Date(req.created_at).toLocaleString()}
-                    </div>
-                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#fff', marginBottom: '4px' }}>{req.email}</div>
-                    <div style={{ color: '#aaa', fontSize: '12px' }}>
-                      Plan: <strong style={{ color: '#d4ff59', textTransform: 'capitalize' }}>{req.plan}</strong> &bull; Phone: {req.reference_number}
-                    </div>
+            <div className={styles.list}>
+              {requests.map((request) => (
+                <article className={styles.listRow} key={request.id}>
+                  <div className={styles.rowBody}>
+                    <span className={styles.rowMeta}><Clock size={13} /> {formatDate(request.created_at)}</span>
+                    <strong>{request.email}</strong>
+                    <span>Plan: <b>{request.plan}</b> · Reference: {request.reference_number || "N/A"}</span>
                   </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {req.proof_url && (
-                      <a href={req.proof_url} target="_blank" rel="noreferrer" className="start-btn" style={{ padding: '8px 12px', fontSize: '11px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        Receipt <ExternalLink size={12} />
-                      </a>
-                    )}
-                    
-                    <button 
-                      onClick={() => handleApprove(req, true)}
-                      disabled={processingId === req.id}
-                      className="start-btn"
-                      style={{ 
-                        background: 'transparent',
-                        color: processingId === req.id ? '#888' : '#aaa', 
-                        borderColor: processingId === req.id ? '#444' : '#555',
-                        padding: '8px 12px', 
-                        fontSize: '11px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '6px',
-                        opacity: processingId === req.id ? 0.7 : 1
-                      }}
-                      title="Move to Paid list WITHOUT adding credits"
-                    >
-                      {processingId === req.id ? '...' : 'Already Paid'}
-                    </button>
-
-                    <button 
-                      onClick={() => handleApprove(req, false)}
-                      disabled={processingId === req.id}
-                      className="start-btn"
-                      style={{ 
-                        background: processingId === req.id ? 'transparent' : '#d4ff59', 
-                        color: processingId === req.id ? '#888' : '#000', 
-                        borderColor: processingId === req.id ? '#555' : '#d4ff59',
-                        padding: '8px 12px', 
-                        fontSize: '11px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '6px',
-                        opacity: processingId === req.id ? 0.7 : 1
-                      }}
-                    >
-                      {processingId === req.id ? 'Approving...' : <><Check size={12} strokeWidth={3} /> Approve & Add</>}
+                  <div className={styles.rowActions}>
+                    {request.proof_url && <a className={styles.actionButton} href={request.proof_url} target="_blank" rel="noreferrer">Receipt <ExternalLink size={13} /></a>}
+                    <button className={styles.actionButton} type="button" onClick={() => handleApprove(request, true)} disabled={processingId === request.id}>Already paid</button>
+                    <button className={styles.primaryButton} type="button" onClick={() => handleApprove(request, false)} disabled={processingId === request.id}>
+                      <Check size={14} /> {processingId === request.id ? "Approving" : "Approve & add"}
                     </button>
                   </div>
-
-                </div>
+                </article>
               ))}
             </div>
           )}
+        </section>
 
-        </div>
-
-        {/* PAID / APPROVED SECTION */}
-        <div className="hero-upload-box" style={{ width: '100%', padding: '20px', minHeight: '150px', marginTop: '30px', justifyContent: approvedRequests.length === 0 ? 'center' : 'flex-start', borderStyle: 'solid', borderColor: '#333' }}>
-          {approvedRequests.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#888', fontSize: '14px' }}>
-              No paid/approved requests yet.
-            </div>
-          ) : (
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '350px', overflowY: 'auto', paddingRight: '10px' }}>
-              <div style={{ fontSize: "12px", color: "#4ade80", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>
-                Paid / Approved ({approvedRequests.length})
+        <div className={styles.twoColumnGrid}>
+          <section className={styles.panel}>
+            <SectionHeader title="Manual payment history" description="Approved and previously recorded GCash requests." count={approvedRequests.length} />
+            {approvedRequests.length === 0 ? (
+              <EmptyState title="No approved payments" description="Approved manual payments appear here." />
+            ) : (
+              <div className={styles.list}>
+                {approvedRequests.map((request) => (
+                  <article className={styles.compactRow} key={request.id}>
+                    <div className={styles.rowBody}>
+                      <span className={styles.rowMeta}>{formatDate(request.created_at)}</span>
+                      <strong>{request.email}</strong>
+                      <span>{request.plan} · {request.reference_number || "No reference"}</span>
+                    </div>
+                    <span className={styles.statusPill} data-status={request.status === PAYMENT_STATUS.ALREADY_PAID ? "recorded" : "paid"}>
+                      <Check size={12} /> {request.status === PAYMENT_STATUS.ALREADY_PAID ? "Recorded" : "Paid"}
+                    </span>
+                  </article>
+                ))}
               </div>
-              
-              {approvedRequests.map(req => (
-                <div key={req.id} style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '0', padding: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px', opacity: 0.7 }}>
-                  
-                  <div style={{ flex: 1, minWidth: '200px' }}>
-                    <div style={{ color: '#666', fontSize: '11px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      <Clock size={12} /> {new Date(req.created_at).toLocaleString()}
+            )}
+          </section>
+
+          <section className={styles.panel}>
+            <SectionHeader title="Automated payments" description="Latest Dodo checkout activity." count={dodoPayments.length} />
+            {dodoPayments.length === 0 ? (
+              <EmptyState title="No automated payments" description="Dodo transactions appear here." />
+            ) : (
+              <div className={styles.list}>
+                {dodoPayments.map((payment) => (
+                  <article className={styles.compactRow} key={payment.id}>
+                    <div className={styles.rowBody}>
+                      <span className={styles.rowMeta}>{formatDate(payment.created_at)}</span>
+                      <strong>{payment.email}</strong>
+                      <span>{payment.plan} · {payment.credits} credits · {payment.currency} {(Number(payment.amount || 0) / 100).toLocaleString()}</span>
                     </div>
-                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#aaa', marginBottom: '4px' }}>{req.email}</div>
-                    <div style={{ color: '#888', fontSize: '12px' }}>
-                      Plan: <strong style={{ color: '#4ade80', textTransform: 'capitalize' }}>{req.plan}</strong> &bull; Phone: {req.reference_number}
-                    </div>
-                  </div>
-
-                  <div style={{ color: '#4ade80', fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Check size={16} strokeWidth={3} /> PAID
-                  </div>
-
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* DODO AUTOMATED PAYMENTS SECTION */}
-        <div className="hero-upload-box" style={{ width: '100%', padding: '20px', minHeight: '150px', marginTop: '30px', justifyContent: dodoPayments.length === 0 ? 'center' : 'flex-start', borderStyle: 'solid', borderColor: '#333' }}>
-          {dodoPayments.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#888', fontSize: '14px' }}>
-              No Dodo automated payments yet.
-            </div>
-          ) : (
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '350px', overflowY: 'auto', paddingRight: '10px' }}>
-              <div style={{ fontSize: "12px", color: "#60a5fa", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>
-                Dodo Automated Payments ({dodoPayments.length})
+                    <span className={styles.statusPill} data-status={payment.status}>{payment.status}</span>
+                  </article>
+                ))}
               </div>
-
-              {dodoPayments.map(payment => (
-                <div key={payment.id} style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '0', padding: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px', opacity: payment.status === 'paid' ? 1 : 0.75 }}>
-                  <div style={{ flex: 1, minWidth: '200px' }}>
-                    <div style={{ color: '#666', fontSize: '11px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      <Clock size={12} /> {new Date(payment.created_at).toLocaleString()}
-                    </div>
-                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#aaa', marginBottom: '4px' }}>{payment.email}</div>
-                    <div style={{ color: '#888', fontSize: '12px' }}>
-                      Plan: <strong style={{ color: payment.status === 'paid' ? '#4ade80' : '#60a5fa', textTransform: 'capitalize' }}>{payment.plan}</strong> &bull; Credits: {payment.credits} &bull; {payment.currency} {(payment.amount / 100).toLocaleString()}
-                    </div>
-                  </div>
-
-                  <div style={{ color: payment.status === 'paid' ? '#4ade80' : payment.status === 'failed' ? '#ff4444' : '#60a5fa', fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                    {payment.status}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+            )}
+          </section>
         </div>
 
-        {/* REVIEWS SECTION */}
-        <div className="hero-upload-box" style={{ width: '100%', padding: '20px', minHeight: '150px', marginTop: '30px', justifyContent: reviews.length === 0 ? 'center' : 'flex-start', borderStyle: 'solid', borderColor: '#333' }}>
-          {reviews.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#888', fontSize: '14px' }}>
-              No user reviews yet.
-            </div>
-          ) : (
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '350px', overflowY: 'auto', paddingRight: '10px' }}>
-              <div style={{ fontSize: "12px", color: "#fbbf24", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>
-                Recent User Reviews ({reviews.length})
+        <div className={styles.twoColumnGrid}>
+          <section className={styles.panel}>
+            <SectionHeader title="Recent reviews" description="Latest customer feedback." count={reviews.length} />
+            {reviews.length === 0 ? (
+              <EmptyState title="No reviews yet" description="Customer ratings will appear here." />
+            ) : (
+              <div className={styles.list}>
+                {reviews.map((review) => (
+                  <article className={styles.reviewRow} key={review.id}>
+                    <div className={styles.reviewHeading}>
+                      <span>{formatDate(review.created_at)}</span>
+                      <strong><Star size={13} fill="currentColor" /> {review.rating}/5</strong>
+                    </div>
+                    <p>{review.feedback_text || "No written feedback."}</p>
+                    <small>{review.name || `Project ${review.id.slice(0, 8)}`}</small>
+                  </article>
+                ))}
               </div>
-              
-              {reviews.map(rev => (
-                <div key={rev.id} style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '0', padding: '15px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ color: '#666', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      <Clock size={12} /> {new Date(rev.created_at).toLocaleString()}
-                    </div>
-                    <div style={{ color: '#fbbf24', fontSize: '16px', letterSpacing: '2px' }}>
-                      {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
-                    </div>
-                  </div>
-                  
-                  {rev.feedback_text ? (
-                    <div style={{ fontSize: '14px', color: '#eee', fontStyle: 'italic', background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '4px', borderLeft: '3px solid #fbbf24' }}>
-                      "{rev.feedback_text}"
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '13px', color: '#888', fontStyle: 'italic' }}>
-                      (No written feedback provided)
-                    </div>
-                  )}
+            )}
+          </section>
 
-                  <div style={{ color: '#555', fontSize: '11px', alignSelf: 'flex-end', marginTop: '4px' }}>
-                    Project ID: {rev.id.substring(0,8)}...
-                  </div>
-
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* PAID USERS & CREDITS SECTION */}
-        <div className="hero-upload-box" style={{ width: '100%', padding: '20px', minHeight: '150px', marginTop: '30px', justifyContent: paidUsers.length === 0 ? 'center' : 'flex-start', borderStyle: 'solid', borderColor: '#333' }}>
-          {paidUsers.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#888', fontSize: '14px' }}>
-              No paid users found.
-            </div>
-          ) : (
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '350px', overflowY: 'auto', paddingRight: '10px' }}>
-              <div style={{ fontSize: "12px", color: "#d4ff59", fontWeight: "600", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>
-                Paid Users & Remaining Credits ({paidUsers.length})
+          <section className={styles.panel}>
+            <SectionHeader title="Paid users" description="Users with remaining credits." count={paidUsers.length} />
+            {paidUsers.length === 0 ? (
+              <EmptyState title="No paid users" description="Paid customers will appear here." />
+            ) : (
+              <div className={styles.list}>
+                {paidUsers.map((paidUser) => (
+                  <article className={styles.compactRow} key={paidUser.id}>
+                    <div className={styles.rowBody}>
+                      <strong>{paidUser.email}</strong>
+                      <span>Joined {new Date(paidUser.created_at).toLocaleDateString("en-PH")}</span>
+                    </div>
+                    <span className={styles.creditBadge}>{Number(paidUser.credits || 0).toLocaleString()} credits</span>
+                  </article>
+                ))}
               </div>
-              
-              {paidUsers.map(u => (
-                <div key={u.id} style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '0', padding: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
-                  
-                  <div style={{ flex: 1, minWidth: '200px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#fff', marginBottom: '4px' }}>{u.email}</div>
-                    <div style={{ color: '#888', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      Joined: {new Date(u.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
+            )}
+          </section>
+        </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ background: '#222', padding: '8px 16px', borderRadius: '4px', border: '1px solid #444', color: '#d4ff59', fontWeight: '600', fontSize: '14px' }}>
-                      {u.credits} Traces
-                    </div>
-                  </div>
+            </div>
+          </div>
+        </section>
 
-                </div>
+        <section className={styles.businessSection} aria-labelledby="store-section-title">
+          <div className={styles.businessHeading}>
+            <div>
+              <p className={styles.kicker}>Digital products</p>
+              <h2 id="store-section-title">Store</h2>
+            </div>
+          </div>
+          <div className={styles.businessPanel} data-tone="store">
+            <RevenueCard
+              title="Revenue"
+              description="Fulfilled product orders"
+              revenue={revenue.store}
+              tone="store"
+            />
+            <div className={styles.businessMetrics}>
+              <MetricCard label="Pending orders" value={storeStats.pending.toLocaleString()} detail="Needs fulfillment" />
+              <MetricCard label="Fulfilled" value={storeStats.fulfilled.toLocaleString()} detail="Orders sent" tone="success" />
+              <MetricCard label="Rejected" value={storeStats.rejected.toLocaleString()} detail="Declined requests" />
+              <MetricCard label="Total requests" value={storeStats.total.toLocaleString()} detail="All store orders" />
+            </div>
+            <div className={styles.businessDetails}>
+        <section className={styles.panel}>
+          <SectionHeader title="Store requests" description="Verify payment, deliver the product, then mark the order as sent." count={storeRequests.length} />
+          {storeRequests.length === 0 ? (
+            <EmptyState title="No pending store requests" description="New product orders will appear here." />
+          ) : (
+            <div className={styles.list}>
+              {storeRequests.map((request) => (
+                <article className={styles.listRow} key={request.id}>
+                  <div className={styles.rowBody}>
+                    <span className={styles.rowMeta}><Clock size={13} /> {formatDate(request.created_at)}</span>
+                    <strong>{request.product_name}</strong>
+                    <span>{request.product_type || "Store product"} · {request.email} · <b>{request.price}</b></span>
+                  </div>
+                  <div className={styles.rowActions}>
+                    {request.receipt_url && <a className={styles.actionButton} href={request.receipt_url} target="_blank" rel="noreferrer">Receipt <ExternalLink size={13} /></a>}
+                    <a
+                      className={styles.actionButton}
+                      href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(request.email)}&su=${encodeURIComponent(`Your ${request.product_name} purchase`)}&body=${encodeURIComponent(`Hi,\n\nThank you for purchasing ${request.product_name} (${request.product_type || "Store product"}).\n\nYour file, download link, or license details:\n\n`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Email <Mail size={13} />
+                    </a>
+                    <button className={styles.primaryButton} type="button" disabled={storeProcessingId === request.id} onClick={() => handleStoreRequestStatus(request, "fulfilled")}>
+                      <Check size={14} /> {storeProcessingId === request.id && storeProcessingAction === "fulfilled" ? "Saving" : "Mark sent"}
+                    </button>
+                    <button className={styles.dangerButton} type="button" disabled={storeProcessingId === request.id} onClick={() => handleRejectStoreRequest(request)}>
+                      <X size={14} /> {storeProcessingId === request.id && storeProcessingAction === "rejected" ? "Rejecting" : "Reject"}
+                    </button>
+                  </div>
+                </article>
               ))}
             </div>
           )}
-        </div>
+        </section>
+            </div>
+          </div>
+        </section>
 
-        {/* Footer Text */}
-        <div style={{ marginTop: '40px', color: '#555', fontSize: '12px', textAlign: 'center' }}>
-          Syncraft Admin Panel &copy; 2026 &nbsp;·&nbsp;
-          <span style={{ color: '#2a6', fontSize: '11px' }}>⚡ Live — Realtime notifications active</span>
-        </div>
-
-        {/* Inline keyframes for pulsing dot + spinner */}
-        <style>{`
-          @keyframes pulse-dot {
-            0%   { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); }
-            70%  { box-shadow: 0 0 0 8px rgba(255, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
-          }
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to   { transform: rotate(360deg); }
-          }
-        `}</style>
-        
+        <footer className={styles.footer}>
+          <span>Syncraft Admin · 2026</span>
+          <span><i /> Realtime monitoring active</span>
+        </footer>
       </div>
-    </div>
+    </main>
   );
 }

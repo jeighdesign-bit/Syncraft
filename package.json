@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "test": "node --test",
     "start": "next start",
     "storage:lifecycle:plan": "node scripts/configure-r2-lifecycle.mjs",
     "storage:lifecycle:apply": "node scripts/configure-r2-lifecycle.mjs --apply"

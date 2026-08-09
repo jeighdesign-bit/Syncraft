@@ -1,7 +1,7 @@
 /**
  * svgSegmenter.js
  * ─────────────────────────────────────────────────────────────────────────────
- * Post-processes an SVG (produced by Recraft vectorize) by using Gemini vision
+ * Post-processes an SVG (produced by Recraft vectorize) using Fal vision
  * to classify each path into a semantic layer (Background, Stripe, Logo, etc.)
  * and wraps them in named <g id="layer-..."> groups.
  *
@@ -18,7 +18,7 @@
 const MAX_PATHS_FOR_SEGMENTATION = 60;
 
 // Timeout for the Gemini API call (ms). Must leave headroom within Step 3's 120s limit.
-const GEMINI_TIMEOUT_MS = 25000;
+const VISION_TIMEOUT_MS = 25000;
 
 // Semantic layer labels Gemini will assign — ordered by visual priority (back to front)
 const LAYER_LABELS = [
@@ -170,13 +170,10 @@ function getSvgViewBox(svgText) {
 }
 
 /**
- * Call Gemini Flash via OpenRouter with the original image and path descriptions.
+ * Call Fal vision with the original image and path descriptions.
  * Returns: { [shapeIndex: string]: layerLabel }
  */
 async function callGeminiForSegmentation(shapes, base64Image, mimeType, traceType, vw, vh) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not set');
-
   // Normalise each path's position/size as % of viewBox for Gemini
   const pathDescriptions = shapes.map((s, i) => {
     const pct = (v, dim) => Math.round((v / dim) * 100);
@@ -189,7 +186,9 @@ async function callGeminiForSegmentation(shapes, base64Image, mimeType, traceTyp
 
   const contextHint = traceType === 'logo'
     ? 'This is a LOGO image. Likely layers: background, border, logo (icon/symbol), text.'
-    : 'This is a JERSEY/SHIRT design. Likely layers: background, stripe, pattern, logo, number, text, sleeve, collar, border.';
+    : traceType === 'universal'
+      ? 'This is recovered flat printable artwork. Likely layers: background, border, stripe, pattern, logo, number, text, other. Do not classify paths as garment parts.'
+      : 'This is a JERSEY/SHIRT design. Likely layers: background, stripe, pattern, logo, number, text, sleeve, collar, border.';
 
   const systemPrompt = `You are an expert SVG layer classifier for a vector graphics tool.
 Given an image and a list of SVG path bounding boxes (by index number), assign each path exactly one semantic layer name.
@@ -214,54 +213,23 @@ Respond ONLY with a valid JSON object. Keys are path index strings, values are l
 Example: {"0":"background","1":"stripe","2":"logo","3":"number"}
 No markdown. No explanation. Raw JSON only.`;
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://syncraft.app',
-      'X-Title': 'TracerClaw SVG Segmenter',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        {
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } },
-            {
-              type: 'text',
-              text: `SVG paths to classify (index: center position, bounding size as % of canvas):\n\n${pathDescriptions}\n\nReturn the JSON classification for every index listed above.`,
-            },
-          ],
-        },
-      ],
-      max_tokens: 1500,
-      temperature: 0.1,
-    }),
-    signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
+  // Semantic grouping is non-critical and must never add another remote model
+  // call after vectorization. Classify deterministically from path geometry.
+  const labelMap = {};
+  shapes.forEach((shape, index) => {
+    const widthPct = (shape.bbox.w / vw) * 100;
+    const heightPct = (shape.bbox.h / vh) * 100;
+    const areaPct = widthPct * heightPct / 100;
+    const centerY = ((shape.bbox.cy ?? shape.bbox.y) / vh) * 100;
+    let label = 'other';
+    if (widthPct >= 70 && heightPct >= 70) label = 'background';
+    else if (widthPct >= 55 && heightPct <= 18) label = 'stripe';
+    else if (heightPct >= 55 && widthPct <= 18) label = traceType === 'universal' ? 'stripe' : 'sleeve';
+    else if (areaPct <= 1.5 && widthPct <= 18 && heightPct <= 12) label = 'text';
+    else if (centerY <= 35 && widthPct <= 35 && heightPct <= 35) label = 'logo';
+    else if (widthPct >= 45 && heightPct >= 30) label = 'pattern';
+    labelMap[String(index)] = label;
   });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`OpenRouter API error ${response.status}: ${errText.slice(0, 200)}`);
-  }
-
-  const data = await response.json();
-  const rawContent = data?.choices?.[0]?.message?.content?.trim();
-  if (!rawContent) throw new Error('Empty response from Gemini');
-
-  // Strip accidental markdown fences
-  const cleaned = rawContent.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
-
-  let labelMap;
-  try {
-    labelMap = JSON.parse(cleaned);
-  } catch {
-    throw new Error(`Failed to parse Gemini JSON: ${cleaned.slice(0, 300)}`);
-  }
-
   return labelMap;
 }
 

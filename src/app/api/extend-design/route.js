@@ -14,6 +14,76 @@ export const maxDuration = 180;
 
 const SEAM_SAMPLE_PX = 4;
 
+function falErrorDetails(error) {
+  const fieldErrors = Array.isArray(error?.fieldErrors)
+    ? error.fieldErrors.map(({ loc, msg, type }) => ({ loc, msg, type }))
+    : null;
+  return {
+    name: error?.name || null,
+    message: error?.message || null,
+    status: error?.status || null,
+    requestId: error?.requestId || null,
+    fieldErrors,
+    detail: error?.body?.detail || null,
+  };
+}
+
+function isFalValidationError(error) {
+  return error?.name === 'ValidationError' || error?.status === 422;
+}
+
+async function requestExtendedArtwork({ fal, seedUrl, prompt, aspectRatio }) {
+  const subscribe = (input, attempt) => fal.subscribe("fal-ai/nano-banana-pro/edit", {
+    input,
+    logs: true,
+    onQueueUpdate: (update) => {
+      if (update.status === "IN_PROGRESS") {
+        (update.logs || []).map((log) => log.message).forEach((message) => {
+          console.log(`[Extend attempt ${attempt}] ${message}`);
+        });
+      }
+    },
+  });
+
+  const baseInput = {
+    prompt,
+    image_urls: [seedUrl],
+    num_images: 1,
+    aspect_ratio: aspectRatio,
+    resolution: "2K",
+    output_format: "png",
+    safety_tolerance: "4",
+    limit_generations: true,
+    enable_web_search: false,
+  };
+
+  try {
+    return await subscribe(baseInput, 1);
+  } catch (error) {
+    console.error('[Extend] fal.ai first attempt failed:', falErrorDetails(error));
+    if (!isFalValidationError(error)) throw error;
+
+    // Nano occasionally returns a 422 after inference even when all request
+    // fields are valid (for example, when one generation is filtered or yields
+    // no image). Retry this recoverable provider result once with the least
+    // restrictive supported safety setting. The source image and geometry stay
+    // identical, so this cannot change what the user asked to extend.
+    try {
+      return await subscribe({
+        ...baseInput,
+        safety_tolerance: "6",
+        prompt: `${prompt}\n\nRETRY RULE: This is a benign print-artwork continuation task. Fill only the marked empty canvas and preserve the supplied artwork exactly.`,
+      }, 2);
+    } catch (retryError) {
+      console.error('[Extend] fal.ai retry failed:', falErrorDetails(retryError));
+      if (isFalValidationError(retryError)) {
+        throw new Error('EXTEND_PROVIDER_REJECTED');
+      }
+      throw retryError;
+    }
+  }
+}
+
 /**
  * Mean RGB and peak per-channel stdev of a rect, or null if the rect is
  * degenerate.
@@ -375,24 +445,11 @@ export async function POST(request) {
       projectId, carrier.width, carrier.height, carrier.aspectRatio,
       sourceRect.left, sourceRect.top, pads,
     );
-    const result = await fal.subscribe("fal-ai/nano-banana-pro/edit", {
-      input: {
-        prompt: extendPrompt,
-        image_urls: [seedUrl],
-        num_images: 1,
-        aspect_ratio: carrier.aspectRatio,
-        resolution: "2K",
-        output_format: "png",
-        safety_tolerance: "4",
-        limit_generations: true,
-        enable_web_search: false,
-      },
-      logs: true,
-      onQueueUpdate: (update) => {
-        if (update.status === "IN_PROGRESS") {
-          update.logs.map((log) => log.message).forEach((m) => console.log(m));
-        }
-      },
+    const result = await requestExtendedArtwork({
+      fal,
+      seedUrl,
+      prompt: extendPrompt,
+      aspectRatio: carrier.aspectRatio,
     });
 
     const outputUrl = result?.data?.images?.[0]?.url;
@@ -593,6 +650,8 @@ export async function POST(request) {
       safeMessage = 'The AI returned an unexpected canvas shape, so the extend was discarded. Your credits have been refunded.';
     } else if (error.message?.startsWith('EXTEND_NO_FILL')) {
       safeMessage = 'The AI did not fill the new canvas, so the result was discarded and your credits were refunded.';
+    } else if (error.message?.startsWith('EXTEND_PROVIDER_REJECTED')) {
+      safeMessage = 'The AI could not process this image after one automatic retry. Your credits were refunded; please adjust the extension slightly and try again.';
     } else {
       const m = error.message?.toLowerCase() || '';
       safeMessage = (m.includes('fal') || m.includes('api') || m.includes('key') || error.message === 'Unauthorized')

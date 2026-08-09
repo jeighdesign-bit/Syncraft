@@ -3,6 +3,7 @@
 // ─── React & Routing ──────────────────────────────────────────────────────────
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 // ─── Data & Auth ──────────────────────────────────────────────────────────────
 import { createClient } from "@/utils/supabase/client";
@@ -10,7 +11,7 @@ import { toast } from "@/components/Toast";
 import { compressImageClientSide } from "@/utils/imageUtils";
 import { fetchWithAuthRetry, uploadImageToStorage } from "@/utils/uploadClient";
 
-import { ImageIcon, Monitor, LogIn, User, Trash2, LogOut, CheckCircle2, X, Loader2, Scan, Scissors, ShieldCheck, Code2, Upload } from "lucide-react";
+import { ImageIcon, Monitor, LogIn, User, Trash2, LogOut, CheckCircle2, X, Loader2, Scan, Scissors, ShieldCheck, Code2, Upload, ShoppingBag } from "lucide-react";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 import "./globals.css";
@@ -439,7 +440,7 @@ export default function StartScreen() {
       const response = uploadResult.response;
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || data.details || "Project creation failed");
+      if (!response.ok) throw new Error(data.details || data.error || "Project creation failed");
 
       if (isBgRemover) {
         router.push(`/bg-remover/${data.projectId}`);
@@ -505,28 +506,40 @@ export default function StartScreen() {
       {/* Top Navigation Bar */}
       <header style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "64px", background: "rgba(17, 17, 17, 0.85)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.05)", zIndex: 50, display: "flex", justifyContent: "center", padding: "0 20px" }}>
 
-        <div style={{ display: "flex", width: "100%", maxWidth: "1200px", alignItems: "center", justifyContent: "space-between" }}>
-          {/* Left: Brand/Logo Mini (Hidden at top to avoid redundancy) */}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", opacity: scrolled ? 1 : 0, pointerEvents: scrolled ? "auto" : "none", transition: "opacity 0.3s ease" }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <img src="/logo.svg" alt="DesaynClaw Navbar Logo" style={{ height: "32px", width: "auto" }} />
+          <div style={{ display: "flex", width: "100%", maxWidth: "1200px", alignItems: "center", justifyContent: "space-between" }}>
+          {/* Left: Brand navigation */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", opacity: scrolled ? 1 : 0, pointerEvents: scrolled ? "auto" : "none", transition: "opacity 0.3s ease" }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+              <img src="/logo.svg" alt="DesaynClaw Navbar Logo" style={{ height: "32px", width: "auto" }} />
+            </div>
           </div>
 
           {/* Right: Auth & Credits */}
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div className="syncraft-header-controls">
             {user ? (
               <>
+                {/* Store Navigation */}
+                <Link
+                  href="/store"
+                  aria-label="Open Syncraft Store"
+                  className="syncraft-header-control syncraft-header-control--store"
+                >
+                  <ShoppingBag size={14} aria-hidden="true" />
+                  STORE
+                </Link>
+
                 {/* Premium Credits Badge */}
-                <div onClick={() => setShowTopUpModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", background: "#2a2a2a", padding: "6px 12px", borderRadius: "12px", cursor: "pointer", border: "1px solid #444", transition: "border-color 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor = "#d4ff59"} onMouseOut={e => e.currentTarget.style.borderColor = "#444"}>
-                  <span style={{ color: "#d4ff59", fontWeight: "bold", fontSize: "14px", fontFamily: "monospace" }}>{credits}</span>
-                  <span style={{ color: "#888", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>CREDITS</span>
-                </div>
+                <button type="button" onClick={() => setShowTopUpModal(true)} className="syncraft-header-control" aria-label={`${credits} credits. Open top up`}>
+                  <span className="syncraft-header-control__value">{credits}</span>
+                  <span className="syncraft-header-control__label">CREDITS</span>
+                </button>
 
                 {/* Profile Pill */}
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.05)", padding: "4px 12px 4px 4px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div className="syncraft-header-control">
                   {user.user_metadata?.avatar_url ? (
-                    <img src={user.user_metadata.avatar_url} referrerPolicy="no-referrer" style={{ width: 24, height: 24, borderRadius: "12px" }} alt="Avatar" />
-                  ) : <div style={{ width: 24, height: 24, borderRadius: "12px", background: "#333", display: "flex", alignItems: "center", justifyContent: "center" }}><User size={14} color="#aaa" /></div>}
-                  <span style={{ fontSize: "13px", color: "#ddd", fontWeight: "500", textTransform: "uppercase", letterSpacing: "1px" }}>{user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0]}</span>
+                    <img src={user.user_metadata.avatar_url} referrerPolicy="no-referrer" className="syncraft-header-control__avatar" alt="Avatar" />
+                  ) : <div className="syncraft-header-control__avatar" style={{ background: "#333", display: "flex", alignItems: "center", justifyContent: "center" }}><User size={14} color="#aaa" /></div>}
+                  <span className="syncraft-header-control__text">{user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0]}</span>
                 </div>
 
                 {/* Logout Icon Button */}

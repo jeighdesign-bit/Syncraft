@@ -1,5 +1,52 @@
 import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
+import { authenticateAdminRequest } from "@/lib/adminAuth";
+import { isMissingStoreRequestsTable, listStoredStoreRequests } from "@/lib/storeRequestStorage";
+import { CREDIT_PLANS } from "@/lib/paymentPlans";
+import { countsAsManualRevenue } from "@/lib/paymentApprovalRules.mjs";
+
+const RECEIPT_BUCKET = "store_receipts";
+const REVENUE_TIME_ZONE = "Asia/Manila";
+
+function parsePesoAmount(value) {
+  const amount = Number(String(value || "").replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function getPeriodKeys(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: REVENUE_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const get = (type) => parts.find((part) => part.type === type)?.value;
+  const year = get("year");
+  const month = get("month");
+  const day = get("day");
+  return year && month && day
+    ? { day: `${year}-${month}-${day}`, month: `${year}-${month}` }
+    : null;
+}
+
+function summarizeRevenue(records, amountFor, dateFor) {
+  const currentKeys = getPeriodKeys(new Date());
+  return records.reduce((summary, record) => {
+    const amount = Number(amountFor(record)) || 0;
+    const recordKeys = getPeriodKeys(dateFor(record));
+    summary.overall += amount;
+    if (recordKeys?.month === currentKeys?.month) summary.month += amount;
+    if (recordKeys?.day === currentKeys?.day) summary.today += amount;
+    return summary;
+  }, { today: 0, month: 0, overall: 0 });
+}
+
+function planPrice(planKey) {
+  return parsePesoAmount(CREDIT_PLANS[String(planKey || "").toLowerCase()]?.price);
+}
 
 async function fetchActiveCreditsTotal() {
   try {
@@ -36,16 +83,9 @@ async function fetchActiveCreditsTotal() {
 
 export async function GET(request) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const token = authHeader.replace('Bearer ', '').trim();
-
-    const { data: { user }, error: authErr } = await adminSupabase.auth.getUser(token);
-    const adminEmail = process.env.ADMIN_EMAIL;
-    if (authErr || !user || user.email !== adminEmail) {
-      return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
+    const adminAuth = await authenticateAdminRequest(request);
+    if (!adminAuth.user) {
+      return NextResponse.json({ error: adminAuth.error }, { status: adminAuth.status });
     }
 
     // Fetch all payment requests
@@ -64,14 +104,53 @@ export async function GET(request) {
       console.error("[Admin] payment_requests threw:", e.message);
     }
 
+    // Fetch manual store requests. This remains optional until the store SQL setup is run.
+    let storeRequests = [];
+    try {
+      const { data, error: storeError } = await adminSupabase
+        .from('store_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+      let rows = data || [];
+      if (isMissingStoreRequestsTable(storeError)) {
+        const { data: storedRows, error: storedRowsError } = await listStoredStoreRequests();
+        if (storedRowsError) {
+          console.warn("[Admin] stored store_requests unavailable:", storedRowsError.message);
+        } else {
+          rows = storedRows || [];
+        }
+      } else if (storeError) {
+        console.warn("[Admin] store_requests unavailable:", storeError.message);
+      }
+
+      if (!storeError || isMissingStoreRequestsTable(storeError)) {
+        storeRequests = await Promise.all(rows.map(async (storeRequest) => {
+          const receiptPath = storeRequest.receipt_url;
+          if (!receiptPath || /^https?:\/\//i.test(receiptPath)) return storeRequest;
+
+          const { data: signedReceipt, error: signedReceiptError } = await adminSupabase.storage
+            .from(RECEIPT_BUCKET)
+            .createSignedUrl(receiptPath, 10 * 60);
+
+          if (signedReceiptError) {
+            console.warn("[Admin] Could not sign store receipt:", signedReceiptError.message);
+            return { ...storeRequest, receipt_url: null };
+          }
+
+          return { ...storeRequest, receipt_url: signedReceipt.signedUrl };
+        }));
+      }
+    } catch (e) {
+      console.warn("[Admin] store_requests threw:", e.message);
+    }
+
     // Fetch Dodo payments
     let dodoPayments = [];
     try {
       const { data: dodoRows, error: dodoErr } = await adminSupabase
         .from('dodo_payments')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
+        .order('created_at', { ascending: false });
 
       if (dodoErr) {
         console.error("Failed to fetch Dodo payments:", dodoErr.message);
@@ -175,10 +254,37 @@ export async function GET(request) {
       console.error("Error fetching paid users list", e);
     }
 
+    const approvedManualPayments = requests.filter((payment) => countsAsManualRevenue(payment.status));
+    const paidAutomatedPayments = dodoPayments.filter((payment) => payment.status === "paid");
+    const fulfilledStoreRequests = storeRequests.filter((storeRequest) => storeRequest.status === "fulfilled");
+    const storeStats = {
+      pending: storeRequests.filter((storeRequest) => storeRequest.status === "pending").length,
+      fulfilled: fulfilledStoreRequests.length,
+      rejected: storeRequests.filter((storeRequest) => storeRequest.status === "rejected").length,
+      total: storeRequests.length,
+    };
+
+    const syncraftRevenue = summarizeRevenue(
+      [...approvedManualPayments, ...paidAutomatedPayments],
+      (payment) => planPrice(payment.plan),
+      (payment) => payment.credited_at || payment.updated_at || payment.created_at
+    );
+    const storeRevenue = summarizeRevenue(
+      fulfilledStoreRequests,
+      (storeRequest) => parsePesoAmount(storeRequest.price),
+      (storeRequest) => storeRequest.updated_at || storeRequest.created_at
+    );
+
     return NextResponse.json({
       success: true,
       requests: requests || [],
-      dodoPayments,
+      storeRequests,
+      storeStats,
+      revenue: {
+        syncraft: syncraftRevenue,
+        store: storeRevenue,
+      },
+      dodoPayments: dodoPayments.slice(0, 50),
       totalProjects: projCount || 0,
       activeCreditsTotal,
       reviews: reviews || [],

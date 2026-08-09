@@ -158,7 +158,10 @@ const PropertiesPanel = memo(function PropertiesPanel({
   const [downloading, setDownloading] = useState(null);
 
   const isUnauthenticated = userCredits === null;
-  const noCredits = !isUnauthenticated && userCredits < CREDIT_COST.trace;
+  const executionCost = project?.trace_type === "universal"
+    ? CREDIT_COST.universal
+    : CREDIT_COST.trace;
+  const noCredits = !isUnauthenticated && userCredits < executionCost;
   const isCropped = project?.original_image_url?.includes("crop") || project?.generated_image_url;
   const isBusy = traceState !== "idle" || isSavingCrop || extendMode;
   const hasSvg = !!project?.svg_url;
@@ -188,7 +191,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
     ? "Get More Credits"
     : !isCropped
     ? "Crop Image First"
-    : `Run Syncraft (−${CREDIT_COST.trace} Credits)`;
+    : `Run Syncraft (−${executionCost} Credits)`;
 
   // "Unlocked" mirrors the original enable condition exactly — kept as its
   // own branch because this button has a 3-state style (busy / unlocked /
@@ -240,7 +243,9 @@ const PropertiesPanel = memo(function PropertiesPanel({
       <div style={{ padding: `${SPACE.md}px ${SPACE.lg}px`, borderBottom: `1px solid ${COLOR.border}` }}>
         <div style={noticeStyle}>
           <span style={noticeIconStyle}>!</span>
-          <span>Image shows both the front and back of a shirt? Use the Crop Tool to isolate one side first, or tracing will fail.</span>
+          <span>{project?.trace_type === "universal"
+            ? "Crop around the complete visible printed design. Hidden, cropped, or wrapped-back areas will not be claimed as exact."
+            : "Image shows both the front and back of a shirt? Use the Crop Tool to isolate one side first, or tracing will fail."}</span>
         </div>
       </div>
 

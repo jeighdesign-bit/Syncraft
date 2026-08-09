@@ -51,10 +51,10 @@ export async function uploadToR2(buffer, fileName, contentType) {
     // Fallback to Supabase Storage when R2 S3 endpoint is unreachable (e.g. local TLS issues)
     console.warn('[uploadToR2] S3 failed, falling back to Supabase Storage:', s3Error.code || s3Error.message);
     
-    const { adminSupabase } = await import('@/lib/supabase');
+    const { adminStorageSupabase, adminSupabase, supabase } = await import('@/lib/supabase');
     const storageBucket = 'project-assets';
-    
-    const { data: storageData, error: storageError } = await adminSupabase
+
+    let { data: storageData, error: storageError } = await adminStorageSupabase
       .storage
       .from(storageBucket)
       .upload(fileName, buffer, {
@@ -62,11 +62,37 @@ export async function uploadToR2(buffer, fileName, contentType) {
         upsert: false,
       });
 
+    // The direct Storage hostname can hit the same Windows/OpenSSL TLS failure
+    // as R2. Files reaching this server route are capped at 4.5 MB, so retrying
+    // through Supabase's standard API hostname is safe and avoids that direct
+    // hostname entirely. `upsert` makes a lost-response retry idempotent.
+    if (storageError) {
+      console.warn('[uploadToR2] Direct Supabase Storage failed, retrying standard API host:', storageError.message);
+      let standardError = storageError;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const result = await adminSupabase
+          .storage
+          .from(storageBucket)
+          .upload(fileName, buffer, {
+            contentType,
+            upsert: true,
+          });
+        storageData = result.data;
+        standardError = result.error;
+        if (!standardError && storageData) break;
+        if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 350));
+      }
+      storageError = standardError;
+    }
+
     if (storageError) {
       throw new Error(`Supabase Storage upload also failed: ${storageError.message} (original R2 error: ${s3Error.message})`);
     }
 
-    const { data: urlData } = adminSupabase
+    // Keep emitting the established public URL shape. The admin client uses
+    // Supabase's direct Storage hostname for large uploads, while the public
+    // client preserves URLs already accepted by our SSRF allowlists.
+    const { data: urlData } = supabase
       .storage
       .from(storageBucket)
       .getPublicUrl(storageData.path);

@@ -38,21 +38,36 @@ export async function POST(request) {
       .trim()
       .slice(0, 100) || 'Untitled Project';
 
+    const normalizedTraceType = traceType === 'bg_remover' ? 'bg_remover'
+      : String(traceType || '').startsWith('mockup') ? 'mockup'
+      : String(traceType || '').startsWith('universal') ? 'universal'
+      : 'logo';
+    const aiPrompt = traceType === 'mockup_erase' ? 'ERASE_LOGOS'
+      : traceType === 'mockup_preserve' ? 'PRESERVE_LOGOS'
+      : traceType === 'universal_erase' ? 'UNIVERSAL_BACKGROUND_ONLY'
+      : traceType === 'universal_preserve' ? 'UNIVERSAL_KEEP_ARTWORK'
+      : traceType === 'logo' ? 'LOGO_FLATTEN'
+      : null;
+    const projectRecord = {
+      name: safeName,
+      original_image_url: normalizedImageUrl,
+      trace_type: normalizedTraceType,
+      user_id: user.id,
+      ai_prompt: aiPrompt,
+      ...(normalizedTraceType === 'universal' ? {
+        // Distinguishes a deliberate new mode selection from Universal
+        // projects created under the former destructive default.
+        canvas_data: {
+          universal_mode_selection_version: 2,
+          universal_mode: aiPrompt || 'UNIVERSAL_KEEP_ARTWORK',
+        },
+      } : {}),
+    };
+
     // Save to Supabase database — use verified user.id, NOT body userId
     const { data, error } = await adminSupabase
       .from('projects')
-      .insert([
-        { 
-          name: safeName, 
-          original_image_url: normalizedImageUrl,
-          trace_type: traceType === 'bg_remover' ? 'bg_remover' : (String(traceType || '').startsWith('mockup') ? 'mockup' : 'logo'),
-          user_id: user.id,
-          ai_prompt: traceType === 'mockup_erase' ? 'ERASE_LOGOS' 
-                   : traceType === 'mockup_preserve' ? 'PRESERVE_LOGOS'
-                   : traceType === 'logo' ? 'LOGO_FLATTEN'
-                   : null
-        }
-      ])
+      .insert([projectRecord])
       .select('id')
       .single();
 

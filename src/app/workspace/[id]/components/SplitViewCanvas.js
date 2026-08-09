@@ -302,6 +302,11 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
         <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: '#1a1a1a' }}>
           <div 
             style={proxyOriginal ? { 
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               maskImage: `url(${proxyOriginal})`, 
               maskSize: 'contain', 
               maskPosition: 'center', 
@@ -318,6 +323,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
                 alt="Processing Background" 
                 referrerPolicy="no-referrer"
                 decoding="async"
+                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
               />
             )}
           </div>

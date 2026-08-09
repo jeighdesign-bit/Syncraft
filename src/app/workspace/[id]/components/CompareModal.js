@@ -58,6 +58,22 @@ const CompareModal = memo(function CompareModal({
   onDownloadSvg,
 }) {
   const isDraggingCompare = useRef(false);
+  const [originalAspect, setOriginalAspect] = useState(null);
+  const originalProxy = project?.original_image_url
+    ? `/api/proxy?url=${encodeURIComponent(project.original_image_url)}`
+    : null;
+
+  useEffect(() => {
+    if (!show || !originalProxy) return;
+    const image = new Image();
+    image.onload = () => {
+      if (image.naturalWidth && image.naturalHeight) {
+        setOriginalAspect(image.naturalWidth / image.naturalHeight);
+      }
+    };
+    image.src = originalProxy;
+    return () => { image.onload = null; };
+  }, [show, originalProxy]);
 
   if (!show || !project) return null;
 
@@ -107,7 +123,11 @@ const CompareModal = memo(function CompareModal({
               position: "relative",
               overflow: "hidden", cursor: "ew-resize", userSelect: "none",
               boxShadow: "0 0 20px rgba(0,0,0,0.5)",
-              maxWidth: "100%",
+              width: originalAspect ? `min(85vw, calc(80vh * ${originalAspect}))` : "85vw",
+              height: originalAspect ? `min(80vh, calc(85vw / ${originalAspect}))` : "80vh",
+              aspectRatio: originalAspect || "auto",
+              maxWidth: "85vw",
+              maxHeight: "80vh",
             }}
             onMouseDown={(e) => {
               isDraggingCompare.current = true;
@@ -119,13 +139,6 @@ const CompareModal = memo(function CompareModal({
               if (sliderLine) sliderLine.style.left = `${pct}%`;
             }}
           >
-            {/* INVISIBLE PLACEHOLDER to dictate the exact aspect ratio of the original image */}
-            <img
-              src={project.original_image_url}
-              style={{ display: "block", height: "80vh", width: "auto", maxWidth: "85vw", objectFit: "contain", opacity: 0, pointerEvents: "none" }}
-              alt=""
-            />
-
             {/* AFTER layer */}
             {project.upscaled_image_url || project.generated_image_url ? (
               <img
@@ -152,9 +165,9 @@ const CompareModal = memo(function CompareModal({
             >
               <img
                 draggable={false}
-                src={project.original_image_url}
+                src={originalProxy}
                 alt="Original"
-                style={{ width: "100%", height: "100%", objectFit: "fill", pointerEvents: "none" }}
+                style={{ width: "100%", height: "100%", objectFit: "contain", pointerEvents: "none" }}
               />
             </div>
 

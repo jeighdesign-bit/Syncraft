@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { MANUAL_PAYMENT_HISTORY_STATUSES } from "@/lib/paymentApprovalRules.mjs";
 import { adminSupabase } from "@/lib/supabase";
 import { getCreditPlan } from "@/lib/paymentPlans";
 import { enforceRateLimit } from "@/lib/rateLimit";
@@ -74,7 +75,7 @@ export async function POST(request) {
         .from("payment_requests")
         .select("id, created_at")
         .eq("user_id", user.id)
-        .eq("status", "approved")
+        .in("status", MANUAL_PAYMENT_HISTORY_STATUSES)
         .eq("reference_number", normalizedReference)
         .gte("created_at", since)
         .limit(1)

@@ -98,8 +98,45 @@ export async function POST(request) {
     // NO aggressive contrast/normalize/sharpen — that caused the high-contrast SVG problem.
     // ─────────────────────────────────────────────────────────────────────────
     const sharp = (await import('sharp')).default;
+    const sourceMetadata = await sharp(rawBuffer).metadata();
+    if (!sourceMetadata.width || !sourceMetadata.height) {
+      throw new Error("Unable to read the upscaled image dimensions");
+    }
+
+    // Recraft accepts raster inputs only when both sides are at least 256px.
+    // Preserve the artwork's aspect ratio while bringing a small side up to
+    // that floor, but never let the long side exceed our 2048px processing cap.
+    // Extremely wide/tall artwork cannot satisfy both limits by scaling alone;
+    // transparent padding handles that edge case without stretching the design.
+    const swapsAxes = [5, 6, 7, 8].includes(sourceMetadata.orientation);
+    const sourceWidth = swapsAxes ? sourceMetadata.height : sourceMetadata.width;
+    const sourceHeight = swapsAxes ? sourceMetadata.width : sourceMetadata.height;
+    const minVectorDimension = 256;
+    const maxVectorDimension = 2048;
+    const minSide = Math.min(sourceWidth, sourceHeight);
+    const maxSide = Math.max(sourceWidth, sourceHeight);
+    const scale = Math.min(
+      maxVectorDimension / maxSide,
+      Math.max(1, minVectorDimension / minSide),
+    );
+    const resizedWidth = Math.max(1, Math.floor(sourceWidth * scale));
+    const resizedHeight = Math.max(1, Math.floor(sourceHeight * scale));
+    const missingWidth = Math.max(0, minVectorDimension - resizedWidth);
+    const missingHeight = Math.max(0, minVectorDimension - resizedHeight);
+
     let sharpInstance = sharp(rawBuffer)
-      .resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true });
+      .rotate()
+      .resize({ width: resizedWidth, height: resizedHeight, fit: 'fill' });
+
+    if (missingWidth || missingHeight) {
+      sharpInstance = sharpInstance.extend({
+        left: Math.floor(missingWidth / 2),
+        right: Math.ceil(missingWidth / 2),
+        top: Math.floor(missingHeight / 2),
+        bottom: Math.ceil(missingHeight / 2),
+        background: { r: 255, g: 255, b: 255, alpha: 0 },
+      });
+    }
 
     // Light sharpening for logos only: text and circular outlines benefit from
     // slightly crisper pixel edges before tracing, but we keep it gentle.
@@ -182,7 +219,9 @@ export async function POST(request) {
         const originalMime = originalImgRes.headers.get('content-type') || 'image/png';
 
         // Map project trace type to a context hint for Gemini
-        const traceTypeHint = project.trace_type === 'logo' ? 'logo' : 'jersey';
+        const traceTypeHint = project.trace_type === 'logo' ? 'logo'
+          : project.trace_type === 'universal' ? 'universal'
+          : 'jersey';
 
         svgText = await segmentSvgLayers(svgText, originalBase64, originalMime, traceTypeHint);
       } else {

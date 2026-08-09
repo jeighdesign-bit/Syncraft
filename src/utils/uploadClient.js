@@ -29,6 +29,8 @@ export class AuthSessionError extends Error {
   }
 }
 
+const AUTH_REQUEST_TIMEOUT_MS = 120_000;
+
 async function refreshAccessToken() {
   const supabase = createClient();
   const { data, error } = await supabase.auth.refreshSession();
@@ -49,6 +51,24 @@ function withBearer(init, token) {
   return { ...init, headers };
 }
 
+async function fetchWithTimeout(input, init) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), AUTH_REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      const timeoutError = new Error("Request timed out while contacting the server. Please try again.");
+      timeoutError.code = "REQUEST_TIMEOUT";
+      timeoutError.status = 504;
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 /**
  * Fetch an authenticated API route and refresh a stale Supabase token once.
  * The returned token lets a multi-step operation reuse the refreshed session.
@@ -57,11 +77,11 @@ export async function fetchWithAuthRetry(input, init = {}, token) {
   let activeToken = token;
   if (!activeToken) throw new AuthSessionError();
 
-  let response = await fetch(input, withBearer(init, activeToken));
+  let response = await fetchWithTimeout(input, withBearer(init, activeToken));
   if (response.status !== 401) return { response, token: activeToken };
 
   activeToken = await refreshAccessToken();
-  response = await fetch(input, withBearer(init, activeToken));
+  response = await fetchWithTimeout(input, withBearer(init, activeToken));
 
   if (response.status === 401) throw new AuthSessionError();
   return { response, token: activeToken };
@@ -72,7 +92,14 @@ export async function uploadImageToStorage(file, { token, fileName, contentType 
   const type = contentType || file.type;
   let activeToken = token;
 
+  // The developer's local Windows TLS stack cannot negotiate directly with
+  // the R2 S3 endpoint. Use the existing authenticated server upload locally
+  // so expected fallback behavior does not produce noisy browser errors.
+  const isLocalDevelopment = typeof window !== "undefined"
+    && ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
   try {
+    if (isLocalDevelopment) throw new Error("LOCAL_SERVER_UPLOAD");
     const authResult = await fetchWithAuthRetry("/api/upload-url", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -93,7 +120,9 @@ export async function uploadImageToStorage(file, { token, fileName, contentType 
     return urlData.publicUrl;
   } catch (presignedErr) {
     if (presignedErr?.code === "AUTH_SESSION_EXPIRED") throw presignedErr;
-    console.warn("[upload] Pre-signed upload failed, retrying server-side:", presignedErr.message);
+    if (presignedErr.message !== "LOCAL_SERVER_UPLOAD") {
+      console.warn("[upload] Pre-signed upload failed, retrying server-side:", presignedErr.message);
+    }
   }
 
   const formData = new FormData();

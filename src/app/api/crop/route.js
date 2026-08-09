@@ -32,17 +32,39 @@ export async function POST(request) {
     }
 
     // Update project in Supabase — only if the user owns it
+    const { data: ownedProject } = await adminSupabase
+      .from('projects').select('trace_type,canvas_data').eq('id', projectId).eq('user_id', user.id).single();
+    if (!ownedProject) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+
+    const baseReset = {
+      original_image_url: croppedImageUrl,
+      generated_image_url: null,
+      upscaled_image_url: null,
+      svg_url: null,
+      zip_url: null,
+      zip_signature: null,
+      zip_generated_at: null
+    };
+    const reset = ownedProject.trace_type === 'universal'
+      ? {
+          ...baseReset,
+          canvas_data: {
+            ...(ownedProject.canvas_data || {}),
+            universal_mode_selection_version: 2,
+            universal_mode: Number(ownedProject.canvas_data?.universal_mode_selection_version) >= 2
+              ? ownedProject.canvas_data?.universal_mode
+                || ownedProject.canvas_data?.universal_recovery?.mode
+                || 'UNIVERSAL_KEEP_ARTWORK'
+              : 'UNIVERSAL_KEEP_ARTWORK',
+            universal_recovery: null,
+          },
+          credit_deducted: false,
+          refunded: false,
+        }
+      : baseReset;
     const { error } = await adminSupabase
       .from('projects')
-      .update({ 
-        original_image_url: croppedImageUrl,
-        generated_image_url: null,
-        upscaled_image_url: null,
-        svg_url: null,
-        zip_url: null,
-        zip_signature: null,
-        zip_generated_at: null
-      })
+      .update(reset)
       .eq('id', projectId)
       .eq('user_id', user.id); // ownership check
 

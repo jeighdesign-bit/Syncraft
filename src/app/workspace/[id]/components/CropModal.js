@@ -4,7 +4,7 @@ import { memo, useState, useRef, useCallback } from "react";
 import { Scissors, X } from "lucide-react";
 import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
-import { uploadImageToStorage } from "@/utils/uploadClient";
+import { fetchWithAuthRetry, uploadImageToStorage } from "@/utils/uploadClient";
 
 /**
  * CropModal — Isolated crop modal with its own state.
@@ -23,11 +23,15 @@ const CropModal = memo(function CropModal({
   const [cropError, setCropError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const imgRef = useRef(null);
+  const isUniversal = project?.trace_type === "universal";
+  const isMandatoryUniversalCrop = isUniversal && !project?.generated_image_url;
 
   const handleApply = useCallback(async () => {
     if (!completedCrop || !imgRef.current || !completedCrop.width || !completedCrop.height) {
       if (!project?.generated_image_url) {
-        setCropError("Please draw a crop area first! You must choose either the front or the back.");
+        setCropError(isUniversal
+          ? "Please draw a crop around the complete visible printed design."
+          : "Please draw a crop area first! You must choose either the front or the back.");
         return;
       }
       onClose();
@@ -61,7 +65,7 @@ const CropModal = memo(function CropModal({
       0, 0, targetWidth, targetHeight
     );
 
-    onClose();
+    if (!isUniversal) onClose();
     setIsSaving(true);
 
     try {
@@ -81,24 +85,25 @@ const CropModal = memo(function CropModal({
         contentType: "image/jpeg",
       });
 
-      const res = await fetch("/api/crop", {
+      const cropResult = await fetchWithAuthRetry("/api/crop", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}` // Required: route now verifies auth
         },
         body: JSON.stringify({ projectId: project.id, croppedImageUrl: croppedImageUrl }),
-      });
+      }, token);
+      const res = cropResult.response;
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
       onCropApplied?.(croppedImageUrl);
+      if (isUniversal) onClose();
     } catch (err) {
       onCropApplied?.(null, err.message);
     } finally {
       setIsSaving(false);
     }
-  }, [completedCrop, project, supabase, onClose, onCropApplied, onLoginRequired]);
+  }, [completedCrop, project, supabase, onClose, onCropApplied, onLoginRequired, isUniversal]);
 
   if (!show || !project) return null;
 
@@ -110,9 +115,11 @@ const CropModal = memo(function CropModal({
             <Scissors size={18} style={{ marginRight: "10px", color: "#d4ff59" }} />
             Crop Pattern Region
           </h3>
-          <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "4px", borderRadius: "50%", transition: "all 0.2s" }} onMouseOver={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }} onMouseOut={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.background = "transparent"; }}>
-            <X size={20} />
-          </button>
+          {!isMandatoryUniversalCrop && (
+            <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "4px", borderRadius: "50%", transition: "all 0.2s" }} onMouseOver={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }} onMouseOut={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.background = "transparent"; }}>
+              <X size={20} />
+            </button>
+          )}
         </div>
 
         <div style={{ display: "flex", gap: "20px", flex: 1, minHeight: 0, flexDirection: "row" }}>
@@ -144,7 +151,32 @@ const CropModal = memo(function CropModal({
               </h4>
               <p style={{ fontSize: "12px", color: "#888", margin: 0, lineHeight: 1.5 }}>Help the AI focus by isolating the pattern correctly.</p>
             </div>
-            {project?.trace_type === 'logo' ? (
+            {isUniversal ? (
+              <>
+                <div>
+                  <div style={{ color: "#fff", fontWeight: "600", fontSize: "13px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#4ade80" }} />
+                    DO: Include the Complete Visible Print
+                  </div>
+                  <p style={{ fontSize: "12px", color: "#888", margin: "0 0 12px", lineHeight: 1.5 }}>Crop around all visible printable components. Include their edges and enough context to understand the layout.</p>
+                  <div style={{ height: 140, background: "#111", borderRadius: 6, padding: 18, boxSizing: "border-box", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div style={{ border: "2px dashed #fff", borderRadius: 4, background: "linear-gradient(135deg,#263238,#5b7c8d)" }} />
+                    <div style={{ border: "2px dashed #fff", borderRadius: 4, background: "linear-gradient(45deg,#56652a,#d4ff59)" }} />
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color: "#fff", fontWeight: "600", fontSize: "13px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#ff4444" }} />
+                    DON'T: Isolate One Small Fragment
+                  </div>
+                  <p style={{ fontSize: "12px", color: "#888", margin: "0 0 12px", lineHeight: 1.5 }}>Do not crop away related visible panels or strap sections. Hidden areas will not be invented.</p>
+                  <div style={{ height: 140, background: "#111", borderRadius: 6, position: "relative" }}>
+                    <div style={{ position: "absolute", inset: 18, opacity: .35, background: "linear-gradient(90deg,#263238 48%,transparent 48%,transparent 52%,#64742d 52%)" }} />
+                    <div style={{ position: "absolute", width: 44, height: 48, left: 34, top: 43, border: "2px dashed #666" }} />
+                  </div>
+                </div>
+              </>
+            ) : project?.trace_type === 'logo' ? (
               <>
                 <div>
                   <div style={{ color: "#fff", fontWeight: "600", fontSize: "13px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -223,14 +255,14 @@ const CropModal = memo(function CropModal({
           </div>
         )}
         <div className="modal-actions" style={{ marginTop: "24px", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
-          <button 
-            onClick={onClose} 
+          {!isMandatoryUniversalCrop && <button
+            onClick={onClose}
             style={{ padding: "12px 24px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#aaa", cursor: "pointer", fontWeight: "600", fontSize: "13px", transition: "all 0.2s" }}
             onMouseOver={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#fff"; }}
             onMouseOut={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#aaa"; }}
           >
             {project?.generated_image_url ? "Cancel" : "Keep Original (Skip Crop)"}
-          </button>
+          </button>}
           <button 
             onClick={handleApply} 
             disabled={isSaving}
@@ -253,7 +285,7 @@ const CropModal = memo(function CropModal({
             onMouseOut={e => { if (!isSaving) e.currentTarget.style.background = "#d4ff59"; }}
           >
             {isSaving && <div className="animate-spin" style={{ width: "14px", height: "14px", border: "2px solid #0a0a0a", borderTopColor: "transparent", borderRadius: "50%" }} />}
-            {isSaving ? "Saving..." : "Apply Crop & Extract"}
+            {isSaving ? "Saving..." : isUniversal ? "Apply Crop & Continue" : "Apply Crop & Extract"}
           </button>
         </div>
       </div>

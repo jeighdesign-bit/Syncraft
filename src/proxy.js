@@ -13,6 +13,8 @@ const RATE_LIMIT_CONFIG = {
   '/api/save-asset':    { window: '60 s', windowMs: 60_000, max: 30  },
   '/api/upscale':       { window: '60 s', windowMs: 60_000, max: 6   },
   '/api/trace':         { window: '60 s', windowMs: 60_000, max: 10  },
+  '/api/recovery/analyze':  { window: '60 s', windowMs: 60_000, max: 10 },
+  '/api/recovery/generate': { window: '60 s', windowMs: 60_000, max: 3  },
   '/api/upload-mobile': { window: '60 s', windowMs: 60_000, max: 10  },
   '/api/upload':        { window: '60 s', windowMs: 60_000, max: 20  },
   '/api/crop':          { window: '60 s', windowMs: 60_000, max: 30  },

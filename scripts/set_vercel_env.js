@@ -1,26 +1,49 @@
-const { execSync } = require('child_process');
+const { spawnSync } = require('child_process');
 
-const envs = {
-  DODO_PAYMENTS_API_KEY: 'PwYRkznPZEpjxyA6.2ZVvi3AHpn3uj5FRFRR7rnSLxPVaYPNt4pVnVRn7CTxiXyOd',
-  DODO_PAYMENTS_WEBHOOK_SECRET: 'whsec_fQe4VEXD7dhdpcoyxzUTRqES5/JUxPgo',
-  DODO_PAYMENTS_ENVIRONMENT: 'live_mode',
-  NEXT_PUBLIC_SITE_URL: 'https://syncraftech.com',
-  DODO_PRODUCT_BASIC: 'pdt_0Nk3fX1N1mwp4OzDFEQWh',
-  DODO_PRODUCT_STARTER: 'pdt_0Nk3flqLsyLuy1I3b8NRb',
-  DODO_PRODUCT_PRO: 'pdt_0Nk3frz6qC3srkXeNLrwO',
-  DODO_PRODUCT_ELITE: 'pdt_0Nk3fy2qVe6Bukba6g7I2'
-};
+// Values are intentionally read from the caller's environment. Never commit
+// production credentials or pipe them through a shell command.
+const REQUIRED_ENV_NAMES = [
+  'DODO_PAYMENTS_API_KEY',
+  'DODO_PAYMENTS_WEBHOOK_SECRET',
+  'DODO_PAYMENTS_ENVIRONMENT',
+  'NEXT_PUBLIC_SITE_URL',
+  'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+  'DODO_PRODUCT_BASIC',
+  'DODO_PRODUCT_STARTER',
+  'DODO_PRODUCT_PRO',
+  'DODO_PRODUCT_ELITE',
+];
 
-for (const [key, value] of Object.entries(envs)) {
-  console.log(`Setting ${key}...`);
-  try {
-    execSync(`npx vercel env rm ${key} production -y`, { stdio: 'ignore' });
-  } catch (e) {}
-  try {
-    execSync(`echo ${value} | npx vercel env add ${key} production`, { stdio: 'inherit' });
-  } catch (err) {
-    console.error(`Failed setting ${key}:`, err.message);
+const missingEnvNames = REQUIRED_ENV_NAMES.filter((name) => !process.env[name]);
+
+if (missingEnvNames.length > 0) {
+  console.error(`Missing required environment variables: ${missingEnvNames.join(', ')}`);
+  process.exit(1);
+}
+
+const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+
+function runVercel(args, input, allowFailure = false) {
+  const result = spawnSync(npxCommand, ['vercel', ...args], {
+    input,
+    encoding: 'utf8',
+    stdio: ['pipe', 'inherit', 'inherit'],
+    shell: false,
+  });
+
+  if (result.error && !allowFailure) {
+    throw result.error;
+  }
+
+  if (result.status !== 0 && !allowFailure) {
+    throw new Error(`Vercel CLI exited with status ${result.status}`);
   }
 }
 
-console.log("Done updating Vercel environment variables!");
+for (const name of REQUIRED_ENV_NAMES) {
+  console.log(`Setting ${name}...`);
+  runVercel(['env', 'rm', name, 'production', '-y'], undefined, true);
+  runVercel(['env', 'add', name, 'production'], `${process.env[name]}\n`);
+}
+
+console.log('Done updating Vercel production environment variables.');

@@ -31,6 +31,29 @@ const SamplesSection = memo(function SamplesSection() {
         </div>
 
       </div>
+
+      <div className={`${styles.contentGrid} ${styles.universalGrid}`}>
+        <div className={styles.textContent}>
+          <h3 className={styles.subtitle}>Universal Extraction</h3>
+          <h2 className={styles.title}>From Physical Print<br/>to Flat Artwork</h2>
+          <p className={styles.description}>
+            Recover visible artwork from banners, labels, packaging, decals, and other physical surfaces. Syncraft corrects photographed perspective, folds, and distortion while preserving supported logos, text, colors, and pattern detail.
+          </p>
+        </div>
+
+        <div className={styles.glassBezel}>
+          <div className={styles.sliderInner}>
+            <BeforeAfterSlider
+              title="Universal print recovery"
+              rasterUrl="/samples/samples%20sa%20universal/Syncraft_Untitled_Design_Reference.png"
+              vectorUrl="/samples/samples%20sa%20universal/Syncraft_Untitled_Design_Upscaled.png"
+              originalLabel="Original Reference"
+              resultLabel="Recovered Flat Art"
+              objectFit="cover"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 });

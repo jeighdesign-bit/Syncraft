@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
 import { Resend } from "resend";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
+import { authenticateAdminRequest } from "@/lib/adminAuth";
+import {
+  PAYMENT_STATUS,
+  addsCreditsForStatus,
+  getApprovalStatus,
+} from "@/lib/paymentApprovalRules.mjs";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -15,16 +21,9 @@ const PLAN_CREDITS = {
 
 export async function POST(request) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const token = authHeader.replace('Bearer ', '').trim();
-
-    const { data: { user }, error: authErr } = await adminSupabase.auth.getUser(token);
-    const adminEmail = process.env.ADMIN_EMAIL;
-    if (authErr || !user || user.email !== adminEmail) {
-      return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
+    const adminAuth = await authenticateAdminRequest(request);
+    if (!adminAuth.user) {
+      return NextResponse.json({ error: adminAuth.error }, { status: adminAuth.status });
     }
 
     const { requestId, markOnly } = await request.json();
@@ -44,13 +43,16 @@ export async function POST(request) {
     }
 
     const creditsToAdd = PLAN_CREDITS[paymentRequest.plan] || 0;
-    if (!markOnly && creditsToAdd <= 0) {
+    const approvalStatus = getApprovalStatus(markOnly);
+    const shouldAddCredits = addsCreditsForStatus(approvalStatus);
+
+    if (shouldAddCredits && creditsToAdd <= 0) {
       return NextResponse.json({ error: "Invalid payment plan." }, { status: 400 });
     }
 
     const { data: claimedRequest, error: claimErr } = await adminSupabase
       .from('payment_requests')
-      .update({ status: 'approved' })
+      .update({ status: approvalStatus })
       .eq('id', requestId)
       .eq('status', 'pending')
       .select('*')
@@ -60,7 +62,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Payment request already approved." }, { status: 409 });
     }
 
-    if (!markOnly) {
+    if (shouldAddCredits) {
       const { error: updateProfileErr } = await adminSupabase
         .rpc('increment_credits', { user_id: claimedRequest.user_id, amount: creditsToAdd });
 
@@ -70,7 +72,7 @@ export async function POST(request) {
           .from('payment_requests')
           .update({ status: 'pending' })
           .eq('id', requestId)
-          .eq('status', 'approved');
+          .eq('status', PAYMENT_STATUS.APPROVED);
         return NextResponse.json({ error: "Failed to update credits." }, { status: 500 });
       }
 
@@ -83,7 +85,7 @@ export async function POST(request) {
     }
 
     // --- SEND EMAIL NOTIFICATION VIA RESEND ---
-    if (!markOnly && resend && claimedRequest.email) {
+    if (shouldAddCredits && resend && claimedRequest.email) {
       try {
         const htmlTemplate = `
           <div style="background-color: #1a1a1a; color: #ffffff; font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px 20px; text-align: center;">
@@ -138,7 +140,12 @@ export async function POST(request) {
       }
     }
 
-    return NextResponse.json({ success: true, addedCredits: creditsToAdd });
+    return NextResponse.json({
+      success: true,
+      status: approvalStatus,
+      addedCredits: shouldAddCredits ? creditsToAdd : 0,
+      countsAsRevenue: shouldAddCredits,
+    });
   } catch (error) {
     console.error("Admin Approval Error:", error);
     return NextResponse.json({ error: "Internal server error." }, { status: 500 });

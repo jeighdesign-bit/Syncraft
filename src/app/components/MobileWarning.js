@@ -22,7 +22,9 @@ export default function MobileWarning() {
   }, []);
 
   if (!isMobile) return null;
-  if (pathname === "/mobile") return null;
+  // The store is a responsive browsing surface, so it should remain usable on phones
+  // even though the infinite-canvas workspace needs a desktop viewport.
+  if (pathname === "/mobile" || pathname === "/store") return null;
 
   return (
     <div style={{

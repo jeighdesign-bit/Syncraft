@@ -74,7 +74,15 @@ function InlineSVG({ url, style, objectFit = 'cover' }) {
   return <div style={{ ...style, overflow: 'hidden' }} dangerouslySetInnerHTML={{ __html: svgHtml }} />;
 }
 
-export default function BeforeAfterSlider({ title, rasterUrl, vectorUrl, height = '400px', objectFit = 'cover' }) {
+export default function BeforeAfterSlider({
+  title,
+  rasterUrl,
+  vectorUrl,
+  height = '400px',
+  objectFit = 'cover',
+  originalLabel = 'Original Photo',
+  resultLabel = 'Vectorized SVG',
+}) {
   const [sliderPosition, setSliderPosition] = useState(50);
 
   return (
@@ -85,10 +93,10 @@ export default function BeforeAfterSlider({ title, rasterUrl, vectorUrl, height 
         {/* Original Image (Background / Right Side) */}
         <img 
           src={rasterUrl} 
-          alt="Original Photo" 
+          alt={`${title || 'Sample'} original reference`}
           style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit }} 
         />
-        <span style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.7)', padding: '4px 10px', fontSize: '11px', color: '#fff', borderRadius: '0', zIndex: 1 }}>Original Photo</span>
+        <span style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.7)', padding: '4px 10px', fontSize: '11px', color: '#fff', borderRadius: '0', zIndex: 1 }}>{originalLabel}</span>
         
         {/* Vectorized SVG (Foreground / Left Side) */}
         <InlineSVG 
@@ -96,7 +104,7 @@ export default function BeforeAfterSlider({ title, rasterUrl, vectorUrl, height 
           objectFit={objectFit}
           style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit, clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`, zIndex: 2 }} 
         />
-        <span style={{ position: 'absolute', top: 12, left: 12, background: '#d4ff59', padding: '4px 10px', fontSize: '11px', color: '#000', fontWeight: 'bold', borderRadius: '0', zIndex: 3, opacity: sliderPosition > 10 ? 1 : 0, transition: 'opacity 0.2s' }}>Vectorized SVG</span>
+        <span style={{ position: 'absolute', top: 12, left: 12, background: '#d4ff59', padding: '4px 10px', fontSize: '11px', color: '#000', fontWeight: 'bold', borderRadius: '0', zIndex: 3, opacity: sliderPosition > 10 ? 1 : 0, transition: 'opacity 0.2s' }}>{resultLabel}</span>
 
         {/* Slider Divider Line */}
         <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${sliderPosition}%`, width: '2px', background: '#d4ff59', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none' }}></div>

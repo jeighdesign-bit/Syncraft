@@ -3,6 +3,11 @@
 import { useState, useCallback, useRef } from "react";
 import { CREDIT_COST } from "@/lib/pricing";
 
+// Universal Background-only can include flattening, dual foreground detection,
+// masked inpainting, and validation. Keep the browser just below the route's
+// 300-second ceiling so it does not abort a healthy server run prematurely.
+const REQUEST_TIMEOUT_MS = 290_000;
+
 /**
  * useTraceExecution — Manages the full 3-step AI pipeline execution.
  *
@@ -77,14 +82,62 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
    * branch on things like INSUFFICIENT_CREDITS without matching on prose.
    */
   const postJson = useCallback(async (url, body, token, label) => {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(body),
-    });
+    let activeToken = token || await getAuthToken();
+
+    if (!activeToken) {
+      const authError = new Error("Your login session expired. Please log in again.");
+      authError.code = "AUTH_SESSION_EXPIRED";
+      authError.label = label;
+      throw authError;
+    }
+
+    const sendRequest = async (accessToken) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        return await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+      } catch (error) {
+        if (error?.name === "AbortError") {
+          const timeoutError = new Error("Request timed out. Please try again with a simpler crop.");
+          timeoutError.code = "REQUEST_TIMEOUT";
+          timeoutError.status = 504;
+          timeoutError.label = label;
+          throw timeoutError;
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    let res = await sendRequest(activeToken);
+    if (res.status === 401) {
+      const { data, error } = await supabase.auth.refreshSession();
+      const refreshedToken = data?.session?.access_token;
+      if (error || !refreshedToken) {
+        const authError = new Error("Your login session expired. Please log in again.");
+        authError.code = "AUTH_SESSION_EXPIRED";
+        authError.label = label;
+        throw authError;
+      }
+      activeToken = refreshedToken;
+      res = await sendRequest(activeToken);
+    }
+
+    if (res.status === 401) {
+      const authError = new Error("Your login session expired. Please log in again.");
+      authError.code = "AUTH_SESSION_EXPIRED";
+      authError.label = label;
+      throw authError;
+    }
 
     const rawText = await res.text();
     let data = {};
@@ -94,15 +147,32 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       data = { error: res.status === 504 ? "504 Timeout" : `Server Error ${res.status}` };
     }
 
-    if (!res.ok) {
+    if (!res.ok || data.success === false) {
       const err = new Error(data.error || `Error ${res.status}`);
-      err.code = data.error;
+      err.code = data.code || data.error;
       err.status = res.status;
       err.label = label;
+      err.refunded = data.refunded === true;
+      err.validation = data.validation;
       throw err;
     }
     return data;
-  }, []);
+  }, [getAuthToken, supabase]);
+
+  const analyzeRecovery = useCallback(async () => {
+    if (!project?.id || project.trace_type !== "universal") return null;
+    const authToken = await getAuthToken();
+    if (!authToken) throw new Error("You must be logged in.");
+    setTraceState("step1");
+    try {
+      const data = await postJson("/api/recovery/analyze", { projectId: project.id }, authToken, "recovery-analysis");
+      setProject(prev => ({ ...prev, recovery_analysis: data.analysis, recovery_status: "analyzed" }));
+      return data.analysis;
+    } catch (error) {
+      setTraceState("idle");
+      throw error;
+    }
+  }, [project?.id, project?.trace_type, getAuthToken, postJson, setProject]);
 
   /**
    * Stages 2 and 3 against whatever `generated_image_url` currently holds.
@@ -133,9 +203,11 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
     }
 
     logToConsole("[Step 2.5] Saving upscaled image...", "normal");
-    const saveData2 = await postJson("/api/save-asset",
-      { projectId, step: 2, fileUrl: data2.fileUrl, mimeType: data2.mimeType },
-      authToken, "save2");
+    const saveData2 = data2.alreadySaved
+      ? { url: data2.fileUrl }
+      : await postJson("/api/save-asset",
+        { projectId, step: 2, fileUrl: data2.fileUrl, mimeType: data2.mimeType },
+        authToken, "save2");
 
     setProject(prev => ({ ...prev, upscaled_image_url: saveData2.url }));
     logToConsole("[Success] Upscale Complete!", "success");
@@ -161,7 +233,11 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
   const handleExecuteTrace = useCallback(async (vectorColors = "auto") => {
     if (!project || traceState !== "idle") return;
 
-    if (userCredits !== null && userCredits < CREDIT_COST.trace) {
+    const executionCost = project.trace_type === "universal"
+      ? CREDIT_COST.universal
+      : CREDIT_COST.trace;
+
+    if (userCredits !== null && userCredits < executionCost) {
       onNoCredits?.();
       return;
     }
@@ -169,7 +245,12 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
     // Reset per-node errors
     setNodeErrors({ step1: null, step2: null, step3: null });
 
-    if (userCredits >= CREDIT_COST.trace) setUserCredits(prev => prev - CREDIT_COST.trace);
+    // Universal recovery owns billing inside /api/recovery/generate. Update the
+    // visible balance only after that endpoint confirms success, so a rejected
+    // duplicate/stale request never appears to consume credits.
+    if (project.trace_type !== "universal" && userCredits >= CREDIT_COST.trace) {
+      setUserCredits(prev => prev - CREDIT_COST.trace);
+    }
 
     // Fetch auth token once — used for all secure API calls in this pipeline
     const authToken = await getAuthToken();
@@ -187,7 +268,9 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
 
       let data1;
       try {
-        data1 = await postJson("/api/trace", { projectId: project.id, step: 1 }, authToken, "step1");
+        data1 = project.trace_type === "universal"
+          ? await postJson("/api/recovery/generate", { projectId: project.id }, authToken, "step1")
+          : await postJson("/api/trace", { projectId: project.id, step: 1 }, authToken, "step1");
       } catch (e) {
         if (e.code === "INSUFFICIENT_CREDITS") {
           setUserCredits(0);
@@ -199,13 +282,31 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
         throw e;
       }
 
+      if (project.trace_type === "universal" && userCredits >= executionCost) {
+        setUserCredits(prev => prev - executionCost);
+      }
+
       logToConsole("[Step 1.5] Saving extracted image...", "normal");
       const saveData1 = await postJson("/api/save-asset",
         { projectId: project.id, step: 1, base64: data1.base64, mimeType: data1.mimeType },
         authToken, "save1");
 
-      setProject(prev => ({ ...prev, generated_image_url: saveData1.url }));
-      logToConsole("[Success] Image Extracted by SyncraftVision™!", "success");
+      setProject(prev => ({
+        ...prev,
+        generated_image_url: saveData1.url,
+        ...(project.trace_type === "universal" ? {
+          recovery_status: data1.recoveryStatus === "partial" ? "partial" : "validated",
+          recovery_validation: data1.validation,
+          recovery_analysis: data1.analysis || prev.recovery_analysis,
+        } : {}),
+      }));
+      if (project.trace_type === "universal" && data1.validation?.source_fallback) {
+        logToConsole(`[Safe fallback] ${data1.validation.correction || "The generated flatten could not safely replace the source artwork."}`, "success");
+      } else if (project.trace_type === "universal" && data1.recoveryStatus === "partial") {
+        logToConsole("[Success] Best-effort visible artwork recovered and arranged.", "success");
+      } else {
+        logToConsole("[Success] Image Extracted by SyncraftVision™!", "success");
+      }
 
       // ─── Steps 2 & 3 ─────────────────────────────────────────────────
       await runStep2And3({ authToken, vectorColors, skipRefund: false });
@@ -216,10 +317,19 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
     } catch (error) {
       setTraceState("idle");
 
-      const isTimeout = error.message?.includes("504") || error.message?.includes("Failed to fetch");
+      const isTimeout = !["FOREGROUND_DETECTION_UNAVAILABLE", "RECOVERY_NETWORK_FAILED"].includes(error.code) && (
+        error.code === "REQUEST_TIMEOUT"
+        || error.status === 504
+        || error.message?.includes("504")
+        || error.message?.includes("Failed to fetch")
+        || /timed?\s*out|timeout|aborted due to timeout/i.test(error.message || "")
+      );
 
-      // Attempt client-side refund request
-      try {
+      // Universal billing/refunds are authoritative inside its generation route.
+      // Its visible balance is only decremented after generation succeeds, so
+      // a failed-and-refunded request needs no optimistic correction here.
+      // Legacy garment/logo continue to use the existing refund endpoint.
+      if (project.trace_type !== "universal") try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           const refundRes = await fetch("/api/refund", {
@@ -241,15 +351,21 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       }
 
       const displayMsg = isTimeout
-        ? "Request Timed Out. Please crop the image to make it simpler and try again."
+        ? "Request timed out. Please crop the image to make it simpler and try again."
         : error.message;
 
-      if (!isTimeout) {
+      const isExpectedRecoveryOutcome = error.code === "RECOVERY_ALREADY_RUNNING"
+        || error.code === "BACKGROUND_ONLY_VALIDATION_FAILED"
+        || error.code === "FAL_RECOVERY_FAILED"
+        || error.code === "FOREGROUND_MASK_NOT_FOUND"
+        || error.code === "FOREGROUND_DETECTION_UNAVAILABLE"
+        || error.code === "RECOVERY_NETWORK_FAILED";
+      if (!isTimeout && !isExpectedRecoveryOutcome) {
         // Only surface unexpected errors to the dev overlay, not timeout noise
         console.error("[Trace Error]", error);
       }
 
-      logToConsole(`[Error] ${displayMsg}`, "error");
+      logToConsole(`[${error.refunded ? "Refunded" : "Error"}] ${displayMsg}`, "error");
       setTraceState("idle");
       return { success: false };
     }
@@ -343,6 +459,7 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
     logToConsole,
     clearConsole,
     handleExecuteTrace,
+    analyzeRecovery,
     handleResumeFromStep2,
     handleRetryVector,
   };

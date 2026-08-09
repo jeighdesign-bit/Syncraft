@@ -5,15 +5,16 @@ import { X, Shirt, CheckCircle, Package, Tag, Mail, Smartphone, Check, ArrowRigh
 import { toast } from "@/components/Toast";
 import { createClient } from "@/utils/supabase/client";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
+import { CREDIT_COST } from "@/lib/pricing";
 
 // Derived from CREDIT_PLANS — single source of truth.
 // To change prices, edit src/lib/paymentPlans.js only.
 const PLANS_META = {
-  tingi:   { desc: 'Small package for quick tests.',                          features: ['2 HD Vector Traces', 'Standard Processing'] },
-  basic:   { desc: 'Great for hobbyists printing occasionally.',               features: ['4 HD Vector Traces', 'Standard Processing'] },
-  starter: { desc: 'Ideal for small businesses taking their first steps.',     features: ['13 HD Vector Traces', 'Priority Processing', 'Email support'] },
-  pro:     { desc: 'Perfect for print shops & growing design studios.',        best: true, features: ['25 HD Vector Traces', 'Highest Priority Queue', 'Unlimited storage', 'Priority support'] },
-  elite:   { desc: 'For high-volume agencies & power users.',                  features: ['45 HD Vector Traces', 'Dedicated Queue', 'Unlimited storage', 'Premium support'] },
+  tingi:   { desc: 'Small package for quick tests.' },
+  basic:   { desc: 'Great for hobbyists printing occasionally.' },
+  starter: { desc: 'Ideal for small businesses taking their first steps.' },
+  pro:     { desc: 'Perfect for print shops & growing design studios.', best: true },
+  elite:   { desc: 'For high-volume agencies & power users.' },
 };
 
 const PLANS = Object.values(CREDIT_PLANS).map((plan) => ({
@@ -25,7 +26,7 @@ const PLANS = Object.values(CREDIT_PLANS).map((plan) => ({
   dodoPrice:  plan.dodoPrice,
   desc:       PLANS_META[plan.key]?.desc || '',
   best:       PLANS_META[plan.key]?.best || false,
-  features:   PLANS_META[plan.key]?.features || [],
+  generations: Math.floor(plan.credits / CREDIT_COST.trace),
 }));
 
 const PLAN_LABELS = Object.fromEntries(
@@ -314,23 +315,21 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                         setForm(f => ({ ...f, plan: p.key })); 
                         setStep(2); 
                       }}
-                      style={{ width: '100%', padding: '12px 8px', background: p.best ? '#d4ff59' : 'transparent', color: p.best ? '#000' : '#d5d5d5', border: p.best ? 'none' : '1px solid #555', fontWeight: '600', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginBottom: '32px', borderRadius: '4px', whiteSpace: 'nowrap' }} 
+                      style={{ width: '100%', padding: '12px 8px', background: p.best ? '#d4ff59' : 'transparent', color: p.best ? '#000' : '#d5d5d5', border: p.best ? 'none' : '1px solid #555', fontWeight: '600', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginBottom: '24px', borderRadius: '8px', whiteSpace: 'nowrap' }}
                       onMouseOver={e => { e.target.style.opacity = '0.9'; if (!p.best) { e.target.style.background = '#3a3a3a'; e.target.style.borderColor = '#777'; } }} 
                       onMouseOut={e => { e.target.style.opacity = '1'; if (!p.best) { e.target.style.background = 'transparent'; e.target.style.borderColor = '#555'; } }}
                     >
                       {user ? 'Select Plan' : 'Log in to Purchase'} <ArrowRight size={14} />
                     </button>
 
-                    <div style={{ borderTop: '1px solid #444', margin: '0 -24px 24px' }}></div>
+                    <div style={{ borderTop: '1px solid #3b3b3f', margin: '0 -24px 20px' }}></div>
 
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#888', marginBottom: '16px' }}>What's Included:</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
-                      {p.features.map((feat, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#d5d5d5', fontSize: '13px' }}>
-                          <Check size={14} color={p.best ? "#d4ff59" : "#888"} strokeWidth={3} />
-                          {feat}
-                        </div>
-                      ))}
+                    <div style={{ marginTop: 'auto', textAlign: 'center', padding: '4px 0 2px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: '800', color: p.best ? '#d4ff59' : '#7f7f86', marginBottom: '8px', letterSpacing: '0.8px', textTransform: 'uppercase' }}>Your allowance</div>
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '7px', color: '#fff', lineHeight: 1 }}>
+                        <span style={{ fontSize: '42px', fontWeight: '850', letterSpacing: '-2px' }}>{p.generations}</span>
+                        <span style={{ fontSize: '12px', fontWeight: '700', color: p.best ? '#d4ff59' : '#d5d5d5' }}>AI generations</span>
+                      </div>
                     </div>
                   </div>
                 ))}

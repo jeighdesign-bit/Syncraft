@@ -68,7 +68,7 @@ export default function Workspace() {
   const {
 
     traceState, nodeErrors, consoleRef,
-    logToConsole, clearConsole, handleExecuteTrace, handleResumeFromStep2, handleRetryVector,
+    logToConsole, clearConsole, handleExecuteTrace, analyzeRecovery, handleResumeFromStep2, handleRetryVector,
   } = useTraceExecution({
     project,
     setProject,
@@ -93,7 +93,13 @@ export default function Workspace() {
           router.push("/");
           return;
         }
-        setProject(projData);
+        const recovery = projData.canvas_data?.universal_recovery;
+        setProject(recovery ? {
+          ...projData,
+          recovery_analysis: recovery.analysis || null,
+          recovery_status: recovery.status || null,
+          recovery_validation: recovery.validation || null,
+        } : projData);
 
         if (!projData.generated_image_url) {
           setShowCropModal(true);
@@ -192,11 +198,20 @@ export default function Workspace() {
 
   // ─── Trace Execution Wrapper ──────────────────────────────────────────────
   const onExecuteTrace = useCallback(async (vectorColors) => {
+    if (project?.trace_type === "universal") {
+      try {
+        logToConsole("[Universal] Detecting the best flat layout strategy...");
+        await analyzeRecovery();
+      } catch (error) {
+        logToConsole(`[Error] ${error.message || "Reference analysis failed."}`, "error");
+        return;
+      }
+    }
     const result = await handleExecuteTrace(vectorColors);
     if (result?.success) {
       setShowCompare(true);
     }
-  }, [handleExecuteTrace]);
+  }, [project, analyzeRecovery, handleExecuteTrace, logToConsole]);
 
   // ─── Crop Handlers ────────────────────────────────────────────────────────
   const handleCropApplied = useCallback((publicUrl, errorMsg) => {
@@ -209,6 +224,10 @@ export default function Workspace() {
         generated_image_url: null,
         upscaled_image_url: null,
         svg_url: null,
+        recovery_analysis: null,
+        recovery_status: null,
+        recovery_validation: null,
+        canvas_data: prev.canvas_data ? { ...prev.canvas_data, universal_recovery: null } : prev.canvas_data,
       }));
       logToConsole("[Success] Crop applied and saved! You can now re-trace.", "success");
     }
@@ -225,6 +244,9 @@ export default function Workspace() {
         generated_image_url: null,
         upscaled_image_url: null,
         svg_url: null,
+        recovery_analysis: null,
+        recovery_status: null,
+        recovery_validation: null,
       }));
       logToConsole("[Success] Erased noise saved! You can now re-trace.", "success");
     }
@@ -240,6 +262,9 @@ export default function Workspace() {
         generated_image_url: null,
         upscaled_image_url: null,
         svg_url: null,
+        recovery_analysis: null,
+        recovery_status: null,
+        recovery_validation: null,
       }));
       // The server charges CREDIT_COST.removeBg — this used to decrement by 1,
       // so the header count disagreed with the actual balance until a reload.
@@ -370,14 +395,14 @@ export default function Workspace() {
         <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
           <h1 style={{ fontSize: "13px", fontWeight: "600", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>WORKSPACE</h1>
         </div>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", alignItems: "center" }}>
-          <button onClick={() => setShowShortcuts(true)} style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "1px solid #2e2e2e", color: "#888", cursor: "pointer", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "all 0.2s", padding: "6px 12px", borderRadius: "6px" }} onMouseEnter={e => { e.currentTarget.style.color="#fff"; e.currentTarget.style.borderColor="#555"; }} onMouseLeave={e => { e.currentTarget.style.color="#888"; e.currentTarget.style.borderColor="#2e2e2e"; }}>
-            <Keyboard size={12} /> Shortcuts
+        <div className="syncraft-header-controls">
+          <button type="button" onClick={() => setShowShortcuts(true)} className="syncraft-header-control">
+            <Keyboard size={14} aria-hidden="true" /> Shortcuts
           </button>
-          <div onClick={() => setShowTopUpModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", background: "#212121", padding: "6px 14px", cursor: "pointer", border: "1px solid #333", borderRadius: "6px", transition: "all 0.2s" }} onMouseOver={e => { e.currentTarget.style.background = "#2a2a2a"; e.currentTarget.style.borderColor = "#555"; }} onMouseOut={e => { e.currentTarget.style.background = "#212121"; e.currentTarget.style.borderColor = "#333"; }}>
-            <span style={{ color: "#fff", fontWeight: "700", fontSize: "13px", fontFamily: "inherit" }}>{userCredits !== null ? userCredits : "-"}</span>
-            <span style={{ color: "#888", fontSize: "9px", textTransform: "uppercase", letterSpacing: "1.2px", fontWeight: "600" }}>Credits</span>
-          </div>
+          <button type="button" onClick={() => setShowTopUpModal(true)} className="syncraft-header-control" aria-label={`${userCredits !== null ? userCredits : "Unknown"} credits. Open top up`}>
+            <span className="syncraft-header-control__value">{userCredits !== null ? userCredits : "-"}</span>
+            <span className="syncraft-header-control__label">Credits</span>
+          </button>
         </div>
       </header>
 

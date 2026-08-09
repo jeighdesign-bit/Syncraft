@@ -792,6 +792,105 @@ html, body {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* =========================================
+   SHARED HEADER CONTROLS
+   Landing and workspace use one visual system.
+   ========================================= */
+.syncraft-header-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.syncraft-header-control {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 104px;
+  height: 32px;
+  box-sizing: border-box;
+  flex: 0 0 104px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid #333;
+  border-radius: 12px;
+  background: #212121;
+  color: #fff;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+button.syncraft-header-control,
+a.syncraft-header-control {
+  cursor: pointer;
+}
+
+button.syncraft-header-control:hover,
+a.syncraft-header-control:hover {
+  background: #2a2a2a;
+  border-color: #555;
+  color: #fff;
+}
+
+a.syncraft-header-control.syncraft-header-control--store:hover {
+  border-color: #d4ff59;
+  color: #d4ff59;
+}
+
+.syncraft-header-control:focus-visible {
+  outline: 2px solid #d4ff59;
+  outline-offset: 2px;
+}
+
+.syncraft-header-control__value,
+.syncraft-header-control__label,
+.syncraft-header-control__text {
+  font-size: inherit;
+  line-height: 1;
+}
+
+.syncraft-header-control__value {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.syncraft-header-control__label {
+  color: #999;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.syncraft-header-control__text {
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.syncraft-header-control__avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
