@@ -5,7 +5,10 @@ import net from 'net';
 const lookup = promisify(dns.lookup);
 
 export const DEFAULT_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
-export const DEFAULT_MAX_UPSCALED_IMAGE_BYTES = 60 * 1024 * 1024;
+// A lossless 4x ESRGAN PNG can legitimately exceed 60 MiB (especially for a
+// detailed 2K portrait input). Keep a bounded ceiling while allowing the exact
+// provider asset to pass through without JPEG recompression.
+export const DEFAULT_MAX_UPSCALED_IMAGE_BYTES = 96 * 1024 * 1024;
 export const DEFAULT_MAX_SVG_BYTES = 8 * 1024 * 1024;
 export const DEFAULT_MAX_ZIP_BYTES = 120 * 1024 * 1024;
 

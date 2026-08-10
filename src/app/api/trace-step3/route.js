@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { uploadToR2 } from "@/lib/cloudflare";
-import { adminSupabase, safeRefundCredit } from "@/lib/supabase";
-import { fetchWithRetry } from "@/lib/fetchWithRetry";
+import { adminSupabase } from "@/lib/supabase";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { segmentSvgLayers } from "@/lib/svgSegmenter";
 import { DEFAULT_MAX_IMAGE_BYTES, DEFAULT_MAX_SVG_BYTES, DEFAULT_MAX_UPSCALED_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, validateUrlForSSRF } from "@/lib/ssrf";
@@ -153,18 +152,33 @@ export async function POST(request) {
       compressedBuffer = await sharpInstance.png({ effort: 1 }).toBuffer();
     }
 
-    const blob = new Blob([compressedBuffer], { type: 'image/png' });
-    const vectorizeFormData = new FormData();
-    vectorizeFormData.append('image', blob, 'image.png');
-
     console.log("[Step 3] Sending to Recraft vectorize (RECRAFT_API_TOKEN)...");
-    const recraftVectorRes = await fetchWithRetry("https://external.api.recraft.ai/v1/images/vectorize", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY}` },
-      body: vectorizeFormData,
-      // One long request avoids retrying an already-consumed multipart stream.
-      signal: AbortSignal.timeout(210000),
-    }, 1);
+    let recraftVectorRes;
+    let vectorizeError;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        // A multipart body cannot be reused after a network failure. Rebuild it
+        // so a transient Recraft connection failure gets one safe retry.
+        const vectorizeFormData = new FormData();
+        vectorizeFormData.append('image', new Blob([compressedBuffer], { type: 'image/png' }), 'image.png');
+        recraftVectorRes = await fetch("https://external.api.recraft.ai/v1/images/vectorize", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY}` },
+          body: vectorizeFormData,
+          signal: AbortSignal.timeout(105000),
+        });
+        if (recraftVectorRes.status !== 429 && (recraftVectorRes.status < 502 || recraftVectorRes.status > 504)) break;
+        vectorizeError = new Error(`Vectorization provider returned ${recraftVectorRes.status}`);
+      } catch (error) {
+        recraftVectorRes = undefined;
+        vectorizeError = error;
+      }
+      if (attempt < 2) {
+        console.warn(`[Step 3] Vectorization attempt ${attempt} failed; retrying once...`);
+        await new Promise(resolve => setTimeout(resolve, 1200));
+      }
+    }
+    if (!recraftVectorRes) throw vectorizeError || new Error("Vectorization network request failed");
 
     if (!recraftVectorRes.ok) {
       const errText = await recraftVectorRes.text();
@@ -248,31 +262,7 @@ export async function POST(request) {
   } catch (error) {
     console.error(`[Trace Step 3 Error]:`, error.message);
     
-    // Attempt automatic refund on server-side failure.
-    //
-    // skipRefund is set when this stage is being re-run on a project that was
-    // already paid for (e.g. after Extend Design). Without that opt-out, the
-    // update below would overwrite generated_image_url with the 'REFUNDED'
-    // sentinel — destroying work the user paid for — and refund credits this
-    // re-run never charged.
-    try {
-      if (projectId && !skipRefund) {
-        const { data: updatedProj } = await adminSupabase
-          .from('projects')
-          .update({ generated_image_url: 'REFUNDED', refunded: true })
-          .eq('id', projectId)
-          .eq('user_id', userId)
-          .eq('credit_deducted', true)
-          .eq('refunded', false)
-          .select('user_id');
-          
-        if (updatedProj && updatedProj.length > 0) {
-           await safeRefundCredit(updatedProj[0].user_id);
-        }
-      }
-    } catch (refundErr) {
-      console.error(`[Billing] Refund failed:`, refundErr.message);
-    }
+    // This free stage must never modify billing or destroy completed assets.
 
     const timedOut = error?.name === 'TimeoutError' ||
       /aborted|timeout/i.test(error?.message || '');

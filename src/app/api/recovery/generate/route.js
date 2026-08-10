@@ -3,7 +3,7 @@ import { adminSupabase, safeRefundCredit } from "@/lib/supabase";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 import { buildRecoveryPrompt, normalizeRecoveryAnalysis } from "@/lib/recovery";
-import { backgroundOnlyFailureMessage, recoveryOutputDimensions, shouldFallbackToSource, shouldRejectBackgroundOnly, sourceFallbackCorrection } from "@/lib/recoveryPolicy.mjs";
+import { backgroundOnlyFailureMessage, shouldFallbackToSource, shouldRejectBackgroundOnly, sourceFallbackCorrection } from "@/lib/recoveryPolicy.mjs";
 import { CREDIT_COST } from "@/lib/pricing";
 import sharp from "sharp";
 
@@ -489,29 +489,15 @@ export async function POST(request) {
         released_best_effort: true,
       };
     }
-    // Preserve the inferred flat-design ratio for generated artwork. Only an
-    // exact-source fallback/passthrough should retain photographed dimensions.
-    // Upscale remains the separate existing Step 2.
-    const outputDimensions = recoveryOutputDimensions({
-      sourceWidth,
-      sourceHeight,
-      aspectRatio: analysis.aspect_ratio,
-      preserveSource: validation.source_fallback === true || validation.source_passthrough === true,
-    });
-    let exactOutput = await lockOutputToSource(
-      downloaded.buffer,
-      source.buffer,
-      outputDimensions.width,
-      outputDimensions.height,
-      // The Fal clean-plate result is already the approved color source.
-      // Re-mapping it to dominant colors sampled from the photographed carrier
-      // can pull greens toward cyan/teal because of lighting and camera casts.
-      false,
-    );
+    // Preserve the exact provider bytes, just like the garment extraction
+    // pipeline. The fal output is the Flat Extract source of truth; resizing,
+    // cropping, palette locking, or PNG re-encoding here makes the workspace
+    // preview differ from the successful image shown in the fal request log.
+    let exactOutput = downloaded.buffer;
     if (keepArtwork) {
       const finalRetention = await contentRetentionCheck(source.buffer, exactOutput);
       if (finalRetention.collapsed) {
-        exactOutput = await lockOutputToSource(source.buffer, source.buffer, sourceWidth, sourceHeight, false);
+        exactOutput = source.buffer;
         validation = {
           ...validation,
           pass: false,
@@ -546,7 +532,7 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       base64: exactOutput.toString("base64"),
-      mimeType: "image/png",
+      mimeType: downloaded.response?.headers.get("content-type")?.split(";")[0] || "image/png",
       recoveryStatus: validation.pass ? "complete" : "partial",
       validation,
       analysis,

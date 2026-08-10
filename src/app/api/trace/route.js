@@ -640,12 +640,10 @@ If any difference is detected, continue refining until the reconstruction is vis
 
       const backgroundOnly = project.canvas_data?.universal_recovery?.mode === "UNIVERSAL_BACKGROUND_ONLY";
       if (backgroundOnly) {
-        // Real-ESRGAN can creatively re-grade large flat-color regions (for
-        // example green into teal). Background-only extraction is already
-        // generated at 2K, so use a deterministic lossless resize here. This
-        // preserves the Nano Banana result's RGB palette while still providing
-        // the 4x raster required by the vectorization stage.
-        console.log("[API Step 2] Lossless palette-preserving upscale for Universal background-only...");
+        // The extract is already generated at high resolution. Lanczos resize
+        // adds pixels without inventing glyphs or changing the RGB palette,
+        // and PNG storage prevents an additional lossy JPEG generation.
+        console.log("[API Step 2] Creating fidelity-safe, palette-preserving 4x PNG...");
         const { response, buffer: inputBuffer } = await fetchWithSSRFProtection(upscaleInputUrl, {
           allowedHosts: getAllowedStorageHosts(),
           maxBytes: DEFAULT_MAX_IMAGE_BYTES,
@@ -679,6 +677,7 @@ If any difference is detected, continue refining until the reconstruction is vis
           mimeType: "image/png",
           alreadySaved: true,
           palettePreserved: true,
+          fidelitySafe: true,
         });
       }
 

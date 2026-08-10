@@ -4,7 +4,7 @@ import { adminSupabase } from "@/lib/supabase";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, DEFAULT_MAX_SVG_BYTES, DEFAULT_MAX_UPSCALED_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, normalizeUserImageUrl } from "@/lib/ssrf";
 
-export const maxDuration = 60;
+export const maxDuration = 180;
 
 const ALLOWED_REMOTE_HOSTS = [...getAllowedStorageHosts(), ...getAllowedProviderHosts()];
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/svg+xml'];
@@ -96,14 +96,26 @@ export async function POST(request) {
     if (step === 1) {
       const fileName = `projects/${projectId}/generated_flat_${Date.now()}.${ext}`;
       const finalUrl = await uploadToR2(buffer, fileName, finalMimeType);
-      await adminSupabase.from('projects').update({ generated_image_url: finalUrl, ai_prompt: null, zip_url: null, zip_signature: null, zip_generated_at: null }).eq('id', projectId).eq('user_id', user.id);
+      const { error: saveError } = await adminSupabase.from('projects').update({ generated_image_url: finalUrl, ai_prompt: null, zip_url: null, zip_signature: null, zip_generated_at: null }).eq('id', projectId).eq('user_id', user.id);
+      if (saveError) throw new Error(`Could not save flat extract: ${saveError.message}`);
       return NextResponse.json({ success: true, url: finalUrl });
     }
 
     if (step === 2) {
+      // fal's ESRGAN PNGs can be only slightly larger than the Supabase
+      // fallback bucket limit. Re-encode losslessly before storage: dimensions
+      // and RGBA pixels remain identical, while redundant PNG bytes are
+      // removed. The Flat Extract (Step 1) is deliberately never touched.
+      if (finalMimeType === 'image/png') {
+        const sharp = (await import('sharp')).default;
+        buffer = await sharp(buffer)
+          .png({ compressionLevel: 9, adaptiveFiltering: true, effort: 10 })
+          .toBuffer();
+      }
       const fileName = `projects/${projectId}/upscaled_${Date.now()}.${ext}`;
       const finalUrl = await uploadToR2(buffer, fileName, finalMimeType);
-      await adminSupabase.from('projects').update({ upscaled_image_url: finalUrl, zip_url: null, zip_signature: null, zip_generated_at: null }).eq('id', projectId).eq('user_id', user.id);
+      const { error: saveError } = await adminSupabase.from('projects').update({ upscaled_image_url: finalUrl, zip_url: null, zip_signature: null, zip_generated_at: null }).eq('id', projectId).eq('user_id', user.id);
+      if (saveError) throw new Error(`Could not save upscaled image: ${saveError.message}`);
       return NextResponse.json({ success: true, url: finalUrl });
     }
 
