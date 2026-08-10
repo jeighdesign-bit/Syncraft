@@ -224,8 +224,20 @@ export default function ProductCarousel({ sections }) {
             <div className={styles.productContent}>
               <div className={styles.productMetaRow}>
                 <span className={styles.productType}>{product.itemLabel}</span>
-                <span className={product.price === "Free" ? styles.freePrice : styles.price}>{product.price}</span>
+                {product.originalPrice ? (
+                  <span className={styles.promoPriceGroup} aria-label={`Regular price ${product.originalPrice}; promo price ${product.price}`}>
+                    <span className={styles.originalPrice}>{product.originalPrice}</span>
+                    <span className={styles.price}><small>Promo</small>{product.price}</span>
+                  </span>
+                ) : (
+                  <span className={product.price === "Free" ? styles.freePrice : styles.price}>{product.price}</span>
+                )}
               </div>
+              {product.promoSlots && (
+                <span className={styles.promoAvailability}>
+                  <span aria-hidden="true" /> Only {product.promoSlots} promo slots left
+                </span>
+              )}
               <h3>{product.name}</h3>
               <div className={styles.productFooter}>
                 <span><FileDown size={14} aria-hidden="true" /> {product.meta}</span>
@@ -291,8 +303,20 @@ export default function ProductCarousel({ sections }) {
             <div className={styles.modalBody}>
               <div className={styles.productMetaRow}>
                 <span className={styles.productType}>{selectedProduct.itemLabel}</span>
-                <span className={selectedProduct.price === "Free" ? styles.freePrice : styles.price}>{selectedProduct.price}</span>
+                {selectedProduct.originalPrice ? (
+                  <span className={styles.promoPriceGroup} aria-label={`Regular price ${selectedProduct.originalPrice}; promo price ${selectedProduct.price}`}>
+                    <span className={styles.originalPrice}>{selectedProduct.originalPrice}</span>
+                    <span className={styles.price}><small>Promo</small>{selectedProduct.price}</span>
+                  </span>
+                ) : (
+                  <span className={selectedProduct.price === "Free" ? styles.freePrice : styles.price}>{selectedProduct.price}</span>
+                )}
               </div>
+              {selectedProduct.promoSlots && (
+                <span className={`${styles.promoAvailability} ${styles.modalPromoAvailability}`}>
+                  <span aria-hidden="true" /> Only {selectedProduct.promoSlots} promo slots left
+                </span>
+              )}
               <h2 id="product-modal-title">{selectedProduct.name}</h2>
               {!showRequestForm && (
                 <>

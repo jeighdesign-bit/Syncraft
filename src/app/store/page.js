@@ -30,7 +30,9 @@ const sections = [
       {
         name: "Subli Autoresizer",
         description: "Resize PSD files from one master size into standard Philippine print sizes in seconds, with organized output and a free mockup bundle included.",
-        price: "₱850",
+        price: "\u20B1850",
+        originalPrice: "\u20B11,299",
+        promoSlots: 3,
         meta: "PSD size generator + mockups",
         theme: "Lime",
         image: "/Store/Sublimation Tools/subli autoresizer.jpg",
@@ -38,7 +40,9 @@ const sections = [
       {
         name: "SubliBatch Pro",
         description: "Batch rename and export teamwear artwork with mapped text layers, RGB/CMYK color assurance, and print-ready output settings.",
-        price: "₱850",
+        price: "\u20B1850",
+        originalPrice: "\u20B11,299",
+        promoSlots: 3,
         meta: "Batch rename + export",
         theme: "Cobalt",
         image: "/Store/Sublimation Tools/sublibatchpro.jpg",
@@ -46,7 +50,9 @@ const sections = [
       {
         name: "SubliNest",
         description: "Auto-rip and nest sublimation patterns with smart spacing, rotation, trimming, and material-saving layouts for roll printing.",
-        price: "₱850",
+        price: "\u20B1850",
+        originalPrice: "\u20B11,299",
+        promoSlots: 3,
         meta: "Auto-ripping + nesting",
         theme: "Coral",
         image: "/Store/Sublimation Tools/SUBLINEST.jpg",
