@@ -218,8 +218,14 @@ export default function UpscalePage() {
         </div>
         <div style={{ width: "200px", display: "flex", justifyContent: "flex-end", gap: "16px", alignItems: "center" }}>
           <div onClick={() => setShowTopUpModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", background: "#2a2a2a", padding: "6px 14px", borderRadius: "14px", cursor: "pointer", border: "1px solid #444", transition: "border-color 0.2s" }} onMouseOver={e => e.currentTarget.style.borderColor = "#d4ff59"} onMouseOut={e => e.currentTarget.style.borderColor = "#444"}>
-            <span style={{ color: "#d4ff59", fontWeight: "bold", fontSize: "14px", fontFamily: "monospace" }}>{credits !== null ? credits : "-"}</span>
-            <span style={{ color: "#888", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>CREDITS</span>
+            {credits !== null && credits <= 0 ? (
+              <span style={{ color: "#fff", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600" }}>BUY CREDITS</span>
+            ) : (
+              <>
+                <span style={{ color: "#d4ff59", fontWeight: "bold", fontSize: "14px", fontFamily: "monospace" }}>{credits !== null ? credits : "-"}</span>
+                <span style={{ color: "#888", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>CREDITS</span>
+              </>
+            )}
           </div>
         </div>
       </header>

@@ -204,9 +204,18 @@ export default function BgRemoverPage() {
           <h1 style={{ fontSize: "16px", fontWeight: "700", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>BACKGROUND REMOVER</h1>
         </div>
         <div style={{ width: "200px", display: "flex", justifyContent: "flex-end", gap: "16px", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#222", padding: "8px 16px", borderRadius: "4px", border: "1px solid #333", cursor: "default" }}>
-            <span style={{ color: "#d4ff59", fontWeight: "bold", fontSize: "14px" }}>{userCredits !== null ? userCredits : "-"}</span>
-            <span style={{ color: "#888", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600" }}>CREDITS</span>
+          <div 
+            onClick={() => router.push('/store')} 
+            style={{ display: "flex", alignItems: "center", gap: "8px", background: "#222", padding: "8px 16px", borderRadius: "4px", border: "1px solid #333", cursor: "pointer" }}
+          >
+            {userCredits !== null && userCredits <= 0 ? (
+              <span style={{ color: "#fff", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600" }}>BUY CREDITS</span>
+            ) : (
+              <>
+                <span style={{ color: "#d4ff59", fontWeight: "bold", fontSize: "14px" }}>{userCredits !== null ? userCredits : "-"}</span>
+                <span style={{ color: "#888", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600" }}>CREDITS</span>
+              </>
+            )}
           </div>
         </div>
       </header>

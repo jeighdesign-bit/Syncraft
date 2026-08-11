@@ -529,9 +529,20 @@ export default function StartScreen() {
                 </Link>
 
                 {/* Premium Credits Badge */}
-                <button type="button" onClick={() => setShowTopUpModal(true)} className="syncraft-header-control" aria-label={`${credits} credits. Open top up`}>
-                  <span className="syncraft-header-control__value">{credits}</span>
-                  <span className="syncraft-header-control__label">CREDITS</span>
+                <button
+                  type="button"
+                  onClick={() => setShowTopUpModal(true)}
+                  className="syncraft-header-control"
+                  aria-label={credits <= 0 ? "Buy credits. Open top up" : `${credits} credits. Open top up`}
+                >
+                  {credits <= 0 ? (
+                    "BUY CREDITS"
+                  ) : (
+                    <>
+                      <span className="syncraft-header-control__value">{credits}</span>
+                      <span className="syncraft-header-control__label">CREDITS</span>
+                    </>
+                  )}
                 </button>
 
                 {/* Profile Pill */}

@@ -399,9 +399,20 @@ export default function Workspace() {
           <button type="button" onClick={() => setShowShortcuts(true)} className="syncraft-header-control">
             <Keyboard size={14} aria-hidden="true" /> Shortcuts
           </button>
-          <button type="button" onClick={() => setShowTopUpModal(true)} className="syncraft-header-control" aria-label={`${userCredits !== null ? userCredits : "Unknown"} credits. Open top up`}>
-            <span className="syncraft-header-control__value">{userCredits !== null ? userCredits : "-"}</span>
-            <span className="syncraft-header-control__label">Credits</span>
+          <button
+            type="button"
+            onClick={() => setShowTopUpModal(true)}
+            className="syncraft-header-control"
+            aria-label={userCredits !== null && userCredits <= 0 ? "Buy credits. Open top up" : `${userCredits !== null ? userCredits : "Unknown"} credits. Open top up`}
+          >
+            {userCredits !== null && userCredits <= 0 ? (
+              "BUY CREDITS"
+            ) : (
+              <>
+                <span className="syncraft-header-control__value">{userCredits !== null ? userCredits : "-"}</span>
+                <span className="syncraft-header-control__label">CREDITS</span>
+              </>
+            )}
           </button>
         </div>
       </header>
