@@ -72,7 +72,7 @@ export async function GET(request) {
       ? DEFAULT_MAX_SVG_BYTES
       : lowerPath.endsWith('.zip')
         ? DEFAULT_MAX_ZIP_BYTES
-      : lowerPath.includes('/upscaled_')
+      : /\/upscaled[-_]/.test(lowerPath)
         ? DEFAULT_MAX_UPSCALED_IMAGE_BYTES
         : DEFAULT_MAX_IMAGE_BYTES;
     const isSvg = parsedUrl.pathname.toLowerCase().endsWith('.svg');

@@ -78,6 +78,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
   onExtendSourceLoad,
 }) {
   const [activeTab, setActiveTab] = useState("generated");
+  const isUpscale = project?.trace_type === "upscale";
   const [zoomLevel, setZoomLevel] = useState(1);
   const leftScrollRef = useRef(null);
   const rightScrollRef = useRef(null);
@@ -294,7 +295,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
   }, [project?.svg_url, activeTab]);
 
   // Right-side label
-  const rightLabel = activeTab === "generated" ? "FLAT EXTRACT" : activeTab === "upscaled" ? "HD UPSCALE" : "VECTOR PREVIEW";
+  const rightLabel = isUpscale ? "4X HD UPSCALE" : activeTab === "generated" ? "FLAT EXTRACT" : activeTab === "upscaled" ? "HD UPSCALE" : "VECTOR PREVIEW";
 
   const renderStatus = () => {
     if (traceState !== "idle") {
@@ -351,7 +352,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666', gap: '16px' }}>
           <Zap size={24} strokeWidth={1.5} style={{ color: '#444' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '400', letterSpacing: '0.3px', color: '#666' }}>
-            Awaiting <span style={{ color: '#d4ff59', fontWeight: '500', opacity: 0.8 }}>Auto-Trace</span>
+            Awaiting <span style={{ color: '#d4ff59', fontWeight: '500', opacity: 0.8 }}>{isUpscale ? "4K Upscale" : "Auto-Trace"}</span>
           </div>
         </div>
       );
@@ -360,11 +361,13 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
   };
 
   // Tab config
-  const tabs = [
-    { id: "generated", label: "1. FLAT EXTRACT", hasContent: !!project?.generated_image_url },
-    { id: "upscaled",  label: "2. HD UPSCALE",   hasContent: !!project?.upscaled_image_url },
-    { id: "svg",       label: "3. VECTOR SVG",    hasContent: !!project?.svg_url },
-  ];
+  const tabs = isUpscale
+    ? [{ id: "generated", label: "4X HD UPSCALE", hasContent: !!project?.generated_image_url }]
+    : [
+        { id: "generated", label: "1. FLAT EXTRACT", hasContent: !!project?.generated_image_url },
+        { id: "upscaled",  label: "2. HD UPSCALE",   hasContent: !!project?.upscaled_image_url },
+        { id: "svg",       label: "3. VECTOR SVG",    hasContent: !!project?.svg_url },
+      ];
 
   return (
     <div ref={containerRef} style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", backgroundColor: "#1a1a1a", position: "relative" }}>

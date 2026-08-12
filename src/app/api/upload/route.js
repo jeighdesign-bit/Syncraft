@@ -39,6 +39,7 @@ export async function POST(request) {
       .slice(0, 100) || 'Untitled Project';
 
     const normalizedTraceType = traceType === 'bg_remover' ? 'bg_remover'
+      : traceType === 'upscale' ? 'upscale'
       : String(traceType || '').startsWith('mockup') ? 'mockup'
       : String(traceType || '').startsWith('universal') ? 'universal'
       : 'logo';

@@ -16,6 +16,7 @@ import { useTraceExecution } from "./hooks/useTraceExecution";
 // ─── Components ───────────────────────────────────────────────────────────────
 import SplitViewCanvas from "./components/SplitViewCanvas";
 import PropertiesPanel from "./components/PropertiesPanel";
+import UpscalePropertiesPanel from "./components/UpscalePropertiesPanel";
 import CropModal from "./components/CropModal";
 import EraseModal from "./components/EraseModal";
 import RemoveBgModal from "./components/RemoveBgModal";
@@ -63,6 +64,8 @@ export default function Workspace() {
   const [isSavingCrop, setIsSavingCrop] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState("");
+  const [upscaleStatus, setUpscaleStatus] = useState("idle");
+  const [upscaleError, setUpscaleError] = useState("");
 
   // ─── Hooks ────────────────────────────────────────────────────────────────
   const {
@@ -101,7 +104,12 @@ export default function Workspace() {
           recovery_validation: recovery.validation || null,
         } : projData);
 
-        if (!projData.generated_image_url) {
+        if (projData.trace_type === "upscale") {
+          const isLegacyResult = !!projData.generated_image_url
+            && !projData.generated_image_url.includes("/projects/")
+            && !projData.generated_image_url.includes("/storage/v1/object/");
+          setUpscaleStatus(isLegacyResult ? "legacy" : "idle");
+        } else if (!projData.generated_image_url) {
           setShowCropModal(true);
         }
 
@@ -166,6 +174,66 @@ export default function Workspace() {
     await forceDownload(proxyUrl, `Syncraft_${project.name}_4K.png`);
     await new Promise(resolve => setTimeout(resolve, 1500));
   }, [project, forceDownload]);
+
+  const handleDownloadUpscaleProject = useCallback(async () => {
+    if (!project?.generated_image_url) return;
+    const proxyUrl = `/api/proxy?url=${encodeURIComponent(project.generated_image_url)}`;
+    await forceDownload(proxyUrl, `Syncraft_${project.name || "Upscale"}_4X.png`);
+  }, [project, forceDownload]);
+
+  const handleRunUpscale = useCallback(async () => {
+    if (!project?.id || upscaleStatus === "processing") return;
+    const wasLegacyRepair = upscaleStatus === "legacy";
+    setUpscaleStatus("processing");
+    setUpscaleError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Your login session expired. Please log in again.");
+
+      const res = await fetch("/api/upscale", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ projectId: project.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.error === "INSUFFICIENT_CREDITS") setShowTopUpModal(true);
+        throw new Error(data.error === "UPSCALE_ALREADY_PROCESSING"
+          ? "This upscale is already processing. Please refresh in a moment."
+          : data.error || "Failed to upscale image");
+      }
+
+      setProject(prev => ({
+        ...prev,
+        generated_image_url: data.upscaledUrl,
+        credit_deducted: true,
+        refunded: false,
+      }));
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("credits")
+        .eq("id", session.user.id)
+        .single();
+      if (profile) setUserCredits(profile.credits);
+      setUpscaleStatus("idle");
+      setShowCompare(true);
+    } catch (error) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("credits")
+          .eq("id", session.user.id)
+          .single();
+        if (profile) setUserCredits(profile.credits);
+      }
+      setUpscaleError(error.message || "Failed to upscale image");
+      setUpscaleStatus(wasLegacyRepair ? "legacy" : "idle");
+    }
+  }, [project, upscaleStatus]);
 
   const handleDownloadAll = useCallback(async () => {
     if (!project) return;
@@ -393,7 +461,7 @@ export default function Workspace() {
           <img src="/logo.svg" alt="Syncraft Home" style={{ height: "18px", width: "auto", opacity: 0.9 }} />
         </button>
         <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <h1 style={{ fontSize: "13px", fontWeight: "600", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>WORKSPACE</h1>
+          <h1 style={{ fontSize: "13px", fontWeight: "600", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>{project?.trace_type === "upscale" ? "UPSCALE WORKSPACE" : "WORKSPACE"}</h1>
         </div>
         <div className="syncraft-header-controls">
           <button type="button" onClick={() => setShowShortcuts(true)} className="syncraft-header-control">
@@ -430,9 +498,9 @@ export default function Workspace() {
           ) : (
             <SplitViewCanvas
               project={project}
-              traceState={traceState}
-              nodeErrors={nodeErrors}
-              extendMode={extendMode}
+              traceState={project.trace_type === "upscale" ? (upscaleStatus === "processing" ? "processing" : "idle") : traceState}
+              nodeErrors={project.trace_type === "upscale" ? null : nodeErrors}
+              extendMode={project.trace_type === "upscale" ? false : extendMode}
               extendPads={extendPads}
               extendSource={extendSource}
               extendProcessing={extendProcessing}
@@ -496,6 +564,18 @@ export default function Workspace() {
         </div>
 
         {/* Right Properties Panel */}
+        {project?.trace_type === "upscale" ? (
+          <UpscalePropertiesPanel
+            project={project}
+            status={upscaleStatus}
+            error={upscaleError}
+            userCredits={userCredits}
+            onGenerate={handleRunUpscale}
+            onDownload={handleDownloadUpscaleProject}
+            onCompare={() => setShowCompare(true)}
+            onOpenTopUp={() => setShowTopUpModal(true)}
+          />
+        ) : (
         <PropertiesPanel
           project={project}
           traceState={traceState}
@@ -521,17 +601,28 @@ export default function Workspace() {
           onProceedExtend={handleProceedExtend}
           onCancelExtend={handleCancelExtend}
         />
+        )}
       </main>
 
       {/* ── Status Bar ───────────────────────────────────────────────── */}
       <div style={{ height: "28px", background: "#141414", borderTop: "1px solid #222", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {project?.svg_url ? (
+          {project?.trace_type === "upscale" && project.generated_image_url && upscaleStatus !== "legacy" ? (
+            <>
+              <CheckCircle2 size={12} color="#4ade80" />
+              <span style={{ fontSize: "10px", color: "#4ade80", fontWeight: "600" }}>Upscale complete</span>
+              <span style={{ fontSize: "10px", color: "#444", marginLeft: "4px" }}>Permanent project result ready to download.</span>
+            </>
+          ) : project?.svg_url ? (
             <>
               <CheckCircle2 size={12} color="#4ade80" />
               <span style={{ fontSize: "10px", color: "#4ade80", fontWeight: "600" }}>Vectorization complete</span>
               <span style={{ fontSize: "10px", color: "#444", marginLeft: "4px" }}>Clean shapes, optimized paths, and high quality output.</span>
             </>
+          ) : project?.trace_type === "upscale" ? (
+            <span style={{ fontSize: "10px", color: "#555" }}>
+              {upscaleStatus === "processing" ? "Processing upscale…" : upscaleStatus === "legacy" ? "Legacy result needs restoration" : "Ready"}
+            </span>
           ) : project ? (
             <span style={{ fontSize: "10px", color: "#555" }}>
               {traceState !== "idle" ? "Processing trace…" : "Ready"}

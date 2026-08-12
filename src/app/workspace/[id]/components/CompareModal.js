@@ -101,7 +101,7 @@ const CompareModal = memo(function CompareModal({
         <div style={{ padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(10,10,10,0.8)", backdropFilter: "blur(10px)", borderBottom: "1px solid rgba(255,255,255,0.05)", zIndex: 20, position: "relative" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <CheckCircle size={18} color="#d4ff59" />
-            <span style={{ fontWeight: "600", fontSize: "15px", color: "#fff", letterSpacing: "0.5px" }}>Trace Complete</span>
+            <span style={{ fontWeight: "600", fontSize: "15px", color: "#fff", letterSpacing: "0.5px" }}>{project.trace_type === "upscale" ? "Upscale Complete" : "Trace Complete"}</span>
             <span style={{ color: "#666", fontSize: "13px", marginLeft: "8px", fontWeight: "400" }}>Drag slider to compare</span>
           </div>
           <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "6px", borderRadius: "50%", transition: "all 0.2s" }} onMouseOver={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }} onMouseOut={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.background = "transparent"; }}>

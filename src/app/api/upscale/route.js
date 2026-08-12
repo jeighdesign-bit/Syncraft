@@ -1,14 +1,24 @@
 import { NextResponse } from "next/server";
 import { adminSupabase, safeRefundCredit } from "@/lib/supabase";
+import { uploadToR2 } from "@/lib/cloudflare";
+import { CREDIT_COST } from "@/lib/pricing";
 import { enforceRateLimit } from "@/lib/rateLimit";
-import { getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
+import {
+  DEFAULT_MAX_UPSCALED_IMAGE_BYTES,
+  fetchWithSSRFProtection,
+  getAllowedProviderHosts,
+  getAllowedStorageHosts,
+  isOwnedStorageUrl,
+  validateUrlForSSRF,
+} from "@/lib/ssrf";
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
 export async function POST(request) {
   let userId;
-  let creditDeducted = false;
+  let projectId;
+  let chargedThisRequest = false;
   try {
     // Auth
     const authHeader = request.headers.get('authorization');
@@ -31,48 +41,105 @@ export async function POST(request) {
     });
     if (!rateLimit.success) return rateLimit.response;
 
-    const body = await request.json();
-    const { imageUrl } = body;
-
-    if (!imageUrl) {
-      return NextResponse.json({ error: "Missing imageUrl" }, { status: 400 });
+    ({ projectId } = await request.json());
+    if (!projectId) {
+      return NextResponse.json({ error: "Missing projectId" }, { status: 400 });
     }
 
-    const finalImageUrl = normalizeUserImageUrl(imageUrl, new URL(request.url).origin);
-    if (!isOwnedStorageUrl(finalImageUrl, { userId }) || !(await validateUrlForSSRF(finalImageUrl, { allowedHosts: getAllowedStorageHosts() }))) {
+    const { data: project, error: projectError } = await adminSupabase
+      .from("projects")
+      .select("*")
+      .eq("id", projectId)
+      .eq("user_id", userId)
+      .eq("trace_type", "upscale")
+      .single();
+
+    if (projectError || !project) {
+      return NextResponse.json({ error: "Upscale project not found" }, { status: 404 });
+    }
+
+    const finalImageUrl = project.original_image_url;
+    if (!isOwnedStorageUrl(finalImageUrl, { userId, projectId }) || !(await validateUrlForSSRF(finalImageUrl, { allowedHosts: getAllowedStorageHosts() }))) {
       return NextResponse.json({ error: "Invalid or unauthorized image URL" }, { status: 400 });
     }
 
-    // Check Credits
-    const { data: profile, error: profileErr } = await adminSupabase
-      .from('profiles')
-      .select('credits')
-      .eq('id', userId)
-      .single();
-
-    if (profileErr || !profile || profile.credits < 12) {
-      return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
+    // Results produced by the old studio were saved as short-lived fal.media URLs.
+    // A paid legacy project is repaired in place without charging the user again.
+    const hasDurableResult = project.generated_image_url
+      && isOwnedStorageUrl(project.generated_image_url, { userId, projectId });
+    if (hasDurableResult) {
+      return NextResponse.json({
+        success: true,
+        upscaledUrl: project.generated_image_url,
+        projectId,
+        alreadyProcessed: true,
+      });
     }
+    const isPaidLegacyRepair = !!project.generated_image_url
+      && project.credit_deducted === true
+      && project.refunded !== true;
 
-    // Deduct 12 Credits
-    const { error: deductErr, data: updatedData } = await adminSupabase
-      .from('profiles')
-      .update({ credits: profile.credits - 12 })
-      .eq('id', userId)
-      .eq('credits', profile.credits)
-      .select();
+    if (!isPaidLegacyRepair) {
+      const { data: claimed } = await adminSupabase
+        .from("projects")
+        .update({
+          credit_deducted: true,
+          refunded: false,
+          canvas_data: { ...(project.canvas_data || {}), upscale_status: "processing" },
+        })
+        .eq("id", projectId)
+        .eq("user_id", userId)
+        .or("credit_deducted.eq.false,credit_deducted.is.null")
+        .select("id");
 
-    if (deductErr || !updatedData || updatedData.length === 0) {
-      return NextResponse.json({ error: "Conflict updating credits. Please try again." }, { status: 409 });
+      if (!claimed?.length) {
+        return NextResponse.json({ error: "UPSCALE_ALREADY_PROCESSING" }, { status: 409 });
+      }
+
+      const { data: profile, error: profileErr } = await adminSupabase
+        .from("profiles")
+        .select("credits")
+        .eq("id", userId)
+        .single();
+
+      if (profileErr || !profile || profile.credits < CREDIT_COST.upscale) {
+        await adminSupabase
+          .from("projects")
+          .update({ credit_deducted: false, canvas_data: project.canvas_data || {} })
+          .eq("id", projectId)
+          .eq("user_id", userId);
+        return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
+      }
+
+      const { data: updatedProfiles } = await adminSupabase
+        .from("profiles")
+        .update({ credits: profile.credits - CREDIT_COST.upscale })
+        .eq("id", userId)
+        .eq("credits", profile.credits)
+        .select("id");
+
+      if (!updatedProfiles?.length) {
+        await adminSupabase
+          .from("projects")
+          .update({ credit_deducted: false, canvas_data: project.canvas_data || {} })
+          .eq("id", projectId)
+          .eq("user_id", userId);
+        return NextResponse.json({ error: "Conflict updating credits. Please try again." }, { status: 409 });
+      }
+      chargedThisRequest = true;
+
+      await adminSupabase.from("credit_logs").insert({
+        user_id: userId,
+        action: "AI Upscale (4K)",
+        amount: -CREDIT_COST.upscale,
+      });
+    } else {
+      await adminSupabase
+        .from("projects")
+        .update({ canvas_data: { ...(project.canvas_data || {}), upscale_status: "processing" } })
+        .eq("id", projectId)
+        .eq("user_id", userId);
     }
-    creditDeducted = true;
-
-    // Log the transaction
-    await adminSupabase.from('credit_logs').insert({
-      user_id: userId,
-      action: 'AI Upscale (4K)',
-      amount: -12
-    });
 
     // Process via fal.ai
     if (!process.env.FAL_KEY) throw new Error("FAL_KEY missing");
@@ -97,39 +164,73 @@ export async function POST(request) {
       throw new Error("Upscaler failed to return a valid image URL.");
     }
 
-    const upscaledUrl = result.data.image.url;
+    const providerUrl = result.data.image.url;
+    const { response: imageResponse, buffer } = await fetchWithSSRFProtection(providerUrl, {
+      allowedHosts: getAllowedProviderHosts(),
+      maxBytes: DEFAULT_MAX_UPSCALED_IMAGE_BYTES,
+      timeoutMs: 60_000,
+      allowedContentTypes: ["image/"],
+    });
+    if (!imageResponse.ok) throw new Error("Upscaler result could not be downloaded");
 
-    // Save to projects table (history)
-    const { error: insertErr } = await adminSupabase
-      .from('projects')
-      .insert({
-        user_id: userId,
-        name: "Clarity Upscale",
-        trace_type: "upscale",
-        original_image_url: finalImageUrl,
-        generated_image_url: upscaledUrl,
+    const responseType = imageResponse.headers.get("content-type") || "image/png";
+    const extension = responseType.includes("jpeg") ? "jpg" : responseType.includes("webp") ? "webp" : "png";
+    const durableUrl = await uploadToR2(
+      buffer,
+      `projects/${projectId}/upscaled_${Date.now()}.${extension}`,
+      responseType
+    );
+
+    const { error: saveError } = await adminSupabase
+      .from("projects")
+      .update({
+        generated_image_url: durableUrl,
         credit_deducted: true,
-        refunded: false
-      });
+        refunded: false,
+        canvas_data: { ...(project.canvas_data || {}), upscale_status: "complete" },
+      })
+      .eq("id", projectId)
+      .eq("user_id", userId);
+    if (saveError) throw new Error("Failed to save the upscaled image");
 
-    if (insertErr) {
-      console.error("Failed to save to history:", insertErr);
-    }
-
-    return NextResponse.json({ success: true, upscaledUrl });
+    return NextResponse.json({ success: true, upscaledUrl: durableUrl, projectId, repaired: isPaidLegacyRepair });
 
   } catch (error) {
     console.error(`[Upscale API Error]:`, error.message);
-    if (creditDeducted && userId) {
-      await safeRefundCredit(userId);
+    let refunded = false;
+    if (chargedThisRequest && userId) {
+      refunded = await safeRefundCredit(userId, CREDIT_COST.upscale);
+      if (refunded) {
+        await adminSupabase.from("credit_logs").insert({
+          user_id: userId,
+          action: "Refund: AI Upscale (Error)",
+          amount: CREDIT_COST.upscale,
+        });
+      }
+    }
+    if (projectId && userId) {
+      const { data: failedProject } = await adminSupabase
+        .from("projects")
+        .select("canvas_data")
+        .eq("id", projectId)
+        .eq("user_id", userId)
+        .single();
+      await adminSupabase
+        .from("projects")
+        .update({
+          ...(chargedThisRequest ? { credit_deducted: refunded ? false : true, refunded } : {}),
+          canvas_data: { ...(failedProject?.canvas_data || {}), upscale_status: "failed" },
+        })
+        .eq("id", projectId)
+        .eq("user_id", userId);
     }
     const safeMessage =
       error.message?.toLowerCase().includes('fal') ||
       error.message?.toLowerCase().includes('api') ||
       error.message?.toLowerCase().includes('key') ||
       error.message === 'Unauthorized'
-        ? 'AI provider authentication failed (Unauthorized/Keys). Your credit has been refunded automatically.'
+        ? `AI provider authentication failed.${refunded ? " Your credits were refunded automatically." : ""}`
         : (error.message || 'Failed to upscale image');
-    return NextResponse.json({ error: safeMessage }, { status: 500 });
+    return NextResponse.json({ error: safeMessage, refunded }, { status: 500 });
   }
 }

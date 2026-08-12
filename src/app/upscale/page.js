@@ -103,6 +103,7 @@ export default function UpscalePage() {
         setSelectedUrl(pendingUrl);
         setSelectedFile(null);
         setUpscaledImage(null);
+        void startUpscaleProject({ url: pendingUrl, name: "Mobile Upscale" });
       }
     };
     checkPendingImage();
@@ -124,6 +125,7 @@ export default function UpscalePage() {
     setSelectedFile(file);
     setSelectedUrl(null);
     setUpscaledImage(null);
+    void startUpscaleProject({ file, name: file.name });
   };
 
   const uploadToS3 = async (file) => {
@@ -141,24 +143,15 @@ export default function UpscalePage() {
     }
   };
 
-  const handleUpscale = async () => {
-    if (!selectedFile && !selectedUrl) return;
-    if (credits <= 0) {
-      setShowTopUpModal(true);
-      return;
-    }
+  const startUpscaleProject = async ({ file = null, url = null, name = "4K Upscale" } = {}) => {
+    if (!file && !url) return;
     setIsProcessing(true);
-    setUpscaledImage(null);
-    
     try {
-      let finalUrl = selectedUrl;
-      
-      // If it's a raw file, we must upload to S3 first
-      if (selectedFile) {
-        finalUrl = await uploadToS3(selectedFile);
-      } else if (selectedUrl && selectedUrl.startsWith("blob:")) {
-        // Unlikely, but if it's a blob url without file reference
-        const blobRes = await fetch(selectedUrl);
+      let finalUrl = url;
+      if (file) {
+        finalUrl = await uploadToS3(file);
+      } else if (url?.startsWith("blob:")) {
+        const blobRes = await fetch(url);
         const blob = await blobRes.blob();
         finalUrl = await uploadToS3(blob);
       }
@@ -167,25 +160,28 @@ export default function UpscalePage() {
       const token = sessionRes.data.session?.access_token;
       if (!token) throw new Error("Unauthorized");
 
-      const res = await fetch("/api/upscale", {
+      const res = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ imageUrl: finalUrl }),
+        body: JSON.stringify({
+          imageUrl: finalUrl,
+          traceType: "upscale",
+          projectName: name.replace(/\.[^.]+$/, "") || "4K Upscale",
+        }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to process image");
-
-      setUpscaledImage(data.upscaledUrl);
-      toast.success("Image upscaled successfully! (12 Credits deducted)");
-      fetchCredits(user.id);
-      fetchRecentUpscales(user.id);
-
+      if (!res.ok || !data.projectId) throw new Error(data.error || "Failed to create upscale project");
+      router.push(`/workspace/${data.projectId}`);
     } catch (err) {
       toast.error(err.message || "An error occurred");
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleUpscale = async () => {
+    await startUpscaleProject({ file: selectedFile, url: selectedUrl, name: selectedFile?.name || "4K Upscale" });
   };
 
   const handleDownload = async (url) => {
@@ -423,7 +419,7 @@ export default function UpscalePage() {
                 color: isProcessing || (!previewImage && !upscaledImage) ? "#555" : "#0a0a0a",
               }}
             >
-              {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />} GENERATE 4K UPSCALE
+              {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />} {isProcessing ? "CREATING WORKSPACE" : "CONTINUE TO WORKSPACE"}
             </button>
 
             <button 
@@ -475,9 +471,9 @@ export default function UpscalePage() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {recentUpscales.map(item => (
-                  <div key={item.id} className="history-card" style={{ display: "flex", gap: "12px", padding: "10px", background: "#111", border: "1px solid #2a2a2a", borderRadius: "0", transition: "all 0.2s", position: "relative" }} onMouseEnter={e => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.background = "#151515"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.background = "#111"; }}>
+                  <div key={item.id} className="history-card" onClick={() => router.push(`/workspace/${item.id}`)} style={{ display: "flex", gap: "12px", padding: "10px", background: "#111", border: "1px solid #2a2a2a", borderRadius: "0", transition: "all 0.2s", position: "relative", cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.background = "#151515"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.background = "#111"; }}>
                     <div style={{ width: "48px", height: "48px", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                      <img src={item.generated_image_url || item.original_image_url} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "cover", transition: "transform 0.3s" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"} />
+                      <img src={item.original_image_url} alt="Upscale project source" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "cover", transition: "transform 0.3s" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"} />
                     </div>
                     <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0 }}>
                       <p style={{ margin: "0 0 4px", color: "#ddd", fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -488,13 +484,13 @@ export default function UpscalePage() {
                       </span>
                     </div>
                    <button
-                      onClick={() => handleDownload(item.generated_image_url)}
-                      title="Download Image"
+                      onClick={(event) => { event.stopPropagation(); router.push(`/workspace/${item.id}`); }}
+                      title="Open upscale workspace"
                       style={{ alignSelf: "center", background: "transparent", border: "1px solid #444", color: "#888", width: "28px", height: "28px", borderRadius: "0", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.2s", flexShrink: 0 }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = "#d4ff59"; e.currentTarget.style.color = "#d4ff59"; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.color = "#888"; }}
                     >
-                      <Download size={12} strokeWidth={2.5} />
+                      <Wand2 size={12} strokeWidth={2.5} />
                     </button>
                   </div>
                 ))}

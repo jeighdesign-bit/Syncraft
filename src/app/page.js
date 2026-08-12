@@ -146,6 +146,7 @@ export default function StartScreen() {
   const router = useRouter();
   const supabase = createClient();
   const fileInputRef = useRef(null);
+  const upscaleInputRef = useRef(null);
   const bgRemoveInputRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -424,6 +425,7 @@ export default function StartScreen() {
       const uploadedImageUrl = await uploadImageToStorage(fileToUpload, { token });
 
       const finalTraceType = isBgRemover ? "bg_remover" : (mobileTraceType || modalTraceType);
+      const isUpscale = finalTraceType === "upscale";
 
       const uploadResult = await fetchWithAuthRetry("/api/upload", {
         method: "POST",
@@ -432,7 +434,9 @@ export default function StartScreen() {
         },
         body: JSON.stringify({
           imageUrl: uploadedImageUrl,
-          projectName: isBgRemover ? fileToUpload.name.replace(/\.[^/.]+$/, "") : (modalProjectName || file.name),
+          projectName: (isBgRemover || isUpscale)
+            ? file.name.replace(/\.[^/.]+$/, "")
+            : (modalProjectName || file.name),
           traceType: finalTraceType
           // userId intentionally omitted — server reads from verified token
         })
@@ -677,8 +681,8 @@ export default function StartScreen() {
                 <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } setShowQrModal(true); }} disabled={isUploading} style={actionBtnStyle({ disabled: isUploading })} {...actionBtnHover({ disabled: isUploading })}>
                   <Scan size={13} /> Scan Phone
                 </button>
-                <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } router.push('/upscale'); }} disabled={isUploading} style={actionBtnStyle({ disabled: isUploading })} {...actionBtnHover({ disabled: isUploading })}>
-                  <ImageIcon size={13} /> Image Upscale
+                <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } upscaleInputRef.current?.click(); }} disabled={isUploading} style={actionBtnStyle({ disabled: isUploading })} {...actionBtnHover({ disabled: isUploading })}>
+                  {isUploading ? <Loader2 size={13} className="animate-spin" /> : <ImageIcon size={13} />} Image Upscale
                 </button>
                 <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } bgRemoveInputRef.current.click(); }} disabled={isUploading} style={actionBtnStyle({ accent: true, disabled: isUploading })} {...actionBtnHover({ accent: true, disabled: isUploading })}>
                   <Scissors size={13} /> BG Remover
@@ -973,6 +977,7 @@ export default function StartScreen() {
         <TestimonialSection />
         {/* Hidden File Input — shows type-selector modal before uploading */}
         <input type="file" ref={fileInputRef} onChange={(e) => { if (e.target.files[0]) openModalWithFile(e.target.files[0]); e.target.value = ""; }} accept="image/*" style={{ display: "none" }} />
+        <input type="file" ref={upscaleInputRef} onChange={(e) => { if (e.target.files[0]) handleFileUpload(e.target.files[0], false, "upscale"); e.target.value = ""; }} accept="image/*" style={{ display: "none" }} />
         <input type="file" ref={bgRemoveInputRef} onChange={(e) => { if (e.target.files[0]) handleFileUpload(e.target.files[0], true); e.target.value = ""; }} accept="image/*" style={{ display: "none" }} />
 
         {/* ─── Modals ────────────────────────────────────────────────────────── */}
