@@ -506,6 +506,10 @@ export default function Workspace() {
               extendProcessing={extendProcessing}
               onExtendPadsChange={setExtendPads}
               onExtendSourceLoad={setExtendSource}
+              onUpscaleOutputInvalid={() => {
+                setUpscaleStatus("legacy");
+                setUpscaleError("The saved upscale is blank. Restore it at no extra charge.");
+              }}
               leftControls={
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   {isEditingTitle ? (

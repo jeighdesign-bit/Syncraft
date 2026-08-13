@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 import { adminSupabase, safeRefundCredit } from "@/lib/supabase";
 import { uploadToR2 } from "@/lib/cloudflare";
 import { CREDIT_COST } from "@/lib/pricing";
@@ -14,6 +15,21 @@ import {
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
+
+async function inspectUpscaleImage(buffer) {
+  const metadata = await sharp(buffer, { failOn: "error" }).metadata();
+  if (!metadata.width || !metadata.height) {
+    return { valid: false, blankBlack: false };
+  }
+
+  const stats = await sharp(buffer, { failOn: "error" }).stats();
+  const visibleChannels = stats.channels.slice(0, Math.min(3, stats.channels.length));
+  return {
+    valid: true,
+    blankBlack: visibleChannels.length > 0
+      && visibleChannels.every((channel) => channel.max <= 5 && channel.mean <= 1),
+  };
+}
 
 export async function POST(request) {
   let userId;
@@ -68,12 +84,27 @@ export async function POST(request) {
     const hasDurableResult = project.generated_image_url
       && isOwnedStorageUrl(project.generated_image_url, { userId, projectId });
     if (hasDurableResult) {
-      return NextResponse.json({
-        success: true,
-        upscaledUrl: project.generated_image_url,
-        projectId,
-        alreadyProcessed: true,
-      });
+      try {
+        const existing = await fetchWithSSRFProtection(project.generated_image_url, {
+          allowedHosts: getAllowedStorageHosts(),
+          maxBytes: DEFAULT_MAX_UPSCALED_IMAGE_BYTES,
+          timeoutMs: 30_000,
+          allowedContentTypes: ["image/"],
+        });
+        const inspection = existing.response.ok
+          ? await inspectUpscaleImage(existing.buffer)
+          : { valid: false, blankBlack: false };
+        if (inspection.valid && !inspection.blankBlack) {
+          return NextResponse.json({
+            success: true,
+            upscaledUrl: project.generated_image_url,
+            projectId,
+            alreadyProcessed: true,
+          });
+        }
+      } catch (existingResultError) {
+        console.warn("[API Upscale] Existing result needs repair:", existingResultError.message);
+      }
     }
     const isPaidLegacyRepair = !!project.generated_image_url
       && project.credit_deducted === true
@@ -150,7 +181,16 @@ export async function POST(request) {
     const result = await fal.subscribe("fal-ai/clarity-upscaler", {
       input: {
         image_url: finalImageUrl,
-        scale: 4, // 4x Upscale
+        // Clarity Upscaler's current schema uses `upscale_factor`; `scale` is
+        // ignored and silently falls back to the provider default.
+        upscale_factor: 4,
+        // This endpoint only transforms an authenticated user's existing
+        // image. The provider safety checker can replace otherwise valid
+        // sports/artwork inputs with an all-black image while still returning
+        // a successful response.
+        enable_safety_checker: false,
+        resemblance: 0.8,
+        creativity: 0.2,
       },
       logs: true,
       onQueueUpdate: (update) => {
@@ -172,6 +212,17 @@ export async function POST(request) {
       allowedContentTypes: ["image/"],
     });
     if (!imageResponse.ok) throw new Error("Upscaler result could not be downloaded");
+
+    // A provider-side moderation/decoding failure may be returned as a valid
+    // image containing only black pixels. Never persist that as a completed
+    // paid result.
+    const inspection = await inspectUpscaleImage(buffer);
+    if (!inspection.valid) {
+      throw new Error("Upscaler returned an invalid image");
+    }
+    if (inspection.blankBlack) {
+      throw new Error("Upscaler returned a blank image. Please try again.");
+    }
 
     const responseType = imageResponse.headers.get("content-type") || "image/png";
     const extension = responseType.includes("jpeg") ? "jpg" : responseType.includes("webp") ? "webp" : "png";

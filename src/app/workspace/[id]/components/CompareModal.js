@@ -143,6 +143,14 @@ const CompareModal = memo(function CompareModal({
             {project.upscaled_image_url || project.generated_image_url ? (
               <img
                 src={`/api/proxy?url=${encodeURIComponent(project.upscaled_image_url || project.generated_image_url)}`}
+                data-fallback-src={project.upscaled_image_url || project.generated_image_url}
+                onError={(event) => {
+                  const fallback = event.currentTarget.dataset.fallbackSrc;
+                  if (fallback && event.currentTarget.src !== fallback) {
+                    event.currentTarget.removeAttribute("data-fallback-src");
+                    event.currentTarget.src = fallback;
+                  }
+                }}
                 style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", objectFit: "contain" }}
                 alt="After"
               />

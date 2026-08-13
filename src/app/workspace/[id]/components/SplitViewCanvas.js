@@ -76,6 +76,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
   extendProcessing = false,
   onExtendPadsChange,
   onExtendSourceLoad,
+  onUpscaleOutputInvalid,
 }) {
   const [activeTab, setActiveTab] = useState("generated");
   const isUpscale = project?.trace_type === "upscale";
@@ -492,7 +493,40 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
                       style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
                     />
                   ) : (
-                    <img src={activeUrl} draggable={false} alt="Output" style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0, objectFit: "contain", imageRendering: "auto" }} />
+                    <img
+                      src={activeUrl}
+                      data-fallback-src={isUpscale ? project?.generated_image_url || "" : ""}
+                      onError={(event) => {
+                        const fallback = event.currentTarget.dataset.fallbackSrc;
+                        if (fallback && event.currentTarget.src !== fallback) {
+                          event.currentTarget.removeAttribute("data-fallback-src");
+                          event.currentTarget.src = fallback;
+                        }
+                      }}
+                      onLoad={(event) => {
+                        if (!isUpscale || !onUpscaleOutputInvalid) return;
+                        try {
+                          const canvas = document.createElement("canvas");
+                          canvas.width = 32;
+                          canvas.height = 32;
+                          const context = canvas.getContext("2d", { willReadFrequently: true });
+                          context.drawImage(event.currentTarget, 0, 0, 32, 32);
+                          const pixels = context.getImageData(0, 0, 32, 32).data;
+                          let brightest = 0;
+                          for (let index = 0; index < pixels.length; index += 4) {
+                            if (pixels[index + 3] === 0) continue;
+                            brightest = Math.max(brightest, pixels[index], pixels[index + 1], pixels[index + 2]);
+                          }
+                          if (brightest <= 5) onUpscaleOutputInvalid();
+                        } catch {
+                          // The server validates the asset again before any repair;
+                          // client-side sampling is only an early UI signal.
+                        }
+                      }}
+                      draggable={false}
+                      alt="Output"
+                      style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0, objectFit: "contain", imageRendering: "auto" }}
+                    />
                   )}
                 </div>
               </div>
