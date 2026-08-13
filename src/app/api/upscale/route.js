@@ -79,6 +79,26 @@ export async function POST(request) {
       return NextResponse.json({ error: "Invalid or unauthorized image URL" }, { status: 400 });
     }
 
+    // Clarity's diffusion stage rejects very large requested outputs (for
+    // example a 1152x2048 source at 4x is almost 38 megapixels). Run its
+    // supported 2x enhancement, then finish the promised exact 4x dimensions
+    // locally with high-quality Lanczos resampling.
+    const sourceAsset = await fetchWithSSRFProtection(finalImageUrl, {
+      allowedHosts: getAllowedStorageHosts(),
+      maxBytes: DEFAULT_MAX_UPSCALED_IMAGE_BYTES,
+      timeoutMs: 30_000,
+      allowedContentTypes: ["image/"],
+    });
+    if (!sourceAsset.response.ok) {
+      return NextResponse.json({ error: "The source image could not be loaded" }, { status: 422 });
+    }
+    const sourceMetadata = await sharp(sourceAsset.buffer, { failOn: "error" }).metadata();
+    if (!sourceMetadata.width || !sourceMetadata.height) {
+      return NextResponse.json({ error: "The source image has invalid dimensions" }, { status: 422 });
+    }
+    const targetWidth = sourceMetadata.width * 4;
+    const targetHeight = sourceMetadata.height * 4;
+
     // Results produced by the old studio were saved as short-lived fal.media URLs.
     // A paid legacy project is repaired in place without charging the user again.
     const hasDurableResult = project.generated_image_url
@@ -181,9 +201,7 @@ export async function POST(request) {
     const result = await fal.subscribe("fal-ai/clarity-upscaler", {
       input: {
         image_url: finalImageUrl,
-        // Clarity Upscaler's current schema uses `upscale_factor`; `scale` is
-        // ignored and silently falls back to the provider default.
-        upscale_factor: 4,
+        upscale_factor: 2,
         // This endpoint only transforms an authenticated user's existing
         // image. The provider safety checker can replace otherwise valid
         // sports/artwork inputs with an all-black image while still returning
@@ -224,10 +242,19 @@ export async function POST(request) {
       throw new Error("Upscaler returned a blank image. Please try again.");
     }
 
-    const responseType = imageResponse.headers.get("content-type") || "image/png";
-    const extension = responseType.includes("jpeg") ? "jpg" : responseType.includes("webp") ? "webp" : "png";
+    const resized = sharp(buffer, { failOn: "error" }).resize(targetWidth, targetHeight, {
+      fit: "fill",
+      kernel: sharp.kernel.lanczos3,
+      withoutEnlargement: false,
+    });
+    const preserveAlpha = sourceMetadata.hasAlpha === true;
+    const finalBuffer = preserveAlpha
+      ? await resized.png({ compressionLevel: 9, adaptiveFiltering: true }).toBuffer()
+      : await resized.jpeg({ quality: 95, chromaSubsampling: "4:4:4", mozjpeg: true }).toBuffer();
+    const responseType = preserveAlpha ? "image/png" : "image/jpeg";
+    const extension = preserveAlpha ? "png" : "jpg";
     const durableUrl = await uploadToR2(
-      buffer,
+      finalBuffer,
       `projects/${projectId}/upscaled_${Date.now()}.${extension}`,
       responseType
     );
@@ -247,7 +274,7 @@ export async function POST(request) {
     return NextResponse.json({ success: true, upscaledUrl: durableUrl, projectId, repaired: isPaidLegacyRepair });
 
   } catch (error) {
-    console.error(`[Upscale API Error]:`, error.message);
+    console.error(`[Upscale API Error]:`, error.message, error.body?.detail || "", error.requestId || "");
     let refunded = false;
     if (chargedThisRequest && userId) {
       refunded = await safeRefundCredit(userId, CREDIT_COST.upscale);
@@ -275,7 +302,10 @@ export async function POST(request) {
         .eq("id", projectId)
         .eq("user_id", userId);
     }
-    const safeMessage =
+    const providerRejectedInput = error.status === 422 || error.message === "Unprocessable Entity";
+    const safeMessage = providerRejectedInput
+      ? `The AI upscaler could not process this image.${refunded ? " Your credits were refunded automatically." : ""} Please try again.`
+      :
       error.message?.toLowerCase().includes('fal') ||
       error.message?.toLowerCase().includes('api') ||
       error.message?.toLowerCase().includes('key') ||
