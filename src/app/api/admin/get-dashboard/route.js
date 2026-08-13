@@ -48,6 +48,14 @@ function planPrice(planKey) {
   return parsePesoAmount(CREDIT_PLANS[String(planKey || "").toLowerCase()]?.price);
 }
 
+function paymentPesoAmount(payment) {
+  if (payment?.currency && payment.currency !== "PHP") return planPrice(payment.plan);
+  const savedAmount = Number(payment?.amount);
+  return Number.isFinite(savedAmount) && savedAmount > 0
+    ? savedAmount / 100
+    : planPrice(payment?.plan);
+}
+
 async function fetchActiveCreditsTotal() {
   try {
     const pageSize = 1000;
@@ -266,7 +274,7 @@ export async function GET(request) {
 
     const syncraftRevenue = summarizeRevenue(
       [...approvedManualPayments, ...paidAutomatedPayments],
-      (payment) => planPrice(payment.plan),
+      (payment) => paymentPesoAmount(payment),
       (payment) => payment.credited_at || payment.updated_at || payment.created_at
     );
     const storeRevenue = summarizeRevenue(

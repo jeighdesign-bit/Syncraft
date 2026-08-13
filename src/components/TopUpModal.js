@@ -14,7 +14,7 @@ const PLANS_META = {
   basic:   { desc: 'Great for hobbyists printing occasionally.' },
   starter: { desc: 'Ideal for small businesses taking their first steps.' },
   pro:     { desc: 'Perfect for print shops & growing design studios.', best: true },
-  elite:   { desc: 'For high-volume agencies & power users.' },
+  elite:   { desc: 'For high-volume agencies & power users.', elitePromo: true },
 };
 
 const PLANS = Object.values(CREDIT_PLANS).map((plan) => ({
@@ -26,6 +26,7 @@ const PLANS = Object.values(CREDIT_PLANS).map((plan) => ({
   dodoPrice:  plan.dodoPrice,
   desc:       PLANS_META[plan.key]?.desc || '',
   best:       PLANS_META[plan.key]?.best || false,
+  elitePromo: PLANS_META[plan.key]?.elitePromo || false,
   generations: Math.floor(plan.credits / CREDIT_COST.trace),
 }));
 
@@ -55,6 +56,26 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
   const [logs, setLogs] = useState([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [qrExpanded, setQrExpanded] = useState(false);
+  const [elitePromo, setElitePromo] = useState({ configured: null, limit: 10, remaining: 10 });
+
+  useEffect(() => {
+    if (!show) return;
+
+    const controller = new AbortController();
+    fetch("/api/promotions/elite-autoresizer", {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (data && Number.isFinite(data.remaining)) setElitePromo(data);
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") console.warn("Elite promo counter unavailable", error);
+      });
+
+    return () => controller.abort();
+  }, [show]);
 
   useEffect(() => {
     if (activeTab === "history" && user) {
@@ -103,7 +124,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
       return;
     }
     if (!DODO_ENABLED_PLANS.has(form.plan)) {
-      toast.error("Mini is available via GCash only. Please choose Basic, Starter, or Pro for card payments.");
+      toast.error("Tingi is available via GCash only. Please choose Basic through Elite for card payments.");
       return;
     }
 
@@ -292,6 +313,20 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
                 {PLANS.map(p => (
                   <div key={p.key} style={{ background: p.best ? '#222' : '#18181b', border: `1px solid ${p.best ? '#d4ff59' : '#444'}`, padding: '32px 24px', display: 'flex', flexDirection: 'column', position: 'relative', borderRadius: '16px' }}>
+                    {p.elitePromo && (
+                      <div
+                        aria-label={elitePromo.remaining > 0 ? `Free Subli Auto-Resizer, ${elitePromo.remaining} slots left` : 'Subli Auto-Resizer promo ended'}
+          style={{ position: 'absolute', top: '-46px', right: '-51px', transform: 'rotate(-5deg)', transformOrigin: 'center', zIndex: 2, minWidth: '242px', padding: '12px 22px 13px 18px', background: elitePromo.remaining > 0 ? '#fff' : '#3f3f46', clipPath: 'polygon(0 0, 96% 0, 100% 12%, 96% 24%, 100% 36%, 96% 50%, 100% 64%, 96% 76%, 100% 88%, 96% 100%, 0 100%, 4% 88%, 0 76%, 4% 64%, 0 50%, 4% 36%, 0 24%, 4% 12%)', whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'center', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.92)', filter: elitePromo.remaining > 0 ? 'drop-shadow(0 7px 0 #a1a1aa) drop-shadow(0 13px 16px rgba(0,0,0,0.3))' : 'drop-shadow(0 7px 0 #25252a) drop-shadow(0 13px 16px rgba(0,0,0,0.3))' }}
+                      >
+                        {elitePromo.configured === false ? (
+                          <span style={{ display: 'block', color: '#e4e4e7', fontSize: '9px', fontWeight: '800' }}>PROMO SETUP PENDING</span>
+                        ) : elitePromo.remaining > 0 ? (
+            <><span style={{ display: 'block', color: '#111', fontSize: '10px', fontWeight: '900', letterSpacing: '0.1px', transform: 'translateX(-7px)' }}>FREE LIFETIME SUBLI AUTO-RESIZER</span><span style={{ display: 'block', color: '#111', fontSize: '9.5px', fontWeight: '800', marginTop: '4px', transform: 'translateX(-7px)' }}>FIRST 10 ELITE BUYERS · {elitePromo.remaining} LEFT</span></>
+                        ) : (
+                          <span style={{ display: 'block', color: '#e4e4e7', fontSize: '9px', fontWeight: '800' }}>LAUNCH PROMO ENDED</span>
+                        )}
+                      </div>
+                    )}
                     <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
                       <div style={{ fontSize: '16px', fontWeight: '500', color: '#fff' }}>{p.label}</div>
                       {p.best && <div style={{ background: '#d4ff59', color: '#000', fontSize: '11px', fontWeight: '800', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '4px', whiteSpace: 'nowrap' }}><CheckCircle size={12} /> Most popular</div>}

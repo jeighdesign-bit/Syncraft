@@ -101,6 +101,8 @@ export async function POST(request) {
       user_id: user.id,
       email: user.email,
       plan: plan.key,
+      amount: plan.amount,
+      credits: plan.credits,
       reference_number: normalizedReference,
       proof_url: proofUrl,
       status: "pending",

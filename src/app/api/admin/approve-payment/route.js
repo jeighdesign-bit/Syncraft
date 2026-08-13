@@ -3,6 +3,7 @@ import { adminSupabase } from "@/lib/supabase";
 import { Resend } from "resend";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
 import { authenticateAdminRequest } from "@/lib/adminAuth";
+import { claimEliteAutoresizerPromo } from "@/lib/eliteAutoresizerPromo";
 import {
   PAYMENT_STATUS,
   addsCreditsForStatus,
@@ -42,7 +43,10 @@ export async function POST(request) {
       return NextResponse.json({ error: "Payment request not found or already approved." }, { status: 409 });
     }
 
-    const creditsToAdd = PLAN_CREDITS[paymentRequest.plan] || 0;
+    const savedCredits = Number(paymentRequest.credits);
+    const creditsToAdd = Number.isInteger(savedCredits) && savedCredits > 0
+      ? savedCredits
+      : PLAN_CREDITS[paymentRequest.plan] || 0;
     const approvalStatus = getApprovalStatus(markOnly);
     const shouldAddCredits = addsCreditsForStatus(approvalStatus);
 
@@ -61,6 +65,8 @@ export async function POST(request) {
     if (claimErr || !claimedRequest) {
       return NextResponse.json({ error: "Payment request already approved." }, { status: 409 });
     }
+
+    let elitePromo = { eligible: false };
 
     if (shouldAddCredits) {
       const { error: updateProfileErr } = await adminSupabase
@@ -82,6 +88,20 @@ export async function POST(request) {
         action: 'Top-Up via GCash',
         amount: creditsToAdd
       });
+
+      const isCurrentEliteOffer = claimedRequest.plan === "elite"
+        && Number(claimedRequest.amount || CREDIT_PLANS.elite.amount) === CREDIT_PLANS.elite.amount
+        && creditsToAdd === CREDIT_PLANS.elite.credits;
+
+      if (isCurrentEliteOffer) {
+        elitePromo = await claimEliteAutoresizerPromo({
+          userId: claimedRequest.user_id,
+          email: claimedRequest.email,
+          planKey: claimedRequest.plan,
+          paymentSource: "gcash",
+          paymentId: claimedRequest.id,
+        });
+      }
     }
 
     // --- SEND EMAIL NOTIFICATION VIA RESEND ---
@@ -115,6 +135,13 @@ export async function POST(request) {
                 </div>
               </div>
 
+              ${elitePromo.granted ? `
+                <div style="background-color: rgba(212,255,89,0.1); border: 1px solid #d4ff59; padding: 18px; border-radius: 6px; margin-bottom: 30px; text-align: left;">
+                  <strong style="display:block; color:#d4ff59; margin-bottom:6px;">Elite launch bonus unlocked</strong>
+                  <span style="color:#dddddd; font-size:14px; line-height:1.5;">You are bonus recipient #${elitePromo.claimNumber}. Your free lifetime Subli Autoresizer access is now queued for delivery.</span>
+                </div>
+              ` : ''}
+
               <a href="https://syncraft.com" style="display: inline-block; background-color: #d4ff59; color: #000000; text-decoration: none; padding: 14px 28px; font-weight: 700; border-radius: 4px; font-size: 15px; transition: opacity 0.2s;">
                 Start Tracing Now
               </a>
@@ -145,6 +172,7 @@ export async function POST(request) {
       status: approvalStatus,
       addedCredits: shouldAddCredits ? creditsToAdd : 0,
       countsAsRevenue: shouldAddCredits,
+      elitePromo,
     });
   } catch (error) {
     console.error("Admin Approval Error:", error);

@@ -3,10 +3,10 @@ export const CREDIT_PLANS = {
     key: "tingi",
     label: "Tingi",
     credits: 24,        // 2 generates × 12 tokens
-    price: "₱50",
-    gcashPrice: "₱50",
+    price: "₱60",
+    gcashPrice: "₱60",
     dodoPrice: null,
-    amount: 5000,
+    amount: 6000,
     currency: "PHP",
     dodoProductEnv: "DODO_PRODUCT_TINGI",
     dodoEnabled: false,
@@ -14,11 +14,11 @@ export const CREDIT_PLANS = {
   basic: {
     key: "basic",
     label: "Basic",
-    credits: 48,        // 4 generates × 12 tokens
-    price: "₱100",
-    gcashPrice: "₱100",
+    credits: 60,        // 5 generations × 12 credits
+    price: "₱149",
+    gcashPrice: "₱149",
     dodoPrice: "$2.49",
-    amount: 10000,
+    amount: 14900,
     dodoAmount: 249,
     currency: "PHP",
     dodoCurrency: "USD",
@@ -28,7 +28,7 @@ export const CREDIT_PLANS = {
   starter: {
     key: "starter",
     label: "Starter",
-    credits: 156,       // 13 generates × 12 tokens
+    credits: 168,       // 14 generations × 12 credits
     price: "₱299",
     gcashPrice: "₱299",
     dodoPrice: "$5.99",
@@ -42,7 +42,7 @@ export const CREDIT_PLANS = {
   pro: {
     key: "pro",
     label: "Pro",
-    credits: 300,       // 25 generates × 12 tokens
+    credits: 288,       // 24 generations × 12 credits
     price: "₱499",
     gcashPrice: "₱499",
     dodoPrice: "$9.99",
@@ -56,11 +56,11 @@ export const CREDIT_PLANS = {
   elite: {
     key: "elite",
     label: "Elite",
-    credits: 540,       // 45 generates × 12 tokens
-    price: "₱799",
-    gcashPrice: "₱799",
+    credits: 528,       // 44 generations × 12 credits
+    price: "₱899",
+    gcashPrice: "₱899",
     dodoPrice: "$15.99",
-    amount: 79900,
+    amount: 89900,
     dodoAmount: 1599,
     currency: "PHP",
     dodoCurrency: "USD",

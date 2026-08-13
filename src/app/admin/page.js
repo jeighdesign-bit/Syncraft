@@ -389,7 +389,7 @@ export default function AdminDashboard() {
                   <div className={styles.rowBody}>
                     <span className={styles.rowMeta}><Clock size={13} /> {formatDate(request.created_at)}</span>
                     <strong>{request.email}</strong>
-                    <span>Plan: <b>{request.plan}</b> · Reference: {request.reference_number || "N/A"}</span>
+                    <span>Plan: <b>{request.plan}</b> · {request.credits || "—"} credits · {request.amount ? formatPeso(request.amount / 100) : "Legacy price"} · Reference: {request.reference_number || "N/A"}</span>
                   </div>
                   <div className={styles.rowActions}>
                     {request.proof_url && <a className={styles.actionButton} href={request.proof_url} target="_blank" rel="noreferrer">Receipt <ExternalLink size={13} /></a>}
@@ -416,7 +416,7 @@ export default function AdminDashboard() {
                     <div className={styles.rowBody}>
                       <span className={styles.rowMeta}>{formatDate(request.created_at)}</span>
                       <strong>{request.email}</strong>
-                      <span>{request.plan} · {request.reference_number || "No reference"}</span>
+                      <span>{request.plan} · {request.credits || "—"} credits · {request.amount ? formatPeso(request.amount / 100) : "Legacy price"} · {request.reference_number || "No reference"}</span>
                     </div>
                     <span className={styles.statusPill} data-status={request.status === PAYMENT_STATUS.ALREADY_PAID ? "recorded" : "paid"}>
                       <Check size={12} /> {request.status === PAYMENT_STATUS.ALREADY_PAID ? "Recorded" : "Paid"}

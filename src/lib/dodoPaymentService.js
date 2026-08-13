@@ -2,6 +2,7 @@ import { adminSupabase } from "@/lib/supabase";
 import { getDodoClient } from "@/lib/dodo";
 import { getCreditPlan } from "@/lib/paymentPlans";
 import { Resend } from "resend";
+import { claimEliteAutoresizerPromo } from "@/lib/eliteAutoresizerPromo";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -40,7 +41,7 @@ export async function markDodoPaymentStatus(payment, status) {
   return true;
 }
 
-async function sendDodoPaymentEmail({ email, plan, credits, paymentId }) {
+async function sendDodoPaymentEmail({ email, plan, credits, paymentId, elitePromo }) {
   if (!resend || !email) return;
 
   try {
@@ -56,6 +57,12 @@ async function sendDodoPaymentEmail({ email, plan, credits, paymentId }) {
             <p>Plan: <strong>${plan}</strong></p>
             <p>Credits added: <strong style="color:#d4ff59">+${credits}</strong></p>
             <p>Payment ID: <strong>${paymentId || "N/A"}</strong></p>
+            ${elitePromo?.granted ? `
+              <div style="margin-top:24px;padding:18px;border:1px solid #d4ff59;background:rgba(212,255,89,.1);border-radius:6px;text-align:left">
+                <strong style="color:#d4ff59">Elite launch bonus unlocked</strong>
+                <p style="color:#ddd;line-height:1.5;margin-bottom:0">You are bonus recipient #${elitePromo.claimNumber}. Your free lifetime Subli Autoresizer access is now queued for delivery.</p>
+              </div>
+            ` : ""}
           </div>
         </div>
       `,
@@ -79,7 +86,7 @@ export async function handleDodoPaymentSucceeded(payment) {
   if (fetchError || !localPayment) throw new Error("Local Dodo payment record not found");
 
   const plan = getCreditPlan(localPayment.plan);
-  if (!plan || plan.credits !== localPayment.credits) {
+  if (!plan || !Number.isInteger(localPayment.credits) || localPayment.credits <= 0) {
     throw new Error("Local Dodo payment plan is invalid");
   }
 
@@ -110,14 +117,25 @@ export async function handleDodoPaymentSucceeded(payment) {
 
   if (logError) console.error("[Dodo] Credit log insert failed:", logError);
 
+  const elitePromo = localPayment.plan === "elite" && localPayment.credits === plan.credits
+    ? await claimEliteAutoresizerPromo({
+        userId: grant.granted_user_id,
+        email: localPayment.email,
+        planKey: localPayment.plan,
+        paymentSource: "dodo",
+        paymentId: localPayment.id,
+      })
+    : { eligible: false };
+
   await sendDodoPaymentEmail({
     email: localPayment.email,
     plan: localPayment.plan,
     credits: grant.granted_credits,
     paymentId: payment.payment_id || null,
+    elitePromo,
   });
 
-  return { credited: true, credits: grant.granted_credits };
+  return { credited: true, credits: grant.granted_credits, elitePromo };
 }
 
 function asPaymentFromSession(session, localPayment) {
