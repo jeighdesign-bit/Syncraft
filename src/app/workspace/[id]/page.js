@@ -32,6 +32,45 @@ import { evaluateExtendIntent } from "@/lib/aspectRatio";
 // ─── Supabase client — created ONCE at module level, not inside the component ─
 const supabase = createClient();
 
+const WORKSPACE_MODES = {
+  mockup: {
+    title: "GARMENT EXTRACT",
+    eyebrow: "APPAREL RECONSTRUCTION",
+    accent: "#d4ff59",
+  },
+  logo: {
+    title: "LOGO EXTRACT",
+    eyebrow: "PRECISION VECTOR TRACE",
+    accent: "#b8a7ff",
+  },
+  universal: {
+    title: "UNIVERSAL EXTRACT",
+    eyebrow: "FORENSIC ARTWORK RECOVERY",
+    accent: "#9effc8",
+  },
+  upscale: {
+    title: "HD UPSCALE",
+    eyebrow: "IMAGE ENHANCEMENT",
+    accent: "#6fddff",
+  },
+};
+
+function getWorkspaceMode(project) {
+  if (!project) {
+    return {
+      title: "DESIGN WORKSPACE",
+      eyebrow: "LOADING PROJECT",
+      accent: "#d4ff59",
+    };
+  }
+
+  return WORKSPACE_MODES[project.trace_type] || {
+    title: "DESIGN WORKSPACE",
+    eyebrow: "SYNCRAFT CREATIVE TOOL",
+    accent: "#d4ff59",
+  };
+}
+
 
 export default function Workspace() {
   const router = useRouter();
@@ -451,17 +490,31 @@ export default function Workspace() {
         return "Saved recently";
       })()
     : null;
+  const workspaceMode = getWorkspaceMode(project);
 
   return (
     <div className="app-container">
 
       {/* ── Top Menu Bar ─────────────────────────────────────────────── */}
-      <header style={{ padding: "0 24px", height: "54px", display: "flex", alignItems: "center", borderBottom: "1px solid #2a2a2a", background: "#181818", flexShrink: 0 }}>
-        <button onClick={() => router.push('/')} style={{ display: "flex", alignItems: "center", gap: "7px", background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "color 0.2s", padding: "6px 10px" }} onMouseEnter={e => e.currentTarget.style.color="#d4ff59"} onMouseLeave={e => e.currentTarget.style.color="#555"}>
-          <img src="/logo.svg" alt="Syncraft Home" style={{ height: "18px", width: "auto", opacity: 0.9 }} />
+      <header
+        className="workspace-topbar"
+        style={{ "--workspace-accent": workspaceMode.accent }}
+      >
+        <button
+          type="button"
+          onClick={() => router.push('/')}
+          className="workspace-home-button"
+          aria-label="Return to Syncraft home"
+        >
+          <img src="/logo.svg" alt="" className="workspace-home-button__logo" />
         </button>
-        <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <h1 style={{ fontSize: "13px", fontWeight: "600", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>{project?.trace_type === "upscale" ? "UPSCALE WORKSPACE" : "WORKSPACE"}</h1>
+        <div className="workspace-mode-title" aria-live="polite">
+          <span className="workspace-mode-title__rail" aria-hidden="true" />
+          <span className="workspace-mode-title__copy">
+            <span className="workspace-mode-title__eyebrow">{workspaceMode.eyebrow}</span>
+            <h1 className="workspace-mode-title__heading">{workspaceMode.title}</h1>
+          </span>
+          <span className="workspace-mode-title__rail workspace-mode-title__rail--end" aria-hidden="true" />
         </div>
         <div className="syncraft-header-controls">
           <button type="button" onClick={() => setShowShortcuts(true)} className="syncraft-header-control">

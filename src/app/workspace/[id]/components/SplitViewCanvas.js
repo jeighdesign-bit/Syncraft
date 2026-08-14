@@ -377,10 +377,11 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
       <div style={{ display: "flex", alignItems: "center", padding: "0 16px", background: "#1a1a1a", borderBottom: "1px solid #2a2a2a", height: "48px", flexShrink: 0, gap: "12px", justifyContent: "space-between" }}>
 
         {/* Left: tool buttons (only in idle) */}
-        <div style={{ display: "flex", flex: 1, gap: "8px", alignItems: "center" }}>
+        <div className="canvas-toolbar-side canvas-toolbar-side--left">
           {leftControls}
-          {leftControls && <div style={{ width: "1px", height: "14px", background: "#333", margin: "0 8px" }} />}
-          <span style={{ color: "#666", fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px", marginRight: "6px" }}>ORIGINAL UPLOAD</span>
+          <div className="canvas-toolbar-pane-label">
+            <span className="canvas-toolbar-pane-label__text">Original Upload</span>
+          </div>
         </div>
 
         {/* Center: right-panel tab label (Segmented Control) */}
@@ -416,7 +417,10 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
         </div>
 
         {/* Right: zoom controls — replaced by an Extend-mode hint while editing */}
-        <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "6px" }}>
+        <div className="canvas-toolbar-side canvas-toolbar-side--right">
+          <div className="canvas-toolbar-pane-label">
+            <span className="canvas-toolbar-pane-label__text">{extendMode ? "EXTEND — FLAT EXTRACT" : rightLabel}</span>
+          </div>
           {extendMode ? (
             <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#d4ff59", fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px" }}>
               <Expand size={13} /> EXTEND MODE
@@ -454,10 +458,8 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
         onPointerLeave={handlePointerUp}
       >
         {/* LEFT PANEL: Original Image */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: "1px solid #2a2a2a" }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", borderRight: "1px solid #2a2a2a" }}>
           <div ref={leftScrollRef} onScroll={handleLeftScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "transparent", position: "relative" }}>
-            {/* Canvas label */}
-            <div style={{ position: "absolute", top: "14px", left: "14px", zIndex: 5, fontSize: "10px", fontWeight: "700", color: "#444", letterSpacing: "1.5px", textTransform: "uppercase", pointerEvents: "none" }}>ORIGINAL</div>
             {proxyOriginal ? (
               <div style={{ position: "relative", width: `${Math.max(100, zoomLevel * 100)}%`, height: `${Math.max(100, zoomLevel * 100)}%`, minWidth: "100%", minHeight: "100%" }}>
                 <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", padding: "24px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
@@ -471,10 +473,8 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
         </div>
 
         {/* RIGHT PANEL: Outputs */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
           <div ref={rightScrollRef} onScroll={handleRightScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "rgba(255,255,255,0.02)", position: "relative" }}>
-            {/* Canvas label */}
-            <div style={{ position: "absolute", top: "14px", left: "14px", zIndex: 5, fontSize: "10px", fontWeight: "700", color: extendMode ? "#d4ff59" : activeTab === "svg" ? "rgba(212, 255, 89,0.35)" : "#444", letterSpacing: "1.5px", textTransform: "uppercase", pointerEvents: "none" }}>{extendMode ? "EXTEND — FLAT EXTRACT" : rightLabel}</div>
             {extendMode ? (
               <ExtendCanvas
                 proxyUrl={proxyGenerated}

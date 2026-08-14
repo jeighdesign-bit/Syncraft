@@ -178,6 +178,66 @@ html, body {
   padding: 40px;
 }
 
+/* Pane names live in the existing toolbar whitespace, keeping the canvas
+   completely unobstructed at every zoom level. */
+.canvas-toolbar-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.canvas-toolbar-side--left .canvas-toolbar-pane-label {
+  margin-right: clamp(16px, 6vw, 110px);
+  margin-left: auto;
+}
+
+.canvas-toolbar-side--right .canvas-toolbar-pane-label {
+  margin-right: auto;
+  margin-left: clamp(16px, 6vw, 110px);
+}
+
+.canvas-toolbar-pane-label {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+.canvas-toolbar-pane-label__text {
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.08);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@media (max-width: 1250px) {
+  .canvas-toolbar-side--left .canvas-toolbar-pane-label,
+  .canvas-toolbar-side--right .canvas-toolbar-pane-label {
+    margin-right: 16px;
+    margin-left: 16px;
+  }
+
+}
+
+@media (max-width: 1050px) {
+  .canvas-toolbar-pane-label {
+    display: none;
+  }
+}
+
 .pipeline-container {
   display: flex;
   gap: 10px;
@@ -796,10 +856,114 @@ html, body {
    SHARED HEADER CONTROLS
    Landing and workspace use one visual system.
    ========================================= */
+.workspace-topbar {
+  --workspace-accent: var(--accent);
+  position: relative;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
+  align-items: center;
+  height: 54px;
+  flex-shrink: 0;
+  padding: 0 24px;
+  border-bottom: 1px solid #2a2a2a;
+  background: #181818;
+}
+
+.workspace-topbar::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 32%, color-mix(in srgb, var(--workspace-accent) 50%, transparent), transparent 68%);
+  content: "";
+  pointer-events: none;
+}
+
+.workspace-home-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: max-content;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.88;
+  transition: opacity 180ms ease;
+}
+
+.workspace-home-button:hover {
+  opacity: 1;
+}
+
+.workspace-home-button:focus-visible {
+  outline: 2px solid var(--workspace-accent);
+  outline-offset: -4px;
+}
+
+.workspace-home-button__logo {
+  display: block;
+  width: auto;
+  height: 18px;
+}
+
+.workspace-mode-title {
+  display: inline-grid;
+  grid-template-columns: 20px auto 20px;
+  align-items: center;
+  gap: 12px;
+  justify-self: center;
+  min-width: 250px;
+}
+
+.workspace-mode-title__rail {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--workspace-accent));
+  opacity: 0.65;
+}
+
+.workspace-mode-title__rail--end {
+  background: linear-gradient(90deg, var(--workspace-accent), transparent);
+}
+
+.workspace-mode-title__copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.workspace-mode-title__eyebrow {
+  color: color-mix(in srgb, var(--workspace-accent) 78%, #fff);
+  font-size: 8px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+}
+
+.workspace-mode-title__heading {
+  margin: 0;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: 2.4px;
+  text-transform: uppercase;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--workspace-accent) 14%, transparent);
+}
+
 .syncraft-header-controls {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  justify-self: end;
   gap: 8px;
 }
 
@@ -889,6 +1053,28 @@ a.syncraft-header-control.syncraft-header-control--store:hover {
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+}
+
+@media (max-width: 860px) {
+  .workspace-topbar {
+    grid-template-columns: auto 1fr auto;
+    padding: 0 12px;
+  }
+
+  .workspace-mode-title {
+    grid-template-columns: auto;
+    min-width: 0;
+  }
+
+  .workspace-mode-title__rail,
+  .workspace-mode-title__eyebrow {
+    display: none;
+  }
+
+  .workspace-mode-title__heading {
+    font-size: 12px;
+    letter-spacing: 1.5px;
+  }
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
