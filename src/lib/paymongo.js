@@ -95,6 +95,95 @@ export async function createPaymongoCheckoutSession({
 }
 
 /**
+ * Creates a direct QR Ph Payment Intent and returns the Base64 QR image.
+ */
+export async function createPaymongoQrPhDirectIntent({
+  user,
+  plan,
+  localPaymentId,
+}) {
+  const headers = getPaymongoAuthHeaders();
+
+  // 1. Create Payment Intent
+  const intentPayload = {
+    data: {
+      attributes: {
+        amount: plan.amount,
+        payment_method_allowed: ["qrph"],
+        currency: "PHP",
+        capture_type: "automatic",
+        description: `Syncraft Credits - ${plan.label}`,
+        metadata: {
+          local_payment_id: localPaymentId,
+          user_id: user.id,
+          plan: plan.key,
+          credits: String(plan.credits),
+        },
+      },
+    },
+  };
+
+  const intentRes = await fetch(`${PAYMONGO_API_BASE}/payment_intents`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(intentPayload),
+  });
+  const intentData = await intentRes.json();
+  if (!intentRes.ok) throw new Error(intentData?.errors?.[0]?.detail || "Failed to create Payment Intent");
+  const intent = intentData.data;
+
+  // 2. Create QR Ph Payment Method
+  const methodPayload = {
+    data: {
+      attributes: {
+        type: "qrph",
+        billing: {
+          name: user.user_metadata?.full_name || user.email?.split("@")[0] || "Syncraft User",
+          email: user.email,
+        }
+      },
+    },
+  };
+
+  const methodRes = await fetch(`${PAYMONGO_API_BASE}/payment_methods`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(methodPayload),
+  });
+  const methodData = await methodRes.json();
+  if (!methodRes.ok) throw new Error(methodData?.errors?.[0]?.detail || "Failed to create Payment Method");
+  const method = methodData.data;
+
+  // 3. Attach Payment Method to Payment Intent
+  const attachPayload = {
+    data: {
+      attributes: {
+        payment_method: method.id,
+        client_key: intent.attributes.client_key,
+        return_url: "https://syncraftech.com"
+      },
+    },
+  };
+
+  const attachRes = await fetch(`${PAYMONGO_API_BASE}/payment_intents/${intent.id}/attach`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(attachPayload),
+  });
+  const attachData = await attachRes.json();
+  if (!attachRes.ok) throw new Error(attachData?.errors?.[0]?.detail || "Failed to attach Payment Method");
+
+  const nextAction = attachData.data?.attributes?.next_action;
+  
+  return {
+    intentId: intent.id,
+    qrBase64: nextAction?.code?.image_url,
+    expiresAt: nextAction?.code?.expires_at,
+    status: attachData.data?.attributes?.status
+  };
+}
+
+/**
  * Verifies PayMongo Webhook signature with timing-safe comparison.
  * PayMongo sends header format: t=1614234567,te=<test_sig>,li=<live_sig>
  */

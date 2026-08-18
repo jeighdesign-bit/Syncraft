@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
 import { getCreditPlan } from "@/lib/paymentPlans";
 import { getSiteUrl } from "@/lib/dodo";
-import { createPaymongoCheckoutSession } from "@/lib/paymongo";
+import { createPaymongoQrPhDirectIntent } from "@/lib/paymongo";
 import { enforceRateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -71,34 +71,37 @@ export async function POST(request) {
     }
     localPayment = insertedPayment;
 
-    const siteUrl = getSiteUrl(request);
-    const { sessionId, checkoutUrl } = await createPaymongoCheckoutSession({
+    const { intentId, qrBase64, expiresAt } = await createPaymongoQrPhDirectIntent({
       user,
       plan,
       localPaymentId: localPayment.id,
-      siteUrl,
     });
 
-    checkoutSessionCreated = Boolean(sessionId);
+    checkoutSessionCreated = Boolean(intentId);
 
-    if (!checkoutUrl) {
+    if (!qrBase64) {
       await adminSupabase
         .from("paymongo_payments")
         .update({ status: "failed" })
         .eq("id", localPayment.id);
       return NextResponse.json(
-        { error: "PayMongo did not return a checkout URL" },
+        { error: "PayMongo did not return a QR code image" },
         { status: 502 },
       );
     }
 
-    // Update local payment record with the PayMongo checkout session ID
+    // Update local payment record with the PayMongo Intent ID
     await adminSupabase
       .from("paymongo_payments")
-      .update({ paymongo_checkout_session_id: sessionId })
+      .update({ paymongo_checkout_session_id: intentId })
       .eq("id", localPayment.id);
 
-    return NextResponse.json({ checkoutUrl });
+    return NextResponse.json({ 
+      intentId, 
+      qrBase64,
+      expiresAt,
+      localPaymentId: localPayment.id
+    });
   } catch (error) {
     if (localPayment && !checkoutSessionCreated) {
       await adminSupabase

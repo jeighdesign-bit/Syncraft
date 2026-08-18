@@ -117,10 +117,17 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
     setIsStartingDodo(false);
     setActiveTab("plans");
     setForm({ plan: "pro", txnRef: "", screenshotName: "", screenshotFile: null });
+    setQrPhData(null);
+    if (qrPollIntervalId) {
+      clearInterval(qrPollIntervalId);
+      setQrPollIntervalId(null);
+    }
   }, [onClose]);
 
 
   const [isStartingPaymongo, setIsStartingPaymongo] = useState(false);
+  const [qrPhData, setQrPhData] = useState(null);
+  const [qrPollIntervalId, setQrPollIntervalId] = useState(null);
 
   const handleStartPaymongoCheckout = useCallback(async () => {
     if (!user) {
@@ -144,9 +151,33 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to start PayMongo checkout");
-      if (!data.checkoutUrl) throw new Error("PayMongo checkout URL is missing");
+      if (!data.qrBase64) throw new Error("PayMongo did not return a QR code");
 
-      window.location.href = data.checkoutUrl;
+      setQrPhData(data);
+      setStep('qr_display');
+
+      // Start polling
+      const intervalId = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/payments/paymongo/status?localPaymentId=${data.localPaymentId}`);
+          if (res.ok) {
+            const statusData = await res.json();
+            if (statusData.status === 'paid') {
+              clearInterval(intervalId);
+              setQrPollIntervalId(null);
+              window.location.href = '/?topup=paymongo-return';
+            } else if (statusData.status === 'failed' || statusData.status === 'expired') {
+              clearInterval(intervalId);
+              setQrPollIntervalId(null);
+              toast.error("Payment failed or expired. Please try again.");
+              setStep(2);
+            }
+          }
+        } catch(e) {
+          console.error("Polling error", e);
+        }
+      }, 3000);
+      setQrPollIntervalId(intervalId);
     } catch (err) {
       toast.error(err.message || "Failed to start PayMongo checkout");
     } finally {
