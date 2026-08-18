@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useState, useCallback, useEffect } from "react";
-import { X, Shirt, CheckCircle, Package, Tag, Mail, Smartphone, Check, ArrowRight, ImageIcon, History, Clock, CreditCard, AlertTriangle } from "lucide-react";
+import { X, Shirt, CheckCircle, Package, Tag, Mail, Smartphone, Check, ArrowRight, ImageIcon, History, Clock, CreditCard, AlertTriangle, QrCode } from "lucide-react";
 import { toast } from "@/components/Toast";
 import { createClient } from "@/utils/supabase/client";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
@@ -119,6 +119,41 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
     setForm({ plan: "pro", txnRef: "", screenshotName: "", screenshotFile: null });
   }, [onClose]);
 
+
+  const [isStartingPaymongo, setIsStartingPaymongo] = useState(false);
+
+  const handleStartPaymongoCheckout = useCallback(async () => {
+    if (!user) {
+      onLoginRequired?.();
+      return;
+    }
+    setIsStartingPaymongo(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("Please log in again before checkout.");
+
+      const response = await fetch("/api/payments/paymongo/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ planKey: form.plan }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to start PayMongo checkout");
+      if (!data.checkoutUrl) throw new Error("PayMongo checkout URL is missing");
+
+      window.location.href = data.checkoutUrl;
+    } catch (err) {
+      toast.error(err.message || "Failed to start PayMongo checkout");
+    } finally {
+      setIsStartingPaymongo(false);
+    }
+  }, [user, form.plan, supabase, onLoginRequired]);
+
   const handleStartDodoCheckout = useCallback(async () => {
     if (!user) {
       onLoginRequired?.();
@@ -216,7 +251,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
 
   return (
     <div className="modal-overlay" onClick={handleClose} style={{ padding: '24px' }}>
-      <div className="modal-content" style={{ maxWidth: (activeTab === 'plans' && step === 1) ? '1250px' : '520px', width: '100%', maxHeight: 'calc(100vh - 48px)', padding: '0', overflow: 'hidden', borderRadius: '16px', border: '1px solid #333', background: '#111', display: 'flex', flexDirection: 'column', transition: 'max-width 0.3s ease', margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" style={{ maxWidth: (activeTab === 'plans' && step === 1) ? '1250px' : '780px', width: '100%', maxHeight: 'calc(100vh - 48px)', padding: '0', overflow: 'hidden', borderRadius: '16px', border: '1px solid #333', background: '#111', display: 'flex', flexDirection: 'column', transition: 'max-width 0.3s ease', margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
         
         {/* Modal Header */}
         <div style={{ background: '#18181b', borderBottom: '1px solid #444', padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -386,110 +421,112 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                 )}
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', margin: '0 auto 24px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', margin: '0 auto 24px' }}>
+                {/* 1. QR Ph */}
                 <button
                   type="button"
-                  onClick={() => setStep(3)}
-                  style={{
-                    background: '#18181b',
-                    border: '1px solid #333',
-                    color: '#fff',
-                    padding: '20px 24px',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    borderRadius: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '20px',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.borderColor = '#d4ff59';
-                    e.currentTarget.style.background = '#222226';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.borderColor = '#333';
-                    e.currentTarget.style.background = '#18181b';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
+                  onClick={handleStartPaymongoCheckout}
+                  disabled={isStartingPaymongo || isStartingDodo}
+                  style={{ background: '#18181b', border: '1px solid #333', color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: (isStartingPaymongo || isStartingDodo) ? 'not-allowed' : 'pointer', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: (isStartingPaymongo || isStartingDodo) ? 0.6 : 1, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+                  onMouseOver={(e) => { if (!isStartingPaymongo && !isStartingDodo) { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; } }}
+                  onMouseOut={(e) => { if (!isStartingPaymongo && !isStartingDodo) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#18181b'; } }}
                 >
-                  <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(212, 255, 89, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Smartphone size={24} color="#d4ff59" />
+                  <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(212, 255, 89, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <QrCode size={24} color="#d4ff59" />
                   </div>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>GCash Manual</span>
-                    <span style={{ alignSelf: 'flex-start', background: '#27272a', color: '#aaa', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manual Approval</span>
-                    <span style={{ color: '#888', fontSize: '13px', lineHeight: '1.4' }}>Scan QR code, upload payment proof, and receive credits in 10-30 mins. Best for PH users.</span>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                      <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>QR Ph (GCash & Maya)</span>
+                      <span style={{ background: 'rgba(212, 255, 89, 0.15)', color: '#d4ff59', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        {isStartingPaymongo ? 'Loading...' : 'Instant Auto-Credit'}
+                      </span>
+                    </div>
+                    <span style={{ color: '#888', fontSize: '13px', lineHeight: '1.4' }}>
+                      Scan dynamic QR with GCash, Maya, ShopeePay, or PH banking apps ({PLAN_PRICES[form.plan]}).
+                    </span>
                   </div>
-                  <ArrowRight size={18} color="#666" style={{ flexShrink: 0 }} />
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingLeft: '16px', borderLeft: '1px solid #2a2a2e', flexShrink: 0, height: '32px' }}>
+                    <img src="/logos/qrph.png?v=2" alt="QR Ph" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
+                    <img src="/logos/gcash.svg" alt="GCash" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
+                    <img src="/logos/maya.png?v=2" alt="Maya" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
+                    <ArrowRight size={18} color="#666" style={{ marginLeft: '4px' }} />
+                  </div>
                 </button>
 
+                {/* 2. Card */}
                 <button
                   type="button"
                   onClick={handleStartDodoCheckout}
-                  disabled={isStartingDodo || form.plan === 'tingi'}
-                  style={{
-                    background: form.plan === 'tingi' ? '#141416' : '#18181b',
-                    border: '1px solid #333',
-                    color: '#fff',
-                    padding: '20px 24px',
-                    textAlign: 'left',
-                    cursor: (isStartingDodo || form.plan === 'tingi') ? 'not-allowed' : 'pointer',
-                    borderRadius: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '20px',
-                    opacity: (isStartingDodo || form.plan === 'tingi') ? 0.5 : 1,
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                  }}
-                  onMouseOver={(e) => {
-                    if (!isStartingDodo && form.plan !== 'tingi') {
-                      e.currentTarget.style.borderColor = '#d4ff59';
-                      e.currentTarget.style.background = '#222226';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                    }
-                  }}
-                  onMouseOut={(e) => {
-                    if (!isStartingDodo && form.plan !== 'tingi') {
-                      e.currentTarget.style.borderColor = '#333';
-                      e.currentTarget.style.background = '#18181b';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }
-                  }}
+                  disabled={isStartingDodo || isStartingPaymongo || form.plan === 'tingi'}
+                  style={{ background: form.plan === 'tingi' ? '#141416' : '#18181b', border: '1px solid #333', color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: (isStartingDodo || isStartingPaymongo || form.plan === 'tingi') ? 'not-allowed' : 'pointer', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: (isStartingDodo || isStartingPaymongo || form.plan === 'tingi') ? 0.5 : 1, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+                  onMouseOver={(e) => { if (!isStartingDodo && !isStartingPaymongo && form.plan !== 'tingi') { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; } }}
+                  onMouseOut={(e) => { if (!isStartingDodo && !isStartingPaymongo && form.plan !== 'tingi') { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#18181b'; } }}
                 >
                   <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(212, 255, 89, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <CreditCard size={24} color="#d4ff59" />
                   </div>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>Card / International</span>
-                    <span style={{ alignSelf: 'flex-start', background: 'rgba(212, 255, 89, 0.15)', color: '#d4ff59', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      {form.plan === 'tingi' ? 'Basic+' : isStartingDodo ? 'Loading...' : 'Instant Auto-Credit'}
-                    </span>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                      <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>Card / International</span>
+                      <span style={{ background: 'rgba(212, 255, 89, 0.15)', color: '#d4ff59', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        {form.plan === 'tingi' ? 'Basic+' : isStartingDodo ? 'Loading...' : 'Instant Auto-Credit'}
+                      </span>
+                    </div>
                     <span style={{ color: '#888', fontSize: '13px', lineHeight: '1.4' }}>
                       {form.plan === 'tingi'
                         ? 'Not available for Mini due to high card transaction fees.'
-                        : `Pay instantly via Credit/Debit card. Automatic token crediting right after checkout. Price: ${PLAN_DODO_PRICES[form.plan]}`}
+                        : `Pay instantly via Credit/Debit card with auto-crediting (${PLAN_DODO_PRICES[form.plan]}).`}
                     </span>
                   </div>
-                  <ArrowRight size={18} color="#666" style={{ flexShrink: 0 }} />
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingLeft: '16px', borderLeft: '1px solid #2a2a2e', flexShrink: 0, height: '32px' }}>
+                    <img src="/logos/visa.svg" alt="Visa" style={{ height: '16px', width: 'auto', objectFit: 'contain' }} />
+                    <img src="/logos/mastercard.svg" alt="Mastercard" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
+                    <ArrowRight size={18} color="#666" style={{ marginLeft: '4px' }} />
+                  </div>
+                </button>
+
+                {/* 3. GCash Manual */}
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  disabled={isStartingPaymongo || isStartingDodo}
+                  style={{ background: '#18181b', border: '1px solid #333', color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: (isStartingPaymongo || isStartingDodo) ? 'not-allowed' : 'pointer', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: (isStartingPaymongo || isStartingDodo) ? 0.6 : 1, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+                  onMouseOver={(e) => { if (!isStartingPaymongo && !isStartingDodo) { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; } }}
+                  onMouseOut={(e) => { if (!isStartingPaymongo && !isStartingDodo) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#18181b'; } }}
+                >
+                  <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Smartphone size={24} color="#aaa" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                      <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>GCash Manual (Backup)</span>
+                      <span style={{ background: '#27272a', color: '#aaa', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manual Approval</span>
+                    </div>
+                    <span style={{ color: '#888', fontSize: '13px', lineHeight: '1.4' }}>
+                      Scan static QR code, upload payment receipt, and receive credits in 10-30 mins.
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingLeft: '16px', borderLeft: '1px solid #2a2a2e', flexShrink: 0, height: '32px' }}>
+                    <img src="/logos/gcash.svg" alt="GCash" style={{ height: '18px', width: 'auto', opacity: 0.7, objectFit: 'contain' }} />
+                    <ArrowRight size={18} color="#666" style={{ marginLeft: '4px' }} />
+                  </div>
                 </button>
 
                 {form.plan !== 'tingi' && (
                   <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #2a2a2a', borderRadius: '10px', padding: '14px 18px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                     <AlertTriangle size={16} color="#888" style={{ flexShrink: 0, marginTop: '2px' }} />
                     <span style={{ color: '#777', fontSize: '12px', lineHeight: '1.5' }}>
-                      International card payments are priced in USD and may cost slightly more than GCash due to card processing fees, currency conversion, and applicable taxes. This ensures instant automated crediting of your tokens.
+                      QR Ph provides instant automated crediting in PHP with no foreign currency fees. International card payments are billed in USD.
                     </span>
                   </div>
                 )}
 
                 <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '12px' }}>
-                  <button onClick={() => setStep(1)} disabled={isStartingDodo} style={{ padding: '10px 20px', background: 'transparent', color: '#aaa', border: '1px solid #444', borderRadius: '8px', cursor: isStartingDodo ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '500', transition: 'all 0.2s' }}>← Back to Plans</button>
+                  <button onClick={() => setStep(1)} disabled={isStartingDodo || isStartingPaymongo} style={{ padding: '10px 20px', background: 'transparent', color: '#aaa', border: '1px solid #444', borderRadius: '8px', cursor: (isStartingDodo || isStartingPaymongo) ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '500', transition: 'all 0.2s' }}>← Back to Plans</button>
                 </div>
               </div>
+
+
             </>
           ) : (
             <>

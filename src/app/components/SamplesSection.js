@@ -14,8 +14,8 @@ const SamplesSection = memo(function SamplesSection() {
           <div className={styles.sliderInner}>
             <BeforeAfterSlider
               title="Custom Pattern (Flat Extracted)"
-              rasterUrl="/samples/esports-original.jpg"
-              vectorUrl="/samples/esports-vector.png"
+              rasterUrl="/samples/esports-original.webp"
+              vectorUrl="/samples/esports-vector.webp"
               objectFit="cover"
             />
           </div>
@@ -45,8 +45,8 @@ const SamplesSection = memo(function SamplesSection() {
           <div className={styles.sliderInner}>
             <BeforeAfterSlider
               title="Universal print recovery"
-              rasterUrl="/samples/samples%20sa%20universal/Syncraft_Untitled_Design_Reference.png"
-              vectorUrl="/samples/samples%20sa%20universal/Syncraft_Untitled_Design_Upscaled.png"
+              rasterUrl="/samples/samples%20sa%20universal/Syncraft_Untitled_Design_Reference.webp"
+              vectorUrl="/samples/samples%20sa%20universal/Syncraft_Untitled_Design_Upscaled.webp"
               originalLabel="Original Reference"
               resultLabel="Recovered Flat Art"
               objectFit="cover"

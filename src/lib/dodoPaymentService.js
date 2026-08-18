@@ -1,10 +1,8 @@
 import { adminSupabase } from "@/lib/supabase";
 import { getDodoClient } from "@/lib/dodo";
 import { getCreditPlan } from "@/lib/paymentPlans";
-import { Resend } from "resend";
 import { claimEliteAutoresizerPromo } from "@/lib/eliteAutoresizerPromo";
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+import { sendPaymentReceipt } from "@/lib/transactionalEmail";
 
 export function resolveLocalPaymentQuery(payment) {
   const metadataId = payment?.metadata?.local_payment_id;
@@ -39,38 +37,6 @@ export async function markDodoPaymentStatus(payment, status) {
 
   if (error) throw error;
   return true;
-}
-
-async function sendDodoPaymentEmail({ email, plan, credits, paymentId, elitePromo }) {
-  if (!resend || !email) return;
-
-  try {
-    await resend.emails.send({
-      from: "Syncraft <hello@syncraft.com>",
-      to: email,
-      subject: "Payment Successful - Credits Added",
-      html: `
-        <div style="background:#1a1a1a;color:#fff;font-family:Arial,sans-serif;padding:40px 20px;text-align:center">
-          <div style="max-width:500px;margin:0 auto;background:#262626;border:1px solid #444;padding:40px 30px;border-radius:8px">
-            <h2>Payment Successful</h2>
-            <p style="color:#ccc;line-height:1.6">Your Dodo payment was confirmed and your credits were automatically added.</p>
-            <p>Plan: <strong>${plan}</strong></p>
-            <p>Credits added: <strong style="color:#d4ff59">+${credits}</strong></p>
-            <p>Payment ID: <strong>${paymentId || "N/A"}</strong></p>
-            ${elitePromo?.granted ? `
-              <div style="margin-top:24px;padding:18px;border:1px solid #d4ff59;background:rgba(212,255,89,.1);border-radius:6px;text-align:left">
-                <strong style="color:#d4ff59">Elite launch bonus unlocked</strong>
-                <p style="color:#ddd;line-height:1.5;margin-bottom:0">You are bonus recipient #${elitePromo.claimNumber}. Your free lifetime Subli Autoresizer access is now queued for delivery.</p>
-              </div>
-            ` : ""}
-          </div>
-        </div>
-      `,
-    });
-  } catch (error) {
-    // Email failure must not cause Dodo to retry a payment that was already credited.
-    console.error("[Dodo] Failed to send payment email:", error);
-  }
 }
 
 export async function handleDodoPaymentSucceeded(payment) {
@@ -127,12 +93,17 @@ export async function handleDodoPaymentSucceeded(payment) {
       })
     : { eligible: false };
 
-  await sendDodoPaymentEmail({
-    email: localPayment.email,
-    plan: localPayment.plan,
+  await sendPaymentReceipt({
+    to: localPayment.email,
+    provider: "Dodo Payments",
+    plan: plan.label || localPayment.plan,
     credits: grant.granted_credits,
-    paymentId: payment.payment_id || null,
-    elitePromo,
+    amount: new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: payment.currency || localPayment.currency || "USD",
+    }).format((payment.total_amount ?? localPayment.amount) / 100),
+    reference: payment.payment_id || localPayment.dodo_payment_id || null,
+    paymentRecordId: localPayment.id,
   });
 
   return { credited: true, credits: grant.granted_credits, elitePromo };
@@ -219,7 +190,7 @@ export async function reconcilePendingDodoPayments({
       }
 
       const isStale = Date.now() - new Date(localPayment.created_at).getTime() >= staleAfterMs;
-      if (isStale && (paymentStatus === null || paymentStatus === undefined)) {
+      if (isStale && paymentStatus !== "processing") {
         await markDodoPaymentStatus(
           asPaymentFromSession(session, localPayment),
           "cancelled",

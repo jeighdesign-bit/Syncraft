@@ -229,6 +229,23 @@ export default function StartScreen() {
     }
   }, []);
 
+  // Handle Return from Online Payments (PayMongo QR Ph / Dodo)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const topupStatus = params.get("topup");
+    if (!topupStatus) return;
+
+    if (topupStatus === "paymongo-return" || topupStatus === "dodo-return") {
+      toast.success("Payment completed! Your credits are being credited.");
+      if (user?.id) fetchCredits(user.id);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (topupStatus === "paymongo-cancelled" || topupStatus === "dodo-cancelled") {
+      toast.info("Payment checkout was cancelled.");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [user]);
+
   // Handle Routed Mobile Image
   useEffect(() => {
     const checkPendingImage = async () => {

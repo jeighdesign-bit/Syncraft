@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
-import { Resend } from "resend";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
 import { authenticateAdminRequest } from "@/lib/adminAuth";
 import { claimEliteAutoresizerPromo } from "@/lib/eliteAutoresizerPromo";
+import { sendPaymentReceipt } from "@/lib/transactionalEmail";
 import {
   PAYMENT_STATUS,
   addsCreditsForStatus,
   getApprovalStatus,
 } from "@/lib/paymentApprovalRules.mjs";
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 const PLAN_CREDITS = {
   tingi: CREDIT_PLANS.tingi.credits,
@@ -104,67 +102,20 @@ export async function POST(request) {
       }
     }
 
-    // --- SEND EMAIL NOTIFICATION VIA RESEND ---
-    if (shouldAddCredits && resend && claimedRequest.email) {
-      try {
-        const htmlTemplate = `
-          <div style="background-color: #1a1a1a; color: #ffffff; font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px 20px; text-align: center;">
-            <div style="max-width: 500px; margin: 0 auto; background-color: #262626; border: 1px solid #444444; padding: 40px 30px; border-radius: 8px;">
-              <div style="text-align: center; margin-bottom: 24px;">
-                <img src="https://syncraft.com/logo.png" alt="Syncraft Logo" style="max-width: 240px; height: auto; display: inline-block;" />
-              </div>
-              <hr style="border: 0; border-top: 1px solid #444; margin: 24px 0;">
-              <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 12px; color: #ffffff;">Payment Approved! 🎉</h2>
-              <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">
-                Good news! Your GCash payment has been verified and your credits have been successfully added to your account.
-              </p>
-              
-              <div style="background-color: #1a1a1a; border: 1px solid #333333; padding: 20px; border-radius: 6px; margin-bottom: 30px; text-align: left;">
-                <p style="margin: 0 0 10px 0; color: #888888; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Package Details</p>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                  <span style="color: #aaaaaa; font-size: 14px;">Plan:</span>
-                  <strong style="color: #ffffff; text-transform: capitalize; font-size: 14px;">${claimedRequest.plan}</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                  <span style="color: #aaaaaa; font-size: 14px;">Credits Added:</span>
-                  <strong style="color: #d4ff59; font-size: 15px;">+${creditsToAdd} Traces</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between;">
-                  <span style="color: #aaaaaa; font-size: 14px;">Reference No:</span>
-                  <strong style="color: #ffffff; font-size: 14px;">${claimedRequest.reference_number || 'N/A'}</strong>
-                </div>
-              </div>
-
-              ${elitePromo.granted ? `
-                <div style="background-color: rgba(212,255,89,0.1); border: 1px solid #d4ff59; padding: 18px; border-radius: 6px; margin-bottom: 30px; text-align: left;">
-                  <strong style="display:block; color:#d4ff59; margin-bottom:6px;">Elite launch bonus unlocked</strong>
-                  <span style="color:#dddddd; font-size:14px; line-height:1.5;">You are bonus recipient #${elitePromo.claimNumber}. Your free lifetime Subli Autoresizer access is now queued for delivery.</span>
-                </div>
-              ` : ''}
-
-              <a href="https://syncraft.com" style="display: inline-block; background-color: #d4ff59; color: #000000; text-decoration: none; padding: 14px 28px; font-weight: 700; border-radius: 4px; font-size: 15px; transition: opacity 0.2s;">
-                Start Tracing Now
-              </a>
-              
-              <p style="color: #666666; font-size: 12px; margin-top: 40px; line-height: 1.5;">
-                If you have any questions or need help, just reply to this email.<br>
-                &copy; 2026 Syncraft. All rights reserved.
-              </p>
-            </div>
-          </div>
-        `;
-
-        await resend.emails.send({
-          from: 'Syncraft <hello@syncraft.com>',
-          to: claimedRequest.email,
-          subject: 'Payment Approved - Credits Added! 🎉',
-          html: htmlTemplate,
-        });
-        console.log(`Email sent to ${claimedRequest.email}`);
-      } catch (emailErr) {
-        console.error("Failed to send email:", emailErr);
-        // We do not fail the request if email fails, credits were already added.
-      }
+    if (shouldAddCredits) {
+      const plan = CREDIT_PLANS[claimedRequest.plan];
+      await sendPaymentReceipt({
+        to: claimedRequest.email,
+        provider: "GCash",
+        plan: plan?.label || claimedRequest.plan,
+        credits: creditsToAdd,
+        amount: new Intl.NumberFormat("en-PH", {
+          style: "currency",
+          currency: "PHP",
+        }).format(Number(claimedRequest.amount || plan?.amount || 0) / 100),
+        reference: claimedRequest.reference_number || null,
+        paymentRecordId: claimedRequest.id,
+      });
     }
 
     return NextResponse.json({

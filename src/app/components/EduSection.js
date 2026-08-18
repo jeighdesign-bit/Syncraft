@@ -15,9 +15,9 @@ const EduSection = memo(function EduSection() {
             <div className={styles.videoInner}>
               <video 
                 src="/TUTORIAL.mp4" 
-                autoPlay 
+                autoPlay
                 muted 
-                loop 
+                loop
                 playsInline 
               />
             </div>

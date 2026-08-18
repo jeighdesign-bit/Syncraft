@@ -1,60 +1,91 @@
+import { absoluteUrl } from "@/lib/site";
+
 export default function sitemap() {
-  const baseUrl = 'https://syncraft.com';
   const now = new Date();
 
   return [
     // ─── Core Tool Pages ──────────────────────────────────────────────────────
     {
-      url: baseUrl,
+      url: absoluteUrl('/'),
       lastModified: now,
       changeFrequency: 'weekly',
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/upscale`,
+      url: absoluteUrl('/image-upscaler'),
       lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/bg-remover`,
+      url: absoluteUrl('/bg-remover'),
       lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     // ─── Legal & Policy Pages ────────────────────────────────────────────────
     {
-      url: `${baseUrl}/terms`,
+      url: absoluteUrl('/image-to-vector'),
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
+      url: absoluteUrl('/logo-vectorizer'),
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
+      url: absoluteUrl('/sublimation-design-extractor'),
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
+      url: absoluteUrl('/store'),
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    },
+    {
+      url: absoluteUrl('/docs/api'),
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: absoluteUrl('/terms'),
       lastModified: now,
       changeFrequency: 'monthly',
       priority: 0.4,
     },
     {
-      url: `${baseUrl}/privacy`,
+      url: absoluteUrl('/privacy'),
       lastModified: now,
       changeFrequency: 'monthly',
       priority: 0.4,
     },
     {
-      url: `${baseUrl}/refunds`,
+      url: absoluteUrl('/refunds'),
       lastModified: now,
       changeFrequency: 'monthly',
       priority: 0.3,
     },
     {
-      url: `${baseUrl}/copyright`,
+      url: absoluteUrl('/copyright'),
       lastModified: now,
       changeFrequency: 'monthly',
       priority: 0.3,
     },
     {
-      url: `${baseUrl}/acceptable-use`,
+      url: absoluteUrl('/acceptable-use'),
       lastModified: now,
       changeFrequency: 'monthly',
       priority: 0.3,
     },
     {
-      url: `${baseUrl}/copyright-takedown`,
+      url: absoluteUrl('/copyright-takedown'),
       lastModified: now,
       changeFrequency: 'monthly',
       priority: 0.3,

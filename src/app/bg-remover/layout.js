@@ -1,5 +1,7 @@
 // Metadata layout wrapper for the BG Remover page.
 // The page.js itself is "use client" so metadata lives here.
+import { absoluteUrl, DEFAULT_OG_IMAGE } from "@/lib/site";
+
 export const metadata = {
   title: "AI Background Remover | Remove BG from Designs & Logos Free",
   description:
@@ -24,18 +26,18 @@ export const metadata = {
     "syncraft bg remover",
   ],
   alternates: {
-    canonical: "https://syncraft.com/bg-remover",
+    canonical: absoluteUrl("/bg-remover"),
   },
   openGraph: {
     title: "AI Background Remover — Free Transparent PNG | Syncraft",
     description:
       "Remove backgrounds from jersey designs, logos, and photos using AI. Get a clean transparent PNG instantly — no Photoshop needed.",
-    url: "https://syncraft.com/bg-remover",
+    url: absoluteUrl("/bg-remover"),
     images: [
       {
-        url: "/SYNCRAFT-Image.JPG",
-        width: 1230,
-        height: 807,
+        url: DEFAULT_OG_IMAGE,
+        width: 1600,
+        height: 691,
         alt: "Syncraft AI Background Remover",
       },
     ],
@@ -44,7 +46,7 @@ export const metadata = {
     title: "AI Background Remover | Syncraft",
     description:
       "Remove backgrounds from sublimation designs and logos in one click. Free to try.",
-    images: ["/SYNCRAFT-Image.JPG"],
+    images: [DEFAULT_OG_IMAGE],
   },
 };
 

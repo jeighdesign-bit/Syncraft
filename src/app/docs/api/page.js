@@ -102,7 +102,7 @@ export default function ApiDocsPage() {
 
           <h2 style={{ fontSize: "1.5rem", marginBottom: "15px", borderBottom: "1px solid #3f3f46", paddingBottom: "10px" }}>Base URL</h2>
           <pre style={{ background: "#27272a", padding: "15px", borderRadius: "8px", marginBottom: "40px", color: "#d4ff59" }}>
-            https://syncraft.co/api/v1/generate
+            https://syncraftech.com/api/v1/generate
           </pre>
 
           <h2 style={{ fontSize: "1.5rem", marginBottom: "15px", borderBottom: "1px solid #3f3f46", paddingBottom: "10px" }}>Authentication</h2>
@@ -142,7 +142,7 @@ export default function ApiDocsPage() {
 
           <h2 style={{ fontSize: "1.5rem", marginBottom: "15px", borderBottom: "1px solid #3f3f46", paddingBottom: "10px" }}>Example Request (cURL)</h2>
           <pre style={{ background: "#27272a", padding: "15px", borderRadius: "8px", marginBottom: "40px", overflowX: "auto" }}>
-{`curl -X POST https://syncraft.co/api/v1/generate \\
+{`curl -X POST https://syncraftech.com/api/v1/generate \\
 -H "Authorization: Bearer YOUR_API_KEY_HERE" \\
 -H "Content-Type: application/json" \\
 -d '{

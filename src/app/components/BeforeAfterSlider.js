@@ -60,7 +60,7 @@ function InlineSVG({ url, style, objectFit = 'cover' }) {
   }, [url]);
 
   if (!isSvg) {
-    return <img src={url} alt="" style={style} />;
+    return <img src={url} alt="" width="1200" height="800" loading="lazy" decoding="async" style={style} />;
   }
 
   if (!svgHtml) {
@@ -94,6 +94,10 @@ export default function BeforeAfterSlider({
         <img 
           src={rasterUrl} 
           alt={`${title || 'Sample'} original reference`}
+          width="1200"
+          height="800"
+          loading="lazy"
+          decoding="async"
           style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit }} 
         />
         <span style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.7)', padding: '4px 10px', fontSize: '11px', color: '#fff', borderRadius: '0', zIndex: 1 }}>{originalLabel}</span>
@@ -120,6 +124,7 @@ export default function BeforeAfterSlider({
         {/* Invisible Range Input for Interaction */}
         <input 
           type="range" 
+          aria-label={`Compare ${title || 'sample'} original and result`}
           min="0" max="100" 
           value={sliderPosition} 
           onChange={e => setSliderPosition(e.target.value)} 

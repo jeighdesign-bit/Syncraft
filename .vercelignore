@@ -1,0 +1,22 @@
+.agents
+.codex-work
+outputs
+DEMO
+PNG
+.git
+.next
+node_modules
+public/Store/**/*.psd
+public/Store/DESIGN PACKS/*.jpg
+public/Store/MOCKUPS/*.jpg
+public/Store/FREE RESOURCES/*.jpg
+public/Store/FREE RESOURCES/*.JPG
+
+# Superseded by optimized WebP assets used by the site.
+public/Banner.png
+public/samples/polo-vector.png
+public/samples/polo-original.png
+public/samples/esports-vector.png
+public/samples/esports-original.jpg
+public/samples/samples sa universal/Syncraft_Untitled_Design_Upscaled.png
+public/samples/samples sa universal/Syncraft_Untitled_Design_Reference.png

@@ -340,7 +340,7 @@ export default function UpscalePage() {
                   {uploadMode === "qr" ? (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: "12px" }}>
                       <div style={{ background: "#ffffff", padding: "12px", borderRadius: "14px", border: "1px solid rgba(0,0,0,0.1)" }}>
-                        <QRCode value={`https://syncraft.com/m/${syncSessionId}`} size={120} />
+                        <QRCode value={`${typeof window !== "undefined" ? window.location.origin : "https://syncraftech.com"}/mobile?sync=${syncSessionId}`} size={120} />
                       </div>
                       <p style={{ color: "#888", margin: 0, fontSize: "12px", textAlign: "center", lineHeight: 1.5 }}>
                         Scan with your mobile camera to upload directly.

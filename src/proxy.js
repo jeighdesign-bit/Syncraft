@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { SITE_URL } from '@/lib/site';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
@@ -108,7 +109,7 @@ export async function proxy(request) {
   // ─── Domain Redirect ────────────────────────────────────────────────────────
   // Redirect anyone using the old vercel.app domain to the new custom domain
   if (host === 'syncraft.vercel.app') {
-    return NextResponse.redirect(`https://syncraft.com${url.pathname}${url.search}`, 301);
+    return NextResponse.redirect(`${SITE_URL}${url.pathname}${url.search}`, 301);
   }
 
   const { pathname } = url;

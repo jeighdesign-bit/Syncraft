@@ -3,17 +3,18 @@ import { ToastContainer } from "@/components/Toast";
 import MobileWarning from "./components/MobileWarning";
 import CookieConsent from "./components/CookieConsent";
 import "./globals.css";
+import { DEFAULT_OG_IMAGE, SITE_URL } from "@/lib/site";
 
 const outfit = Outfit({ subsets: ["latin"], display: "swap" });
 
 export const metadata = {
-  metadataBase: new URL("https://syncraft.com"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Syncraft | AI Sublimation Design Extractor & Vector Tracer",
     template: "%s | Syncraft",
   },
   description:
-    "Syncraft is the #1 AI-powered tool for sublimation jersey design extraction, vector auto-tracing, logo enhancement, background removal, and 4K upscaling. Convert jersey mockups to flat print-ready SVG files instantly. Trusted by print shops and apparel designers in the Philippines and worldwide.",
+    "AI vector tracing and sublimation design extraction for apparel designers, print shops, and creative professionals. Convert artwork into clean SVG and high-resolution production files.",
   keywords: [
     // Core product features
     "sublimation design extractor",
@@ -80,30 +81,30 @@ export const metadata = {
     "syncraft",
     "desaynbro",
   ],
-  authors: [{ name: "desaynbro", url: "https://syncraft.com" }],
+  authors: [{ name: "Syncraft", url: SITE_URL }],
   creator: "desaynbro",
   publisher: "Syncraft",
   category: "Design Tools",
   applicationName: "Syncraft",
   icons: {
-    icon: "/favicon.svg",
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml", sizes: "any" }],
   },
   alternates: {
-    canonical: "https://syncraft.com",
+    canonical: SITE_URL,
   },
   openGraph: {
     type: "website",
     locale: "en_PH",
-    url: "https://syncraft.com",
+    url: SITE_URL,
     title: "Syncraft | AI Sublimation Design Extractor & Vector Tracer",
     description:
       "Extract flat sublimation print files from jersey mockups, convert logos to crisp SVG vectors, remove backgrounds, and upscale designs to 4K — all powered by AI. Built for print shops and apparel designers.",
     siteName: "Syncraft",
     images: [
       {
-        url: "/SYNCRAFT-Image.JPG",
-        width: 1230,
-        height: 807,
+        url: DEFAULT_OG_IMAGE,
+        width: 1600,
+        height: 691,
         alt: "Syncraft AI Sublimation Design Extractor and Vector Tracer",
       },
     ],
@@ -113,7 +114,7 @@ export const metadata = {
     title: "Syncraft | AI Sublimation Design Extractor & Vector Tracer",
     description:
       "Extract sublimation flat files, vectorize logos, remove backgrounds & upscale designs using AI. Perfect for print shops in the Philippines.",
-    images: ["/SYNCRAFT-Image.JPG"],
+    images: [DEFAULT_OG_IMAGE],
     creator: "@desaynbro",
   },
   robots: {
@@ -128,8 +129,7 @@ export const metadata = {
     },
   },
   verification: {
-    // Add your Google Search Console verification token here when ready:
-    // google: "YOUR_GOOGLE_VERIFICATION_TOKEN",
+    google: "q81Xpct4usdXtJPUY6PVMzbDlWH_oY3O0atjeld6SK0",
   },
 };
 
@@ -150,22 +150,13 @@ export default function RootLayout({ children }) {
               "@context": "https://schema.org",
               "@type": "SoftwareApplication",
               "name": "Syncraft",
-              "url": "https://syncraft.com",
-              "image": "https://syncraft.com/SYNCRAFT-Image.JPG",
-              "sameAs": [
-                "https://syncraft.com"
-              ],
+              "url": SITE_URL,
+              "image": DEFAULT_OG_IMAGE,
               "applicationCategory": "DesignApplication",
               "applicationSubCategory": "AI image vectorizer and sublimation design tool",
               "operatingSystem": "Web",
               "description":
                 "AI-powered tool for sublimation jersey design extraction, vector auto-tracing, logo enhancement, background removal, and 4K image upscaling. Used by print shops and apparel designers.",
-              "offers": {
-                "@type": "Offer",
-                "price": "0",
-                "priceCurrency": "PHP",
-                "description": "Free credits on sign up. Pay-per-use credit system.",
-              },
               "featureList": [
                 "Sublimation jersey flat file extraction",
                 "AI vector syncraft (SVG output)",
@@ -177,13 +168,13 @@ export default function RootLayout({ children }) {
               "creator": {
                 "@type": "Person",
                 "name": "desaynbro",
-                "url": "https://syncraft.com",
+                "url": SITE_URL,
               },
               "publisher": {
                 "@type": "Organization",
                 "name": "Syncraft",
-                "url": "https://syncraft.com",
-                "logo": "https://syncraft.com/logo.png"
+                "url": SITE_URL,
+                "logo": `${SITE_URL}/logo.png`
               }
             }),
           }}
@@ -198,14 +189,14 @@ export default function RootLayout({ children }) {
                 {
                   "@type": "Organization",
                   "name": "Syncraft",
-                  "url": "https://syncraft.com",
-                  "logo": "https://syncraft.com/logo.png",
-                  "image": "https://syncraft.com/SYNCRAFT-Image.JPG"
+                  "url": SITE_URL,
+                  "logo": `${SITE_URL}/logo.png`,
+                  "image": DEFAULT_OG_IMAGE
                 },
                 {
                   "@type": "WebSite",
                   "name": "Syncraft",
-                  "url": "https://syncraft.com",
+                  "url": SITE_URL,
                   "publisher": {
                     "@type": "Organization",
                     "name": "Syncraft"

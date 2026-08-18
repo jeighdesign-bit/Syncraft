@@ -305,7 +305,7 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
 
         {/* Right Column - Image Banner */}
         <div className="login-right-col" style={{ flex: 1, display: 'flex', position: 'relative', background: '#111' }}>
-           <img src="/login-bg.png" alt="Login Background" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+           <img src="/login-bg.webp" alt="Abstract Syncraft design background" width="1400" height="933" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
       </div>
     </div>

@@ -8,7 +8,7 @@ const GreatForSection = memo(function GreatForSection() {
     <div className={styles.sectionWrapper}>
       {/* Section Header */}
       <div className={styles.header}>
-        <div className={styles.badge}>Great For</div>
+        <h2 className={styles.badge}>Great For</h2>
         <div className={styles.line} />
       </div>
 

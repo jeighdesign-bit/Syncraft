@@ -35,7 +35,7 @@ const sections = [
         promoSlots: 3,
         meta: "PSD size generator + mockups",
         theme: "Lime",
-        image: "/Store/Sublimation Tools/subli autoresizer.jpg",
+        image: "/Store/Sublimation Tools/subli autoresizer.webp",
       },
       {
         name: "SubliBatch Pro",
@@ -45,7 +45,7 @@ const sections = [
         promoSlots: 3,
         meta: "Batch rename + export",
         theme: "Cobalt",
-        image: "/Store/Sublimation Tools/sublibatchpro.jpg",
+        image: "/Store/Sublimation Tools/sublibatchpro.webp",
       },
       {
         name: "SubliNest",
@@ -55,7 +55,7 @@ const sections = [
         promoSlots: 3,
         meta: "Auto-ripping + nesting",
         theme: "Coral",
-        image: "/Store/Sublimation Tools/SUBLINEST.jpg",
+        image: "/Store/Sublimation Tools/SUBLINEST.webp",
       },
       {
         name: "Jersey Size Chart Kit",

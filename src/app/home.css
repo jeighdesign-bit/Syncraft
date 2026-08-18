@@ -558,6 +558,80 @@
           color: #d4ff59;
         }
 
+        .landing-footer {
+          margin-top: 60px;
+          border-top: 1px solid #222;
+          padding: 40px 0;
+        }
+
+        .footer-main-row {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 28px clamp(44px, 4vw, 72px);
+        }
+
+        .footer-brand-row {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+        }
+
+        .footer-brand-row img {
+          width: 140px;
+          height: auto;
+          filter: grayscale(100%) opacity(0.7);
+        }
+
+        .footer-brand-row span {
+          color: #555;
+          font-size: 13px;
+        }
+
+        .footer-main-links {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 14px;
+          flex: 0 1 auto;
+        }
+
+        .footer-link-row {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: 14px 20px;
+        }
+
+        .footer-api-link {
+          font-weight: 700;
+        }
+
+        .footer-support-link {
+          color: #d4ff59;
+        }
+
+        @media (max-width: 820px) {
+          .footer-main-row {
+            align-items: center;
+            flex-direction: column;
+            justify-content: center;
+          }
+
+          .footer-main-links {
+            align-items: center;
+            width: 100%;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .footer-link-row {
+            gap: 13px 16px;
+          }
+        }
+
         /* Marquee Animation */
         @keyframes marquee {
           0% { transform: translateX(0); }
