@@ -567,7 +567,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                   Scan to Pay with QR Ph
                 </div>
                 <h2 style={{ margin: '0 0 6px', fontSize: '24px', fontWeight: '700', color: '#fff' }}>
-                  {PLAN_LABELS[form.plan]} — {PLAN_TRACES[form.plan]} Credits · {PLAN_PRICES[form.plan]}
+                  {PLAN_LABELS[form.plan]} · {PLAN_PRICES[form.plan]}
                 </h2>
                 <p style={{ margin: 0, color: '#888', fontSize: '13px' }}>
                   Scan with GCash, Maya, ShopeePay, or any banking app
@@ -603,7 +603,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                     <div style={{ color: '#888', fontSize: '12px', marginBottom: '4px' }}>Amount Due</div>
                     <div style={{ fontSize: '32px', fontWeight: '800', color: '#fff', marginBottom: '20px', display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                       {PLAN_PRICES[form.plan]}
-                      <span style={{ fontSize: '13px', color: '#888', fontWeight: '500' }}>({PLAN_TRACES[form.plan]} credits)</span>
+                      <span style={{ fontSize: '13px', color: '#888', fontWeight: '500' }}>({CREDIT_PLANS[form.plan]?.credits || 0} credits)</span>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px' }}>
