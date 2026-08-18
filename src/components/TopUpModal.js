@@ -559,6 +559,88 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
 
 
             </>
+          ) : step === 'qr_display' && qrPhData ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid #333', padding: '4px 12px', fontSize: '11px', fontWeight: '700', color: '#d4ff59', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '12px', borderRadius: '4px', background: 'rgba(212, 255, 89, 0.05)' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#d4ff59', boxShadow: '0 0 8px #d4ff59', display: 'inline-block' }} />
+                  Scan to Pay with QR Ph
+                </div>
+                <h2 style={{ margin: '0 0 6px', fontSize: '24px', fontWeight: '700', color: '#fff' }}>
+                  {PLAN_LABELS[form.plan]} — {PLAN_TRACES[form.plan]} Credits · {PLAN_PRICES[form.plan]}
+                </h2>
+                <p style={{ margin: 0, color: '#888', fontSize: '13px' }}>
+                  Scan with GCash, Maya, ShopeePay, or any banking app
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', alignItems: 'stretch' }}>
+                {/* Left Card: QR Code */}
+                <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                  <img 
+                    src={qrPhData.qrBase64} 
+                    alt="QR Ph Payment Code" 
+                    style={{ width: '100%', maxWidth: '260px', height: 'auto', aspectRatio: '1/1', objectFit: 'contain', display: 'block' }} 
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #eee', width: '100%', justifyContent: 'center' }}>
+                    <img src="/logos/qrph.png?v=2" alt="QR Ph" style={{ height: '16px', width: 'auto' }} />
+                    <img src="/logos/gcash.svg" alt="GCash" style={{ height: '16px', width: 'auto' }} />
+                    <img src="/logos/maya.png?v=2" alt="Maya" style={{ height: '16px', width: 'auto' }} />
+                  </div>
+                </div>
+
+                {/* Right Card: Status & Instructions */}
+                <div style={{ background: '#18181b', borderRadius: '16px', border: '1px solid #2a2a2e', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #27272a' }}>
+                      <span style={{ color: '#888', fontSize: '11px', fontWeight: '700', letterSpacing: '0.8px', textTransform: 'uppercase' }}>PAYMONGO QRPH</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(212, 255, 89, 0.1)', padding: '4px 10px', borderRadius: '20px', border: '1px solid rgba(212, 255, 89, 0.2)' }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#d4ff59', boxShadow: '0 0 6px #d4ff59', display: 'inline-block' }} />
+                        <span style={{ color: '#d4ff59', fontSize: '11px', fontWeight: '700', letterSpacing: '0.5px' }}>WAITING FOR PAYMENT</span>
+                      </div>
+                    </div>
+
+                    <div style={{ color: '#888', fontSize: '12px', marginBottom: '4px' }}>Amount Due</div>
+                    <div style={{ fontSize: '32px', fontWeight: '800', color: '#fff', marginBottom: '20px', display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                      {PLAN_PRICES[form.plan]}
+                      <span style={{ fontSize: '13px', color: '#888', fontWeight: '500' }}>({PLAN_TRACES[form.plan]} credits)</span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#27272a', color: '#d4ff59', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>1</div>
+                        <span style={{ color: '#ccc', fontSize: '13px', lineHeight: '1.4' }}>Open <strong>GCash</strong>, <strong>Maya</strong>, or any banking app and tap <strong>Scan QR</strong>.</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#27272a', color: '#d4ff59', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>2</div>
+                        <span style={{ color: '#ccc', fontSize: '13px', lineHeight: '1.4' }}>Keep this window open while PayMongo confirms the payment.</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#27272a', color: '#d4ff59', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>3</div>
+                        <span style={{ color: '#ccc', fontSize: '13px', lineHeight: '1.4' }}>Credits will be <strong>added automatically</strong> to your account.</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep(2);
+                      setQrPhData(null);
+                      if (qrPollIntervalId) {
+                        clearInterval(qrPollIntervalId);
+                        setQrPollIntervalId(null);
+                      }
+                    }}
+                    style={{ width: '100%', padding: '12px', background: '#27272a', color: '#aaa', border: '1px solid #3f3f46', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.2s' }}
+                    onMouseOver={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#666'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.color = '#aaa'; e.currentTarget.style.borderColor = '#3f3f46'; }}
+                  >
+                    ← Back to Payment Methods
+                  </button>
+                </div>
+              </div>
+            </div>
           ) : (
             <>
               <div style={{ background: '#18181b', border: '1px solid #444', borderRadius: '8px', padding: '12px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
