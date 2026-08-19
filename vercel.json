@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm install --include=optional",
+  "installCommand": "npm install && npm install --no-save --force @img/sharp-linux-x64@0.35.3 @img/sharp-libvips-linux-x64",
   "crons": [
     {
       "path": "/api/cron/cleanup",
