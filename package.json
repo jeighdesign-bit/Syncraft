@@ -7,7 +7,6 @@
     "build": "next build",
     "test": "node --test",
     "start": "next start",
-    "postinstall": "node scripts/install-sharp.mjs",
     "storage:lifecycle:plan": "node scripts/configure-r2-lifecycle.mjs",
     "storage:lifecycle:apply": "node scripts/configure-r2-lifecycle.mjs --apply"
   },
@@ -32,12 +31,15 @@
     "react-qr-code": "^2.2.0",
     "replicate": "^1.4.0",
     "resend": "^6.17.2",
-    "sharp": "^0.35.3",
+    "sharp": "0.34.5",
     "ws": "^8.21.1"
   },
   "devDependencies": {
     "@types/node": "26.1.0",
     "@types/react": "19.2.17",
     "typescript": "6.0.3"
+  },
+  "overrides": {
+    "sharp": "0.34.5"
   }
 }
