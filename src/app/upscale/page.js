@@ -72,6 +72,14 @@ export default function UpscalePage() {
     if (data) setCredits(data.credits);
   };
 
+  useEffect(() => {
+    const handleCreditsUpdate = () => {
+      if (user?.id) fetchCredits(user.id);
+    };
+    window.addEventListener("syncraft:credits-updated", handleCreditsUpdate);
+    return () => window.removeEventListener("syncraft:credits-updated", handleCreditsUpdate);
+  }, [user]);
+
   const fetchRecentUpscales = async (userId) => {
     const { data } = await supabase
       .from("projects")

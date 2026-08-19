@@ -164,6 +164,19 @@ export default function Workspace() {
     fetchData();
   }, [projectId, router]);
 
+  useEffect(() => {
+    const handleCreditsUpdate = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles").select("credits").eq("id", session.user.id).single();
+        if (profile) setUserCredits(profile.credits);
+      }
+    };
+    window.addEventListener("syncraft:credits-updated", handleCreditsUpdate);
+    return () => window.removeEventListener("syncraft:credits-updated", handleCreditsUpdate);
+  }, []);
+
   // Auto-switch away from loading state (if any was needed)
   useEffect(() => {
     if (!project) return;

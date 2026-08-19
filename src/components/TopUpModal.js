@@ -45,7 +45,7 @@ const DODO_ENABLED_PLANS = new Set(
 const SHOW_ELITE_PROMO_RIBBON = false;
 
 
-const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supabaseProp, onClose, onLoginRequired }) {
+const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supabaseProp, onClose, onLoginRequired, onCreditUpdated }) {
   const [fallbackSupabase] = useState(() => createClient());
   const supabase = supabaseProp || fallbackSupabase;
   const [step, setStep] = useState(1);
@@ -165,7 +165,14 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
             if (statusData.status === 'paid') {
               clearInterval(intervalId);
               setQrPollIntervalId(null);
-              window.location.href = '/?topup=paymongo-return';
+              setStep('success');
+              toast.success("Payment completed! Your credits have been added.");
+
+              // Broadcast credit update to all open components & parent
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("syncraft:credits-updated"));
+              }
+              onCreditUpdated?.();
             } else if (statusData.status === 'failed' || statusData.status === 'expired') {
               clearInterval(intervalId);
               setQrPollIntervalId(null);
@@ -559,6 +566,24 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
 
 
             </>
+          ) : step === 'success' ? (
+            <div style={{ padding: '40px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'rgba(74, 222, 128, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', border: '1px solid #4ade80' }}>
+                <CheckCircle size={40} color="#4ade80" />
+              </div>
+              <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#fff', margin: '0 0 8px' }}>Payment Completed! 🎉</h2>
+              <p style={{ color: '#aaa', fontSize: '15px', margin: '0 0 28px', maxWidth: '420px', lineHeight: '1.5' }}>
+                <strong style={{ color: '#d4ff59' }}>{CREDIT_PLANS[form.plan]?.credits || 24} Credits</strong> have been added directly to your account.
+              </p>
+              <button 
+                onClick={handleClose} 
+                style={{ padding: '14px 36px', background: '#d4ff59', color: '#000', border: 'none', borderRadius: '10px', fontWeight: '700', fontSize: '15px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 16px rgba(212, 255, 89, 0.25)' }}
+                onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+                onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+              >
+                Start Creating Now →
+              </button>
+            </div>
           ) : step === 'qr_display' && qrPhData ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ textAlign: 'center', marginBottom: '8px' }}>

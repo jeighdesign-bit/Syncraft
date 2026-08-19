@@ -246,6 +246,15 @@ export default function StartScreen() {
     }
   }, [user]);
 
+  // Reactive credits sync without page reload
+  useEffect(() => {
+    const handleCreditsUpdate = () => {
+      if (user?.id) fetchCredits(user.id);
+    };
+    window.addEventListener("syncraft:credits-updated", handleCreditsUpdate);
+    return () => window.removeEventListener("syncraft:credits-updated", handleCreditsUpdate);
+  }, [user]);
+
   // Handle Routed Mobile Image
   useEffect(() => {
     const checkPendingImage = async () => {
@@ -1027,6 +1036,7 @@ export default function StartScreen() {
           supabase={supabase}
           onClose={() => setShowTopUpModal(false)}
           onLoginRequired={() => { setShowTopUpModal(false); setShowLoginModal(true); }}
+          onCreditUpdated={() => { if (user?.id) fetchCredits(user.id); }}
         />
 
         <LoginModal
