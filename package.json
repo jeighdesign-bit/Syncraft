@@ -31,6 +31,8 @@
     "react-qr-code": "^2.2.0",
     "replicate": "^1.4.0",
     "resend": "^6.17.2",
+    "@img/sharp-linux-x64": "^0.35.3",
+    "@img/sharp-linux-arm64": "^0.35.3",
     "sharp": "^0.35.3",
     "ws": "^8.21.1"
   },
