@@ -9,6 +9,13 @@ export function resolveLocalPaymongoPaymentQuery(resource) {
     resource?.metadata?.local_payment_id;
   if (metadataId) return { column: "id", value: metadataId };
 
+  const intentId =
+    resource?.attributes?.payment_intent_id ||
+    (resource?.id?.startsWith("pi_") ? resource.id : null);
+  if (intentId) {
+    return { column: "paymongo_checkout_session_id", value: intentId };
+  }
+
   const sessionId = resource?.id?.startsWith("cs_") ? resource.id : null;
   if (sessionId) {
     return { column: "paymongo_checkout_session_id", value: sessionId };
