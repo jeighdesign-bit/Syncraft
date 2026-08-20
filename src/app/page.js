@@ -874,9 +874,8 @@ export default function StartScreen() {
                 />
               </div>
             ) : (
-              <div className="hero-right" style={{ width: "100%", display: "flex", flexDirection: "column", gap: "24px", alignItems: "center" }}>
-                
-                {/* First Slider */}
+              <div className="hero-right" style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center" }}>
+                {/* Single featured recovery sample */}
                 <div style={{
                   position: 'relative',
                   borderRadius: '24px',
@@ -889,7 +888,7 @@ export default function StartScreen() {
                   borderLeft: '1px solid rgba(255, 255, 255, 0.15)',
                   boxShadow: '0 30px 60px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
                   width: '100%',
-                  maxWidth: '380px'
+                  maxWidth: '560px'
                 }}>
                   <div style={{
                     borderRadius: '12px',
@@ -900,48 +899,16 @@ export default function StartScreen() {
                     background: 'transparent'
                   }}>
                     <BeforeAfterSlider
-                      title="Custom Design 2"
-                      rasterUrl="/samples/polo-original.webp"
-                      vectorUrl="/samples/polo-vector.webp"
-                      height="240px"
+                      title="Universal print recovery"
+                      rasterUrl="/samples/samples%20sa%20universal/Syncraft_Untitled_Design_Reference.webp"
+                      vectorUrl="/samples/samples%20sa%20universal/Syncraft_Untitled_Design_Upscaled.webp"
+                      originalLabel="Original Reference"
+                      resultLabel="Recovered Flat Art"
+                      height="360px"
                       objectFit="cover"
                     />
                   </div>
                 </div>
-
-                {/* Second Slider */}
-                <div style={{
-                  position: 'relative',
-                  borderRadius: '24px',
-                  padding: '16px',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  backdropFilter: 'blur(24px)',
-                  WebkitBackdropFilter: 'blur(24px)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderLeft: '1px solid rgba(255, 255, 255, 0.15)',
-                  boxShadow: '0 30px 60px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
-                  width: '100%',
-                  maxWidth: '380px'
-                }}>
-                  <div style={{
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.5)',
-                    position: 'relative',
-                    zIndex: 2,
-                    background: 'transparent'
-                  }}>
-                    <BeforeAfterSlider
-                      title="Custom Pattern"
-                      rasterUrl="/samples/esports-original.webp"
-                      vectorUrl="/samples/esports-vector.webp"
-                      height="240px"
-                      objectFit="cover"
-                    />
-                  </div>
-                </div>
-
               </div>
             )}
           </div>
