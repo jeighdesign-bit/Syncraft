@@ -75,11 +75,13 @@ const RecentProjects = memo(function RecentProjects({
         </div>
 
         {/* Privacy Notice for main projects */}
-        <div style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.05)", borderRadius: "14px", padding: "12px 16px", marginBottom: "24px", display: "flex", gap: "12px", alignItems: "center" }}>
-          <ShieldAlert size={16} color="#d4ff59" style={{ flexShrink: 0 }} />
-          <div>
-            <p style={{ margin: "0 0 2px", fontSize: "12px", fontWeight: "600", color: "#e0e0e0" }}>Privacy First</p>
-            <p style={{ margin: 0, fontSize: "11px", color: "#888", lineHeight: 1.4 }}>All uploaded and generated projects are permanently deleted after 3 days to protect your privacy.</p>
+        <div style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "14px", padding: "13px 16px", marginBottom: "24px", display: "flex", gap: "12px", alignItems: "center" }}>
+          <span style={{ width: "36px", height: "36px", display: "grid", placeItems: "center", flexShrink: 0, borderRadius: "10px", background: "rgba(212, 255, 89, 0.08)", border: "1px solid rgba(212, 255, 89, 0.2)" }}>
+            <ShieldAlert size={19} strokeWidth={1.8} color="#d4ff59" aria-hidden="true" />
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: "0 0 3px", fontSize: "12.5px", fontWeight: "650", color: "#e8e8e8", lineHeight: 1.25 }}>Your work stays yours</p>
+            <p style={{ margin: 0, fontSize: "11px", color: "#929292", lineHeight: 1.5 }}>Syncraft does not claim, sell, or reuse your uploaded or extracted designs. You retain ownership, and projects are permanently deleted after 3 days.</p>
           </div>
         </div>
 

@@ -29,9 +29,35 @@ import BeforeAfterSlider from "./components/BeforeAfterSlider";
 import PromoModal from "./components/PromoModal";
 import AIDisclaimerModal from "./components/AIDisclaimerModal";
 import TestimonialSection from "./components/TestimonialSection";
+import FAQSection from "./components/FAQSection";
 import GreatForSection from "./components/GreatForSection";
 import QRCode from "react-qr-code";
 import FeedbackWidget from "@/app/workspace/[id]/components/FeedbackWidget";
+
+const marqueeFeatures = [
+  "Garment Pattern Extraction",
+  "Universal Design Recovery",
+  "Logo & Wordmark Tracing",
+  "Background Removal",
+  "Image Upscaling",
+  "Image to Vector",
+  "Sublimation Design Extraction",
+  "Artwork Recovery",
+];
+
+function SocialIcon({ name }) {
+  const paths = {
+    facebook: <path fill="currentColor" stroke="none" d="M13.5 21v-7h2.5l.5-3h-3V9.1c0-.9.3-1.6 1.7-1.6H16V4.8c-.4-.1-1.2-.2-2.2-.2-2.2 0-3.8 1.4-3.8 3.9V11H7.5v3H10v7h3.5Z" />,
+    instagram: <><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" /></>,
+    tiktok: <path fill="currentColor" stroke="none" d="M14.5 4c.2 1.8 1.2 3.2 3 3.8v2.7c-1.1-.1-2.1-.5-3-1.2v5.7a4.6 4.6 0 1 1-4-4.6v2.8a1.8 1.8 0 1 0 1.2 1.7V4h2.8Z" />,
+  };
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      {paths[name]}
+    </svg>
+  );
+}
 
 function AnimatedCounter() {
   const [count, setCount] = useState(0);
@@ -628,11 +654,8 @@ export default function StartScreen() {
               <div className="start-logo" style={{ marginBottom: "30px", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
                 <img src="/logo.svg" alt="DesaynClaw Logo" style={{ width: "350px", maxWidth: "100%", height: "auto", margin: 0 }} />
 
-                {/* DEVELOPED BY BADGE */}
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "12px", background: "rgba(255,255,255,0.02)", padding: "4px 12px", borderRadius: "20px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#d4ff59", boxShadow: "0 0 10px rgba(212,255,89,0.5)" }} />
-                  <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", margin: 0, fontWeight: "500", letterSpacing: "0.5px" }}>Developed by <span style={{ color: "#fff", fontWeight: "700" }}>desaynbro</span></p>
-                </div>
+                {/* BRAND BADGE */}
+                <img src="/logo_full.png" alt="Syncraft" style={{ display: "block", width: "132px", height: "auto", maxWidth: "100%", marginTop: "12px" }} />
 
                 {/* PUBLIC STATS BADGE */}
                 {publicStats.totalUsers > 0 && (
@@ -931,60 +954,23 @@ export default function StartScreen() {
       {/* Main Content Wrapper (For the rest of the page) */}
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px", width: "100%" }}>
 
-        {/* SCROLLING TRUST MARQUEE (MINIMAL & ALIGNED) */}
+        {/* SCROLLING FEATURE MARQUEE */}
         <div className="marquee-container" style={{ 
-          padding: "24px 0",
-          background: "linear-gradient(to right, transparent, rgba(255,255,255,0.02), transparent)", 
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          padding: "20px 0",
+          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.022) 50%, transparent)", 
+          borderTop: "1px solid rgba(255,255,255,0.09)",
+          borderBottom: "1px solid rgba(255,255,255,0.09)",
           width: "100%",
           marginBottom: "0px",
-          marginTop: "40px"
+          marginTop: "24px"
         }}>
           <div className="marquee-content">
-            {/* 1st Set */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
-              <ShieldCheck size={20} color="#d4ff59" />
-              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>100% Private & Secure</span>
-            </div>
-            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
-              <Trash2 size={20} color="#d4ff59" />
-              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>Auto-deletes after 3 days</span>
-            </div>
-            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
-              <Code2 size={20} color="#d4ff59" />
-              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>Built by Real Developers</span>
-            </div>
-            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
-              <Monitor size={20} color="#d4ff59" />
-              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>Highly Scalable Infrastructure</span>
-            </div>
-            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
-            
-            {/* 2nd Set (Duplicate for seamless loop) */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
-              <ShieldCheck size={20} color="#d4ff59" />
-              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>100% Private & Secure</span>
-            </div>
-            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
-              <Trash2 size={20} color="#d4ff59" />
-              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>Auto-deletes after 3 days</span>
-            </div>
-            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
-              <Code2 size={20} color="#d4ff59" />
-              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>Built by Real Developers</span>
-            </div>
-            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 40px", color: "#a0a0a0" }}>
-              <Monitor size={20} color="#d4ff59" />
-              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: "1.5px", textTransform: "uppercase" }}>Highly Scalable Infrastructure</span>
-            </div>
-            <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}></div>
+            {[...marqueeFeatures, ...marqueeFeatures].map((label, index) => (
+              <div className="marquee-feature-group" key={`${label}-${index}`}>
+                <span className="marquee-feature">{label}</span>
+                <span className="marquee-separator" aria-hidden="true" />
+              </div>
+            ))}
           </div>
         </div>
 
@@ -1001,6 +987,7 @@ export default function StartScreen() {
         {/* Feature Cards below Hero */}
         <SamplesSection />
         <TestimonialSection />
+        <FAQSection />
         {/* Hidden File Input — shows type-selector modal before uploading */}
         <input type="file" ref={fileInputRef} onChange={(e) => { if (e.target.files[0]) openModalWithFile(e.target.files[0]); e.target.value = ""; }} accept="image/*" style={{ display: "none" }} />
         <input type="file" ref={upscaleInputRef} onChange={(e) => { if (e.target.files[0]) handleFileUpload(e.target.files[0], false, "upscale"); e.target.value = ""; }} accept="image/*" style={{ display: "none" }} />
@@ -1138,24 +1125,37 @@ export default function StartScreen() {
 
         <AnimatedCounter />
 
-        <footer style={{ marginTop: "60px", borderTop: "1px solid #222", padding: "40px 0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "20px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-            <img src="/logo.svg" alt="DesaynClaw Logo" style={{ width: "140px", height: "auto", filter: "grayscale(100%) opacity(0.7)" }} />
-            <span style={{ color: "#555", fontSize: "13px" }}>© 2024-2026</span>
-          </div>
+        <footer className="site-footer">
+          <div className="site-footer-main">
+            <div className="site-footer-brand">
+              <img src="/logo.svg" alt="Syncraft" />
+              <p>AI-powered production tools for clean SVG tracing, background removal, upscaling, and print-ready artwork delivery.</p>
+              <div className="site-footer-socials" aria-label="Social media">
+                <a href="https://web.facebook.com/profile.php?id=61562539277199" target="_blank" rel="noreferrer" aria-label="Syncraft on Facebook"><SocialIcon name="facebook" /></a>
+                <button type="button" disabled aria-label="Instagram profile coming soon"><SocialIcon name="instagram" /></button>
+                <a href="https://www.tiktok.com/@syncraftech1" target="_blank" rel="noreferrer" aria-label="Syncraft on TikTok"><SocialIcon name="tiktok" /></a>
+              </div>
+            </div>
 
-
-          <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
-            <a href="#" className="footer-link">Feedback</a>
-            <a href="/privacy" className="footer-link">Privacy Policy</a>
-            <a href="/terms" className="footer-link">Terms of Service</a>
-            <a href="#" className="footer-link">Cookie Policy</a>
-            <a href="/privacy" className="footer-link">FAQ</a>
-            <a href="/refunds" className="footer-link">Refund Policy</a>
-            <a href="https://m.me/105884602605306" target="_blank" rel="noreferrer" className="footer-link">Contact</a>
-            <a href="/api-dashboard" className="footer-link" style={{ fontWeight: "bold" }}>API</a>
-            <a href="https://m.me/105884602605306" target="_blank" rel="noreferrer" className="footer-link" style={{ color: "#d4ff59" }}>Customer Support</a>
+            <nav className="site-footer-links" aria-label="Footer navigation">
+              <div>
+                <h3>Resources</h3>
+                <a href="/privacy">Privacy Policy</a>
+                <a href="/terms">Terms of Service</a>
+                <a href="/refunds">Refund Policy</a>
+                <a href="#faq">FAQ</a>
+              </div>
+              <div>
+                <h3>Company</h3>
+                <a href="/#syncraft-upload">Workspace</a>
+                <a href="/image-upscaler">Image Upscaler</a>
+                <a href="/image-to-vector">Image to Vector</a>
+                <a href="/api-dashboard">API</a>
+                <a href="https://m.me/105884602605306" target="_blank" rel="noreferrer">Customer Support</a>
+              </div>
+            </nav>
           </div>
+          <div className="site-footer-bottom">© 2024–2026 Syncraft. All rights reserved.</div>
         </footer>
 
       </div>
