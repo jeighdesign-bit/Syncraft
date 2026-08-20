@@ -5,7 +5,7 @@ import { CREDIT_COST } from "@/lib/pricing";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 import { snapToAllowedAspectRatio } from "@/lib/aspectRatio";
-import { buildGarmentExtractionInput, garmentExtractionMode } from "@/lib/garmentExtractionConfig.mjs";
+import { buildGarmentExtractionInput, garmentExtractionMode, shouldSaveGarmentExtractionServerSide } from "@/lib/garmentExtractionConfig.mjs";
 import { uploadToR2 } from "@/lib/cloudflare";
 
 // IMPORTANT: Must use Node.js runtime (not edge) so we get real 120s timeouts.
@@ -530,6 +530,7 @@ If any difference is detected, continue refining until the reconstruction is vis
       let generatedImageBuffer;
       let generatedMimeType = "image/png";
       let geminiThinking = "Generated via OpenRouter Gemini 3.1 Flash Image";
+      let extractionMode;
 
       try {
         if (!process.env.FAL_KEY) {
@@ -547,7 +548,7 @@ If any difference is detected, continue refining until the reconstruction is vis
         // Flow: Extract → Upscale (step 2) → Vectorize (step 3)
         console.log("[API Step 1] Extracting flat design with fal.ai (nano-banana-pro/edit)...");
 
-        const extractionMode = garmentExtractionMode();
+        extractionMode = garmentExtractionMode();
         const extractionInput = buildGarmentExtractionInput({
           imageUrl: finalImageUrl,
           prompt,
@@ -611,6 +612,34 @@ If any difference is detected, continue refining until the reconstruction is vis
           console.error("[fal.ai Error Detail]:", JSON.stringify(err.body.detail, null, 2));
         }
         throw new Error(err.message || "Failed to generate image with fal.ai");
+      }
+
+      if (shouldSaveGarmentExtractionServerSide(extractionMode)) {
+        const extension = generatedMimeType === "image/jpeg" ? "jpg" : "png";
+        const fileName = `projects/${projectId}/generated_flat_${Date.now()}.${extension}`;
+        const fileUrl = await uploadToR2(generatedImageBuffer, fileName, generatedMimeType);
+        const { error: saveError } = await adminSupabase
+          .from("projects")
+          .update({
+            generated_image_url: fileUrl,
+            ai_prompt: null,
+            zip_url: null,
+            zip_signature: null,
+            zip_generated_at: null,
+          })
+          .eq("id", projectId)
+          .eq("user_id", user.id);
+        if (saveError) throw new Error(`Could not save flat extract: ${saveError.message}`);
+
+        console.log("[API Step 1] Saved enhanced extract directly to storage.");
+        return NextResponse.json({
+          success: true,
+          step: 1,
+          alreadySaved: true,
+          fileUrl,
+          mimeType: generatedMimeType,
+          thinking: geminiThinking,
+        });
       }
 
       return NextResponse.json({

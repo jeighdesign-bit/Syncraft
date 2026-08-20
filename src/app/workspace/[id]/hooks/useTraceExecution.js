@@ -287,9 +287,11 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       }
 
       logToConsole("[Step 1.5] Saving extracted image...", "normal");
-      const saveData1 = await postJson("/api/save-asset",
-        { projectId: project.id, step: 1, base64: data1.base64, mimeType: data1.mimeType },
-        authToken, "save1");
+      const saveData1 = data1.alreadySaved
+        ? { url: data1.fileUrl }
+        : await postJson("/api/save-asset",
+          { projectId: project.id, step: 1, base64: data1.base64, mimeType: data1.mimeType },
+          authToken, "save1");
 
       setProject(prev => ({
         ...prev,

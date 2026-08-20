@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   buildGarmentExtractionInput,
   garmentExtractionMode,
+  shouldSaveGarmentExtractionServerSide,
 } from "../src/lib/garmentExtractionConfig.mjs";
 
 const commonInput = {
@@ -46,3 +47,7 @@ test("enhanced mode requests supported 2K PNG output", () => {
   assert.equal("image_strength" in input, false);
 });
 
+test("only enhanced outputs bypass the browser Base64 save flow", () => {
+  assert.equal(shouldSaveGarmentExtractionServerSide("legacy"), false);
+  assert.equal(shouldSaveGarmentExtractionServerSide("enhanced"), true);
+});

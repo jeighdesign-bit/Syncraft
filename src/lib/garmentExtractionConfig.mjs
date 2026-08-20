@@ -32,3 +32,9 @@ export function buildGarmentExtractionInput({ imageUrl, prompt, aspectRatio, mod
   };
 }
 
+// 2K PNGs can exceed the browser-to-server request body limit when Base64
+// encoded. Save enhanced results inside the trace route instead of sending the
+// bytes back through the browser for a second upload.
+export function shouldSaveGarmentExtractionServerSide(mode) {
+  return garmentExtractionMode(mode) === ENHANCED_MODE;
+}
