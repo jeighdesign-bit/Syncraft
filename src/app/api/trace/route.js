@@ -5,6 +5,7 @@ import { CREDIT_COST } from "@/lib/pricing";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 import { snapToAllowedAspectRatio } from "@/lib/aspectRatio";
+import { buildGarmentExtractionInput, garmentExtractionMode } from "@/lib/garmentExtractionConfig.mjs";
 import { uploadToR2 } from "@/lib/cloudflare";
 
 // IMPORTANT: Must use Node.js runtime (not edge) so we get real 120s timeouts.
@@ -546,15 +547,22 @@ If any difference is detected, continue refining until the reconstruction is vis
         // Flow: Extract → Upscale (step 2) → Vectorize (step 3)
         console.log("[API Step 1] Extracting flat design with fal.ai (nano-banana-pro/edit)...");
 
+        const extractionMode = garmentExtractionMode();
+        const extractionInput = buildGarmentExtractionInput({
+          imageUrl: finalImageUrl,
+          prompt,
+          aspectRatio: targetAspectRatio,
+          mode: extractionMode,
+        });
+        console.log("[API Step 1] Garment extraction configuration:", {
+          mode: extractionMode,
+          resolution: extractionInput.resolution || "provider-default",
+          outputFormat: extractionInput.output_format || "provider-default",
+          aspectRatio: targetAspectRatio,
+        });
+
         const result = await fal.subscribe("fal-ai/nano-banana-pro/edit", {
-          input: {
-            image_urls: [finalImageUrl],
-            prompt: prompt,
-            aspect_ratio: targetAspectRatio,
-            guidance_scale: 10,          // raised from 7.5 → 10: stronger prompt adherence without deep-frying
-            num_inference_steps: 50,     // more steps = sharper, more accurate reproduction
-            image_strength: 0.55,        // raised from 0.35 → 0.55: stays closer to reference geometry & colors
-          },
+          input: extractionInput,
           logs: true,
           onQueueUpdate: (update) => {
             if (update.status === "IN_PROGRESS") {
