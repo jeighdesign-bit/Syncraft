@@ -901,8 +901,8 @@ export default function StartScreen() {
                   }}>
                     <BeforeAfterSlider
                       title="Custom Design 2"
-                      rasterUrl="/samples/polo-original.png"
-                      vectorUrl="/samples/polo-vector.png"
+                      rasterUrl="/samples/polo-original.webp"
+                      vectorUrl="/samples/polo-vector.webp"
                       height="240px"
                       objectFit="cover"
                     />
@@ -934,8 +934,8 @@ export default function StartScreen() {
                   }}>
                     <BeforeAfterSlider
                       title="Custom Pattern"
-                      rasterUrl="/samples/esports-original.jpg"
-                      vectorUrl="/samples/esports-vector.png"
+                      rasterUrl="/samples/esports-original.webp"
+                      vectorUrl="/samples/esports-vector.webp"
                       height="240px"
                       objectFit="cover"
                     />
