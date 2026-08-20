@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { adminSupabase, safeRefundCredit } from "@/lib/supabase";
+import { adminSupabase } from "@/lib/supabase";
+import { refundCreditVerified } from "@/lib/creditLedger";
 
 export async function POST(request) {
   try {
@@ -42,8 +43,11 @@ export async function POST(request) {
       .from('credit_logs')
       .select('id')
       .eq('user_id', user.id)
-      .eq('amount', -12)
-      .in('action', ['Extract & Vectorize', 'Background Removal', 'AI Upscale (4K)'])
+      .eq('project_id', projectId)
+      .eq('transaction_type', 'charge')
+      .eq('feature', 'garment_logo_extract')
+      .lt('amount', 0)
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -51,29 +55,34 @@ export async function POST(request) {
       return NextResponse.json({ error: "No matching credit deduction record found" }, { status: 409 });
     }
 
-    const { data: updatedProj, error: updateErr } = await adminSupabase
+    const { data: failedUsage, error: failedUsageError } = await adminSupabase
+      .from('provider_usage_logs')
+      .select('id')
+      .eq('credit_transaction_id', chargeLog.id)
+      .eq('project_id', projectId)
+      .eq('request_status', 'failed')
+      .limit(1)
+      .maybeSingle();
+    if (failedUsageError || !failedUsage) {
+      return NextResponse.json({ error: "No verified generation failure found" }, { status: 409 });
+    }
+
+    const refund = await refundCreditVerified({
+      chargeTransactionId: chargeLog.id,
+      reason: "User-visible generation failure",
+      action: "Refund",
+      metadata: { route: "api/refund" },
+    });
+    if (!refund.refunded) {
+      return NextResponse.json({ error: refund.reason || "Credit refund could not be verified" }, { status: 409 });
+    }
+
+    const { error: updateErr } = await adminSupabase
       .from('projects')
       .update({ generated_image_url: 'REFUNDED', refunded: true })
       .eq('id', projectId)
-      .eq('user_id', user.id)
-      .eq('credit_deducted', true)
-      .eq('refunded', false)
-      .select('user_id');
-
-    if (updateErr) {
-      throw updateErr;
-    }
-      
-    if (updatedProj && updatedProj.length > 0) {
-      await safeRefundCredit(user.id);
-      await adminSupabase.from('credit_logs').insert({
-        user_id: user.id,
-        action: 'Refund',
-        amount: 12
-      });
-    } else {
-      console.log(`[Refund API] Project ${projectId} already refunded or invalid.`);
-    }
+      .eq('user_id', user.id);
+    if (updateErr) throw updateErr;
 
     console.log(`[Refund API] ✅ Successfully processed refund for project ${projectId} (User: ${user.id})`);
     

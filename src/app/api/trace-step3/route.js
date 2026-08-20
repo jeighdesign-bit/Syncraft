@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { uploadToR2 } from "@/lib/cloudflare";
 import { adminSupabase } from "@/lib/supabase";
+import { findLatestProjectCharge, recordProviderUsage } from "@/lib/creditLedger";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { segmentSvgLayers } from "@/lib/svgSegmenter";
 import { DEFAULT_MAX_IMAGE_BYTES, DEFAULT_MAX_SVG_BYTES, DEFAULT_MAX_UPSCALED_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, validateUrlForSSRF } from "@/lib/ssrf";
@@ -187,6 +188,18 @@ export async function POST(request) {
 
     const vectorData = await recraftVectorRes.json();
     const vectorUrl = vectorData.image.url;
+    const charge = await findLatestProjectCharge(projectId);
+    await recordProviderUsage({
+      creditTransactionId: charge?.transactionId || null,
+      projectId,
+      userId,
+      provider: "recraft",
+      endpoint: "images/vectorize",
+      providerRequestId: vectorData.id || recraftVectorRes.headers.get("x-request-id") || null,
+      requestStatus: "succeeded",
+      estimatedCostUsd: 0.01,
+      isOwnerTest: charge?.isOwnerTest === true,
+    });
 
     const { response: svgRes, buffer: svgDownloadBuffer } = await fetchWithSSRFProtection(vectorUrl, {
       allowedHosts: getAllowedProviderHosts(),
@@ -261,8 +274,23 @@ export async function POST(request) {
 
   } catch (error) {
     console.error(`[Trace Step 3 Error]:`, error.message);
+
+    const charge = await findLatestProjectCharge(projectId);
+    if (charge) {
+      await recordProviderUsage({
+        creditTransactionId: charge.transactionId,
+        projectId,
+        userId,
+        provider: "syncraft_pipeline",
+        endpoint: "trace-step-3",
+        requestStatus: "failed",
+        isOwnerTest: charge.isOwnerTest === true,
+        metadata: { error: String(error.message || "Unknown vectorization error").slice(0, 500) },
+      });
+    }
     
-    // This free stage must never modify billing or destroy completed assets.
+    // This stage does not change balances directly. The project-linked failure
+    // receipt allows the existing refund endpoint to verify a pipeline failure.
 
     const timedOut = error?.name === 'TimeoutError' ||
       /aborted|timeout/i.test(error?.message || '');

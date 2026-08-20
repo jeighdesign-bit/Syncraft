@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
+import { chargeCreditsVerified, markCreditTransaction, recordProviderUsage, refundCreditVerified } from "@/lib/creditLedger";
+import { CREDIT_COST } from "@/lib/pricing";
 import { uploadToR2 } from "@/lib/cloudflare";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 import { fal } from "@fal-ai/client";
@@ -9,7 +11,9 @@ export const maxDuration = 120; // Enough time for BG removal + R2 upload
 
 export async function POST(request) {
   let userId = null;
-  let creditDeducted = false;
+  let projectId = null;
+  let chargeTransactionId = null;
+  let isOwnerTest = false;
   try {
     // ─── Auth: verify caller identity server-side ─────────────────────────────
     const authHeader = request.headers.get('authorization');
@@ -24,7 +28,9 @@ export async function POST(request) {
     userId = user.id;
     // ─────────────────────────────────────────────────────────────────────────────
 
-    const { projectId, keepOriginal } = await request.json();
+    const body = await request.json();
+    projectId = body.projectId;
+    const { keepOriginal } = body;
 
     if (!projectId) {
       return NextResponse.json({ error: "Missing projectId" }, { status: 400 });
@@ -57,44 +63,24 @@ export async function POST(request) {
     }
     // ─────────────────────────────────────────────────────────────────────────
 
-    // ============================================================
-    // ATOMIC CREDIT DEDUCTION
-    // ============================================================
-    const { data: profile, error: profileErr } = await adminSupabase
-      .from('profiles')
-      .select('credits')
-      .eq('id', user.id)
-      .single();
-
-    if (profileErr || !profile) {
-      return NextResponse.json({ error: "Could not fetch profile" }, { status: 403 });
+    try {
+      const charge = await chargeCreditsVerified({
+        userId: user.id,
+        projectId,
+        feature: "background_removal",
+        action: "Background Removal",
+        amount: CREDIT_COST.removeBg,
+        metadata: { route: "api/remove-bg" },
+      });
+      chargeTransactionId = charge.transactionId;
+      isOwnerTest = charge.isOwnerTest;
+    } catch (billingError) {
+      if (billingError.code === "INSUFFICIENT_CREDITS" || billingError.code === "PROFILE_NOT_FOUND") {
+        return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
+      }
+      console.error("[Remove BG] Verified charge failed:", billingError);
+      return NextResponse.json({ error: "Billing error. Please try again." }, { status: 500 });
     }
-
-    if (profile.credits < 12) {
-      return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
-    }
-
-    // Deduct immediately using optimistic lock
-    const { error: deductErr, data: updatedData } = await adminSupabase
-      .from('profiles')
-      .update({ credits: profile.credits - 12 })
-      .eq('id', user.id)
-      .eq('credits', profile.credits)
-      .select();
-
-    if (deductErr || !updatedData || updatedData.length === 0) {
-      return NextResponse.json({ error: "Conflict updating credits. Please try again." }, { status: 409 });
-    }
-
-    // Track that credits were deducted so we can refund on failure
-    creditDeducted = true;
-
-    // Log the transaction
-    await adminSupabase.from('credit_logs').insert({
-      user_id: user.id,
-      action: 'Background Removal',
-      amount: -12
-    });
 
     await adminSupabase
       .from('projects')
@@ -117,6 +103,16 @@ export async function POST(request) {
           update.logs.map((log) => console.log(log.message));
         }
       },
+    });
+
+    await recordProviderUsage({
+      creditTransactionId: chargeTransactionId,
+      projectId,
+      userId,
+      provider: "fal",
+      endpoint: "fal-ai/birefnet",
+      providerRequestId: result?.requestId || null,
+      isOwnerTest,
     });
 
     console.log("[fal.ai RAW Response]:", JSON.stringify(result, null, 2));
@@ -177,6 +173,8 @@ export async function POST(request) {
       throw new Error("Failed to update project with new image URL");
     }
 
+    await markCreditTransaction({ transactionId: chargeTransactionId, status: "succeeded" });
+
     return NextResponse.json({ 
       success: true, 
       transparent_image_url: r2Url, 
@@ -186,22 +184,23 @@ export async function POST(request) {
   } catch (error) {
     console.error("[Remove BG] Error:", error);
 
-    // ─── CREDIT REFUND on failure ────────────────────────────────────────────
-    // If credit was already deducted but AI/R2/DB failed, refund it.
-    if (creditDeducted && userId) {
+    let refunded = false;
+    if (chargeTransactionId && userId) {
       try {
-        await adminSupabase.rpc('increment_credits', { user_id: userId, amount: 12 });
-        await adminSupabase.from('credit_logs').insert({ user_id: userId, action: 'Refund (Error)', amount: 12 });
-        if (projectId) {
+        const refund = await refundCreditVerified({
+          chargeTransactionId,
+          reason: error.message,
+          action: "Refund: Background Removal (Error)",
+          metadata: { route: "api/remove-bg" },
+        });
+        refunded = refund.refunded;
+        if (refunded && projectId) {
           await adminSupabase.from('projects').update({ refunded: true }).eq('id', projectId).eq('user_id', userId);
         }
-        console.log(`[Remove BG] Refunded 12 credits to user ${userId} due to processing error.`);
       } catch (refundErr) {
-        // Non-fatal: log but don't block the error response
         console.error('[Remove BG] CRITICAL: Failed to refund credit:', refundErr);
       }
     }
-    // ─────────────────────────────────────────────────────────────────────────
 
     // ─── Fix #2: Never expose raw internal error messages to the client ─────
     const safeMessage =
@@ -209,8 +208,8 @@ export async function POST(request) {
       error.message?.toLowerCase().includes('api') ||
       error.message?.toLowerCase().includes('key') ||
       error.message === 'Unauthorized'
-        ? 'AI provider authentication failed (Unauthorized/Keys). Your credit has been refunded automatically.'
+        ? `AI provider authentication failed (Unauthorized/Keys).${refunded ? ' Your credits were refunded automatically.' : ' Please contact support about the credit charge.'}`
         : (error.message || 'Failed to remove background');
-    return NextResponse.json({ error: safeMessage }, { status: 500 });
+    return NextResponse.json({ error: safeMessage, refunded }, { status: 500 });
   }
 }

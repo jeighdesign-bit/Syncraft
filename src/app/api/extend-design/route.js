@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
+import { chargeCreditsVerified, markCreditTransaction, recordProviderUsage, refundCreditVerified } from "@/lib/creditLedger";
 import { uploadToR2 } from "@/lib/cloudflare";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, DEFAULT_MAX_UPSCALED_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, validateUrlForSSRF } from "@/lib/ssrf";
@@ -234,7 +235,8 @@ async function buildFeatheredOriginal({ sharp, buffer, width, height, pads }) {
 export async function POST(request) {
   let userId = null;
   let projectId = null;
-  let creditDeducted = false;
+  let chargeTransactionId = null;
+  let isOwnerTest = false;
 
   try {
     // ─── Auth: verify caller identity server-side ─────────────────────────────
@@ -357,39 +359,24 @@ export async function POST(request) {
     // ============================================================
     // Everything above is free. Only now touch money.
     // ============================================================
-    const { data: profile, error: profileErr } = await adminSupabase
-      .from('profiles')
-      .select('credits')
-      .eq('id', user.id)
-      .single();
-
-    if (profileErr || !profile) {
-      return NextResponse.json({ error: "Could not fetch profile" }, { status: 403 });
+    try {
+      const charge = await chargeCreditsVerified({
+        userId: user.id,
+        projectId,
+        feature: "extend_design",
+        action: "Extend Design",
+        amount: CREDIT_COST.extend,
+        metadata: { route: "api/extend-design", pads, result_aspect_ratio: resultAspectRatio },
+      });
+      chargeTransactionId = charge.transactionId;
+      isOwnerTest = charge.isOwnerTest;
+    } catch (billingError) {
+      if (billingError.code === "INSUFFICIENT_CREDITS" || billingError.code === "PROFILE_NOT_FOUND") {
+        return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
+      }
+      console.error("[Extend] Verified charge failed:", billingError);
+      return NextResponse.json({ error: "Billing error. Please try again." }, { status: 500 });
     }
-    if (profile.credits < CREDIT_COST.extend) {
-      return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
-    }
-
-    const { error: deductErr, data: updatedData } = await adminSupabase
-      .from('profiles')
-      .update({ credits: profile.credits - CREDIT_COST.extend })
-      .eq('id', user.id)
-      .eq('credits', profile.credits)
-      .select();
-
-    if (deductErr || !updatedData || updatedData.length === 0) {
-      return NextResponse.json({ error: "Conflict updating credits. Please try again." }, { status: 409 });
-    }
-    creditDeducted = true;
-
-    // 'Extend Design' is deliberately absent from the action allowlist in
-    // api/refund/route.js, so a hand-crafted client refund can never claim this
-    // charge. This route refunds itself inline in the catch block instead.
-    await adminSupabase.from('credit_logs').insert({
-      user_id: user.id,
-      action: 'Extend Design',
-      amount: -CREDIT_COST.extend,
-    });
 
     // NOTE: projects.credit_deducted is deliberately NOT set here. That flag is
     // owned by the trace pipeline's refund state machine, and flipping it would
@@ -450,6 +437,18 @@ export async function POST(request) {
       seedUrl,
       prompt: extendPrompt,
       aspectRatio: carrier.aspectRatio,
+    });
+
+    await recordProviderUsage({
+      creditTransactionId: chargeTransactionId,
+      projectId,
+      userId,
+      provider: "fal",
+      endpoint: "fal-ai/nano-banana-pro/edit",
+      providerRequestId: result?.requestId || null,
+      estimatedCostUsd: 0.15,
+      isOwnerTest,
+      metadata: { operation: "extend_design" },
     });
 
     const outputUrl = result?.data?.images?.[0]?.url;
@@ -615,6 +614,8 @@ export async function POST(request) {
       throw new Error("Failed to update project with the extended image");
     }
 
+    await markCreditTransaction({ transactionId: chargeTransactionId, status: "succeeded" });
+
     return NextResponse.json({
       success: true,
       generated_image_url: finalUrl,
@@ -629,13 +630,16 @@ export async function POST(request) {
   } catch (error) {
     console.error("[Extend] Error:", error);
 
-    if (creditDeducted && userId) {
+    let refunded = false;
+    if (chargeTransactionId && userId) {
       try {
-        await adminSupabase.rpc('increment_credits', { user_id: userId, amount: CREDIT_COST.extend });
-        await adminSupabase.from('credit_logs').insert({
-          user_id: userId, action: 'Refund (Error)', amount: CREDIT_COST.extend,
+        const refund = await refundCreditVerified({
+          chargeTransactionId,
+          reason: error.message,
+          action: "Refund: Extend Design (Error)",
+          metadata: { route: "api/extend-design" },
         });
-        console.log(`[Extend] Refunded ${CREDIT_COST.extend} credits to user ${userId}.`);
+        refunded = refund.refunded;
       } catch (refundErr) {
         console.error('[Extend] CRITICAL: failed to refund credits:', refundErr);
       }
@@ -647,17 +651,17 @@ export async function POST(request) {
 
     let safeMessage;
     if (error.message?.startsWith('EXTEND_RATIO_DRIFT')) {
-      safeMessage = 'The AI returned an unexpected canvas shape, so the extend was discarded. Your credits have been refunded.';
+      safeMessage = `The AI returned an unexpected canvas shape, so the extend was discarded.${refunded ? ' Your credits were refunded.' : ' Please contact support about the credit charge.'}`;
     } else if (error.message?.startsWith('EXTEND_NO_FILL')) {
-      safeMessage = 'The AI did not fill the new canvas, so the result was discarded and your credits were refunded.';
+      safeMessage = `The AI did not fill the new canvas, so the result was discarded.${refunded ? ' Your credits were refunded.' : ' Please contact support about the credit charge.'}`;
     } else if (error.message?.startsWith('EXTEND_PROVIDER_REJECTED')) {
-      safeMessage = 'The AI could not process this image after one automatic retry. Your credits were refunded; please adjust the extension slightly and try again.';
+      safeMessage = `The AI could not process this image after one automatic retry.${refunded ? ' Your credits were refunded.' : ' Please contact support about the credit charge.'} Please adjust the extension slightly and try again.`;
     } else {
       const m = error.message?.toLowerCase() || '';
       safeMessage = (m.includes('fal') || m.includes('api') || m.includes('key') || error.message === 'Unauthorized')
-        ? 'AI provider authentication failed. Your credits have been refunded automatically.'
+        ? `AI provider authentication failed.${refunded ? ' Your credits were refunded automatically.' : ' Please contact support about the credit charge.'}`
         : (error.message || 'Failed to extend design');
     }
-    return NextResponse.json({ error: safeMessage }, { status: 500 });
+    return NextResponse.json({ error: safeMessage, refunded }, { status: 500 });
   }
 }

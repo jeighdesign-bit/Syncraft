@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { adminSupabase, safeRefundCredit } from "@/lib/supabase";
+import { adminSupabase } from "@/lib/supabase";
+import { chargeCreditsVerified, findLatestProjectCharge, markCreditTransaction, recordProviderUsage, refundCreditVerified } from "@/lib/creditLedger";
+import { CREDIT_COST } from "@/lib/pricing";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 import { snapToAllowedAspectRatio } from "@/lib/aspectRatio";
@@ -17,6 +19,8 @@ export async function POST(request) {
   // Only step 1 charges credits, so only step 1 may refund — see the catch block.
   let step;
   let skipRefund = false;
+  let chargeTransactionId = null;
+  let isOwnerTest = false;
   try {
     // ─── Auth: verify caller identity server-side ─────────────────────────────
     const authHeader = request.headers.get('authorization');
@@ -99,50 +103,26 @@ export async function POST(request) {
       sourceUrl = sourceFetch.finalUrl;
     }
 
-    // ============================================================
-    // ATOMIC CREDIT DEDUCTION — Step 1 ONLY, MANDATORY check
-    // project.user_id is guaranteed non-null from check above.
-    // ============================================================
+    // Deduction and the project-linked ledger receipt are committed together.
     if (step === 1) {
-      const { data: profile, error: profileErr } = await adminSupabase
-        .from('profiles')
-        .select('credits')
-        .eq('id', project.user_id)
-        .single();
-
-      if (profileErr || !profile) {
-        console.error('[Billing] Could not fetch profile:', profileErr);
-        return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
-      }
-
-      if (profile.credits < 12) {
-        return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
-      }
-
-      // DEDUCT IMMEDIATELY — optimistic lock prevents double-spend
-      const { error: deductErr, data: updatedData } = await adminSupabase
-        .from('profiles')
-        .update({ credits: profile.credits - 12 })
-        .eq('id', project.user_id)
-        .eq('credits', profile.credits) // only succeeds if credits haven't changed
-        .select();
-
-      if (deductErr) {
-        console.error('[Billing] Deduction SQL error:', deductErr);
+      try {
+        const charge = await chargeCreditsVerified({
+          userId: project.user_id,
+          projectId,
+          feature: "garment_logo_extract",
+          action: "Extract & Vectorize",
+          amount: CREDIT_COST.trace,
+          metadata: { route: "api/trace", step: 1, trace_type: project.trace_type || null },
+        });
+        chargeTransactionId = charge.transactionId;
+        isOwnerTest = charge.isOwnerTest;
+      } catch (billingError) {
+        if (billingError.code === "INSUFFICIENT_CREDITS" || billingError.code === "PROFILE_NOT_FOUND") {
+          return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
+        }
+        console.error("[Billing] Verified deduction failed:", billingError);
         return NextResponse.json({ error: "Billing error. Please try again." }, { status: 500 });
       }
-
-      if (!updatedData || updatedData.length === 0) {
-        // Condition failed — credits changed during transaction (race condition)
-        return NextResponse.json({ error: "Conflict updating credits. Please try again." }, { status: 409 });
-      }
-
-      // Credit deducted successfully.
-      await adminSupabase.from('credit_logs').insert({
-        user_id: project.user_id,
-        action: 'Extract & Vectorize',
-        amount: -12
-      });
 
       // Surface failures here — this flag is what makes the refund path in the
       // catch block eligible, so losing it silently means the user is charged
@@ -583,6 +563,17 @@ If any difference is detected, continue refining until the reconstruction is vis
           },
         });
 
+        await recordProviderUsage({
+          creditTransactionId: chargeTransactionId,
+          projectId,
+          userId,
+          provider: "fal",
+          endpoint: "fal-ai/nano-banana-pro/edit",
+          providerRequestId: result?.requestId || null,
+          estimatedCostUsd: 0.15,
+          isOwnerTest,
+        });
+
         console.log("[fal.ai RAW Response]:", JSON.stringify(result, null, 2));
 
         if (!result || !result.data || !result.data.images || result.data.images.length === 0) {
@@ -600,6 +591,11 @@ If any difference is detected, continue refining until the reconstruction is vis
         generatedImageBuffer = generatedBuffer;
         generatedMimeType = result.data.images[0].content_type || "image/jpeg";
         geminiThinking = "Generated via fal.ai Nano Banana Pro Edit";
+        await markCreditTransaction({
+          transactionId: chargeTransactionId,
+          status: "provider_succeeded",
+          metadata: { provider: "fal", endpoint: "fal-ai/nano-banana-pro/edit" },
+        });
 
       } catch (err) {
         console.error("[fal.ai Error]:", err);
@@ -696,6 +692,17 @@ If any difference is detected, continue refining until the reconstruction is vis
         },
       });
 
+      const traceCharge = await findLatestProjectCharge(projectId);
+      await recordProviderUsage({
+        creditTransactionId: traceCharge?.transactionId || null,
+        projectId,
+        userId,
+        provider: "fal",
+        endpoint: "fal-ai/esrgan",
+        providerRequestId: upscalerResult?.requestId || null,
+        isOwnerTest: traceCharge?.isOwnerTest === true,
+      });
+
       console.log("[ESRGAN RAW Response]:", JSON.stringify(upscalerResult?.data, null, 2));
 
       const upscaledUrl = upscalerResult?.data?.image?.url || upscalerResult?.data?.image_url;
@@ -714,37 +721,40 @@ If any difference is detected, continue refining until the reconstruction is vis
   } catch (error) {
     console.error(`[Trace API Error]:`, error.message);
 
-    // Attempt automatic refund on server-side failure.
-    //
-    // Gated on step 1 because that is the only step that charges credits.
-    // Without this gate, a failed step 2/3 on an already-successful project
-    // (credit_deducted=true, refunded=false — the state of EVERY completed
-    // project) would overwrite generated_image_url with the 'REFUNDED'
-    // sentinel, destroying paid work, and hand out credits this request never
-    // took. skipRefund lets a caller re-running a stage opt out entirely.
+    const failedCharge = chargeTransactionId
+      ? { transactionId: chargeTransactionId, isOwnerTest }
+      : await findLatestProjectCharge(projectId);
+    if (failedCharge && (step === 1 || step === 2)) {
+      await recordProviderUsage({
+        creditTransactionId: failedCharge.transactionId,
+        projectId,
+        userId,
+        provider: "syncraft_pipeline",
+        endpoint: `trace-step-${step}`,
+        requestStatus: "failed",
+        isOwnerTest: failedCharge.isOwnerTest === true,
+        metadata: { error: String(error.message || "Unknown trace error").slice(0, 500) },
+      });
+    }
+
+    // Only mark the project refunded after the linked atomic refund confirms
+    // that the user's balance and refund receipt were both updated.
     let refundIssued = false;
     try {
-      if (projectId && step === 1 && !skipRefund) {
-        let refundQuery = adminSupabase
-          .from('projects')
-          .update({ generated_image_url: 'REFUNDED', refunded: true })
-          .eq('id', projectId)
-          .eq('credit_deducted', true)
-          .eq('refunded', false)
-        if (userId) {
-          refundQuery = refundQuery.eq('user_id', userId);
-        }
-        // The error here was previously discarded, so a failing refund looked
-        // identical to a successful one and the user was told they were repaid.
-        const { data: updatedProj, error: refundQueryErr } = await refundQuery.select('user_id');
-
-        if (refundQueryErr) {
-          console.error(`[Billing] Refund query failed for project ${projectId}:`, refundQueryErr.message);
-        } else if (updatedProj && updatedProj.length > 0) {
-          refundIssued = await safeRefundCredit(updatedProj[0].user_id);
-          if (!refundIssued) {
-            console.error(`[Billing] safeRefundCredit did not apply for user ${updatedProj[0].user_id} (project ${projectId})`);
-          }
+      if (projectId && chargeTransactionId && step === 1 && !skipRefund) {
+        const refund = await refundCreditVerified({
+          chargeTransactionId,
+          reason: error.message,
+          action: "Refund: Extract & Vectorize (Error)",
+          metadata: { route: "api/trace", step: 1 },
+        });
+        refundIssued = refund.refunded;
+        if (refundIssued) {
+          await adminSupabase
+            .from('projects')
+            .update({ generated_image_url: 'REFUNDED', refunded: true })
+            .eq('id', projectId)
+            .eq('user_id', userId);
         }
       }
     } catch (refundErr) {
@@ -772,6 +782,6 @@ If any difference is detected, continue refining until the reconstruction is vis
           ? 'Your credit has been refunded automatically.'
           : 'Your credit could NOT be refunded automatically — please contact support.'}`
       : (actualErrorMsg || 'Failed to process trace step');
-    return NextResponse.json({ error: safeMessage }, { status: 500 });
+    return NextResponse.json({ error: safeMessage, refunded: refundIssued }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { adminSupabase, safeRefundCredit } from "@/lib/supabase";
+import { adminSupabase } from "@/lib/supabase";
+import { chargeCreditsVerified, markCreditTransaction, recordProviderUsage, refundCreditVerified } from "@/lib/creditLedger";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 import { buildRecoveryPrompt, normalizeRecoveryAnalysis } from "@/lib/recovery";
@@ -73,7 +74,7 @@ async function runEdit(imageUrls, prompt, aspectRatio = "auto", backgroundOnly =
     });
     const image = result?.data?.images?.[0];
     if (!image?.url) throw new Error("Recovery model did not return an image.");
-    return image;
+    return { ...image, requestId: result?.requestId || requestId || null };
   } catch (error) {
     const wrapped = new Error(`Fal ${stage} failed: ${providerErrorMessage(error)}`);
     wrapped.code = "FAL_RECOVERY_FAILED";
@@ -276,15 +277,23 @@ async function lockOutputToSource(buffer, sourceBuffer, width, height, matchPale
     .toBuffer();
 }
 
-async function refund(userId, projectId, reason, validation = null) {
-  const ok = await safeRefundCredit(userId, CREDIT_COST.universal);
-  if (ok) {
-    await adminSupabase.from("credit_logs").insert({ user_id: userId, action: `Universal recovery refund: ${String(reason).slice(0, 80)}`, amount: CREDIT_COST.universal });
+async function refund(userId, projectId, chargeTransactionId, reason, validation = null) {
+  let ok = false;
+  try {
+    const result = await refundCreditVerified({
+      chargeTransactionId,
+      reason,
+      action: "Refund: Universal Design Recovery (Error)",
+      metadata: { route: "api/recovery/generate", validation: validation || null },
+    });
+    ok = result.refunded;
+  } catch (refundError) {
+    console.error("[Universal Recovery] Verified refund failed:", refundError);
   }
   const { data: project } = await adminSupabase.from("projects").select("canvas_data").eq("id", projectId).eq("user_id", userId).single();
   const currentRecovery = project?.canvas_data?.universal_recovery || {};
   await adminSupabase.from("projects").update({
-    credit_deducted: false,
+    credit_deducted: !ok,
     refunded: ok,
     canvas_data: {
       ...(project?.canvas_data || {}),
@@ -303,6 +312,8 @@ export async function POST(request) {
   let charged = false;
   let projectId;
   let userId;
+  let chargeTransactionId = null;
+  let isOwnerTest = false;
   try {
     const token = request.headers.get("authorization")?.replace("Bearer ", "").trim();
     const { data: { user } } = await adminSupabase.auth.getUser(token || "");
@@ -334,18 +345,26 @@ export async function POST(request) {
       code: "RECOVERY_ALREADY_RUNNING",
     }, { status: 409 });
 
-    const { data: profile } = await adminSupabase.from("profiles").select("credits").eq("id", user.id).single();
-    if (!profile || profile.credits < CREDIT_COST.universal) {
+    try {
+      const charge = await chargeCreditsVerified({
+        userId: user.id,
+        projectId,
+        feature: "universal_design_recovery",
+        action: "Universal Design Recovery",
+        amount: CREDIT_COST.universal,
+        metadata: { route: "api/recovery/generate", mode: recovery.mode || project.ai_prompt || null },
+      });
+      chargeTransactionId = charge.transactionId;
+      isOwnerTest = charge.isOwnerTest;
+      charged = true;
+    } catch (billingError) {
       await adminSupabase.from("projects").update({ canvas_data: project.canvas_data, credit_deducted: false }).eq("id", projectId);
-      return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
+      if (billingError.code === "INSUFFICIENT_CREDITS" || billingError.code === "PROFILE_NOT_FOUND") {
+        return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
+      }
+      console.error("[Universal Recovery] Verified charge failed:", billingError);
+      return NextResponse.json({ error: "Billing error. Please try again." }, { status: 500 });
     }
-    const { data: debited } = await adminSupabase.from("profiles").update({ credits: profile.credits - CREDIT_COST.universal }).eq("id", user.id).eq("credits", profile.credits).select("id");
-    if (!debited?.length) {
-      await adminSupabase.from("projects").update({ canvas_data: project.canvas_data, credit_deducted: false }).eq("id", projectId);
-      return NextResponse.json({ error: "Billing conflict. Please try again." }, { status: 409 });
-    }
-    charged = true;
-    await adminSupabase.from("credit_logs").insert({ user_id: user.id, action: "Universal Design Recovery", amount: -CREDIT_COST.universal });
 
     const sourceUrl = normalizeUserImageUrl(project.original_image_url, new URL(request.url).origin);
     if (!isOwnedStorageUrl(sourceUrl, { userId: user.id, projectId }) || !(await validateUrlForSSRF(sourceUrl, { allowedHosts: getAllowedStorageHosts() }))) throw new Error("Invalid source image URL");
@@ -425,6 +444,17 @@ export async function POST(request) {
         maxBytes: DEFAULT_MAX_IMAGE_BYTES,
         allowedContentTypes: ["image/"],
       }, "Generated image");
+      await recordProviderUsage({
+        creditTransactionId: chargeTransactionId,
+        projectId,
+        userId,
+        provider: "fal",
+        endpoint: "fal-ai/nano-banana-pro/edit",
+        providerRequestId: finalImage.requestId || null,
+        estimatedCostUsd: 0.15,
+        isOwnerTest,
+        metadata: { operation: "universal_design_recovery", mode: recoveryMode },
+      });
       const retention = await contentRetentionCheck(source.buffer, downloaded.buffer);
       if (retention.collapsed) {
         validation = {
@@ -529,6 +559,12 @@ export async function POST(request) {
       },
     }).eq("id", projectId).eq("user_id", user.id);
 
+    await markCreditTransaction({
+      transactionId: chargeTransactionId,
+      status: "succeeded",
+      metadata: { recovery_status: validation.pass ? "complete" : "partial" },
+    });
+
     return NextResponse.json({
       success: true,
       base64: exactOutput.toString("base64"),
@@ -546,7 +582,7 @@ export async function POST(request) {
       console.error("[Universal Recovery]", error);
     }
     const refunded = charged && userId && projectId
-      ? await refund(userId, projectId, errorMessage, error.validation)
+      ? await refund(userId, projectId, chargeTransactionId, errorMessage, error.validation)
       : false;
     const expectedQualityRejection = error.code === "BACKGROUND_ONLY_VALIDATION_FAILED"
       || error.code === "FOREGROUND_MASK_NOT_FOUND"

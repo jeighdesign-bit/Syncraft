@@ -325,11 +325,13 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
         || /timed?\s*out|timeout|aborted due to timeout/i.test(error.message || "")
       );
 
-      // Universal billing/refunds are authoritative inside its generation route.
-      // Its visible balance is only decremented after generation succeeds, so
-      // a failed-and-refunded request needs no optimistic correction here.
-      // Legacy garment/logo continue to use the existing refund endpoint.
-      if (project.trace_type !== "universal") try {
+      // Step 1 can now return an already-verified refund. Later pipeline stages
+      // use the refund endpoint, which only accepts a server-recorded failure
+      // tied to this project's exact charge transaction.
+      if (project.trace_type !== "universal" && error.refunded) {
+        logToConsole(`[System] Generation failed. ${CREDIT_COST.trace} Credits have been refunded.`, "success");
+        if (userCredits !== null) setUserCredits(prev => prev + CREDIT_COST.trace);
+      } else if (project.trace_type !== "universal") try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           const refundRes = await fetch("/api/refund", {
@@ -347,7 +349,7 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
           }
         }
       } catch {
-        // Refund request failed silently — backend auto-refund should cover it
+        // Keep the server balance authoritative if verification cannot complete.
       }
 
       const displayMsg = isTimeout

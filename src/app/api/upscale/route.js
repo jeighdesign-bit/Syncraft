@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
-import { adminSupabase, safeRefundCredit } from "@/lib/supabase";
+import { adminSupabase } from "@/lib/supabase";
+import { chargeCreditsVerified, markCreditTransaction, recordProviderUsage, refundCreditVerified } from "@/lib/creditLedger";
 import { uploadToR2 } from "@/lib/cloudflare";
 import { CREDIT_COST } from "@/lib/pricing";
 import { enforceRateLimit } from "@/lib/rateLimit";
@@ -35,6 +36,8 @@ export async function POST(request) {
   let userId;
   let projectId;
   let chargedThisRequest = false;
+  let chargeTransactionId = null;
+  let isOwnerTest = false;
   try {
     // Auth
     const authHeader = request.headers.get('authorization');
@@ -147,43 +150,30 @@ export async function POST(request) {
         return NextResponse.json({ error: "UPSCALE_ALREADY_PROCESSING" }, { status: 409 });
       }
 
-      const { data: profile, error: profileErr } = await adminSupabase
-        .from("profiles")
-        .select("credits")
-        .eq("id", userId)
-        .single();
-
-      if (profileErr || !profile || profile.credits < CREDIT_COST.upscale) {
+      try {
+        const charge = await chargeCreditsVerified({
+          userId,
+          projectId,
+          feature: "image_upscaler",
+          action: "AI Upscale (4K)",
+          amount: CREDIT_COST.upscale,
+          metadata: { route: "api/upscale" },
+        });
+        chargeTransactionId = charge.transactionId;
+        isOwnerTest = charge.isOwnerTest;
+        chargedThisRequest = true;
+      } catch (billingError) {
         await adminSupabase
           .from("projects")
           .update({ credit_deducted: false, canvas_data: project.canvas_data || {} })
           .eq("id", projectId)
           .eq("user_id", userId);
-        return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
+        if (billingError.code === "INSUFFICIENT_CREDITS" || billingError.code === "PROFILE_NOT_FOUND") {
+          return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
+        }
+        console.error("[Upscale] Verified charge failed:", billingError);
+        return NextResponse.json({ error: "Billing error. Please try again." }, { status: 500 });
       }
-
-      const { data: updatedProfiles } = await adminSupabase
-        .from("profiles")
-        .update({ credits: profile.credits - CREDIT_COST.upscale })
-        .eq("id", userId)
-        .eq("credits", profile.credits)
-        .select("id");
-
-      if (!updatedProfiles?.length) {
-        await adminSupabase
-          .from("projects")
-          .update({ credit_deducted: false, canvas_data: project.canvas_data || {} })
-          .eq("id", projectId)
-          .eq("user_id", userId);
-        return NextResponse.json({ error: "Conflict updating credits. Please try again." }, { status: 409 });
-      }
-      chargedThisRequest = true;
-
-      await adminSupabase.from("credit_logs").insert({
-        user_id: userId,
-        action: "AI Upscale (4K)",
-        amount: -CREDIT_COST.upscale,
-      });
     } else {
       await adminSupabase
         .from("projects")
@@ -216,6 +206,16 @@ export async function POST(request) {
           update.logs.map((log) => log.message).forEach(console.log);
         }
       },
+    });
+
+    await recordProviderUsage({
+      creditTransactionId: chargeTransactionId,
+      projectId,
+      userId,
+      provider: "fal",
+      endpoint: "fal-ai/clarity-upscaler",
+      providerRequestId: result?.requestId || null,
+      isOwnerTest,
     });
 
     if (!result || !result.data || !result.data.image || !result.data.image.url) {
@@ -271,19 +271,24 @@ export async function POST(request) {
       .eq("user_id", userId);
     if (saveError) throw new Error("Failed to save the upscaled image");
 
+    await markCreditTransaction({ transactionId: chargeTransactionId, status: "succeeded" });
+
     return NextResponse.json({ success: true, upscaledUrl: durableUrl, projectId, repaired: isPaidLegacyRepair });
 
   } catch (error) {
     console.error(`[Upscale API Error]:`, error.message, error.body?.detail || "", error.requestId || "");
     let refunded = false;
-    if (chargedThisRequest && userId) {
-      refunded = await safeRefundCredit(userId, CREDIT_COST.upscale);
-      if (refunded) {
-        await adminSupabase.from("credit_logs").insert({
-          user_id: userId,
+    if (chargedThisRequest && chargeTransactionId && userId) {
+      try {
+        const refund = await refundCreditVerified({
+          chargeTransactionId,
+          reason: error.message,
           action: "Refund: AI Upscale (Error)",
-          amount: CREDIT_COST.upscale,
+          metadata: { route: "api/upscale" },
         });
+        refunded = refund.refunded;
+      } catch (refundError) {
+        console.error("[Upscale] Verified refund failed:", refundError);
       }
     }
     if (projectId && userId) {
