@@ -55,6 +55,12 @@ export async function POST(request) {
       trace_type: normalizedTraceType,
       user_id: user.id,
       ai_prompt: aiPrompt,
+      ...(normalizedTraceType === 'mockup' ? {
+        canvas_data: {
+          garment_mode_selection_version: 1,
+          garment_mode: aiPrompt || 'PRESERVE_LOGOS',
+        },
+      } : {}),
       ...(normalizedTraceType === 'universal' ? {
         // Distinguishes a deliberate new mode selection from Universal
         // projects created under the former destructive default.
