@@ -245,7 +245,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
           <span style={noticeIconStyle}>!</span>
           <span>{project?.trace_type === "universal"
             ? "Crop around the complete visible printed design. Hidden, cropped, or wrapped-back areas will not be claimed as exact."
-            : "Image shows both the front and back of a shirt? Use the Crop Tool to isolate one side first, or tracing will fail."}</span>
+            : "Not satisfied with the result? Run it again—AI can make mistakes or generate random details."}</span>
         </div>
       </div>
 
