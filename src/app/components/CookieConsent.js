@@ -18,11 +18,17 @@ export default function CookieConsent() {
 
   const accept = () => {
     localStorage.setItem("cookie_consent", "accepted");
+    window.dispatchEvent(
+      new CustomEvent("syncraft:cookie-consent", { detail: "accepted" })
+    );
     dismiss();
   };
 
   const decline = () => {
     localStorage.setItem("cookie_consent", "declined");
+    window.dispatchEvent(
+      new CustomEvent("syncraft:cookie-consent", { detail: "declined" })
+    );
     dismiss();
   };
 
@@ -74,7 +80,7 @@ export default function CookieConsent() {
       {/* Text */}
       <div style={{ flex: 1, minWidth: "200px" }}>
         <p style={{ margin: 0, color: "#ddd", fontSize: "14px", lineHeight: "1.6" }}>
-          We use essential cookies and local storage to manage your session, remember your preferences, and keep the app working.
+          We use essential storage to keep Syncraft working. With your permission, we also use Google Analytics to understand visits, traffic sources, approximate locations, and how people use the site.
           {" "}
           <a href="/privacy" style={{ color: "#d4ff59", textDecoration: "underline", whiteSpace: "nowrap" }}>
             Privacy Policy
@@ -100,7 +106,7 @@ export default function CookieConsent() {
           onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#666"; e.currentTarget.style.color = "#bbb"; }}
           onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.color = "#888"; }}
         >
-          Decline
+          Essential Only
         </button>
         <button
           onClick={accept}
@@ -119,7 +125,7 @@ export default function CookieConsent() {
           onMouseEnter={(e) => e.currentTarget.style.background = "#e6c200"}
           onMouseLeave={(e) => e.currentTarget.style.background = "#d4ff59"}
         >
-          Accept All
+          Accept Analytics
         </button>
 
         {/* Close X */}

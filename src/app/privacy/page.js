@@ -78,10 +78,15 @@ export default function PrivacyPolicy() {
             <h3 style={{ color: "#fff", marginTop: "0", marginBottom: "15px", fontSize: "20px" }}>2. Authentication and Account Data</h3>
             <p style={{ color: "#aaa", marginBottom: "30px" }}>If you create an account using Google Auth, we store only the necessary information to maintain your session and manage your credits (e.g., your email address and profile name). We may also process payment request details needed to verify purchases, basic usage and project metadata needed to operate the Service, aggregated analytics such as public usage counts, and technical information such as IP address, browser headers, device information, security logs, and rate-limit metadata needed for security, abuse prevention, troubleshooting, and service reliability. We do not have access to your passwords. You can request account deletion at any time.</p>
             
-            <h3 style={{ color: "#fff", marginTop: "0", marginBottom: "15px", fontSize: "20px" }}>3. Payments & Refunds</h3>
+            <h3 style={{ color: "#fff", marginTop: "0", marginBottom: "15px", fontSize: "20px" }}>3. Google Analytics and Cookies</h3>
+            <p style={{ color: "#aaa", marginBottom: "30px" }}>
+              If you choose <strong style={{ color: "#ddd" }}>Accept Analytics</strong> in our cookie banner, Syncraft uses Google Analytics to understand page visits, traffic sources, approximate geographic location, device and browser information, and interactions such as scrolling and outbound-link clicks. Analytics is not loaded when you choose Essential Only, and we do not send your uploaded images or generated designs to Google Analytics. Google explains how it processes information from sites that use its services in its <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noreferrer" style={{ color: "#d4ff59" }}>partner-sites privacy notice</a>.
+            </p>
+
+            <h3 style={{ color: "#fff", marginTop: "0", marginBottom: "15px", fontSize: "20px" }}>4. Payments & Refunds</h3>
             <p style={{ color: "#aaa", marginBottom: "30px" }}>Syncraft operates on a prepaid credit system. For full details on our credit refund rules and payment policies, please read our <a href="/refunds" style={{ color: "#d4ff59" }}>Refund & Payment Policy</a>.</p>
 
-            <h3 style={{ color: "#fff", marginTop: "0", marginBottom: "15px", fontSize: "20px" }}>4. Contact Us</h3>
+            <h3 style={{ color: "#fff", marginTop: "0", marginBottom: "15px", fontSize: "20px" }}>5. Contact Us</h3>
             <p style={{ color: "#aaa", margin: 0 }}>If you have any questions or concerns about this Privacy Policy or how we handle your data, please reach out to us on our official Facebook page or contact channels.</p>
           </div>
         </section>

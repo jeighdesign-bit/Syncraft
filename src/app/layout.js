@@ -2,6 +2,7 @@ import { Outfit } from "next/font/google";
 import { ToastContainer } from "@/components/Toast";
 import MobileWarning from "./components/MobileWarning";
 import CookieConsent from "./components/CookieConsent";
+import GoogleAnalytics from "./components/GoogleAnalytics";
 import "./globals.css";
 import { DEFAULT_OG_IMAGE, SITE_URL } from "@/lib/site";
 
@@ -217,6 +218,7 @@ export default function RootLayout({ children }) {
             {children}
           </>
         )}
+        <GoogleAnalytics />
         <CookieConsent />
         <ToastContainer />
       </body>
