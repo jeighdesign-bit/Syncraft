@@ -1,3 +1,5 @@
+.env*
+.vercel
 .agents
 .codex-work
 outputs

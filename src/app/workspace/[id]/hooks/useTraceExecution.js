@@ -2,6 +2,11 @@
 
 import { useState, useCallback, useRef } from "react";
 import { CREDIT_COST } from "@/lib/pricing";
+import {
+  trackGenerationFailure,
+  trackGenerationStart,
+  trackGenerationSuccess,
+} from "@/lib/analytics.mjs";
 
 // Universal Background-only can include flattening, dual foreground detection,
 // masked inpainting, and validation. Keep the browser just below the route's
@@ -261,6 +266,8 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       return;
     }
 
+    trackGenerationStart({ tool: project.trace_type, credits: executionCost });
+
     try {
       // ─── Step 1: Extract ──────────────────────────────────────────────
       setTraceState("step1");
@@ -314,9 +321,11 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       await runStep2And3({ authToken, vectorColors, skipRefund: false });
 
       setTraceState("idle");
+      trackGenerationSuccess({ tool: project.trace_type, credits: executionCost });
       return { success: true }; // Signal to page to open compare modal
 
     } catch (error) {
+      trackGenerationFailure({ tool: project.trace_type, reason: error.code || error.message });
       setTraceState("idle");
 
       const isTimeout = !["FOREGROUND_DETECTION_UNAVAILABLE", "RECOVERY_NETWORK_FAILED"].includes(error.code) && (

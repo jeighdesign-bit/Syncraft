@@ -4,6 +4,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Scissors, Download, Home, Loader2, ArrowRight, Settings2, Image as ImageIcon, ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { CREDIT_COST } from "@/lib/pricing";
+import {
+  trackEvent,
+  trackExport,
+  trackGenerationFailure,
+  trackGenerationStart,
+  trackGenerationSuccess,
+} from "@/lib/analytics.mjs";
 
 const supabase = createClient();
 
@@ -64,6 +72,7 @@ export default function BgRemoverPage() {
   const handleRemoveBg = async () => {
     // Fix #5: Guard against double-click / re-triggering while already processing
     if (!project?.id || isProcessing) return;
+    trackGenerationStart({ tool: "bg_remover", credits: CREDIT_COST.removeBg });
     setIsProcessing(true);
     setErrorMsg("");
 
@@ -90,6 +99,7 @@ export default function BgRemoverPage() {
       if (res.status === 409 && data.error === "ALREADY_PROCESSED") {
         const { data: freshProj } = await supabase.from("projects").select("*").eq("id", project.id).single();
         if (freshProj) setProject(freshProj);
+        trackEvent("generation_already_complete", { tool: "bg_remover" });
         return;
       }
 
@@ -103,8 +113,10 @@ export default function BgRemoverPage() {
       if (userCredits !== null) {
         setUserCredits(prev => prev - 12);
       }
+      trackGenerationSuccess({ tool: "bg_remover", credits: CREDIT_COST.removeBg });
       
     } catch (err) {
+      trackGenerationFailure({ tool: "bg_remover", reason: err.message });
       console.error(err);
       setErrorMsg(err.message);
 
@@ -147,6 +159,7 @@ export default function BgRemoverPage() {
     try {
       const proxyUrl = `/api/proxy?url=${encodeURIComponent(project.generated_image_url)}`;
       await forceDownload(proxyUrl, `Syncraft_${project.name}_Transparent.png`);
+      trackExport({ tool: "bg_remover", format: "transparent_png" });
     } finally {
       setIsDownloading(false);
     }

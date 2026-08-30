@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { Zap, Sparkles, Download } from "lucide-react";
+import { CREDIT_PLANS } from "@/lib/paymentPlans";
 
 const OnboardingModal = memo(function OnboardingModal({ show, onClose }) {
   if (!show) return null;
@@ -98,7 +99,7 @@ const OnboardingModal = memo(function OnboardingModal({ show, onClose }) {
             12 Credits = 1 AI Generation
           </p>
           <p style={{ margin: 0, color: "#888", fontSize: "13px", lineHeight: "1.5" }}>
-            Top up credits to start generating. Plans start at <strong style={{ color: "#d4ff59" }}>₱50</strong>.
+            Top up credits to start generating. Plans start at <strong style={{ color: "#d4ff59" }}>{CREDIT_PLANS.tingi.price}</strong>.
           </p>
         </div>
 

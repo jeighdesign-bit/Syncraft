@@ -10,6 +10,7 @@ import { createClient } from "@/utils/supabase/client";
 import { toast } from "@/components/Toast";
 import { compressImageClientSide } from "@/utils/imageUtils";
 import { fetchWithAuthRetry, uploadImageToStorage } from "@/utils/uploadClient";
+import { trackEvent } from "@/lib/analytics.mjs";
 
 import { ImageIcon, Monitor, LogIn, User, Trash2, LogOut, CheckCircle2, X, Loader2, Scan, Scissors, ShieldCheck, Code2, Upload, ShoppingBag } from "lucide-react";
 
@@ -28,7 +29,7 @@ import SamplesSection from "./components/SamplesSection";
 import BeforeAfterSlider from "./components/BeforeAfterSlider";
 import PromoModal from "./components/PromoModal";
 import AIDisclaimerModal from "./components/AIDisclaimerModal";
-import TestimonialSection from "./components/TestimonialSection";
+import ProductionProofSection from "./components/TestimonialSection";
 import FAQSection from "./components/FAQSection";
 import GreatForSection from "./components/GreatForSection";
 import QRCode from "react-qr-code";
@@ -58,115 +59,6 @@ function SocialIcon({ name }) {
     </svg>
   );
 }
-
-function AnimatedCounter() {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    // Generate a growing target based on time so it never stays exactly the same day by day
-    const launchDate = new Date('2026-07-15T00:00:00Z').getTime();
-    const now = Date.now();
-    const hoursPassed = Math.max(0, (now - launchDate) / (1000 * 60 * 60));
-    
-    // Base is 14,582. We add roughly ~5 "fake" extractions every hour that passes.
-    const target = 14582 + Math.floor(hoursPassed * 5.2);
-    
-    const duration = 2500; // 2.5 seconds
-    let startTime = null;
-
-    const animate = (timestamp) => {
-      if (!startTime) startTime = timestamp;
-      const progress = timestamp - startTime;
-      const percentage = Math.min(progress / duration, 1);
-      
-      const easeOut = percentage === 1 ? 1 : 1 - Math.pow(2, -10 * percentage);
-      
-      setCount(Math.floor(easeOut * target));
-      
-      if (progress < duration) {
-        requestAnimationFrame(animate);
-      }
-    };
-    
-    requestAnimationFrame(animate);
-  }, []);
-
-  return (
-    <div style={{ 
-      maxWidth: "700px",
-      margin: "60px auto 0",
-      padding: "56px 40px",
-      background: "rgba(255, 255, 255, 0.02)",
-      backdropFilter: "blur(24px)",
-      border: "1px solid rgba(255, 255, 255, 0.08)",
-      borderRadius: "24px",
-      textAlign: "center",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      gap: "20px",
-      boxShadow: "0 40px 80px -20px rgba(0,0,0,0.7)"
-    }}>
-      <div style={{ 
-        display: "inline-flex", 
-        alignItems: "center", 
-        gap: "8px", 
-        background: "rgba(212, 255, 89, 0.1)", 
-        border: "1px solid rgba(212, 255, 89, 0.2)", 
-        padding: "8px 16px", 
-        borderRadius: "100px",
-        color: "#d4ff59", 
-        fontSize: "12px", 
-        fontWeight: "700", 
-        letterSpacing: "1px", 
-        textTransform: "uppercase" 
-      }}>
-        <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#d4ff59", boxShadow: "0 0 12px #d4ff59" }} />
-        Trusted Nationwide
-      </div>
-      <div style={{ 
-        fontSize: "88px", 
-        fontWeight: "700", 
-        background: "linear-gradient(180deg, #ffffff 0%, #888888 100%)",
-        WebkitBackgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-        lineHeight: "1.1",
-        letterSpacing: "-4px",
-        fontVariantNumeric: "tabular-nums"
-      }}>
-        {count.toLocaleString()}+
-      </div>
-      <div style={{ color: "#aaa", fontSize: "16px", maxWidth: "440px", lineHeight: "1.6", fontWeight: "400" }}>
-        Designs successfully extracted and vectorized by print shops and freelancers.
-      </div>
-    </div>
-  );
-}
-
-const getPremiumAvatar = (url, index) => {
-  const premiumPlaceholders = [
-    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80"
-  ];
-  
-  if (!url) return premiumPlaceholders[index % premiumPlaceholders.length];
-  
-  const lowerUrl = url.toLowerCase();
-  const isDefault = 
-    (url.includes("googleusercontent.com/a/") && !url.includes("googleusercontent.com/a-/")) ||
-    lowerUrl.includes("default") ||
-    lowerUrl.includes("gravatar.com/avatar") ||
-    lowerUrl.includes("ui-avatars.com");
-    
-  if (isDefault) {
-    return premiumPlaceholders[index % premiumPlaceholders.length];
-  }
-  
-  return url;
-};
 
 export default function StartScreen() {
   const router = useRouter();
@@ -210,7 +102,7 @@ export default function StartScreen() {
 
   // ─── Initialization ─────────────────────────────────────────────────────────
   useEffect(() => {
-    setShowCopyrightNotice(localStorage.getItem("desaynclaw-copyright-notice-dismissed") !== "1");
+    setShowCopyrightNotice(localStorage.getItem("syncraft-copyright-notice-dismissed") !== "1");
   }, []);
 
   useEffect(() => {
@@ -263,10 +155,12 @@ export default function StartScreen() {
     if (!topupStatus) return;
 
     if (topupStatus === "paymongo-return" || topupStatus === "dodo-return") {
+      trackEvent("checkout_return", { payment_provider: topupStatus.split("-")[0] });
       toast.success("Payment completed! Your credits are being credited.");
       if (user?.id) fetchCredits(user.id);
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (topupStatus === "paymongo-cancelled" || topupStatus === "dodo-cancelled") {
+      trackEvent("checkout_cancelled", { payment_provider: topupStatus.split("-")[0] });
       toast.info("Payment checkout was cancelled.");
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -453,13 +347,20 @@ export default function StartScreen() {
   const handleFileUpload = async (file, isBgRemover = false, mobileTraceType = null) => {
     if (!file || !file.type.startsWith("image/")) return;
 
+    const finalTraceType = isBgRemover ? "bg_remover" : (mobileTraceType || modalTraceType);
+
     // Limit upload to 10MB to save bandwidth and prevent AI processing timeouts
     const maxSizeInMB = isBgRemover ? 20 : 10;
     if (file.size > maxSizeInMB * 1024 * 1024) {
+      trackEvent("upload_failure", { tool: finalTraceType, reason: "file_too_large" });
       toast.error(`File is too large! Maximum allowed size is ${maxSizeInMB}MB.`);
       return;
     }
 
+    trackEvent("upload_start", {
+      tool: finalTraceType,
+      source: mobileTraceType ? "mobile_sync_or_quick_action" : "desktop_upload",
+    });
     setIsUploading(true);
     try {
       // 1. Compress Image
@@ -476,7 +377,6 @@ export default function StartScreen() {
 
       const uploadedImageUrl = await uploadImageToStorage(fileToUpload, { token });
 
-      const finalTraceType = isBgRemover ? "bg_remover" : (mobileTraceType || modalTraceType);
       const isUpscale = finalTraceType === "upscale";
 
       const uploadResult = await fetchWithAuthRetry("/api/upload", {
@@ -498,12 +398,19 @@ export default function StartScreen() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.details || data.error || "Project creation failed");
 
+      trackEvent("tool_selected", { tool: finalTraceType });
+      trackEvent("upload_complete", { tool: finalTraceType });
+
       if (isBgRemover) {
         router.push(`/bg-remover/${data.projectId}`);
       } else {
         router.push(`/workspace/${data.projectId}`);
       }
     } catch (error) {
+      trackEvent("upload_failure", {
+        tool: finalTraceType,
+        reason: error?.code === "AUTH_SESSION_EXPIRED" ? "auth_session_expired" : "project_creation_failed",
+      });
       console.error("Upload error:", error);
       if (error?.code === "AUTH_SESSION_EXPIRED") {
         setUser(null);
@@ -566,7 +473,7 @@ export default function StartScreen() {
           {/* Left: Brand navigation */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", opacity: scrolled ? 1 : 0, pointerEvents: scrolled ? "auto" : "none", transition: "opacity 0.3s ease" }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-              <img src="/logo.svg" alt="DesaynClaw Navbar Logo" style={{ height: "32px", width: "auto" }} />
+              <img src="/logo.svg" alt="Syncraft Navbar Logo" width={765} height={137} style={{ height: "32px", width: "auto" }} />
             </div>
           </div>
 
@@ -636,7 +543,7 @@ export default function StartScreen() {
                 type="button"
                 aria-label="Dismiss copyright notice"
                 onClick={() => {
-                  localStorage.setItem("desaynclaw-copyright-notice-dismissed", "1");
+                  localStorage.setItem("syncraft-copyright-notice-dismissed", "1");
                   setShowCopyrightNotice(false);
                 }}
                 style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "auto" }}
@@ -652,10 +559,10 @@ export default function StartScreen() {
             {/* LOGO AND UPLOAD BOX (ALWAYS VISIBLE) */}
             <div className="hero-left" style={{ margin: "0" }}>
               <div className="start-logo" style={{ marginBottom: "30px", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-                <img src="/logo.svg" alt="DesaynClaw Logo" style={{ width: "350px", maxWidth: "100%", height: "auto", margin: 0 }} />
+                <img src="/logo.svg" alt="Syncraft Logo" width={765} height={137} style={{ width: "350px", maxWidth: "100%", height: "auto", margin: 0 }} />
 
                 {/* BRAND BADGE */}
-                <img src="/logo_full.png" alt="Syncraft" style={{ display: "block", width: "132px", height: "auto", maxWidth: "100%", marginTop: "12px" }} />
+                <img src="/logo_full.png" alt="Syncraft" width={1312} height={293} style={{ display: "block", width: "132px", height: "auto", maxWidth: "100%", marginTop: "12px" }} />
 
                 {/* PUBLIC STATS BADGE */}
                 {publicStats.totalUsers > 0 && (
@@ -708,18 +615,18 @@ export default function StartScreen() {
                   </div>
                 )}
 
-                <p style={{ 
+                <h1 style={{
                   fontSize: "15px", 
                   color: "#e2e2e2", 
                   textAlign: "center", 
-                  marginTop: "24px", 
+                  margin: "24px 0 0",
                   maxWidth: "580px", 
                   lineHeight: "1.6", 
                   textWrap: "balance", 
                   fontWeight: "600"
                 }}>
                   Instantly transform your raster images (PNG, JPG) into ultra-clean, scalable vector graphics (SVG) using our advanced AI neural engine.
-                </p>
+                </h1>
               </div>
 
               <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "nowrap", justifyContent: "center", width: "100%", overflowX: "auto" }}>
@@ -738,9 +645,12 @@ export default function StartScreen() {
                 </button>
               </div>
 
-              <div className="hero-upload-box"
+              <div
+                id="syncraft-upload"
+                className="hero-upload-box"
                 style={{ 
                   flex: 1, 
+                  scrollMarginTop: "120px",
                   background: "#262626", 
                   padding: "16px", 
                   borderRadius: "28px", 
@@ -946,14 +856,14 @@ export default function StartScreen() {
         
         {/* ────────────────────────────────────────────────────────────────────── */}
         <div style={{ width: "100%", maxWidth: "1200px", margin: "60px auto 40px", padding: "0 20px" }}>
-          <img src="/Banner.png" alt="Banner" style={{ width: "100%", height: "auto", borderRadius: "12px", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }} />
+          <img src="/Banner.webp" alt="Syncraft AI production workflow for print-ready artwork" width={1600} height={691} style={{ width: "100%", height: "auto", borderRadius: "12px", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }} />
         </div>
 
         <EduSection />
 
         {/* Feature Cards below Hero */}
         <SamplesSection />
-        <TestimonialSection />
+        <ProductionProofSection />
         <FAQSection />
         {/* Hidden File Input — shows type-selector modal before uploading */}
         <input type="file" ref={fileInputRef} onChange={(e) => { if (e.target.files[0]) openModalWithFile(e.target.files[0]); e.target.value = ""; }} accept="image/*" style={{ display: "none" }} />
@@ -1090,12 +1000,10 @@ export default function StartScreen() {
         )}
 
 
-        <AnimatedCounter />
-
         <footer className="site-footer">
           <div className="site-footer-main">
             <div className="site-footer-brand">
-              <img src="/logo.svg" alt="Syncraft" />
+              <img src="/logo.svg" alt="Syncraft" width={765} height={137} />
               <p>AI-powered production tools for clean SVG tracing, background removal, upscaling, and print-ready artwork delivery.</p>
               <div className="site-footer-socials" aria-label="Social media">
                 <a href="https://web.facebook.com/profile.php?id=61562539277199" target="_blank" rel="noreferrer" aria-label="Syncraft on Facebook"><SocialIcon name="facebook" /></a>
@@ -1115,9 +1023,10 @@ export default function StartScreen() {
               <div>
                 <h3>Company</h3>
                 <a href="/#syncraft-upload">Workspace</a>
+                <a href="/store">Store</a>
                 <a href="/image-upscaler">Image Upscaler</a>
                 <a href="/image-to-vector">Image to Vector</a>
-                <a href="/api-dashboard">API</a>
+                <a href="/docs/api">API Documentation</a>
                 <a href="https://m.me/105884602605306" target="_blank" rel="noreferrer">Customer Support</a>
               </div>
             </nav>
@@ -1144,10 +1053,10 @@ export default function StartScreen() {
             "mainEntity": [
               {
                 "@type": "Question",
-                "name": "What is DesaynClaw?",
+                "name": "What is Syncraft?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "DesaynClaw is an AI-powered tool for sublimation jersey design extraction, vector auto-tracing, logo enhancement, background removal, and 4K image upscaling. It's built specifically for print shops and apparel designers who need clean, print-ready files fast.",
+                  "text": "Syncraft is an AI-powered tool for authorized sublimation jersey design extraction, vector auto-tracing, logo enhancement, background removal, and image upscaling. It is built for print shops and apparel designers who need cleaner production files faster.",
                 },
               },
               {
@@ -1155,23 +1064,23 @@ export default function StartScreen() {
                 "name": "How do I extract a flat sublimation design from a jersey mockup?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Simply upload your jersey mockup image to DesaynClaw, choose 'Flat Extract' mode, and our AI will automatically remove the 3D shirt shape, correct the perspective, and output a clean flat rectangular sublimation print file ready for production.",
+                  "text": "Upload an authorized jersey mockup to Syncraft, choose Garment Pattern Extraction, and review the AI-assisted flat artwork before using it in production.",
                 },
               },
               {
                 "@type": "Question",
-                "name": "Can DesaynClaw convert my logo to SVG vector?",
+                "name": "Can Syncraft convert my logo to an SVG vector?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Yes! DesaynClaw can auto-trace your PNG or JPG logo into a clean, scalable SVG vector file. It removes compression artifacts, enhances the design, and outputs a production-ready SVG you can open in Adobe Illustrator, CorelDRAW, or Inkscape.",
+                  "text": "Yes. Syncraft can auto-trace supported PNG or JPG logos into scalable SVG artwork that you can review and refine in Adobe Illustrator, CorelDRAW, or Inkscape.",
                 },
               },
               {
                 "@type": "Question",
-                "name": "Does DesaynClaw support background removal for sublimation designs?",
+                "name": "Does Syncraft support background removal for sublimation designs?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Yes. DesaynClaw has a built-in AI background remover that can cleanly cut out jersey designs, logos, and product photos to produce transparent PNG files — no Photoshop required.",
+                  "text": "Yes. Syncraft has an AI background remover for supported jersey designs, logos, and product photos, with transparent PNG output.",
                 },
               },
               {
@@ -1179,23 +1088,23 @@ export default function StartScreen() {
                 "name": "Can I upscale a low-resolution sublimation design?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Absolutely. DesaynClaw's AI upscaler can enhance any low-resolution sublimation design, jersey artwork, or logo to 4K quality — making it suitable for large format printing without quality loss.",
+                  "text": "Syncraft can improve the resolution of supported sublimation designs, jersey artwork, and logos. Always review fine details and print-provider requirements before production.",
                 },
               },
               {
                 "@type": "Question",
-                "name": "Is DesaynClaw free to use?",
+                "name": "Is Syncraft free to use?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "DesaynClaw offers free credits on sign up so you can try all the tools. Additional credits can be purchased at an affordable rate, making it accessible for small print shops and solo designers.",
+                  "text": "Syncraft is a prepaid credit service. Credit packages currently start at ₱60, and each tool displays its credit cost before processing.",
                 },
               },
               {
                 "@type": "Question",
-                "name": "What file formats does DesaynClaw support?",
+                "name": "What file formats does Syncraft support?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "DesaynClaw accepts PNG and JPG image uploads. It outputs SVG vector files, 4K PNG images, and transparent PNG cutouts depending on the tool you use.",
+                  "text": "Syncraft accepts PNG, JPG, JPEG, and WebP uploads. Depending on the tool, it can output SVG files, higher-resolution PNG images, and transparent PNG cutouts.",
                 },
               },
             ],
@@ -1214,11 +1123,11 @@ export default function StartScreen() {
             "@type": "HowTo",
             "name": "How to Extract a Flat Sublimation Design from a Jersey Mockup",
             "description":
-              "Use DesaynClaw's AI to extract a clean, flat sublimation print file from any jersey photo or mockup in minutes.",
+              "Use Syncraft to create a flatter production starting point from an authorized jersey photo or mockup, then review the result before manufacturing.",
             "totalTime": "PT2M",
             "tool": {
               "@type": "HowToTool",
-              "name": "DesaynClaw AI Tracer",
+              "name": "Syncraft Garment Pattern Extraction",
             },
             "step": [
               {
@@ -1226,28 +1135,28 @@ export default function StartScreen() {
                 "position": 1,
                 "name": "Upload Your Jersey Image",
                 "text": "Upload a photo or mockup of the jersey you want to extract. Supported formats: PNG, JPG.",
-                "url": "https://desaynclaw.com",
+                "url": "https://syncraftech.com",
               },
               {
                 "@type": "HowToStep",
                 "position": 2,
                 "name": "Choose Flat Extract Mode",
                 "text": "Select the 'Flat Extract' or 'Auto-Trace' option and let the AI remove the 3D shirt shape and correct perspective.",
-                "url": "https://desaynclaw.com",
+                "url": "https://syncraftech.com",
               },
               {
                 "@type": "HowToStep",
                 "position": 3,
                 "name": "Review and Upscale",
                 "text": "Review the AI-generated flat design and optionally upscale it to 4K for high-resolution sublimation printing.",
-                "url": "https://desaynclaw.com",
+                "url": "https://syncraftech.com",
               },
               {
                 "@type": "HowToStep",
                 "position": 4,
                 "name": "Export as SVG or PNG",
                 "text": "Download your clean, print-ready flat design as an SVG vector or 4K PNG file.",
-                "url": "https://desaynclaw.com",
+                "url": "https://syncraftech.com",
               },
             ],
           }),

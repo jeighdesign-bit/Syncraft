@@ -3,7 +3,7 @@
 import { absoluteUrl, DEFAULT_OG_IMAGE } from "@/lib/site";
 
 export const metadata = {
-  title: "AI Background Remover | Remove BG from Designs & Logos Free",
+  title: "AI Background Remover | Remove BG from Designs & Logos",
   description:
     "Remove backgrounds from sublimation designs, jersey mockups, logos, and photos instantly using AI. Get a clean transparent PNG in seconds — no Photoshop needed. Perfect for print shop designers.",
   keywords: [
@@ -29,7 +29,7 @@ export const metadata = {
     canonical: absoluteUrl("/bg-remover"),
   },
   openGraph: {
-    title: "AI Background Remover — Free Transparent PNG | Syncraft",
+    title: "AI Background Remover — Transparent PNG | Syncraft",
     description:
       "Remove backgrounds from jersey designs, logos, and photos using AI. Get a clean transparent PNG instantly — no Photoshop needed.",
     url: absoluteUrl("/bg-remover"),
@@ -45,7 +45,7 @@ export const metadata = {
   twitter: {
     title: "AI Background Remover | Syncraft",
     description:
-      "Remove backgrounds from sublimation designs and logos in one click. Free to try.",
+      "Remove backgrounds from sublimation designs and logos in one click with prepaid Syncraft credits.",
     images: [DEFAULT_OG_IMAGE],
   },
 };

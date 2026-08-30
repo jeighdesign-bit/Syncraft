@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import TopUpModal from "@/components/TopUpModal";
 import { compressImageClientSide } from "@/utils/imageUtils";
 import { uploadImageToStorage } from "@/utils/uploadClient";
+import { trackEvent, trackExport } from "@/lib/analytics.mjs";
 import FeedbackWidget from "@/app/workspace/[id]/components/FeedbackWidget";
 import "../globals.css";
 import "../home.css";
@@ -137,14 +138,18 @@ export default function UpscalePage() {
   };
 
   const uploadToS3 = async (file) => {
-    const fileExt = file.name.split('.').pop();
+    let fileToUpload = file;
+    if (file.size > 4 * 1024 * 1024) {
+      fileToUpload = await compressImageClientSide(file, 2048, 0.85);
+    }
+    const fileExt = fileToUpload.name.split('.').pop();
     const fileName = `${crypto.randomUUID()}.${fileExt}`;
     try {
       const sessionRes = await supabase.auth.getSession();
       const token = sessionRes.data.session?.access_token;
       if (!token) throw new Error("Unauthorized");
 
-      return await uploadImageToStorage(file, { token, fileName });
+      return await uploadImageToStorage(fileToUpload, { token, fileName });
     } catch (error) {
       console.error(error);
       throw new Error("Image upload failed");
@@ -153,6 +158,7 @@ export default function UpscalePage() {
 
   const startUpscaleProject = async ({ file = null, url = null, name = "4K Upscale" } = {}) => {
     if (!file && !url) return;
+    trackEvent("upload_start", { tool: "upscale", source: file ? "file" : "mobile_sync" });
     setIsProcessing(true);
     try {
       let finalUrl = url;
@@ -180,8 +186,11 @@ export default function UpscalePage() {
 
       const data = await res.json();
       if (!res.ok || !data.projectId) throw new Error(data.error || "Failed to create upscale project");
+      trackEvent("tool_selected", { tool: "upscale" });
+      trackEvent("upload_complete", { tool: "upscale" });
       router.push(`/workspace/${data.projectId}`);
     } catch (err) {
+      trackEvent("upload_failure", { tool: "upscale", reason: "project_creation_failed" });
       toast.error(err.message || "An error occurred");
     } finally {
       setIsProcessing(false);
@@ -204,6 +213,7 @@ export default function UpscalePage() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
+      trackExport({ tool: "upscale", format: "png" });
     } catch (err) {
       toast.error("Failed to download image");
     }

@@ -28,6 +28,12 @@ import ShortcutsModal from "./components/ShortcutsModal";
 // ─── Constants ────────────────────────────────────────────────────────────────
 import { CREDIT_COST } from "@/lib/pricing";
 import { evaluateExtendIntent } from "@/lib/aspectRatio";
+import {
+  trackExport,
+  trackGenerationFailure,
+  trackGenerationStart,
+  trackGenerationSuccess,
+} from "@/lib/analytics.mjs";
 
 // ─── Supabase client — created ONCE at module level, not inside the component ─
 const supabase = createClient();
@@ -211,12 +217,14 @@ export default function Workspace() {
     if (!project?.svg_url) return;
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(project.svg_url)}`;
     await forceDownload(proxyUrl, `Syncraft_${project.name}_Vector.svg`);
+    trackExport({ tool: project.trace_type, format: "svg" });
   }, [project, forceDownload]);
 
   const handleDownloadRaster = useCallback(async () => {
     if (!project?.generated_image_url) return;
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(project.generated_image_url)}`;
     await forceDownload(proxyUrl, `Syncraft_${project.name}_Raster.png`);
+    trackExport({ tool: project.trace_type, format: "png" });
   }, [project, forceDownload]);
 
   // Dedicated 4K download — uses upscaled_image_url (Step 2 ESRGAN output), NOT generated_image_url
@@ -224,6 +232,7 @@ export default function Workspace() {
     if (!project?.upscaled_image_url) return;
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(project.upscaled_image_url)}`;
     await forceDownload(proxyUrl, `Syncraft_${project.name}_4K.png`);
+    trackExport({ tool: project.trace_type, format: "4k_png" });
     await new Promise(resolve => setTimeout(resolve, 1500));
   }, [project, forceDownload]);
 
@@ -231,11 +240,14 @@ export default function Workspace() {
     if (!project?.generated_image_url) return;
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(project.generated_image_url)}`;
     await forceDownload(proxyUrl, `Syncraft_${project.name || "Upscale"}_4X.png`);
+    trackExport({ tool: "upscale", format: "4x_png" });
   }, [project, forceDownload]);
 
   const handleRunUpscale = useCallback(async () => {
     if (!project?.id || upscaleStatus === "processing") return;
     const wasLegacyRepair = upscaleStatus === "legacy";
+    const upscaleCredits = wasLegacyRepair ? 0 : CREDIT_COST.upscale;
+    trackGenerationStart({ tool: "upscale", credits: upscaleCredits });
     setUpscaleStatus("processing");
     setUpscaleError("");
     try {
@@ -272,7 +284,9 @@ export default function Workspace() {
       if (profile) setUserCredits(profile.credits);
       setUpscaleStatus("idle");
       setShowCompare(true);
+      trackGenerationSuccess({ tool: "upscale", credits: upscaleCredits });
     } catch (error) {
+      trackGenerationFailure({ tool: "upscale", reason: error.message });
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         const { data: profile } = await supabase
@@ -309,6 +323,7 @@ export default function Workspace() {
         `/api/proxy?url=${encodeURIComponent(data.zipUrl)}`,
         data.fileName || `Syncraft_${project.name}_AllFiles.zip`
       );
+      trackExport({ tool: project.trace_type, format: "zip" });
       await new Promise(resolve => setTimeout(resolve, 1500));
       logToConsole(data.cached ? "[Success] Cached ZIP download started!" : "[Success] ZIP prepared and download started!", "success");
     } catch (err) {

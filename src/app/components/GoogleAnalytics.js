@@ -3,6 +3,7 @@
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { trackEvent } from "@/lib/analytics.mjs";
 
 const MEASUREMENT_ID =
   process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-D9SM04EL1Q";
@@ -63,7 +64,19 @@ export default function GoogleAnalytics() {
       configured.current = true;
     }
 
-    const page = `${pathname}${window.location.search}`;
+    const currentUrl = new URL(window.location.href);
+    const authEvent = currentUrl.searchParams.get("auth_event");
+    if (authEvent === "sign_up" || authEvent === "login") {
+      trackEvent(authEvent, { method: "supabase" });
+      currentUrl.searchParams.delete("auth_event");
+      window.history.replaceState(
+        {},
+        document.title,
+        `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
+      );
+    }
+
+    const page = `${pathname}${currentUrl.search}`;
     if (lastTrackedPage.current === page) return;
 
     lastTrackedPage.current = page;

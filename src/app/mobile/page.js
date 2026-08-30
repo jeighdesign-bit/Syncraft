@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Camera, Upload, CheckCircle2, Loader2, Image as ImageIcon } from "lucide-react";
 import { compressImageClientSide } from "@/utils/imageUtils";
+import { uploadImageToStorage } from "@/utils/uploadClient";
+import { trackEvent } from "@/lib/analytics.mjs";
 
 function MobileUploadContent() {
   const searchParams = useSearchParams();
@@ -25,6 +27,7 @@ function MobileUploadContent() {
     if (!file) return;
 
     try {
+      trackEvent("upload_start", { tool: "mobile_sync", source: "phone" });
       setStatus("uploading");
       
       // 1. Compress Image
@@ -35,31 +38,15 @@ function MobileUploadContent() {
         console.warn("Compression failed on mobile, using original:", compressErr);
       }
       
-      const res = await fetch("/api/upload-mobile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: fileToUpload.name,
-          contentType: fileToUpload.type,
-          syncSessionId: syncSessionId
-        })
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to get upload URL");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Please log in on this device before uploading an image.");
       }
 
-      const { uploadUrl, publicUrl } = await res.json();
-
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": fileToUpload.type },
-        body: fileToUpload,
+      // Uses the same server-side, pre-storage moderation as desktop uploads.
+      const publicUrl = await uploadImageToStorage(fileToUpload, {
+        token: session.access_token,
       });
-
-      if (!uploadRes.ok) {
-        throw new Error("Failed to upload image to cloud storage");
-      }
 
       const channel = supabase.channel(`mobile_sync_${syncSessionId}`);
       await channel.send({
@@ -70,7 +57,9 @@ function MobileUploadContent() {
       
       await supabase.removeChannel(channel);
       setStatus("success");
+      trackEvent("upload_complete", { tool: "mobile_sync" });
     } catch (err) {
+      trackEvent("upload_failure", { tool: "mobile_sync", reason: "upload_or_sync_failed" });
       console.error(err);
       setStatus("error");
       setErrorMsg(err.message || "An error occurred during upload.");

@@ -1,11 +1,12 @@
 "use client";
 
-import { memo, useState, useCallback, useEffect } from "react";
+import { memo, useState, useCallback, useEffect, useRef } from "react";
 import { X, Shirt, CheckCircle, Package, Tag, Mail, Smartphone, Check, ArrowRight, ImageIcon, History, Clock, CreditCard, AlertTriangle, QrCode } from "lucide-react";
 import { toast } from "@/components/Toast";
 import { createClient } from "@/utils/supabase/client";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
 import { CREDIT_COST } from "@/lib/pricing";
+import { trackEvent } from "@/lib/analytics.mjs";
 
 // Derived from CREDIT_PLANS — single source of truth.
 // To change prices, edit src/lib/paymentPlans.js only.
@@ -58,6 +59,16 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [qrExpanded, setQrExpanded] = useState(false);
   const [elitePromo, setElitePromo] = useState({ configured: null, limit: 10, remaining: 10 });
+  const topUpViewTracked = useRef(false);
+
+  useEffect(() => {
+    if (show && !topUpViewTracked.current) {
+      trackEvent("top_up_view", { default_plan: form.plan });
+      topUpViewTracked.current = true;
+    } else if (!show) {
+      topUpViewTracked.current = false;
+    }
+  }, [show, form.plan]);
 
   useEffect(() => {
     if (!show || !SHOW_ELITE_PROMO_RIBBON) return;
@@ -155,6 +166,13 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
 
       setQrPhData(data);
       setStep('qr_display');
+      const selectedPlan = CREDIT_PLANS[form.plan];
+      trackEvent("begin_checkout", {
+        currency: "PHP",
+        value: selectedPlan.amount / 100,
+        payment_provider: "paymongo",
+        plan: selectedPlan.key,
+      });
 
       // Start polling
       const intervalId = setInterval(async () => {
@@ -167,6 +185,14 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
               setQrPollIntervalId(null);
               setStep('success');
               toast.success("Payment completed! Your credits have been added.");
+              trackEvent("purchase", {
+                transaction_id: data.localPaymentId,
+                currency: "PHP",
+                value: selectedPlan.amount / 100,
+                payment_provider: "paymongo",
+                plan: selectedPlan.key,
+                items: [{ item_id: selectedPlan.key, item_name: selectedPlan.label, quantity: 1 }],
+              });
 
               // Broadcast credit update to all open components & parent
               if (typeof window !== "undefined") {
@@ -221,6 +247,13 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
       if (!response.ok) throw new Error(data.error || "Failed to start Dodo checkout");
       if (!data.checkoutUrl) throw new Error("Dodo checkout URL is missing");
 
+      const selectedPlan = CREDIT_PLANS[form.plan];
+      trackEvent("begin_checkout", {
+        currency: selectedPlan.dodoCurrency,
+        value: selectedPlan.dodoAmount / 100,
+        payment_provider: "dodo",
+        plan: selectedPlan.key,
+      });
       window.location.href = data.checkoutUrl;
     } catch (err) {
       toast.error(err.message || "Failed to start Dodo checkout");
@@ -278,6 +311,10 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
       if (!response.ok) throw new Error(data.error || "Failed to submit payment request.");
 
       setSubmitted(true);
+      trackEvent("generate_lead", {
+        lead_source: "manual_gcash_payment_request",
+        plan: form.plan,
+      });
     } catch (err) {
       toast.error(`Error submitting request: ${err.message}`);
     } finally {

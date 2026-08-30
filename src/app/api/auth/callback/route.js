@@ -20,17 +20,25 @@ export async function GET(request) {
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
+      const createdAt = Date.parse(data?.user?.created_at || '')
+      const lastSignInAt = Date.parse(data?.user?.last_sign_in_at || '')
+      const isNewUser = Number.isFinite(createdAt)
+        && Number.isFinite(lastSignInAt)
+        && Math.abs(lastSignInAt - createdAt) <= 10_000
+      const authEvent = isNewUser ? 'sign_up' : 'login'
+
       // Securely construct redirect URL to prevent Open Redirects
       try {
         const redirectUrl = new URL(next, origin)
         if (redirectUrl.origin !== origin) {
           throw new Error('Invalid redirect')
         }
+        redirectUrl.searchParams.set('auth_event', authEvent)
         return NextResponse.redirect(redirectUrl.href)
       } catch (err) {
-        return NextResponse.redirect(`${origin}/`)
+        return NextResponse.redirect(`${origin}/?auth_event=${authEvent}`)
       }
     }
 

@@ -104,10 +104,11 @@ function getClientIP(request) {
 // ─── Middleware ───────────────────────────────────────────────────────────────
 export async function proxy(request) {
   const url = request.nextUrl;
-  const host = request.headers.get('host');
+  const host = request.headers.get('host')?.split(':')[0]?.toLowerCase();
 
   // ─── Domain Redirect ────────────────────────────────────────────────────────
-  // Redirect anyone using the old vercel.app domain to the new custom domain
+  // Redirect only Syncraft's legacy Vercel hostname. DesaynClaw is a separate
+  // product and must remain independent from Syncraft.
   if (host === 'syncraft.vercel.app') {
     return NextResponse.redirect(`${SITE_URL}${url.pathname}${url.search}`, 301);
   }

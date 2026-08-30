@@ -80,10 +80,9 @@ export const metadata = {
     "polo shirt flat design",
     // Brand
     "syncraft",
-    "desaynbro",
   ],
   authors: [{ name: "Syncraft", url: SITE_URL }],
-  creator: "desaynbro",
+  creator: "Syncraft",
   publisher: "Syncraft",
   category: "Design Tools",
   applicationName: "Syncraft",
@@ -116,7 +115,6 @@ export const metadata = {
     description:
       "Extract sublimation flat files, vectorize logos, remove backgrounds & upscale designs using AI. Perfect for print shops in the Philippines.",
     images: [DEFAULT_OG_IMAGE],
-    creator: "@desaynbro",
   },
   robots: {
     index: true,
@@ -167,8 +165,8 @@ export default function RootLayout({ children }) {
                 "Flat sublimation print file export",
               ],
               "creator": {
-                "@type": "Person",
-                "name": "desaynbro",
+                "@type": "Organization",
+                "name": "Syncraft",
                 "url": SITE_URL,
               },
               "publisher": {

@@ -1,9 +1,34 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import styles from "./EduSection.module.css";
 
 const EduSection = memo(function EduSection() {
+  const videoContainerRef = useRef(null);
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
+
+  useEffect(() => {
+    const element = videoContainerRef.current;
+
+    if (!element || typeof IntersectionObserver === "undefined") {
+      setShouldLoadVideo(true);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShouldLoadVideo(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "300px 0px" }
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <>
       {/* HOW TO USE / DEMO VIDEO SECTION */}
@@ -11,14 +36,17 @@ const EduSection = memo(function EduSection() {
         <div className={styles.howToGrid}>
           
           {/* Left: Video Showcase */}
-          <div className={styles.videoContainer}>
+          <div ref={videoContainerRef} className={styles.videoContainer}>
             <div className={styles.videoInner}>
               <video 
-                src="/TUTORIAL.mp4" 
-                autoPlay
+                src={shouldLoadVideo ? "/TUTORIAL.mp4" : undefined}
+                poster="/Banner.webp"
+                preload="none"
+                autoPlay={shouldLoadVideo}
                 muted 
                 loop
-                playsInline 
+                playsInline
+                aria-label="Syncraft vectorization workflow tutorial"
               />
             </div>
           </div>

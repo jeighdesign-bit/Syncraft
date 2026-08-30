@@ -1,91 +1,158 @@
-import { User } from "lucide-react";
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  ArrowUpRight,
+  BadgeCheck,
+  CheckCircle2,
+  Download,
+  Quote,
+  ShieldCheck,
+  Star,
+  User,
+} from "lucide-react";
 import styles from "./TestimonialSection.module.css";
 
-export default function TestimonialSection() {
-  // Replace placeholder copy with verified customer feedback before publishing.
-  const reviews = [
-    {
-      reviewer_name: "Anonymous User",
-      reviewer_avatar: null,
-      rating: 5,
-      feedback_text: "Nice!! Kay editable ang layer after vectorizing."
-    },
-    {
-      reviewer_name: "Anonymous User",
-      reviewer_avatar: null,
-      rating: 5,
-      feedback_text: "Super helpful! Auto-tracing the jersey saved me hours of manual work."
-    },
-    {
-      reviewer_name: "Anonymous User",
-      reviewer_avatar: null,
-      rating: 5,
-      feedback_text: "Amazing tool. Background removal is incredibly fast and precise."
-    },
-    {
-      reviewer_name: "Anonymous User",
-      reviewer_avatar: null,
-      rating: 5,
-      feedback_text: "The logo trace came out clean and was easy to refine for printing."
-    },
-    {
-      reviewer_name: "Anonymous User",
-      reviewer_avatar: null,
-      rating: 5,
-      feedback_text: "Universal recovery helped turn a difficult mockup into usable artwork."
-    },
-    {
-      reviewer_name: "Anonymous User",
-      reviewer_avatar: null,
-      rating: 5,
-      feedback_text: "Upscaling made an old customer file much more usable for a larger print."
-    }
-  ];
+const proofs = [
+  {
+    step: "01",
+    title: "Inspect real transformations",
+    description: "Compare the supplied reference with Syncraft's recovered output in the interactive before-and-after gallery.",
+    href: "#samples-section",
+    linkLabel: "Explore the samples",
+    Icon: CheckCircle2,
+  },
+  {
+    step: "02",
+    title: "Export production-ready files",
+    description: "Move from preview to editable SVG, high-resolution PNG, transparent PNG, or a packaged ZIP export.",
+    href: "/#syncraft-upload",
+    linkLabel: "Try your own artwork",
+    Icon: Download,
+  },
+  {
+    step: "03",
+    title: "Stay in control of your work",
+    description: "You keep ownership of your uploaded artwork, with project files scheduled for deletion after three days.",
+    href: "/privacy",
+    linkLabel: "Review our privacy policy",
+    Icon: ShieldCheck,
+  },
+];
 
-  const ReviewCard = ({ review }) => (
-    <article className={styles.card}>
-      <div className={styles.cardContent}>
-        <div className={styles.headerRow}>
-          {review.reviewer_avatar ? (
-            <img
-              src={review.reviewer_avatar}
-              alt={review.reviewer_name || "User"}
-              referrerPolicy="no-referrer"
-              className={styles.avatar}
-            />
-          ) : (
-            <div className={styles.avatarFallback} aria-hidden="true">
-              <User size={20} color="#aaa" />
-            </div>
-          )}
-          <div>
-            <div className={styles.reviewerName}>{review.reviewer_name || "Syncraft User"}</div>
-            <div className={styles.stars} aria-label={`${review.rating} out of 5 stars`}>
-              {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
-            </div>
-          </div>
-        </div>
-        <p className={styles.feedback}>“{review.feedback_text}”</p>
-      </div>
-    </article>
-  );
+function ReviewCard({ review }) {
+  const rating = Math.max(1, Math.min(5, Math.round(Number(review.rating) || 5)));
 
   return (
-    <div className={styles.sectionWrapper}>
-      <div className={styles.header}>
-        <h3 className={styles.subtitle}>Community Trust</h3>
-        <h2 className={styles.title}>What our users say</h2>
+    <article className={styles.reviewCard}>
+      <Quote className={styles.quoteIcon} size={32} aria-hidden="true" />
+      <div className={styles.reviewStars} aria-label={`${rating} out of 5 stars`}>
+        {Array.from({ length: 5 }, (_, index) => (
+          <Star
+            key={index}
+            size={15}
+            fill={index < rating ? "currentColor" : "none"}
+            aria-hidden="true"
+          />
+        ))}
       </div>
+      <blockquote>“{review.feedback_text}”</blockquote>
+      <footer className={styles.reviewer}>
+        {review.reviewer_avatar ? (
+          <img
+            src={review.reviewer_avatar}
+            alt=""
+            referrerPolicy="no-referrer"
+            className={styles.avatar}
+          />
+        ) : (
+          <span className={styles.avatarFallback} aria-hidden="true">
+            <User size={18} />
+          </span>
+        )}
+        <span>
+          <strong>{review.reviewer_name || "Syncraft user"}</strong>
+          <small><BadgeCheck size={13} aria-hidden="true" /> Project feedback</small>
+        </span>
+      </footer>
+    </article>
+  );
+}
 
-      <div className={styles.marquee} aria-label="Customer reviews">
-        <div className={styles.track}>
-          {[0, 1].map((setIndex) => (
-            <div className={styles.reviewSet} key={setIndex} aria-hidden={setIndex === 1 ? "true" : undefined}>
-              {reviews.map((review, index) => <ReviewCard review={review} key={`${setIndex}-${index}`} />)}
-            </div>
+export default function ProductionProofSection() {
+  const [reviews, setReviews] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadReviews() {
+      try {
+        const response = await fetch("/api/reviews");
+        const data = await response.json();
+
+        if (!active) return;
+
+        if (response.ok && data.success && Array.isArray(data.reviews)) {
+          setReviews(data.reviews.slice(0, 6));
+        }
+      } catch {
+        // Keep the public section hidden when verified reviews are unavailable.
+      }
+    }
+
+    loadReviews();
+    return () => { active = false; };
+  }, []);
+
+  return (
+    <section className={styles.sectionWrapper} aria-labelledby="production-proof-title">
+      <div className={styles.proofShell}>
+        <div className={styles.glow} aria-hidden="true" />
+        <header className={styles.proofHeader}>
+          <div>
+            <p className={styles.eyebrow}>See the workflow in action</p>
+            <h2 id="production-proof-title">Proof you can inspect, not promises you have to trust.</h2>
+          </div>
+          <p className={styles.proofIntro}>
+            Review real examples, confirm the formats you need, and understand how your files are handled before you start.
+          </p>
+        </header>
+
+        <div className={styles.proofGrid}>
+          {proofs.map(({ step, title, description, href, linkLabel, Icon }) => (
+            <article className={styles.proofCard} key={title}>
+              <div className={styles.cardTopline}>
+                <span className={styles.proofIcon} aria-hidden="true"><Icon size={20} /></span>
+                <span className={styles.step}>{step}</span>
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <a href={href}>
+                {linkLabel}
+                <ArrowUpRight size={16} aria-hidden="true" />
+              </a>
+            </article>
           ))}
         </div>
       </div>
-    </div>
+
+      {reviews.length > 0 && (
+        <div className={styles.testimonialSection} aria-labelledby="testimonial-title">
+          <header className={styles.testimonialHeader}>
+            <div>
+              <p className={styles.eyebrow}>Community feedback</p>
+              <h2 id="testimonial-title">What Syncraft users say</h2>
+            </div>
+            <p>Reviews submitted directly from Syncraft project workspaces.</p>
+          </header>
+
+          <div className={styles.reviewGrid}>
+            {reviews.map((review, index) => (
+              <ReviewCard review={review} key={`${review.reviewer_name || "review"}-${review.created_at || index}`} />
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
