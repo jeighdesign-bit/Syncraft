@@ -81,6 +81,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
   const [activeTab, setActiveTab] = useState("generated");
   const isUpscale = project?.trace_type === "upscale";
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [originalAspect, setOriginalAspect] = useState(null);
   const leftScrollRef = useRef(null);
   const rightScrollRef = useRef(null);
   const isSyncingLeft = useRef(false);
@@ -202,6 +203,10 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
       : null,
   [project?.original_image_url]);
 
+  useEffect(() => {
+    setOriginalAspect(null);
+  }, [proxyOriginal]);
+
   const proxyGenerated = useMemo(() =>
     project?.generated_image_url
       ? `/api/proxy?url=${encodeURIComponent(project.generated_image_url)}`
@@ -219,6 +224,31 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
       ? `/api/proxy?url=${encodeURIComponent(project.svg_url)}`
       : null,
   [project?.svg_url]);
+
+  const rotateTallPreview = project?.trace_type === "universal"
+    && originalAspect !== null
+    && originalAspect < 0.35;
+  const rasterPreviewStyle = rotateTallPreview
+    ? {
+        maxWidth: "100%",
+        maxHeight: "100%",
+        width: "auto",
+        height: "auto",
+        minWidth: 0,
+        minHeight: 0,
+        objectFit: "contain",
+        transform: "rotate(90deg)",
+        transformOrigin: "center",
+        imageRendering: "auto",
+      }
+    : {
+        width: "100%",
+        height: "100%",
+        minWidth: 0,
+        minHeight: 0,
+        objectFit: "contain",
+        imageRendering: "auto",
+      };
 
   // Sync scroll positions proportionally
   const handleLeftScroll = (e) => {
@@ -381,6 +411,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
           {leftControls}
           <div className="canvas-toolbar-pane-label">
             <span className="canvas-toolbar-pane-label__text">Original Upload</span>
+            {rotateTallPreview && <span style={{ marginLeft: "8px", color: "#9effc8", fontSize: "9px", fontWeight: 700 }}>ROTATED PREVIEW</span>}
           </div>
         </div>
 
@@ -463,7 +494,18 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
             {proxyOriginal ? (
               <div style={{ position: "relative", width: `${Math.max(100, zoomLevel * 100)}%`, height: `${Math.max(100, zoomLevel * 100)}%`, minWidth: "100%", minHeight: "100%" }}>
                 <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", padding: "24px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
-                  <img src={proxyOriginal} draggable={false} alt="Original" style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0, objectFit: "contain" }} />
+                  <img
+                    src={proxyOriginal}
+                    draggable={false}
+                    alt="Original"
+                    onLoad={(event) => {
+                      const image = event.currentTarget;
+                      if (image.naturalWidth && image.naturalHeight) {
+                        setOriginalAspect(image.naturalWidth / image.naturalHeight);
+                      }
+                    }}
+                    style={rasterPreviewStyle}
+                  />
                 </div>
               </div>
             ) : (
@@ -525,7 +567,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
                       }}
                       draggable={false}
                       alt="Output"
-                      style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0, objectFit: "contain", imageRendering: "auto" }}
+                      style={rasterPreviewStyle}
                     />
                   )}
                 </div>

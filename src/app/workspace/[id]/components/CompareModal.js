@@ -65,6 +65,7 @@ const CompareModal = memo(function CompareModal({
 
   useEffect(() => {
     if (!show || !originalProxy) return;
+    setOriginalAspect(null);
     const image = new Image();
     image.onload = () => {
       if (image.naturalWidth && image.naturalHeight) {
@@ -76,6 +77,29 @@ const CompareModal = memo(function CompareModal({
   }, [show, originalProxy]);
 
   if (!show || !project) return null;
+
+  const rotateTallPreview = Boolean(originalAspect && originalAspect < 0.35);
+  const previewAspect = rotateTallPreview ? 1 / originalAspect : originalAspect;
+  const compareImageStyle = rotateTallPreview
+    ? {
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        width: `${100 / previewAspect}%`,
+        height: `${previewAspect * 100}%`,
+        transform: "translate(-50%, -50%) rotate(90deg)",
+        transformOrigin: "center",
+        objectFit: "contain",
+        pointerEvents: "none",
+      }
+    : {
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "contain",
+        pointerEvents: "none",
+      };
 
   return (
     <div
@@ -103,6 +127,7 @@ const CompareModal = memo(function CompareModal({
             <CheckCircle size={18} color="#d4ff59" />
             <span style={{ fontWeight: "600", fontSize: "15px", color: "#fff", letterSpacing: "0.5px" }}>{project.trace_type === "upscale" ? "Upscale Complete" : "Trace Complete"}</span>
             <span style={{ color: "#666", fontSize: "13px", marginLeft: "8px", fontWeight: "400" }}>Drag slider to compare</span>
+            {rotateTallPreview && <span style={{ color: "#9effc8", fontSize: "11px", marginLeft: "6px", fontWeight: "600" }}>PREVIEW ROTATED 90°</span>}
           </div>
           <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "6px", borderRadius: "50%", transition: "all 0.2s" }} onMouseOver={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }} onMouseOut={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.background = "transparent"; }}>
             <X size={18} />
@@ -123,9 +148,9 @@ const CompareModal = memo(function CompareModal({
               position: "relative",
               overflow: "hidden", cursor: "ew-resize", userSelect: "none",
               boxShadow: "0 0 20px rgba(0,0,0,0.5)",
-              width: originalAspect ? `min(85vw, calc(80vh * ${originalAspect}))` : "85vw",
-              height: originalAspect ? `min(80vh, calc(85vw / ${originalAspect}))` : "80vh",
-              aspectRatio: originalAspect || "auto",
+              width: previewAspect ? `min(85vw, calc(80vh * ${previewAspect}))` : "85vw",
+              height: previewAspect ? `min(80vh, calc(85vw / ${previewAspect}))` : "80vh",
+              aspectRatio: previewAspect || "auto",
               maxWidth: "85vw",
               maxHeight: "80vh",
             }}
@@ -151,7 +176,7 @@ const CompareModal = memo(function CompareModal({
                     event.currentTarget.src = fallback;
                   }
                 }}
-                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", objectFit: "contain" }}
+                style={compareImageStyle}
                 alt="After"
               />
             ) : (
@@ -175,7 +200,7 @@ const CompareModal = memo(function CompareModal({
                 draggable={false}
                 src={originalProxy}
                 alt="Original"
-                style={{ width: "100%", height: "100%", objectFit: "contain", pointerEvents: "none" }}
+                style={compareImageStyle}
               />
             </div>
 

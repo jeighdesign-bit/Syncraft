@@ -43,15 +43,20 @@ const CropModal = memo(function CropModal({
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
 
-    const MAX_SIZE = 1536;
+    // Preserve detailed crops for print work. Direct-to-storage upload keeps
+    // these larger browser-generated assets away from serverless body limits.
+    const MAX_SIZE = 4096;
+    const MAX_PIXELS = 16_000_000;
     let targetWidth = completedCrop.width * scaleX;
     let targetHeight = completedCrop.height * scaleY;
-
-    if (targetWidth > MAX_SIZE || targetHeight > MAX_SIZE) {
-      const ratio = Math.min(MAX_SIZE / targetWidth, MAX_SIZE / targetHeight);
-      targetWidth *= ratio;
-      targetHeight *= ratio;
-    }
+    const resizeRatio = Math.min(
+      1,
+      MAX_SIZE / targetWidth,
+      MAX_SIZE / targetHeight,
+      Math.sqrt(MAX_PIXELS / Math.max(1, targetWidth * targetHeight)),
+    );
+    targetWidth = Math.max(1, Math.round(targetWidth * resizeRatio));
+    targetHeight = Math.max(1, Math.round(targetHeight * resizeRatio));
 
     canvas.width = targetWidth;
     canvas.height = targetHeight;
@@ -69,7 +74,7 @@ const CropModal = memo(function CropModal({
     setIsSaving(true);
 
     try {
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.90));
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.95));
 
       const sessionRes = await supabase.auth.getSession();
       const token = sessionRes.data.session?.access_token;

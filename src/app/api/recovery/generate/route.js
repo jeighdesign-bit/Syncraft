@@ -4,7 +4,7 @@ import { chargeCreditsVerified, markCreditTransaction, recordProviderUsage, refu
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 import { buildRecoveryPrompt, normalizeRecoveryAnalysis } from "@/lib/recovery";
-import { backgroundOnlyFailureMessage, shouldFallbackToSource, shouldRejectBackgroundOnly, sourceFallbackCorrection } from "@/lib/recoveryPolicy.mjs";
+import { backgroundOnlyFailureMessage, normalizedCorrelation, recoveryAspectRatioDrift, shouldFallbackToSource, shouldPreserveExactRecoverySource, shouldRejectBackgroundOnly, sourceFallbackCorrection } from "@/lib/recoveryPolicy.mjs";
 import { CREDIT_COST } from "@/lib/pricing";
 import { uploadToR2 } from "@/lib/cloudflare";
 import sharp from "sharp";
@@ -136,6 +136,21 @@ async function contentRetentionCheck(sourceBuffer, outputBuffer) {
     output,
     collapsed: sourceHasDetail && outputLostContrast && outputLostEdges,
   };
+}
+
+async function structuralSimilarity(sourceBuffer, outputBuffer) {
+  const prepare = buffer => sharp(buffer)
+    .rotate()
+    .resize(96, 96, { fit: "fill" })
+    .greyscale()
+    .blur(1)
+    .raw()
+    .toBuffer();
+  const [sourcePixels, outputPixels] = await Promise.all([
+    prepare(sourceBuffer),
+    prepare(outputBuffer),
+  ]);
+  return normalizedCorrelation(sourcePixels, outputPixels);
 }
 
 function normalizeValidation(raw) {
@@ -388,11 +403,18 @@ export async function POST(request) {
     const hasNoDetectedDistortion = [analysis.perspective, analysis.curvature, analysis.folds, analysis.reflections]
       .every(value => value === "none");
     const directSourceLayouts = ["flat_rectangle", "long_strip", "sticker_decal", "large_format_rectangle", "unknown"];
+    const preserveExactSource = shouldPreserveExactRecoverySource({
+      mode: recoveryMode,
+      sourceWidth,
+      sourceHeight,
+    });
     const canPreserveSourceDirectly = keepArtwork
-      && hasNoDetectedDistortion
-      && !needsStructuralReconstruction
-      && directSourceLayouts.includes(analysis.layout_strategy)
-      && analysis.visible_coverage >= 85;
+      && (preserveExactSource || (
+        hasNoDetectedDistortion
+        && !needsStructuralReconstruction
+        && directSourceLayouts.includes(analysis.layout_strategy)
+        && analysis.visible_coverage >= 85
+      ));
     // The crop ratio describes the photographed view; the analyzed ratio
     // describes the intended flat printable plane. Keep the latter through
     // generation and post-processing so perspective correction is not undone.
@@ -416,6 +438,7 @@ export async function POST(request) {
         usable_partial: false,
         failures: [],
         source_passthrough: true,
+        exact_geometry_preserved: preserveExactSource,
         correction: "",
       };
     } else {
@@ -456,8 +479,34 @@ export async function POST(request) {
         isOwnerTest,
         metadata: { operation: "universal_design_recovery", mode: recoveryMode },
       });
-      const retention = await contentRetentionCheck(source.buffer, downloaded.buffer);
-      if (retention.collapsed) {
+      const [retention, outputMeta, similarity] = await Promise.all([
+        contentRetentionCheck(source.buffer, downloaded.buffer),
+        sharp(downloaded.buffer).metadata(),
+        keepArtwork ? structuralSimilarity(source.buffer, downloaded.buffer) : Promise.resolve(null),
+      ]);
+      const ratioDrift = recoveryAspectRatioDrift(
+        sourceWidth,
+        sourceHeight,
+        outputMeta.width,
+        outputMeta.height,
+      );
+      if (keepArtwork && ratioDrift > 0.04) {
+        validation = {
+          pass: false,
+          usable_partial: false,
+          failures: ["wrong_layout"],
+          aspect_ratio_drift: ratioDrift,
+          correction: "The generated canvas changed the crop proportions, so the exact source crop must be preserved.",
+        };
+      } else if (keepArtwork && similarity < 0.28) {
+        validation = {
+          pass: false,
+          usable_partial: false,
+          failures: ["missing_visible_artwork"],
+          structural_similarity: similarity,
+          correction: "The generated artwork changed too much from the visible crop, so the exact source crop must be preserved.",
+        };
+      } else if (retention.collapsed) {
         validation = {
           pass: false,
           usable_partial: false,
@@ -470,6 +519,8 @@ export async function POST(request) {
           usable_partial: false,
           failures: [],
           local_validation: true,
+          structural_similarity: similarity,
+          exact_geometry_preserved: false,
           correction: "",
         };
       }
