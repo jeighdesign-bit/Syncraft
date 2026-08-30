@@ -6,6 +6,7 @@ import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHos
 import { buildRecoveryPrompt, normalizeRecoveryAnalysis } from "@/lib/recovery";
 import { backgroundOnlyFailureMessage, shouldFallbackToSource, shouldRejectBackgroundOnly, sourceFallbackCorrection } from "@/lib/recoveryPolicy.mjs";
 import { CREDIT_COST } from "@/lib/pricing";
+import { uploadToR2 } from "@/lib/cloudflare";
 import sharp from "sharp";
 
 export const runtime = "nodejs";
@@ -398,7 +399,7 @@ export async function POST(request) {
     const generationAspectRatio = analysis.aspect_ratio || "auto";
 
     let finalImage = null;
-    let downloaded = { buffer: source.buffer };
+    let downloaded = source;
     let generationPasses = 0;
     let validationCalls = 0;
     let foregroundDetectionCalls = 0;
@@ -491,7 +492,7 @@ export async function POST(request) {
       if (keepArtwork) {
         // A failed flatten never replaces customer artwork. Preserve the exact
         // source crop and continue through the normal free upscale/vector steps.
-        downloaded = { buffer: source.buffer };
+        downloaded = source;
         validation = {
           ...validation,
           pass: false,
@@ -539,7 +540,25 @@ export async function POST(request) {
         };
       }
     }
-    await adminSupabase.from("projects").update({
+    const exactOutputMimeType = validation.source_fallback
+      ? source.response?.headers.get("content-type")?.split(";")[0] || "image/png"
+      : downloaded.response?.headers.get("content-type")?.split(";")[0] || "image/png";
+    const outputExtension = ({
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp",
+      "image/gif": "gif",
+      "image/avif": "avif",
+    })[exactOutputMimeType] || "png";
+    const outputFileName = `projects/${projectId}/generated_flat_${Date.now()}.${outputExtension}`;
+    const fileUrl = await uploadToR2(exactOutput, outputFileName, exactOutputMimeType);
+
+    const { error: saveError } = await adminSupabase.from("projects").update({
+      generated_image_url: fileUrl,
+      ai_prompt: null,
+      zip_url: null,
+      zip_signature: null,
+      zip_generated_at: null,
       canvas_data: {
         ...(project.canvas_data || {}),
         universal_recovery: {
@@ -558,6 +577,7 @@ export async function POST(request) {
         },
       },
     }).eq("id", projectId).eq("user_id", user.id);
+    if (saveError) throw new Error(`Could not save Universal flat extract: ${saveError.message}`);
 
     await markCreditTransaction({
       transactionId: chargeTransactionId,
@@ -567,8 +587,9 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
-      base64: exactOutput.toString("base64"),
-      mimeType: downloaded.response?.headers.get("content-type")?.split(";")[0] || "image/png",
+      alreadySaved: true,
+      fileUrl,
+      mimeType: exactOutputMimeType,
       recoveryStatus: validation.pass ? "complete" : "partial",
       validation,
       analysis,
