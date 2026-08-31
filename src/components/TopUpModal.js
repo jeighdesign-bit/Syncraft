@@ -43,7 +43,7 @@ const PLAN_DODO_PRICES = Object.fromEntries(
 const DODO_ENABLED_PLANS = new Set(
   Object.values(CREDIT_PLANS).filter((p) => p.dodoEnabled).map((p) => p.key)
 );
-const SHOW_ELITE_PROMO_RIBBON = false;
+const SHOW_ELITE_PROMO_RIBBON = true;
 
 
 const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supabaseProp, onClose, onLoginRequired, onCreditUpdated }) {
@@ -426,13 +426,13 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                   <div key={p.key} style={{ background: p.best ? '#222' : '#18181b', border: `1px solid ${p.best ? '#d4ff59' : '#444'}`, padding: '32px 24px', display: 'flex', flexDirection: 'column', position: 'relative', borderRadius: '16px' }}>
                     {SHOW_ELITE_PROMO_RIBBON && p.elitePromo && (
                       <div
-                        aria-label={elitePromo.remaining > 0 ? `Free Subli Auto-Resizer, ${elitePromo.remaining} slots left` : 'Subli Auto-Resizer promo ended'}
-          style={{ position: 'absolute', top: '-46px', right: '-51px', transform: 'rotate(-5deg)', transformOrigin: 'center', zIndex: 2, minWidth: '242px', padding: '12px 22px 13px 18px', background: elitePromo.remaining > 0 ? '#fff' : '#3f3f46', clipPath: 'polygon(0 0, 96% 0, 100% 12%, 96% 24%, 100% 36%, 96% 50%, 100% 64%, 96% 76%, 100% 88%, 96% 100%, 0 100%, 4% 88%, 0 76%, 4% 64%, 0 50%, 4% 36%, 0 24%, 4% 12%)', whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'center', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.92)', filter: elitePromo.remaining > 0 ? 'drop-shadow(0 7px 0 #a1a1aa) drop-shadow(0 13px 16px rgba(0,0,0,0.3))' : 'drop-shadow(0 7px 0 #25252a) drop-shadow(0 13px 16px rgba(0,0,0,0.3))' }}
+                        aria-label={elitePromo.remaining > 0 ? `Free lifetime DesaynScale image upscaling, ${elitePromo.remaining} slots left` : 'DesaynScale image upscaling promo ended'}
+          style={{ position: 'absolute', top: '-54px', right: '-51px', transform: 'rotate(-5deg)', transformOrigin: 'center', zIndex: 2, minWidth: '252px', padding: '11px 22px 12px 18px', background: elitePromo.remaining > 0 ? '#fff' : '#3f3f46', clipPath: 'polygon(0 0, 96% 0, 100% 12%, 96% 24%, 100% 36%, 96% 50%, 100% 64%, 96% 76%, 100% 88%, 96% 100%, 0 100%, 4% 88%, 0 76%, 4% 64%, 0 50%, 4% 36%, 0 24%, 4% 12%)', whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'center', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.92)', filter: elitePromo.remaining > 0 ? 'drop-shadow(0 7px 0 #a1a1aa) drop-shadow(0 13px 16px rgba(0,0,0,0.3))' : 'drop-shadow(0 7px 0 #25252a) drop-shadow(0 13px 16px rgba(0,0,0,0.3))' }}
                       >
                         {elitePromo.configured === false ? (
                           <span style={{ display: 'block', color: '#e4e4e7', fontSize: '9px', fontWeight: '800' }}>PROMO SETUP PENDING</span>
                         ) : elitePromo.remaining > 0 ? (
-            <><span style={{ display: 'block', color: '#111', fontSize: '10px', fontWeight: '900', letterSpacing: '0.1px', transform: 'translateX(-7px)' }}>FREE LIFETIME SUBLI AUTO-RESIZER</span><span style={{ display: 'block', color: '#111', fontSize: '9.5px', fontWeight: '800', marginTop: '4px', transform: 'translateX(-7px)' }}>FIRST 10 ELITE BUYERS · {elitePromo.remaining} LEFT</span></>
+            <><span style={{ display: 'block', color: '#111', fontSize: '10px', fontWeight: '900', letterSpacing: '0.1px', transform: 'translateX(-7px)' }}>FREE IMAGE UPSCALING</span><span style={{ display: 'block', color: '#111', fontSize: '9.5px', fontWeight: '850', marginTop: '3px', transform: 'translateX(-7px)' }}>DESAYNSCALE · LIFETIME ACCESS</span><span style={{ display: 'block', color: '#111', fontSize: '9px', fontWeight: '800', marginTop: '3px', transform: 'translateX(-7px)' }}>FIRST 10 ELITE BUYERS · {elitePromo.remaining} LEFT</span></>
                         ) : (
                           <span style={{ display: 'block', color: '#e4e4e7', fontSize: '9px', fontWeight: '800' }}>LAUNCH PROMO ENDED</span>
                         )}

@@ -29,6 +29,19 @@ export async function claimEliteAutoresizerPromo({
   }
 
   const row = Array.isArray(data) ? data[0] : data;
+  if (row?.granted) {
+    const { error: fulfillmentUpdateError } = await adminSupabase
+      .from("store_requests")
+      .update({ product_name: "DesaynScale — Elite Launch Bonus" })
+      .eq("user_id", userId)
+      .eq("product_name", "Subli Autoresizer — Elite Launch Bonus")
+      .eq("status", "pending");
+
+    if (fulfillmentUpdateError) {
+      console.warn("[Elite Promo] Could not update the fulfillment label:", fulfillmentUpdateError.message);
+    }
+  }
+
   return {
     eligible: true,
     granted: Boolean(row?.granted),

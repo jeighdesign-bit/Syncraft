@@ -233,11 +233,6 @@ export default function ProductCarousel({ sections }) {
                   <span className={product.price === "Free" ? styles.freePrice : styles.price}>{product.price}</span>
                 )}
               </div>
-              {product.promoSlots && (
-                <span className={styles.promoAvailability}>
-                  <span aria-hidden="true" /> Only {product.promoSlots} promo slots left
-                </span>
-              )}
               <h3>{product.name}</h3>
               <div className={styles.productFooter}>
                 <span><FileDown size={14} aria-hidden="true" /> {product.meta}</span>
@@ -312,11 +307,6 @@ export default function ProductCarousel({ sections }) {
                   <span className={selectedProduct.price === "Free" ? styles.freePrice : styles.price}>{selectedProduct.price}</span>
                 )}
               </div>
-              {selectedProduct.promoSlots && (
-                <span className={`${styles.promoAvailability} ${styles.modalPromoAvailability}`}>
-                  <span aria-hidden="true" /> Only {selectedProduct.promoSlots} promo slots left
-                </span>
-              )}
               <h2 id="product-modal-title">{selectedProduct.name}</h2>
               {!showRequestForm && (
                 <>

@@ -16,6 +16,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ALLOWED_RECEIPT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const paidProducts = new Map([
+  ["DesaynScale", { type: "Sublimation Tool", price: "\u20B1950" }],
   ["Subli Autoresizer", { type: "Sublimation Tool", price: "\u20B1850" }],
   ["SubliBatch Pro", { type: "Sublimation Tool", price: "\u20B1850" }],
   ["SubliNest", { type: "Sublimation Tool", price: "\u20B1850" }],

@@ -1,5 +1,5 @@
--- Elite launch promo: the first 10 successful Elite buyers receive a lifetime
--- Subli Autoresizer entitlement. Run once in the Supabase SQL Editor.
+-- Elite launch promo: the first 10 successful Elite buyers receive lifetime
+-- DesaynScale image-upscaling access. Run once in the Supabase SQL Editor.
 
 -- Snapshot the exact terms shown when a manual GCash request is submitted.
 -- Existing rows are backfilled with the pricing that was live before this launch.
@@ -127,7 +127,7 @@ BEGIN
     ) VALUES (
       claim_user_id,
       lower(trim(claim_email)),
-      'Subli Autoresizer — Elite Launch Bonus',
+      'DesaynScale — Elite Launch Bonus',
       'Lifetime entitlement #' || new_claim_number,
       'FREE',
       NULL,
