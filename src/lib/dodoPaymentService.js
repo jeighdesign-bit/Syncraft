@@ -1,7 +1,7 @@
 import { adminSupabase } from "@/lib/supabase";
 import { getDodoClient } from "@/lib/dodo";
 import { getCreditPlan } from "@/lib/paymentPlans";
-import { claimEliteAutoresizerPromo } from "@/lib/eliteAutoresizerPromo";
+import { claimEliteDesaynscalePromo } from "@/lib/eliteDesaynscalePromo";
 import { sendPaymentReceipt } from "@/lib/transactionalEmail";
 
 export function resolveLocalPaymentQuery(payment) {
@@ -84,7 +84,7 @@ export async function handleDodoPaymentSucceeded(payment) {
   if (logError) console.error("[Dodo] Credit log insert failed:", logError);
 
   const elitePromo = localPayment.plan === "elite" && localPayment.credits === plan.credits
-    ? await claimEliteAutoresizerPromo({
+    ? await claimEliteDesaynscalePromo({
         userId: grant.granted_user_id,
         email: localPayment.email,
         planKey: localPayment.plan,

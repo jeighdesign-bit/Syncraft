@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { reconcilePendingDodoPayments } from "@/lib/dodoPaymentService";
+import { retryFailedDesaynscaleDeliveries } from "@/lib/eliteDesaynscalePromo";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -17,10 +18,14 @@ export async function GET(request) {
 
   try {
     const result = await reconcilePendingDodoPayments({ deadline });
+    const desaynscaleDeliveries = deadline()
+      ? { scanned: 0, sent: 0, failed: 0 }
+      : await retryFailedDesaynscaleDeliveries({ deadline });
     return NextResponse.json({
-      success: result.errors === 0,
+      success: result.errors === 0 && desaynscaleDeliveries.failed === 0,
       elapsedSeconds: Number(((Date.now() - start) / 1000).toFixed(1)),
       ...result,
+      desaynscaleDeliveries,
     });
   } catch (error) {
     console.error("[Payment reconciliation] Failed:", error);

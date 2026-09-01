@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
 import { authenticateAdminRequest } from "@/lib/adminAuth";
-import { claimEliteAutoresizerPromo } from "@/lib/eliteAutoresizerPromo";
+import { claimEliteDesaynscalePromo } from "@/lib/eliteDesaynscalePromo";
 import { sendPaymentReceipt } from "@/lib/transactionalEmail";
 import {
   PAYMENT_STATUS,
@@ -92,7 +92,7 @@ export async function POST(request) {
         && creditsToAdd === CREDIT_PLANS.elite.credits;
 
       if (isCurrentEliteOffer) {
-        elitePromo = await claimEliteAutoresizerPromo({
+        elitePromo = await claimEliteDesaynscalePromo({
           userId: claimedRequest.user_id,
           email: claimedRequest.email,
           planKey: claimedRequest.plan,

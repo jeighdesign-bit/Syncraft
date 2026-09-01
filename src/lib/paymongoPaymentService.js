@@ -1,6 +1,6 @@
 import { adminSupabase } from "@/lib/supabase";
 import { getCreditPlan } from "@/lib/paymentPlans";
-import { claimEliteAutoresizerPromo } from "@/lib/eliteAutoresizerPromo";
+import { claimEliteDesaynscalePromo } from "@/lib/eliteDesaynscalePromo";
 import { sendPaymentReceipt } from "@/lib/transactionalEmail";
 
 export function resolveLocalPaymongoPaymentQuery(resource) {
@@ -144,7 +144,7 @@ export async function handlePaymongoPaymentSucceeded(eventData) {
   // Elite promo check if user bought Elite plan
   const elitePromo =
     localPayment.plan === "elite" && localPayment.credits === plan.credits
-      ? await claimEliteAutoresizerPromo({
+      ? await claimEliteDesaynscalePromo({
           userId: grant.granted_user_id,
           email: localPayment.email,
           planKey: localPayment.plan,

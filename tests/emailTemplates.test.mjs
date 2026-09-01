@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  createDesaynscaleDeliveryEmail,
   createPaymentReceiptEmail,
   escapeHtml,
 } from "../src/lib/emailTemplates.mjs";
@@ -52,4 +53,18 @@ test("payment receipt uses safe fallbacks instead of blank details", () => {
   assert.match(email.html, /Not specified/);
   assert.match(email.text, /Payment method: Payment/);
   assert.match(email.text, /Credits added: \+0 credits/);
+});
+
+test("DesaynScale delivery email includes lifetime access and an escaped download link", () => {
+  const email = createDesaynscaleDeliveryEmail({
+    downloadUrl: `https://drive.google.com/folder?id=1&next=<script>`,
+    claimNumber: 2,
+  });
+
+  assert.match(email.subject, /FREE DesaynScale lifetime access/);
+  assert.match(email.html, /Lifetime/);
+  assert.match(email.html, /Elite launch bonus #2/);
+  assert.match(email.html, /id=1&amp;next=&lt;script&gt;/);
+  assert.doesNotMatch(email.html, /next=<script>/);
+  assert.match(email.text, /Open the DesaynScale files: https:\/\/drive\.google\.com/);
 });

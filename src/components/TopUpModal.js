@@ -74,7 +74,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
     if (!show || !SHOW_ELITE_PROMO_RIBBON) return;
 
     const controller = new AbortController();
-    fetch("/api/promotions/elite-autoresizer", {
+    fetch("/api/promotions/elite-desaynscale", {
       cache: "no-store",
       signal: controller.signal,
     })

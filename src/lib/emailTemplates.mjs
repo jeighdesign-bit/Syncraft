@@ -102,3 +102,73 @@ export function createPaymentReceiptEmail({
     text,
   };
 }
+
+export function createDesaynscaleDeliveryEmail({
+  downloadUrl,
+  claimNumber,
+}) {
+  const safeDownloadUrl = escapeHtml(downloadUrl);
+  const displayClaimNumber = Number.isInteger(Number(claimNumber))
+    ? Number(claimNumber)
+    : null;
+  const claimLabel = displayClaimNumber
+    ? `Elite launch bonus #${displayClaimNumber}`
+    : "Elite launch bonus";
+
+  const html = `
+    <!doctype html>
+    <html lang="en">
+      <body style="margin:0;background:${COLORS.background};color:#ffffff;font-family:Inter,Segoe UI,Arial,sans-serif;-webkit-font-smoothing:antialiased">
+        <div style="display:none;max-height:0;overflow:hidden;opacity:0">Your free lifetime DesaynScale image-upscaling access is ready.</div>
+        <div style="padding:40px 16px">
+          <div style="max-width:580px;margin:0 auto;background:${COLORS.card};border:1px solid ${COLORS.border};border-radius:18px;overflow:hidden;box-shadow:0 18px 55px rgba(0,0,0,.32)">
+            <div style="height:4px;background:${COLORS.accent};font-size:0;line-height:0">&nbsp;</div>
+            <div style="padding:32px 28px 14px;text-align:center">
+              <img src="cid:${EMAIL_LOGO_CONTENT_ID}" alt="Syncraft" width="184" style="display:inline-block;width:184px;max-width:72%;height:auto;border:0;outline:none;text-decoration:none">
+              <p style="margin:28px 0 8px;color:${COLORS.accent};font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase">Free Elite bonus unlocked</p>
+              <h1 style="margin:0 0 12px;font-size:28px;line-height:1.2;letter-spacing:-.5px">Your DesaynScale access is ready</h1>
+              <p style="max-width:440px;margin:0 auto;color:${COLORS.muted};font-size:15px;line-height:1.65">
+                Thank you for purchasing the Syncraft Elite plan. You are one of the first 10 qualified buyers and receive <strong style="color:#ffffff">DesaynScale image upscaling with lifetime access</strong> for free.
+              </p>
+            </div>
+            <div style="padding:18px 28px 32px">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:${COLORS.panel};border:1px solid ${COLORS.border};border-radius:12px;padding:8px 18px;border-collapse:separate">
+                ${detailRow("Bonus", "DesaynScale image upscaling")}
+                ${detailRow("Access", "Lifetime", { accent: true })}
+                ${detailRow("Qualification", claimLabel, { last: true })}
+              </table>
+              <div style="margin-top:24px;text-align:center">
+                <a href="${safeDownloadUrl}" style="display:inline-block;background:${COLORS.accent};color:#090a09;text-decoration:none;padding:14px 26px;border-radius:9px;font-size:14px;font-weight:900;line-height:1">Open DesaynScale files&nbsp;&nbsp;&rarr;</a>
+              </div>
+              <p style="margin:22px 0 0;color:${COLORS.muted};font-size:13px;line-height:1.65;text-align:center">
+                Open the folder and download the Windows files. Keep this email for future access.
+              </p>
+              <p style="margin:20px 0 0;color:#777e78;font-size:12px;line-height:1.6;text-align:center">
+                Need help? Reply to this email and the Syncraft team will assist you.
+              </p>
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = [
+    "Your free DesaynScale access is ready",
+    "",
+    "Thank you for purchasing the Syncraft Elite plan. You are one of the first 10 qualified buyers.",
+    "Bonus: DesaynScale image upscaling",
+    "Access: Lifetime",
+    `Qualification: ${claimLabel}`,
+    "",
+    `Open the DesaynScale files: ${downloadUrl}`,
+    "",
+    "Need help? Reply to this email and the Syncraft team will assist you.",
+  ].join("\n");
+
+  return {
+    subject: "Your FREE DesaynScale lifetime access is ready",
+    html,
+    text,
+  };
+}
