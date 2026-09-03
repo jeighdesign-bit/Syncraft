@@ -618,7 +618,38 @@ If any difference is detected, continue refining until the reconstruction is vis
         if (err.body && err.body.detail) {
           console.error("[fal.ai Error Detail]:", JSON.stringify(err.body.detail, null, 2));
         }
-        throw new Error(err.message || "Failed to generate image with fal.ai");
+        // Keep the provider status/code when crossing into the route-level
+        // billing handler. Previously a 403 was flattened into the literal
+        // message "Forbidden", so the UI could neither explain the failure nor
+        // distinguish it from an expired provider credential.
+        const detailMessage = Array.isArray(err?.body?.detail)
+          ? err.body.detail
+              .map(item => item?.msg || item?.message || String(item))
+              .filter(Boolean)
+              .join("; ")
+          : typeof err?.body?.detail === "string"
+            ? err.body.detail
+            : null;
+        const providerMessage = [
+          err?.body?.message,
+          err?.body?.error,
+          detailMessage,
+          err?.message,
+        ].find(value => typeof value === "string" && value.trim())?.trim()
+          || "The image provider rejected the request.";
+        const providerError = new Error(providerMessage);
+        providerError.status = Number(err?.status) || 502;
+        const isBalanceLock = providerError.status === 403
+          && /exhausted\s+balance|user\s+is\s+locked|top\s+up|billing/i.test(providerMessage);
+        providerError.code = isBalanceLock
+          ? "FAL_BALANCE_EXHAUSTED"
+          : providerError.status === 401
+          ? "FAL_AUTH_FAILED"
+          : providerError.status === 403
+            ? "FAL_REQUEST_FORBIDDEN"
+            : "FAL_GENERATION_FAILED";
+        providerError.providerRequestId = err?.requestId || null;
+        throw providerError;
       }
 
       if (shouldSaveGarmentExtractionServerSide(extractionMode)) {
@@ -820,12 +851,28 @@ If any difference is detected, continue refining until the reconstruction is vis
     console.error(`[Trace API Error]:`, actualErrorMsg || error);
 
     // Never expose raw internal error messages (API keys, stack traces) to the client
-    const isProviderAuthError = actualErrorMsg?.includes('FAL') || actualErrorMsg?.includes('fal') || actualErrorMsg?.includes('API') || actualErrorMsg === 'Unauthorized';
-    const safeMessage = isProviderAuthError
+    const isProviderAuthError = error.code === "FAL_AUTH_FAILED"
+      || actualErrorMsg?.includes('FAL_KEY')
+      || actualErrorMsg === 'Unauthorized';
+    const isProviderBalanceExhausted = error.code === "FAL_BALANCE_EXHAUSTED";
+    const isProviderForbidden = error.code === "FAL_REQUEST_FORBIDDEN";
+    const safeMessage = isProviderBalanceExhausted
+      ? `AI generation is temporarily unavailable because the provider balance is exhausted. ${refundIssued
+          ? 'Your credit has been refunded automatically. Please try again after service is restored.'
+          : 'Please contact support; your credit could not be refunded automatically.'}`
+      : isProviderAuthError
       ? `AI provider authentication failed (Unauthorized/Keys). ${refundIssued
           ? 'Your credit has been refunded automatically.'
           : 'Your credit could NOT be refunded automatically — please contact support.'}`
+      : isProviderForbidden
+        ? `The AI provider could not process this artwork. ${refundIssued
+            ? 'Your credit has been refunded automatically. Please retry once or use a tighter crop.'
+            : 'Please retry once or use a tighter crop.'}`
       : (actualErrorMsg || 'Failed to process trace step');
-    return NextResponse.json({ error: safeMessage, refunded: refundIssued }, { status: 500 });
+    return NextResponse.json({
+      error: safeMessage,
+      code: error.code || "TRACE_FAILED",
+      refunded: refundIssued,
+    }, { status: isProviderBalanceExhausted ? 503 : isProviderForbidden ? 422 : 500 });
   }
 }
