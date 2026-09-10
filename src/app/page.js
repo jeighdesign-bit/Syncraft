@@ -32,6 +32,7 @@ import AIDisclaimerModal from "./components/AIDisclaimerModal";
 import ProductionProofSection from "./components/TestimonialSection";
 import FAQSection from "./components/FAQSection";
 import GreatForSection from "./components/GreatForSection";
+import FloatingPromoVideo from "./components/FloatingPromoVideo";
 import QRCode from "react-qr-code";
 import FeedbackWidget from "@/app/workspace/[id]/components/FeedbackWidget";
 
@@ -1042,6 +1043,12 @@ export default function StartScreen() {
 
       {/* AI Guidelines Popup (Removed) */}
       {/* <AIDisclaimerModal /> */}
+
+      {/* Homepage-only floating video. Replace the source when the campaign video is ready. */}
+      <FloatingPromoVideo
+        src="/syncraft%20video/YAN%20ANG%20SYNCRAFT.mp4"
+        dismissalKey="syncraft-floating-promo-yan-ang-syncraft-v1"
+      />
 
       {/* ─── SEO: FAQ Structured Data (JSON-LD) ─────────────────────────────── */}
       <script
