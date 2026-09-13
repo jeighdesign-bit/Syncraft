@@ -37,12 +37,11 @@ const PLAN_LABELS = Object.fromEntries(
 const PLAN_PRICES = Object.fromEntries(
   Object.values(CREDIT_PLANS).map((p) => [p.key, p.price])
 );
-const PLAN_DODO_PRICES = Object.fromEntries(
-  Object.values(CREDIT_PLANS).map((p) => [p.key, p.dodoPrice || p.price])
-);
 const DODO_ENABLED_PLANS = new Set(
   Object.values(CREDIT_PLANS).filter((p) => p.dodoEnabled).map((p) => p.key)
 );
+// Temporary provider switch. Re-enable only after Dodo restores live payments.
+const DODO_CARD_PAYMENTS_AVAILABLE = false;
 const SHOW_ELITE_PROMO_RIBBON = true;
 
 
@@ -221,6 +220,10 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
   const handleStartDodoCheckout = useCallback(async () => {
     if (!user) {
       onLoginRequired?.();
+      return;
+    }
+    if (!DODO_CARD_PAYMENTS_AVAILABLE) {
+      toast.error("Card payments are temporarily unavailable. Please use QR Ph or GCash.");
       return;
     }
     if (!DODO_ENABLED_PLANS.has(form.plan)) {
@@ -491,7 +494,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                 </p>
                 {form.plan === 'tingi' && (
                   <p style={{ margin: '10px 0 0', color: '#d4ff59', fontSize: '13px', fontWeight: '600' }}>
-                    Mini is GCash-only. Card / International starts at Basic.
+                    Mini is available through QR Ph or GCash.
                   </p>
                 )}
               </div>
@@ -502,7 +505,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                   type="button"
                   onClick={handleStartPaymongoCheckout}
                   disabled={isStartingPaymongo || isStartingDodo}
-                  style={{ background: '#18181b', border: '1px solid #333', color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: (isStartingPaymongo || isStartingDodo) ? 'not-allowed' : 'pointer', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: (isStartingPaymongo || isStartingDodo) ? 0.6 : 1, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+                  style={{ position: 'relative', background: '#18181b', border: '1px solid #333', color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: (isStartingPaymongo || isStartingDodo) ? 'not-allowed' : 'pointer', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: (isStartingPaymongo || isStartingDodo) ? 0.6 : 1, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
                   onMouseOver={(e) => { if (!isStartingPaymongo && !isStartingDodo) { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; } }}
                   onMouseOut={(e) => { if (!isStartingPaymongo && !isStartingDodo) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#18181b'; } }}
                 >
@@ -520,6 +523,9 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                       Scan dynamic QR with GCash, Maya, ShopeePay, or PH banking apps ({PLAN_PRICES[form.plan]}).
                     </span>
                   </div>
+                  <span style={{ position: 'absolute', top: 0, right: '20px', transform: 'translateY(-50%)', zIndex: 1, background: '#d4ff59', color: '#111', fontSize: '10px', fontWeight: '800', padding: '4px 9px', borderRadius: '999px', textTransform: 'uppercase', letterSpacing: '0.6px', lineHeight: 1, whiteSpace: 'nowrap' }}>
+                    Recommended
+                  </span>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingLeft: '16px', borderLeft: '1px solid #2a2a2e', flexShrink: 0, height: '32px' }}>
                     <img src="/logos/qrph.png?v=2" alt="QR Ph" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
                     <img src="/logos/gcash.svg" alt="GCash" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
@@ -532,31 +538,29 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                 <button
                   type="button"
                   onClick={handleStartDodoCheckout}
-                  disabled={isStartingDodo || isStartingPaymongo || form.plan === 'tingi'}
-                  style={{ background: form.plan === 'tingi' ? '#141416' : '#18181b', border: '1px solid #333', color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: (isStartingDodo || isStartingPaymongo || form.plan === 'tingi') ? 'not-allowed' : 'pointer', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: (isStartingDodo || isStartingPaymongo || form.plan === 'tingi') ? 0.5 : 1, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
-                  onMouseOver={(e) => { if (!isStartingDodo && !isStartingPaymongo && form.plan !== 'tingi') { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; } }}
-                  onMouseOut={(e) => { if (!isStartingDodo && !isStartingPaymongo && form.plan !== 'tingi') { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#18181b'; } }}
+                  disabled={!DODO_CARD_PAYMENTS_AVAILABLE || isStartingDodo || isStartingPaymongo || form.plan === 'tingi'}
+                  aria-label="Card and international payments are temporarily unavailable"
+                  aria-describedby="dodo-payment-status"
+                  style={{ background: '#141416', border: '1px solid #3d3728', color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: 'not-allowed', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: 0.68, boxShadow: '0 4px 12px rgba(0,0,0,0.16)' }}
                 >
-                  <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(212, 255, 89, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <CreditCard size={24} color="#d4ff59" />
+                  <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(251, 191, 36, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CreditCard size={24} color="#fbbf24" aria-hidden="true" />
                   </div>
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                       <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>Card / International</span>
-                      <span style={{ background: 'rgba(212, 255, 89, 0.15)', color: '#d4ff59', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        {form.plan === 'tingi' ? 'Basic+' : isStartingDodo ? 'Loading...' : 'Instant Auto-Credit'}
+                      <span style={{ background: 'rgba(251, 191, 36, 0.12)', color: '#fbbf24', border: '1px solid rgba(251, 191, 36, 0.25)', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Temporarily unavailable
                       </span>
                     </div>
-                    <span style={{ color: '#888', fontSize: '13px', lineHeight: '1.4' }}>
-                      {form.plan === 'tingi'
-                        ? 'Not available for Mini due to high card transaction fees.'
-                        : `Pay instantly via Credit/Debit card with auto-crediting (${PLAN_DODO_PRICES[form.plan]}).`}
+                    <span id="dodo-payment-status" style={{ color: '#a1a1aa', fontSize: '13px', lineHeight: '1.4' }}>
+                      Our card provider is reviewing the account. Please use QR Ph or GCash for now.
                     </span>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingLeft: '16px', borderLeft: '1px solid #2a2a2e', flexShrink: 0, height: '32px' }}>
-                    <img src="/logos/visa.svg" alt="Visa" style={{ height: '16px', width: 'auto', objectFit: 'contain' }} />
-                    <img src="/logos/mastercard.svg" alt="Mastercard" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
-                    <ArrowRight size={18} color="#666" style={{ marginLeft: '4px' }} />
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingLeft: '16px', borderLeft: '1px solid #2a2a2e', flexShrink: 0, height: '32px', opacity: 0.45 }} aria-hidden="true">
+                    <img src="/logos/visa.svg" alt="" style={{ height: '16px', width: 'auto', objectFit: 'contain' }} />
+                    <img src="/logos/mastercard.svg" alt="" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
+                    <AlertTriangle size={18} color="#fbbf24" style={{ marginLeft: '4px' }} />
                   </div>
                 </button>
 
@@ -587,14 +591,12 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                   </div>
                 </button>
 
-                {form.plan !== 'tingi' && (
-                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #2a2a2a', borderRadius: '10px', padding: '14px 18px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                    <AlertTriangle size={16} color="#888" style={{ flexShrink: 0, marginTop: '2px' }} />
-                    <span style={{ color: '#777', fontSize: '12px', lineHeight: '1.5' }}>
-                      QR Ph provides instant automated crediting in PHP with no foreign currency fees. International card payments are billed in USD.
-                    </span>
-                  </div>
-                )}
+                <div role="status" style={{ background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: '10px', padding: '14px 18px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <AlertTriangle size={16} color="#fbbf24" style={{ flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
+                  <span style={{ color: '#d4d4d8', fontSize: '13px', lineHeight: '1.5' }}>
+                    Card / International payments are temporarily unavailable while our provider reviews the account. QR Ph and GCash remain available.
+                  </span>
+                </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '12px' }}>
                   <button onClick={() => setStep(1)} disabled={isStartingDodo || isStartingPaymongo} style={{ padding: '10px 20px', background: 'transparent', color: '#aaa', border: '1px solid #444', borderRadius: '8px', cursor: (isStartingDodo || isStartingPaymongo) ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '500', transition: 'all 0.2s' }}>← Back to Plans</button>
