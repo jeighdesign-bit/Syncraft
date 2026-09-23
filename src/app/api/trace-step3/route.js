@@ -74,7 +74,7 @@ export async function POST(request) {
 
     // ==========================================
     // STAGE 3: VECTORIZE WITH RECRAFT (SVG only)
-    // The image is already upscaled by ESRGAN in Step 2.
+    // The image is already upscaled by Recraft Crisp in Step 2.
     // Here we only convert to lossless PNG and apply optional Shadow Killer
     // color reduction before handing off to Recraft vectorize.
     // ==========================================

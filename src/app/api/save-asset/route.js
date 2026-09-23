@@ -102,10 +102,9 @@ export async function POST(request) {
     }
 
     if (step === 2) {
-      // fal's ESRGAN PNGs can be only slightly larger than the Supabase
-      // fallback bucket limit. Re-encode losslessly before storage: dimensions
-      // and RGBA pixels remain identical, while redundant PNG bytes are
-      // removed. The Flat Extract (Step 1) is deliberately never touched.
+      // Re-encode losslessly before storage so provider PNGs remain below the
+      // fallback bucket limit. Dimensions and RGBA pixels remain identical;
+      // only redundant PNG bytes are removed. Step 1 is never touched.
       if (finalMimeType === 'image/png') {
         const sharp = (await import('sharp')).default;
         buffer = await sharp(buffer)

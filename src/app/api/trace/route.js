@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
 import { chargeCreditsVerified, findLatestProjectCharge, markCreditTransaction, recordProviderUsage, refundCreditVerified } from "@/lib/creditLedger";
+import { fetchWithRetry } from "@/lib/fetchWithRetry";
 import { CREDIT_COST } from "@/lib/pricing";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
@@ -141,7 +142,7 @@ export async function POST(request) {
 
     if (step === 1) {
       // ==========================================
-      // STAGE 1: fal.ai ESRGAN → nano-banana-pro
+      // STAGE 1: Extract with Nano Banana Pro
       // ==========================================
 
       // Read image metadata to calculate the closest allowed aspect ratio for fal.ai
@@ -691,101 +692,62 @@ If any difference is detected, continue refining until the reconstruction is vis
 
     if (step === 2) {
       // ==========================================
-      // STAGE 2: AI UPSCALE WITH fal-ai/esrgan
+      // STAGE 2: CRISP UPSCALE WITH RECRAFT
       // ==========================================
-      // User preferred an AI upscaler over local Sharp, but Clarity was too expensive ($0.13).
-      // Real-ESRGAN (fal-ai/esrgan) provides excellent quality and is billed per compute second
-      // ($0.00111/s). A typical upscale takes ~2s, costing ~$0.002 (₱0.10) per image.
+      // All extraction types (garment, logo, and universal) use the same
+      // structure-preserving upscale before Recraft vectorization.
       // ==========================================
       if (!project.generated_image_url || project.generated_image_url === 'REFUNDED') {
         return NextResponse.json({ error: "Step 1 (Auto-Trace) must be completed before upscaling." }, { status: 403 });
       }
-      if (!process.env.FAL_KEY) throw new Error("FAL_KEY is missing in environment variables.");
-
-      const { fal } = await import("@fal-ai/client");
+      const recraftApiToken = process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY;
+      if (!recraftApiToken) throw new Error("RECRAFT_API_TOKEN is missing in environment variables.");
 
       const upscaleInputUrl = normalizeUserImageUrl(project.generated_image_url, new URL(request.url).origin);
       if (!isOwnedStorageUrl(upscaleInputUrl, { userId: user.id, projectId }) || !(await validateUrlForSSRF(upscaleInputUrl, { allowedHosts: getAllowedStorageHosts() }))) {
         return NextResponse.json({ error: "Invalid or unauthorized generated image URL" }, { status: 400 });
       }
 
-      const backgroundOnly = project.canvas_data?.universal_recovery?.mode === "UNIVERSAL_BACKGROUND_ONLY";
-      if (backgroundOnly) {
-        // The extract is already generated at high resolution. Lanczos resize
-        // adds pixels without inventing glyphs or changing the RGB palette,
-        // and PNG storage prevents an additional lossy JPEG generation.
-        console.log("[API Step 2] Creating fidelity-safe, palette-preserving 4x PNG...");
-        const { response, buffer: inputBuffer } = await fetchWithSSRFProtection(upscaleInputUrl, {
-          allowedHosts: getAllowedStorageHosts(),
-          maxBytes: DEFAULT_MAX_IMAGE_BYTES,
-          allowedContentTypes: ['image/'],
-        });
-        if (!response.ok) throw new Error("Failed to fetch generated image for lossless upscale");
+      console.log(`[API Step 2] Upscaling ${project.trace_type || "extraction"} with Recraft Crisp...`);
+      const crispRes = await fetchWithRetry("https://external.api.recraft.ai/v1/images/crispUpscale", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${recraftApiToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image_url: upscaleInputUrl,
+          response_format: "url",
+          image_format: "png",
+        }),
+        signal: AbortSignal.timeout(90_000),
+      });
 
-        const sharp = (await import('sharp')).default;
-        const metadata = await sharp(inputBuffer).metadata();
-        if (!metadata.width || !metadata.height) throw new Error("Unable to read generated image dimensions");
-        const upscaledBuffer = await sharp(inputBuffer)
-          .resize(metadata.width * 4, metadata.height * 4, {
-            fit: 'fill',
-            kernel: sharp.kernel.lanczos3,
-          })
-          .png({ compressionLevel: 9, adaptiveFiltering: false })
-          .toBuffer();
-
-        const fileName = `projects/${projectId}/upscaled_${Date.now()}.png`;
-        const finalUrl = await uploadToR2(upscaledBuffer, fileName, "image/png");
-        const { error: saveError } = await adminSupabase.from('projects')
-          .update({ upscaled_image_url: finalUrl, zip_url: null, zip_signature: null, zip_generated_at: null })
-          .eq('id', projectId)
-          .eq('user_id', user.id);
-        if (saveError) throw new Error(`Could not save palette-preserving upscale: ${saveError.message}`);
-
-        return NextResponse.json({
-          success: true,
-          step: 2,
-          fileUrl: finalUrl,
-          mimeType: "image/png",
-          alreadySaved: true,
-          palettePreserved: true,
-          fidelitySafe: true,
-        });
+      if (!crispRes.ok) {
+        const errText = await crispRes.text();
+        throw new Error(`Recraft Crisp upscale failed: ${errText}`);
       }
 
-      console.log("[API Step 2] Upscaling with fal-ai/esrgan...");
-
-      const upscalerResult = await fal.subscribe("fal-ai/esrgan", {
-        input: {
-          image_url: upscaleInputUrl,
-          scale: 4, // 4x upscale (increased from 2x)
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (update.status === "IN_PROGRESS") {
-            update.logs?.map((log) => log.message).forEach(console.log);
-          }
-        },
-      });
+      const crispData = await crispRes.json();
 
       const traceCharge = await findLatestProjectCharge(projectId);
       await recordProviderUsage({
         creditTransactionId: traceCharge?.transactionId || null,
         projectId,
         userId,
-        provider: "fal",
-        endpoint: "fal-ai/esrgan",
-        providerRequestId: upscalerResult?.requestId || null,
+        provider: "recraft",
+        endpoint: "images/crispUpscale",
+        providerRequestId: crispData?.id || crispRes.headers.get("x-request-id") || null,
+        estimatedCostUsd: 0.004,
         isOwnerTest: traceCharge?.isOwnerTest === true,
       });
 
-      console.log("[ESRGAN RAW Response]:", JSON.stringify(upscalerResult?.data, null, 2));
-
-      const upscaledUrl = upscalerResult?.data?.image?.url || upscalerResult?.data?.image_url;
+      const upscaledUrl = crispData?.image?.url;
       if (!upscaledUrl) {
-        throw new Error("fal-ai/esrgan did not return a valid image URL. Response: " + JSON.stringify(upscalerResult));
+        throw new Error("Recraft Crisp did not return a valid image URL. Response: " + JSON.stringify(crispData));
       }
 
-      const upscaledMimeType = upscalerResult?.data?.image?.content_type || "image/jpeg";
+      const upscaledMimeType = crispData?.image?.content_type || "image/png";
 
       return NextResponse.json({ success: true, step: 2, fileUrl: upscaledUrl, mimeType: upscaledMimeType });
 

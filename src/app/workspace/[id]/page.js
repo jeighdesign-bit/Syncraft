@@ -227,7 +227,7 @@ export default function Workspace() {
     trackExport({ tool: project.trace_type, format: "png" });
   }, [project, forceDownload]);
 
-  // Dedicated 4K download — uses upscaled_image_url (Step 2 ESRGAN output), NOT generated_image_url
+  // Dedicated HD download — uses the Step 2 Recraft Crisp output, not the flat extract.
   const handleDownloadUpscaled = useCallback(async () => {
     if (!project?.upscaled_image_url) return;
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(project.upscaled_image_url)}`;

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { validateApiKey } from "@/services/b2b/authService";
 import { checkBalance, deductAndLog } from "@/services/b2b/billingService";
 import { fetchWithRetry } from "@/lib/fetchWithRetry";
-import { fetchWithSSRFProtection, getAllowedProviderHosts, DEFAULT_MAX_IMAGE_BYTES } from "@/lib/ssrf";
+import { fetchWithSSRFProtection, getAllowedProviderHosts, DEFAULT_MAX_UPSCALED_IMAGE_BYTES } from "@/lib/ssrf";
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -41,7 +41,7 @@ Preserve ALL intricate design details: halftones, dot patterns, fine lines, logo
 export async function POST(request) {
   let authResult;
   let B2B_CREDIT_COST = 40;
-  let B2B_RAW_COST_USD = 0.161; 
+  let B2B_RAW_COST_USD = 0.164;
   let mode = 'keep_artwork';
 
   try {
@@ -74,7 +74,7 @@ export async function POST(request) {
       B2B_RAW_COST_USD = 0.002;
     } else {
       B2B_CREDIT_COST = 40;
-      B2B_RAW_COST_USD = 0.161;
+      B2B_RAW_COST_USD = 0.164;
     }
 
     // 3. Check Billing Balance
@@ -102,7 +102,7 @@ export async function POST(request) {
       if (!finalImageUrl) throw new Error("BiRefNet failed to return an image.");
     } 
     // ==========================================
-    // PIPELINE 2: VECTOR TRACING (Nano Banana -> ESRGAN -> Recraft)
+    // PIPELINE 2: VECTOR TRACING (Nano Banana -> Recraft Crisp -> Recraft Vectorize)
     // ==========================================
     else {
       const finalPrompt = PROMPTS[mode] || PROMPTS['keep_artwork'];
@@ -122,20 +122,37 @@ export async function POST(request) {
       const extractedUrl = nanoResult?.data?.images?.[0]?.url;
       if (!extractedUrl) throw new Error("Nano Banana Pro failed to return an image.");
 
-      console.log(`[B2B - ${company.name}] Starting ESRGAN Upscale...`);
-      const esrganResult = await fal.subscribe("fal-ai/esrgan", {
-        input: {
-          image_url: extractedUrl,
-          scale: 4,
-        }
-      });
-      const upscaledUrl = esrganResult?.data?.image?.url || esrganResult?.data?.image_url;
-      if (!upscaledUrl) throw new Error("ESRGAN failed to return an image.");
+      const recraftApiToken = process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY;
+      if (!recraftApiToken) throw new Error("RECRAFT_API_TOKEN is missing.");
 
-      console.log(`[B2B - ${company.name}] Downloading ESRGAN output for Recraft...`);
+      console.log(`[B2B - ${company.name}] Starting Recraft Crisp Upscale...`);
+      const crispRes = await fetchWithRetry("https://external.api.recraft.ai/v1/images/crispUpscale", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${recraftApiToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image_url: extractedUrl,
+          response_format: "url",
+          image_format: "png",
+        }),
+        signal: AbortSignal.timeout(90_000),
+      });
+
+      if (!crispRes.ok) {
+        const errText = await crispRes.text();
+        throw new Error(`Recraft Crisp upscale failed: ${errText}`);
+      }
+
+      const crispData = await crispRes.json();
+      const upscaledUrl = crispData?.image?.url;
+      if (!upscaledUrl) throw new Error("Recraft Crisp failed to return an image.");
+
+      console.log(`[B2B - ${company.name}] Downloading Recraft Crisp output for vectorization...`);
       const { response: imgRes, buffer: imgBuffer } = await fetchWithSSRFProtection(upscaledUrl, {
         allowedHosts: getAllowedProviderHosts(),
-        maxBytes: DEFAULT_MAX_IMAGE_BYTES,
+        maxBytes: DEFAULT_MAX_UPSCALED_IMAGE_BYTES,
         allowedContentTypes: ['image/'],
       });
       if (!imgRes.ok) throw new Error("Failed to download upscaled image.");
@@ -152,7 +169,7 @@ export async function POST(request) {
       console.log(`[B2B - ${company.name}] Starting Recraft Vectorize...`);
       const recraftVectorRes = await fetchWithRetry("https://external.api.recraft.ai/v1/images/vectorize", {
         method: "POST",
-        headers: { "Authorization": `Bearer ${process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY}` },
+        headers: { "Authorization": `Bearer ${recraftApiToken}` },
         body: vectorizeFormData,
         signal: AbortSignal.timeout(110000),
       });
