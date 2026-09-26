@@ -101,6 +101,7 @@ export async function createPaymongoQrPhDirectIntent({
   user,
   plan,
   localPaymentId,
+  metadata = {},
 }) {
   const headers = getPaymongoAuthHeaders();
 
@@ -118,6 +119,7 @@ export async function createPaymongoQrPhDirectIntent({
           user_id: user.id,
           plan: plan.key,
           credits: String(plan.credits),
+          ...metadata,
         },
       },
     },

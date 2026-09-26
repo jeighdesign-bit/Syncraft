@@ -4,259 +4,189 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight, BookOpen, Check, Clipboard, Code2, KeyRound, LogOut, Plus, ShieldCheck, WalletCards } from "lucide-react";
 import LoginModal from "@/app/components/LoginModal";
+import ApiCreditTopUpModal from "./ApiCreditTopUpModal";
+import styles from "./api-dashboard.module.css";
+
+const supabase = createClient();
 
 export default function ApiDashboardPage() {
   const router = useRouter();
-  const supabase = createClient();
-  
-  const [user, setUser] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [copiedKey, setCopiedKey] = useState(null);
-  const [copiedCompanyId, setCopiedCompanyId] = useState(false);
-  const [showGcashModal, setShowGcashModal] = useState(false);
+  const [showTopUpModal, setShowTopUpModal] = useState(false);
 
-  // Auth Check
+  const fetchDashboard = async (token) => {
+    try {
+      const response = await fetch("/api/b2b/dashboard", { headers: { Authorization: `Bearer ${token}` } });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to fetch dashboard");
+      setDashboardData(data);
+    } catch (fetchError) {
+      setError(fetchError.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setLoading(false);
         setShowLoginModal(true);
-      } else {
-        setUser(session.user);
-        fetchDashboard(session.access_token);
+        return;
       }
+      fetchDashboard(session.access_token);
     };
     checkUser();
-  }, [supabase]);
-
-  const fetchDashboard = async (token) => {
-    try {
-      const res = await fetch("/api/b2b/dashboard", {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to fetch dashboard");
-      
-      setDashboardData(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, []);
 
   const handleGenerateKey = async () => {
     setGenerating(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch("/api/b2b/keys/generate", {
+      if (!session) throw new Error("Please sign in again to continue.");
+      const response = await fetch("/api/b2b/keys/generate", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${session.access_token}`
-        }
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      // Add new key to state
-      setDashboardData(prev => ({
-        ...prev,
-        apiKeys: [data.apiKey, ...prev.apiKeys]
-      }));
-    } catch (err) {
-      alert("Error generating key: " + err.message);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setDashboardData((current) => ({ ...current, apiKeys: [data.apiKey, ...current.apiKeys] }));
+    } catch (generateError) {
+      window.alert(`Error generating key: ${generateError.message}`);
     } finally {
-      setLoading(false);
       setGenerating(false);
     }
   };
 
-  const handleCopy = (keyStr) => {
-    navigator.clipboard.writeText(keyStr);
-    setCopiedKey(keyStr);
-    setTimeout(() => setCopiedKey(null), 2000);
+  const handleCopy = async (keyString) => {
+    await navigator.clipboard.writeText(keyString);
+    setCopiedKey(keyString);
+    window.setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/");
   };
 
   if (loading) {
     return (
-      <div style={{ backgroundColor: "#121212", minHeight: "100vh", color: "white", display: "flex", justifyContent: "center", alignItems: "center" }}>
-        Loading API Dashboard...
-      </div>
+      <main className={styles.loadingScreen}>
+        <img src="/logo.svg" alt="Syncraft" />
+        <span className={styles.loadingLine} />
+        <p>Preparing your developer workspace</p>
+      </main>
     );
   }
 
   return (
-    <div style={{ backgroundColor: "#121212", minHeight: "100vh", color: "white", display: "flex", flexDirection: "column" }}>
-      <header style={{ padding: "20px 40px", borderBottom: "1px solid #27272a", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", color: "white" }}>
-          <img src="/logo.svg" alt="Syncraft" style={{ height: "30px", marginRight: "10px" }} />
-        </Link>
-        <button onClick={() => supabase.auth.signOut().then(() => router.push('/'))} style={{ background: "transparent", border: "1px solid #3f3f46", color: "white", padding: "8px 16px", borderRadius: "6px", cursor: "pointer" }}>Sign Out</button>
+    <div className={styles.pageShell}>
+      <header className={styles.siteHeader}>
+        <div className={styles.headerInner}>
+          <Link href="/" className={styles.brand} aria-label="Syncraft home"><img src="/logo.svg" alt="Syncraft" /></Link>
+          <nav className={styles.headerActions} aria-label="API dashboard navigation">
+            <Link href="/docs/api" className={styles.navLink}><BookOpen size={16} aria-hidden="true" /><span>Documentation</span></Link>
+            <button type="button" onClick={handleSignOut} className={styles.signOutButton}><LogOut size={16} aria-hidden="true" /><span>Sign out</span></button>
+          </nav>
+        </div>
       </header>
-      
-      <main style={{ flex: 1, padding: "60px 20px" }}>
-        <div style={{ maxWidth: "650px", margin: "0 auto" }}>
-          
-          <div style={{ marginBottom: "40px" }}>
-            <img src="/logo.svg" alt="Syncraft Logo" style={{ height: "40px", marginBottom: "20px" }} />
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h1 style={{ fontSize: "2.5rem", fontWeight: "bold" }}>API Dashboard</h1>
-              <div style={{ display: "flex", gap: "15px" }}>
-                <Link href="/docs/api" style={{ color: "#a1a1aa", textDecoration: "none", fontSize: "0.9rem" }}>Documentation</Link>
-              </div>
-            </div>
+
+      <main className={styles.main}>
+        <section className={styles.hero} aria-labelledby="dashboard-title">
+          <div className={styles.heroCopy}>
+            <div className={styles.eyebrow}><Code2 size={16} aria-hidden="true" /> Syncraft developer platform</div>
+            <h1 id="dashboard-title">Build with <span>Syncraft.</span></h1>
+            <p>Manage your API credits and production keys from one secure workspace.</p>
           </div>
+          <Link href="/docs/api" className={styles.docsCard}>
+            <span className={styles.docsIcon}><BookOpen size={20} aria-hidden="true" /></span>
+            <span><strong>API documentation</strong><small>Endpoints, authentication and examples</small></span>
+            <ArrowRight size={18} aria-hidden="true" />
+          </Link>
+        </section>
 
-          {error ? (
-            <div style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid #ef4444", padding: "20px", borderRadius: "12px", color: "#ef4444" }}>
-              {error}
-            </div>
-          ) : dashboardData ? (
-            <div style={{ background: "#1c1c1e", borderRadius: "16px", padding: "40px", border: "1px solid #27272a" }}>
-              
-              {/* Balance Section */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #27272a", paddingBottom: "30px", marginBottom: "30px" }}>
-                <div>
-                  <div style={{ fontSize: "1rem", color: "#a1a1aa", marginBottom: "5px" }}>Balance</div>
-                  <div style={{ fontSize: "3rem", fontWeight: "bold", display: "flex", alignItems: "baseline", gap: "10px" }}>
-                    {dashboardData.wallet.balance_credits.toLocaleString()} 
-                    <span style={{ fontSize: "1.2rem", color: "#a1a1aa", fontWeight: "normal" }}>API Credits</span>
-                  </div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "0.85rem", color: "#a1a1aa", marginBottom: "10px" }}>Auto top-up is off</div>
-                  <button 
-                    onClick={() => setShowGcashModal(true)}
-                    style={{ background: "#3b82f6", color: "white", padding: "10px 20px", borderRadius: "8px", fontWeight: "bold", border: "none", cursor: "pointer", textDecoration: "none", display: "inline-block" }}
-                  >
-                    Buy Credits
-                  </button>
-                </div>
+        {error ? (
+          <section className={styles.errorPanel} role="alert">
+            <strong>We couldn’t load your API workspace.</strong><span>{error}</span>
+          </section>
+        ) : dashboardData ? (
+          <div className={styles.dashboardGrid}>
+            <section className={styles.walletPanel} aria-labelledby="wallet-title">
+              <div className={styles.panelTopline}>
+                <span className={styles.panelIcon}><WalletCards size={20} aria-hidden="true" /></span>
+                <span className={styles.liveStatus}><i /> Wallet active</span>
               </div>
+              <div className={styles.balanceBlock}>
+                <p id="wallet-title">Available balance</p>
+                <div className={styles.balanceValue}><strong>{dashboardData.wallet.balance_credits.toLocaleString()}</strong><span>API credits</span></div>
+              </div>
+              <p className={styles.walletCopy}>Prepaid credits never expire. Top up through QR Ph and your balance updates automatically.</p>
+              <button type="button" onClick={() => setShowTopUpModal(true)} className={styles.primaryButton}>Buy API credits <ArrowRight size={18} aria-hidden="true" /></button>
+              <div className={styles.secureNote}><ShieldCheck size={15} aria-hidden="true" /> Secure checkout powered by PayMongo</div>
+            </section>
 
-              {/* API Keys Section */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                <h2 style={{ fontSize: "1.5rem", fontWeight: "bold" }}>API keys</h2>
-                <button 
-                  onClick={handleGenerateKey}
-                  disabled={generating}
-                  style={{ background: "white", color: "black", padding: "8px 16px", borderRadius: "8px", fontWeight: "bold", border: "none", cursor: generating ? "not-allowed" : "pointer" }}
-                >
-                  {generating ? "Generating..." : "Generate new key"}
+            <section className={styles.keysPanel} aria-labelledby="keys-title">
+              <div className={styles.panelHeader}>
+                <div>
+                  <div className={styles.sectionLabel}><KeyRound size={15} aria-hidden="true" /> Developer access</div>
+                  <h2 id="keys-title">API keys</h2>
+                  <p>Use these private keys to authenticate requests from your server.</p>
+                </div>
+                <button type="button" onClick={handleGenerateKey} disabled={generating} className={styles.secondaryButton}>
+                  <Plus size={17} aria-hidden="true" /> {generating ? "Generating…" : "Generate key"}
                 </button>
               </div>
 
               {dashboardData.apiKeys.length === 0 ? (
-                <div style={{ padding: "40px", textAlign: "center", color: "#a1a1aa", border: "1px dashed #3f3f46", borderRadius: "12px" }}>
-                  You don't have any API keys yet. Generate one to get started.
+                <div className={styles.emptyState}>
+                  <KeyRound size={25} aria-hidden="true" /><strong>No API keys yet</strong><span>Generate your first key to start making requests.</span>
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  {dashboardData.apiKeys.map((key) => (
-                    <div key={key.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "15px 20px", background: "#27272a", borderRadius: "10px" }}>
-                      <div style={{ fontFamily: "monospace", fontSize: "1.1rem" }}>
-                        {key.api_key.substring(0, 15)}••••••••••••
+                <div className={styles.keyList}>
+                  {dashboardData.apiKeys.map((key, index) => {
+                    const copied = copiedKey === key.api_key;
+                    return (
+                      <div className={styles.keyRow} key={key.id}>
+                        <span className={styles.keyNumber}>{String(index + 1).padStart(2, "0")}</span>
+                        <div className={styles.keyDetails}>
+                          <strong>{index === 0 ? "Production key" : `API key ${index + 1}`}</strong>
+                          <code>{key.api_key.substring(0, 16)}<span>••••••••••••</span></code>
+                        </div>
+                        <button type="button" onClick={() => handleCopy(key.api_key)} className={styles.copyButton} aria-label={`Copy API key ${index + 1}`}>
+                          {copied ? <Check size={17} aria-hidden="true" /> : <Clipboard size={17} aria-hidden="true" />}<span>{copied ? "Copied" : "Copy"}</span>
+                        </button>
                       </div>
-                      <button 
-                        onClick={() => handleCopy(key.api_key)}
-                        style={{ background: "transparent", border: "none", color: "#a1a1aa", cursor: "pointer", fontSize: "0.9rem" }}
-                      >
-                        {copiedKey === key.api_key ? "Copied!" : "Copy"}
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
-              <div style={{ marginTop: "40px", fontSize: "0.85rem", color: "#71717a" }}>
-                Company ID: {dashboardData.company.id}
-              </div>
-
-            </div>
-          ) : null}
-
-        </div>
+              <div className={styles.companyId}><span>Company ID</span><code>{dashboardData.company.id}</code></div>
+            </section>
+          </div>
+        ) : null}
       </main>
 
-      {/* GCash Payment Modal */}
-      {showGcashModal && dashboardData && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
-          <div style={{ background: "#1c1c1e", padding: "40px", borderRadius: "16px", maxWidth: "600px", width: "90%", border: "1px solid #3f3f46" }}>
-            <h2 style={{ fontSize: "1.8rem", fontWeight: "bold", marginBottom: "20px", color: "white" }}>Top-up via GCash</h2>
-            <p style={{ color: "#a1a1aa", marginBottom: "20px", lineHeight: "1.5" }}>
-              We currently process API credits manually. To purchase credits, please follow these 3 simple steps:
-            </p>
-            
-            <div style={{ background: "#27272a", padding: "20px", borderRadius: "12px", marginBottom: "20px" }}>
-              <ol style={{ margin: 0, paddingLeft: "20px", color: "white", display: "flex", flexDirection: "column", gap: "15px" }}>
-                <li>
-                  Send your payment to our official GCash:
-                  <div style={{ display: "flex", alignItems: "center", gap: "20px", marginTop: "10px" }}>
-                    <a href="/Gcash-qr-code.jpg" target="_blank" rel="noreferrer" style={{ background: "white", padding: "10px", borderRadius: "12px", display: "inline-block", cursor: "pointer", transition: "transform 0.2s" }} onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}>
-                      <img src="/Gcash-qr-code.jpg" alt="GCash QR Code (Click to enlarge)" style={{ width: "120px", height: "auto", borderRadius: "8px", display: "block" }} />
-                    </a>
-                    <div>
-                      <div style={{ color: "#3b82f6", fontWeight: "bold", fontSize: "1.4rem" }}>09918355995</div>
-                      <div style={{ fontSize: "1rem", color: "#a1a1aa", marginTop: "5px" }}>Name: JAY LUIS CANO</div>
-                    </div>
-                  </div>
-                </li>
-                <li>
-                  Include your <strong>Company ID</strong> in the GCash message note so we know who to credit:
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#121212", padding: "10px", borderRadius: "6px", marginTop: "5px" }}>
-                    <div style={{ fontFamily: "monospace", color: "#d4ff59", wordBreak: "break-all" }}>
-                      {dashboardData.company.id}
-                    </div>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(dashboardData.company.id);
-                        setCopiedCompanyId(true);
-                        setTimeout(() => setCopiedCompanyId(false), 2000);
-                      }}
-                      style={{ background: "transparent", color: "#a1a1aa", border: "none", cursor: "pointer", fontSize: "0.85rem", padding: "5px 10px" }}
-                    >
-                      {copiedCompanyId ? "Copied!" : "Copy"}
-                    </button>
-                  </div>
-                </li>
-                <li>
-                  Message our Facebook page with a screenshot of your receipt. We will credit your account instantly!
-                </li>
-              </ol>
-            </div>
+      <footer className={styles.footer}><span>Syncraft API</span><span>Production-ready creative automation</span></footer>
 
-            <div style={{ display: "flex", gap: "15px", justifyContent: "flex-end" }}>
-              <button 
-                onClick={() => setShowGcashModal(false)}
-                style={{ padding: "10px 20px", borderRadius: "8px", background: "transparent", color: "white", border: "1px solid #3f3f46", cursor: "pointer" }}
-              >
-                Cancel
-              </button>
-              <a 
-                href="https://web.facebook.com/profile.php?id=61562539277199" 
-                target="_blank" 
-                rel="noreferrer"
-                style={{ padding: "10px 20px", borderRadius: "8px", background: "#3b82f6", color: "white", textDecoration: "none", fontWeight: "bold" }}
-              >
-                Message on Facebook
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <LoginModal 
-        isOpen={showLoginModal} 
-        onClose={() => router.push('/')} 
+      <ApiCreditTopUpModal
+        open={showTopUpModal && Boolean(dashboardData)}
+        onClose={() => setShowTopUpModal(false)}
+        supabase={supabase}
+        onPaid={async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) await fetchDashboard(session.access_token);
+        }}
       />
+      <LoginModal show={showLoginModal} supabase={supabase} onClose={() => router.push("/")} />
     </div>
   );
 }
