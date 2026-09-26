@@ -24,9 +24,9 @@ const SamplesSection = memo(function SamplesSection() {
         {/* Right Side: Editorial Text */}
         <div className={styles.textContent}>
           <h3 className={styles.subtitle}>Sample Extractions</h3>
-          <h2 className={styles.title}>Pixel Perfect<br/>Vectorization</h2>
+          <h2 className={styles.title}>High-Fidelity<br/>Vectorization</h2>
           <p className={styles.description}>
-            Experience the power of our advanced AI. We instantly transform your low-resolution raster images (PNG, JPG) into infinitely scalable, ultra-clean SVG files—ready for printing, editing, or scaling to any size without losing a single drop of quality.
+            Convert supported raster images into clean, scalable SVG files for editing and print preparation. AI results vary with source quality, so review paths, colors, text, and fine details before production.
           </p>
         </div>
 

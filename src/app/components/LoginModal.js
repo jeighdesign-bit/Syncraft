@@ -10,6 +10,7 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState(null);
   const turnstileRef = useRef(null);
 
@@ -25,6 +26,10 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
   if (!show) return null;
 
   const handleGoogleLogin = async () => {
+    if (!acceptedTerms) {
+      toast.error("Please accept the Terms and Privacy Policy first.");
+      return;
+    }
     if (!turnstileToken) {
       toast.error("Please complete the security check first.");
       return;
@@ -53,6 +58,10 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
+    if (!acceptedTerms) {
+      toast.error("Please accept the Terms and Privacy Policy first.");
+      return;
+    }
     if (!turnstileToken) {
       toast.error("Please complete the security check first.");
       return;
@@ -90,8 +99,11 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
 
   return (
     <div className="modal-overlay" onClick={onClose} style={{ backdropFilter: "blur(4px)", backgroundColor: "rgba(0,0,0,0.8)", zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div 
+      <div
         className="modal-content" 
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="login-title"
         style={{ 
           maxWidth: '1000px', 
           width: '100%', 
@@ -116,6 +128,8 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
         {/* Close Button overlaying the modal */}
         <button 
           onClick={onClose} 
+          type="button"
+          aria-label="Close login dialog"
           style={{ 
             position: 'absolute', 
             top: '16px',
@@ -135,7 +149,7 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
           onMouseOver={e => e.currentTarget.style.background = 'rgba(0,0,0,0.8)'}
           onMouseOut={e => e.currentTarget.style.background = 'rgba(0,0,0,0.5)'}
         >
-          <X size={20} strokeWidth={2} />
+          <X size={20} strokeWidth={2} aria-hidden="true" />
         </button>
 
         {/* Left Column - Form Area */}
@@ -143,7 +157,7 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
           
           <div style={{ textAlign: 'center', marginBottom: '24px', marginTop: '10px' }}>
             <img src="/logo.svg" alt="Syncraft Logo" style={{ height: '32px', width: 'auto', marginBottom: '20px' }} />
-            <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: '700', margin: '0 0 8px 0', letterSpacing: '-0.3px' }}>Secure Login</h2>
+            <h2 id="login-title" style={{ color: '#fff', fontSize: '22px', fontWeight: '700', margin: '0 0 8px 0', letterSpacing: '-0.3px' }}>Secure Login</h2>
             <p style={{ color: '#aaa', fontSize: '14px', margin: '0' }}>Please verify to access your workspace.</p>
           </div>
 
@@ -173,13 +187,17 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
             <form onSubmit={handleEmailLogin} style={{ width: '100%', maxWidth: '380px', margin: '0 auto' }}>
               
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', color: '#aaa', fontSize: '12px', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <label htmlFor="login-email" style={{ display: 'block', color: '#aaa', fontSize: '12px', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Email Address
                 </label>
                 <div style={{ position: 'relative' }}>
                   <Mail size={16} color="#666" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
                   <input 
+                    id="login-email"
+                    name="email"
                     type="email" 
+                    autoComplete="email"
+                    required
                     placeholder="e.g. user@example.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
@@ -205,7 +223,7 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
               {/* Main Button */}
               <button 
                 type="submit"
-                disabled={isLoadingGoogle || isLoadingEmail || !email.trim() || !turnstileToken}
+                disabled={isLoadingGoogle || isLoadingEmail || !email.trim() || !turnstileToken || !acceptedTerms}
                 style={{ 
                   width: '100%', 
                   background: '#d4ff59', 
@@ -217,17 +235,17 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
                   fontWeight: '700', 
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
-                  cursor: (isLoadingGoogle || isLoadingEmail || !email.trim() || !turnstileToken) ? 'not-allowed' : 'pointer',
+                  cursor: (isLoadingGoogle || isLoadingEmail || !email.trim() || !turnstileToken || !acceptedTerms) ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
                   transition: 'opacity 0.2s',
-                  opacity: (isLoadingGoogle || isLoadingEmail || !email.trim() || !turnstileToken) ? 0.6 : 1,
+                  opacity: (isLoadingGoogle || isLoadingEmail || !email.trim() || !turnstileToken || !acceptedTerms) ? 0.6 : 1,
                   marginBottom: '24px'
                 }}
-                onMouseOver={e => { if (!(isLoadingGoogle || isLoadingEmail || !email.trim() || !turnstileToken)) e.currentTarget.style.opacity = '0.9'; }}
-                onMouseOut={e => { e.currentTarget.style.opacity = (isLoadingGoogle || isLoadingEmail || !email.trim() || !turnstileToken) ? 0.6 : 1; }}
+                onMouseOver={e => { if (!(isLoadingGoogle || isLoadingEmail || !email.trim() || !turnstileToken || !acceptedTerms)) e.currentTarget.style.opacity = '0.9'; }}
+                onMouseOut={e => { e.currentTarget.style.opacity = (isLoadingGoogle || isLoadingEmail || !email.trim() || !turnstileToken || !acceptedTerms) ? 0.6 : 1; }}
               >
                 {isLoadingEmail ? <Loader2 size={16} className="animate-spin" /> : null}
                 {isLoadingEmail ? 'SENDING...' : 'SEND MAGIC LINK'}
@@ -243,7 +261,7 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
               <button 
                 type="button"
                 onClick={handleGoogleLogin}
-                disabled={isLoadingGoogle || isLoadingEmail || !turnstileToken}
+                disabled={isLoadingGoogle || isLoadingEmail || !turnstileToken || !acceptedTerms}
                 style={{ 
                   width: '100%', 
                   background: 'transparent', 
@@ -253,16 +271,16 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
                   borderRadius: '8px', 
                   fontSize: '14px', 
                   fontWeight: '600', 
-                  cursor: (isLoadingGoogle || isLoadingEmail || !turnstileToken) ? 'not-allowed' : 'pointer',
+                  cursor: (isLoadingGoogle || isLoadingEmail || !turnstileToken || !acceptedTerms) ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '10px',
                   transition: 'all 0.2s',
-                  opacity: (isLoadingGoogle || isLoadingEmail || !turnstileToken) ? 0.6 : 1,
+                  opacity: (isLoadingGoogle || isLoadingEmail || !turnstileToken || !acceptedTerms) ? 0.6 : 1,
                 }}
                 onMouseOver={e => { 
-                  if (!(isLoadingGoogle || isLoadingEmail || !turnstileToken)) {
+                  if (!(isLoadingGoogle || isLoadingEmail || !turnstileToken || !acceptedTerms)) {
                     e.currentTarget.style.background = '#333'; 
                     e.currentTarget.style.borderColor = '#777'; 
                   }
@@ -298,6 +316,20 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
                   }}
                 />
               </div>
+
+              <label htmlFor="login-terms-consent" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '10px', color: '#bbb', fontSize: '12px', lineHeight: '1.5', marginTop: '16px', cursor: 'pointer' }}>
+                <input
+                  id="login-terms-consent"
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(event) => setAcceptedTerms(event.target.checked)}
+                  required
+                  style={{ marginTop: '3px', accentColor: '#d4ff59' }}
+                />
+                <span>
+                  I agree to the <a href="/terms" target="_blank" rel="noreferrer" style={{ color: '#d4ff59' }}>Terms</a> and acknowledge the <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: '#d4ff59' }}>Privacy Policy</a>.
+                </span>
+              </label>
               
             </form>
           )}

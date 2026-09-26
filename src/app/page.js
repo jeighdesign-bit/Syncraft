@@ -12,7 +12,7 @@ import { compressImageClientSide } from "@/utils/imageUtils";
 import { fetchWithAuthRetry, uploadImageToStorage } from "@/utils/uploadClient";
 import { trackEvent } from "@/lib/analytics.mjs";
 
-import { ImageIcon, Monitor, LogIn, User, Trash2, LogOut, CheckCircle2, X, Loader2, Scan, Scissors, ShieldCheck, Code2, Upload, ShoppingBag } from "lucide-react";
+import { ImageIcon, LogIn, User, Trash2, LogOut, X, Loader2, Scissors, Code2, Upload, ShoppingBag } from "lucide-react";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 import "./globals.css";
@@ -33,10 +33,9 @@ import ProductionProofSection from "./components/TestimonialSection";
 import FAQSection from "./components/FAQSection";
 import GreatForSection from "./components/GreatForSection";
 import FloatingPromoVideo from "./components/FloatingPromoVideo";
-import QRCode from "react-qr-code";
 import FeedbackWidget from "@/app/workspace/[id]/components/FeedbackWidget";
 
-const marqueeFeatures = [
+const workflowFeatures = [
   "Garment Pattern Extraction",
   "Universal Design Recovery",
   "Logo & Wordmark Tracing",
@@ -46,6 +45,10 @@ const marqueeFeatures = [
   "Sublimation Design Extraction",
   "Artwork Recovery",
 ];
+
+// Originals are resized to a 2048px JPEG before upload. This limit protects
+// browser memory while allowing modern phone/camera files larger than 10MB.
+const MAX_SOURCE_IMAGE_MB = 25;
 
 function SocialIcon({ name }) {
   const paths = {
@@ -69,10 +72,6 @@ export default function StartScreen() {
   const bgRemoveInputRef = useRef(null);
   const containerRef = useRef(null);
 
-  const [syncSessionId, setSyncSessionId] = useState("");
-  const [showQrModal, setShowQrModal] = useState(false);
-  const [isQrConnected, setIsQrConnected] = useState(false);
-
   // ─── Data State ─────────────────────────────────────────────────────────────
   const [recentProjects, setRecentProjects] = useState([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
@@ -87,7 +86,7 @@ export default function StartScreen() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [showCopyrightNotice, setShowCopyrightNotice] = useState(true);
+  const [showPsdUpdate, setShowPsdUpdate] = useState(true);
   const [pendingFile, setPendingFile] = useState(null); // holds file waiting for type selection
 
   // ─── Modal Specific State ───────────────────────────────────────────────────
@@ -103,7 +102,7 @@ export default function StartScreen() {
 
   // ─── Initialization ─────────────────────────────────────────────────────────
   useEffect(() => {
-    setShowCopyrightNotice(localStorage.getItem("syncraft-copyright-notice-dismissed") !== "1");
+    setShowPsdUpdate(localStorage.getItem("syncraft-psd-export-update-dismissed-v1") !== "1");
   }, []);
 
   useEffect(() => {
@@ -136,31 +135,19 @@ export default function StartScreen() {
     };
   }, []);
 
-  // Handle QR Sync Session Generation
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      let syncId = localStorage.getItem("globalSyncSessionId");
-      if (!syncId) {
-        syncId = crypto.randomUUID();
-        localStorage.setItem("globalSyncSessionId", syncId);
-      }
-      setSyncSessionId(syncId);
-    }
-  }, []);
-
-  // Handle Return from Online Payments (PayMongo QR Ph / Dodo)
+  // Handle Return from Online Payments (PayMongo QR Ph / Dodo / Polar)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const topupStatus = params.get("topup");
     if (!topupStatus) return;
 
-    if (topupStatus === "paymongo-return" || topupStatus === "dodo-return") {
+    if (["paymongo-return", "dodo-return", "polar-return"].includes(topupStatus)) {
       trackEvent("checkout_return", { payment_provider: topupStatus.split("-")[0] });
       toast.success("Payment completed! Your credits are being credited.");
       if (user?.id) fetchCredits(user.id);
       window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (topupStatus === "paymongo-cancelled" || topupStatus === "dodo-cancelled") {
+    } else if (["paymongo-cancelled", "dodo-cancelled", "polar-cancelled"].includes(topupStatus)) {
       trackEvent("checkout_cancelled", { payment_provider: topupStatus.split("-")[0] });
       toast.info("Payment checkout was cancelled.");
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -182,9 +169,6 @@ export default function StartScreen() {
       const pendingUrl = sessionStorage.getItem("pendingMobileImage");
       if (pendingUrl && user) {
         sessionStorage.removeItem("pendingMobileImage");
-        setIsQrConnected(true);
-        setShowQrModal(false);
-
         try {
           const response = await fetch(pendingUrl);
           const blob = await response.blob();
@@ -221,7 +205,7 @@ export default function StartScreen() {
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            setPublicStats({ totalUsers: data.totalUsers, avatars: data.avatars });
+            setPublicStats({ totalUsers: data.totalUsers, avatars: data.avatars || [] });
           }
         })
         .catch(console.error);
@@ -350,8 +334,7 @@ export default function StartScreen() {
 
     const finalTraceType = isBgRemover ? "bg_remover" : (mobileTraceType || modalTraceType);
 
-    // Limit upload to 10MB to save bandwidth and prevent AI processing timeouts
-    const maxSizeInMB = isBgRemover ? 20 : 10;
+    const maxSizeInMB = MAX_SOURCE_IMAGE_MB;
     if (file.size > maxSizeInMB * 1024 * 1024) {
       trackEvent("upload_failure", { tool: finalTraceType, reason: "file_too_large" });
       toast.error(`File is too large! Maximum allowed size is ${maxSizeInMB}MB.`);
@@ -435,7 +418,7 @@ export default function StartScreen() {
   const openModalWithFile = (file) => {
     if (!file || !file.type.startsWith("image/")) return;
     if (!user) { setShowLoginModal(true); return; }
-    const maxSizeInMB = 10;
+    const maxSizeInMB = MAX_SOURCE_IMAGE_MB;
     if (file.size > maxSizeInMB * 1024 * 1024) {
       toast.error(`File is too large! Maximum allowed size is ${maxSizeInMB}MB.`);
       return;
@@ -533,26 +516,35 @@ export default function StartScreen() {
 
       {/* FULL WIDTH HERO SECTION */}
       <div style={{ position: "relative", width: "calc(100% + 40px)", marginLeft: "-20px", marginRight: "-20px", background: "#1a1a1a", paddingTop: "100px", paddingBottom: "40px", color: "#fff" }}>
-        {showCopyrightNotice && (
-          <div style={{ position: "absolute", top: 0, left: 0, width: "100%", background: "#111", borderBottom: "1px solid rgba(255,255,255,0.08)", zIndex: 3 }}>
-            <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "center", gap: "14px", color: "#d8d8d8", fontSize: "12px", lineHeight: "1.5", textAlign: "center" }}>
-              <ShieldCheck size={15} color="#d4ff59" style={{ flexShrink: 0 }} />
-              <span>
-                Copyright reminder: only upload or generate designs you own, are authorized to use, or have rights to process. Unauthorized copyrighted or trademarked content may be removed.
-              </span>
+        {showPsdUpdate && (
+          <aside className="product-update-banner" aria-label="Product update">
+            <div className="product-update-banner__inner">
+              <div className="product-update-banner__message">
+                <img
+                  className="product-update-banner__ps"
+                  src="https://www.adobe.com/cc-shared/assets/img/product-icons/svg/photoshop.svg"
+                  alt=""
+                  width="20"
+                  height="20"
+                />
+                <span className="product-update-banner__copy">
+                  <strong><span>NEW UPDATE:</span> Export your designs as layered PSD files.</strong>
+                  <span>Open organized raster layers directly in Photoshop.</span>
+                </span>
+              </div>
               <button
                 type="button"
-                aria-label="Dismiss copyright notice"
+                className="product-update-banner__dismiss"
+                aria-label="Dismiss PSD export update"
                 onClick={() => {
-                  localStorage.setItem("syncraft-copyright-notice-dismissed", "1");
-                  setShowCopyrightNotice(false);
+                  localStorage.setItem("syncraft-psd-export-update-dismissed-v1", "1");
+                  setShowPsdUpdate(false);
                 }}
-                style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "auto" }}
               >
                 <X size={16} />
               </button>
             </div>
-          </div>
+          </aside>
         )}
         <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px", position: "relative", zIndex: 2 }}>
 
@@ -581,27 +573,28 @@ export default function StartScreen() {
                   }}>
 
                     {/* Avatar Group (Real User Profiles) */}
-                    <div style={{ display: "flex", alignItems: "center" }}>
-                      {publicStats.avatars.length > 0 && publicStats.avatars.map((url, i) => (
-                        <img 
-                          key={i} 
-                          src={url} 
-                          alt="User" 
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23888888'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>";
+                    <div style={{ display: "flex", alignItems: "center" }} aria-hidden="true">
+                      {publicStats.avatars.map((url, i) => (
+                        <img
+                          key={url}
+                          src={url}
+                          alt=""
+                          referrerPolicy="no-referrer"
+                          decoding="async"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
                           }}
-                          style={{ 
-                            width: "32px", 
-                            height: "32px", 
-                            borderRadius: "50%", 
-                            border: "2px solid #111", 
-                            marginLeft: i > 0 ? "-14px" : "0", 
-                            backgroundColor: "#222", 
-                            objectFit: "cover", 
-                            zIndex: 10 - i, 
+                          style={{
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "50%",
+                            border: "2px solid #111",
+                            marginLeft: i > 0 ? "-14px" : "0",
+                            backgroundColor: "#222",
+                            objectFit: "cover",
+                            zIndex: 10 - i,
                             boxShadow: "0 4px 10px rgba(0,0,0,0.4)"
-                          }} 
+                          }}
                         />
                       ))}
                     </div>
@@ -635,9 +628,6 @@ export default function StartScreen() {
                     same category-picker modal as clicking the upload box below, just
                     in a different order. The upload box remains the single entry point
                     for that flow. */}
-                <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } setShowQrModal(true); }} disabled={isUploading} style={actionBtnStyle({ disabled: isUploading })} {...actionBtnHover({ disabled: isUploading })}>
-                  <Scan size={13} /> Scan Phone
-                </button>
                 <button className="start-btn" onClick={(e) => { e.stopPropagation(); if (!user) { setShowLoginModal(true); return; } upscaleInputRef.current?.click(); }} disabled={isUploading} style={actionBtnStyle({ disabled: isUploading })} {...actionBtnHover({ disabled: isUploading })}>
                   {isUploading ? <Loader2 size={13} className="animate-spin" /> : <ImageIcon size={13} />} Image Upscale
                 </button>
@@ -832,25 +822,20 @@ export default function StartScreen() {
       {/* Main Content Wrapper (For the rest of the page) */}
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px", width: "100%" }}>
 
-        {/* SCROLLING FEATURE MARQUEE */}
-        <div className="marquee-container" style={{ 
-          padding: "20px 0",
-          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.022) 50%, transparent)", 
-          borderTop: "1px solid rgba(255,255,255,0.09)",
-          borderBottom: "1px solid rgba(255,255,255,0.09)",
-          width: "100%",
-          marginBottom: "0px",
-          marginTop: "24px"
-        }}>
-          <div className="marquee-content">
-            {[...marqueeFeatures, ...marqueeFeatures].map((label, index) => (
-              <div className="marquee-feature-group" key={`${label}-${index}`}>
-                <span className="marquee-feature">{label}</span>
-                <span className="marquee-separator" aria-hidden="true" />
-              </div>
+        <section className="toolkit-marquee" aria-label="Creative tools">
+          <div className="toolkit-marquee__track">
+            {[0, 1].map((copy) => (
+              <ul className="toolkit-marquee__list" key={copy} aria-hidden={copy === 1 ? true : undefined}>
+                {workflowFeatures.map((label) => (
+                  <li className="toolkit-marquee__item" key={label}>
+                    <span>{label}</span>
+                    <span className="toolkit-marquee__dot" aria-hidden="true" />
+                  </li>
+                ))}
+              </ul>
             ))}
           </div>
-        </div>
+        </section>
 
         {/* ─── GREAT FOR SECTION ────────────────────────────────────────────── */}
         <GreatForSection />
@@ -929,64 +914,6 @@ export default function StartScreen() {
           </div>
         )}
 
-        {/* QR Sync Modal */}
-        {showQrModal && (
-          <div className="modal-overlay" onClick={() => setShowQrModal(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "420px", textAlign: "center", padding: "40px", position: "relative" }}>
-
-              {/* Minimal Close Button */}
-              <button
-                onClick={() => setShowQrModal(false)}
-                style={{
-                  position: "absolute",
-                  top: "16px",
-                  right: "16px",
-                  background: "none",
-                  border: "none",
-                  color: "#666",
-                  cursor: "pointer",
-                  padding: "4px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: "50%",
-                  transition: "all 0.2s"
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "#666"; e.currentTarget.style.background = "none"; }}
-              >
-                <X size={20} />
-              </button>
-
-              <h3 style={{ margin: "0 0 10px 0", fontSize: "24px" }}>Scan to Upload</h3>
-              <p style={{ color: "#aaa", margin: "0 0 30px 0", fontSize: "14px" }}>
-                Point your phone's camera at this QR code. Take a picture of your logo or business card, and it will magically appear here.
-              </p>
-
-              <div style={{ background: "#fff", padding: "20px", borderRadius: "16px", display: "inline-block", marginBottom: "30px" }}>
-                <QRCode
-                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/mobile?sync=${syncSessionId}`}
-                  size={220}
-                  bgColor="#ffffff"
-                  fgColor="#000000"
-                  level="H"
-                />
-              </div>
-
-              {isQrConnected ? (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", color: "#22c55e" }}>
-                  <CheckCircle2 size={18} /> <span style={{ fontWeight: "bold" }}>Receiving Image...</span>
-                </div>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", color: "#888" }}>
-                  <Monitor size={16} className="animate-pulse" /> <span>Waiting for your phone...</span>
-                </div>
-              )}
-
-            </div>
-          </div>
-        )}
-
         {/* Uploading Overlay */}
         {isUploading && !showModal && (
           <div className="modal-overlay" style={{ zIndex: 9999 }}>
@@ -1019,6 +946,14 @@ export default function StartScreen() {
                 <a href="/privacy">Privacy Policy</a>
                 <a href="/terms">Terms of Service</a>
                 <a href="/refunds">Refund Policy</a>
+                <a href="/acceptable-use">Acceptable Use</a>
+                <a href="/copyright">Copyright</a>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new Event("syncraft:open-cookie-settings"))}
+                >
+                  Cookie Settings
+                </button>
                 <a href="#faq">FAQ</a>
               </div>
               <div>

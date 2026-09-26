@@ -701,19 +701,26 @@
           letter-spacing: 0.01em;
         }
 
-        .site-footer-links a {
+        .site-footer-links a,
+        .site-footer-links button {
           display: block;
           width: fit-content;
           margin: 0 0 12px;
+          padding: 0;
+          border: 0;
+          background: transparent;
           color: rgba(255, 255, 255, 0.9);
+          font-family: inherit;
           font-size: 14px;
           font-weight: 600;
           line-height: 1.35;
           text-decoration: none;
           transition: color 180ms ease;
+          cursor: pointer;
         }
 
-        .site-footer-links a:hover {
+        .site-footer-links a:hover,
+        .site-footer-links button:hover {
           color: #fff;
         }
 
@@ -761,46 +768,189 @@
           }
         }
 
-        /* Marquee Animation */
-        @keyframes marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .marquee-container {
-          overflow: hidden;
-          white-space: nowrap;
-          display: flex;
-          align-items: center;
-          width: 100%;
-          position: relative;
-        }
-        /* Fade edges for marquee */
-        .marquee-container::before, .marquee-container::after {
-          content: "";
-          position: absolute;
-          top: 0;
-          width: 22px;
-          height: 100%;
-          z-index: 2;
-        }
-        .marquee-container::before {
-          left: 0;
-          background: linear-gradient(to right, #262626, transparent);
-        }
-        .marquee-container::after {
-          right: 0;
-          background: linear-gradient(to left, #262626, transparent);
-        }
-        .marquee-content {
-          display: flex;
-          animation: marquee 64s linear infinite;
-          will-change: transform;
-        }
-        .marquee-content:hover {
-          animation-play-state: paused;
-        }
-        .marquee-feature-group { display: flex; align-items: center; }
-        .marquee-feature { min-width: max-content; padding: 0 34px; color: rgba(255, 255, 255, 0.9); font-size: 15px; font-weight: 650; letter-spacing: -0.025em; line-height: 1; }
-        .marquee-separator { width: 16px; height: 1px; flex: 0 0 auto; background: rgba(255, 255, 255, 0.24); }
-        @media (max-width: 640px) { .marquee-feature { padding: 0 22px; font-size: 13px; } .marquee-separator { width: 10px; } }
-        @media (prefers-reduced-motion: reduce) { .marquee-content { animation: none; } }
+/* A quiet, seamless strip of creative capabilities. */
+.toolkit-marquee {
+  margin-top: 24px;
+  padding: 22px 0;
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+}
+.toolkit-marquee__track {
+  display: flex;
+  width: max-content;
+  animation: toolkit-scroll 70s linear infinite;
+}
+.toolkit-marquee:hover .toolkit-marquee__track {
+  animation-play-state: paused;
+}
+.toolkit-marquee__list {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.toolkit-marquee__item {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding-right: 32px;
+  color: #d2d2ce;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.toolkit-marquee__dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #a5ac91;
+  flex-shrink: 0;
+}
+@keyframes toolkit-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (max-width: 640px) {
+  .toolkit-marquee { padding: 18px 0; }
+  .toolkit-marquee__item { font-size: 13px; gap: 24px; padding-right: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toolkit-marquee { overflow-x: auto; }
+  .toolkit-marquee__track { animation: none; }
+  .toolkit-marquee__list[aria-hidden="true"] { display: none; }
+}
+/* Homepage product update banner */
+.product-update-banner {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 3;
+  overflow: hidden;
+  color: #d8d8d8;
+  background: #0b0c0b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.product-update-banner__inner {
+  position: relative;
+  width: min(1200px, 100%);
+  min-height: 52px;
+  margin: 0 auto;
+  padding: 6px 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-update-banner__message {
+  min-width: 0;
+  padding: 4px 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+}
+
+.product-update-banner__ps {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  display: block;
+  object-fit: contain;
+}
+
+.product-update-banner__copy {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.product-update-banner__copy strong {
+  flex: 0 0 auto;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+}
+
+.product-update-banner__copy strong span {
+  color: #d4ff59;
+}
+
+.product-update-banner__copy span {
+  color: #b7bbb0;
+}
+
+.product-update-banner__copy > span {
+  padding-left: 7px;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.product-update-banner__dismiss {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #858a7d;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.product-update-banner__dismiss:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.product-update-banner__dismiss:focus-visible {
+  outline: 2px solid #d4ff59;
+  outline-offset: -4px;
+}
+
+@media (max-width: 720px) {
+  .product-update-banner__inner {
+    min-height: 54px;
+    padding: 6px 52px 6px 12px;
+    justify-content: flex-start;
+  }
+
+  .product-update-banner__message {
+    max-width: 100%;
+    gap: 8px;
+  }
+
+  .product-update-banner__copy {
+    text-align: left;
+  }
+
+  .product-update-banner__copy span {
+    color: #d4ff59;
+  }
+
+  .product-update-banner__copy > span {
+    display: none;
+  }
+
+  .product-update-banner__dismiss {
+    right: 4px;
+  }
+}
