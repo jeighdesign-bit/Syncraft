@@ -4,6 +4,11 @@ import {
   handlePaymongoPaymentSucceeded,
   markPaymongoPaymentStatus,
 } from "@/lib/paymongoPaymentService";
+import {
+  handleB2bPaymongoPaymentSucceeded,
+  isB2bPaymongoResource,
+  markB2bPaymongoPaymentStatus,
+} from "@/lib/b2bPaymongoPaymentService";
 
 export const runtime = "nodejs";
 
@@ -39,15 +44,20 @@ export async function POST(request) {
 
     console.log(`[PayMongo Webhook] Received event: ${eventType} (ID: ${event?.id})`);
 
+    const isB2bPayment = isB2bPaymongoResource(eventData);
+
     if (
       eventType === "checkout_session.payment.paid" ||
       eventType === "payment.paid"
     ) {
-      await handlePaymongoPaymentSucceeded(eventData);
+      if (isB2bPayment) await handleB2bPaymongoPaymentSucceeded(eventData);
+      else await handlePaymongoPaymentSucceeded(eventData);
     } else if (eventType === "payment.failed") {
-      await markPaymongoPaymentStatus(eventData, "failed");
+      if (isB2bPayment) await markB2bPaymongoPaymentStatus(eventData, "failed");
+      else await markPaymongoPaymentStatus(eventData, "failed");
     } else if (eventType === "qrph.expired") {
-      await markPaymongoPaymentStatus(eventData, "expired");
+      if (isB2bPayment) await markB2bPaymongoPaymentStatus(eventData, "expired");
+      else await markPaymongoPaymentStatus(eventData, "expired");
     }
 
     return NextResponse.json({ received: true });

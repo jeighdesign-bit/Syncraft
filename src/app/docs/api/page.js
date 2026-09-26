@@ -1,170 +1,245 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Clipboard,
+  Code2,
+  Coins,
+  ExternalLink,
+  FileJson,
+  KeyRound,
+  LogOut,
+  Menu,
+  Sparkles,
+  X,
+  Zap,
+} from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import styles from "./api-docs.module.css";
 
-export default function ApiDocsPage() {
-  const router = useRouter();
-  const supabase = createClient();
+const supabase = createClient();
 
-  return (
-    <div style={{ backgroundColor: "#121212", minHeight: "100vh", color: "white", display: "flex", flexDirection: "column" }}>
-      <header style={{ padding: "20px 40px", borderBottom: "1px solid #27272a", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", color: "white" }}>
-          <img src="/images/syncraft.png" alt="Syncraft" style={{ height: "30px", marginRight: "10px" }} />
-        </Link>
-        <div>
-          <Link href="/api-dashboard" style={{ color: "#a1a1aa", marginRight: "20px", textDecoration: "none" }}>Dashboard</Link>
-          <button onClick={() => supabase.auth.signOut().then(() => router.push('/'))} style={{ background: "transparent", border: "1px solid #3f3f46", color: "white", padding: "8px 16px", borderRadius: "6px", cursor: "pointer" }}>Sign Out</button>
-        </div>
-      </header>
-      
-      <main style={{ flex: 1, padding: "60px 20px" }}>
-        <div style={{ maxWidth: "800px", margin: "0 auto", background: "#1c1c1e", padding: "40px", borderRadius: "16px", border: "1px solid #27272a" }}>
-          <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "10px" }}>API Documentation</h1>
-          <p style={{ color: "#a1a1aa", marginBottom: "40px" }}>Integrate Syncraft's AI features directly into your own applications.</p>
+const sections = [
+  { href: "#overview", label: "Overview" },
+  { href: "#pricing", label: "Credit pricing" },
+  { href: "#services", label: "Service costs" },
+  { href: "#authentication", label: "Authentication" },
+  { href: "#parameters", label: "Parameters" },
+  { href: "#examples", label: "Examples" },
+];
 
-          <h2 style={{ fontSize: "1.5rem", marginBottom: "15px", borderBottom: "1px solid #3f3f46", paddingBottom: "10px" }}>API Credit Pricing</h2>
-          <p style={{ color: "#a1a1aa", marginBottom: "15px" }}>
-            The Syncraft API uses a prepaid credit system. API Credits must be purchased in advance and will not expire. 
-          </p>
-          <table style={{ width: "100%", textAlign: "left", borderCollapse: "collapse", marginBottom: "30px", fontSize: "0.95rem" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid #3f3f46", color: "#a1a1aa" }}>
-                <th style={{ padding: "10px" }}>Package Name</th>
-                <th style={{ padding: "10px" }}>Price (PHP)</th>
-                <th style={{ padding: "10px" }}>API Credits Received</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr style={{ borderBottom: "1px solid #27272a" }}>
-                <td style={{ padding: "15px 10px", color: "white", fontWeight: "bold" }}>Starter</td>
-                <td style={{ padding: "15px 10px", color: "#a1a1aa" }}>₱116.00</td>
-                <td style={{ padding: "15px 10px", color: "#d4ff59", fontWeight: "bold" }}>200</td>
-              </tr>
-              <tr style={{ borderBottom: "1px solid #27272a" }}>
-                <td style={{ padding: "15px 10px", color: "white", fontWeight: "bold" }}>Pro</td>
-                <td style={{ padding: "15px 10px", color: "#a1a1aa" }}>₱290.00</td>
-                <td style={{ padding: "15px 10px", color: "#d4ff59", fontWeight: "bold" }}>500</td>
-              </tr>
-              <tr style={{ borderBottom: "1px solid #27272a" }}>
-                <td style={{ padding: "15px 10px", color: "white", fontWeight: "bold" }}>Studio</td>
-                <td style={{ padding: "15px 10px", color: "#a1a1aa" }}>₱580.00</td>
-                <td style={{ padding: "15px 10px", color: "#d4ff59", fontWeight: "bold" }}>1,000</td>
-              </tr>
-            </tbody>
-          </table>
+const plans = [
+  { name: "Starter", price: "₱116", credits: "200" },
+  { name: "Pro", price: "₱290", credits: "500", featured: true },
+  { name: "Studio", price: "₱580", credits: "1,000" },
+];
 
-          <h2 style={{ fontSize: "1.5rem", marginBottom: "15px", borderBottom: "1px solid #3f3f46", paddingBottom: "10px" }}>Cost per Generation</h2>
-          <p style={{ color: "#a1a1aa", marginBottom: "15px" }}>
-            The following are the service charges (in API Credits) for each feature. Credits are automatically deducted from your prepaid wallet upon a successful generation.
-          </p>
-          <table style={{ width: "100%", textAlign: "left", borderCollapse: "collapse", marginBottom: "40px", fontSize: "0.95rem" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid #3f3f46", color: "#a1a1aa" }}>
-                <th style={{ padding: "10px" }}>Service Description</th>
-                <th style={{ padding: "10px" }}>Cost (PHP)</th>
-                <th style={{ padding: "10px" }}>Cost (API Credits)</th>
-                <th style={{ padding: "10px" }}>Billing Basis</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr style={{ borderBottom: "1px solid #27272a" }}>
-                <td style={{ padding: "15px 10px", color: "white" }}>
-                  <strong>Garment Trace & Vectorization</strong><br/>
-                  <span style={{ fontSize: "0.85rem", color: "#a1a1aa" }}>Modes: keep_artwork, extract_pattern</span>
-                </td>
-                <td style={{ padding: "15px 10px", color: "#a1a1aa" }}>₱23.20</td>
-                <td style={{ padding: "15px 10px", color: "#d4ff59", fontWeight: "bold" }}>40</td>
-                <td style={{ padding: "15px 10px", color: "#a1a1aa" }}>Per image</td>
-              </tr>
-              <tr style={{ borderBottom: "1px solid #27272a" }}>
-                <td style={{ padding: "15px 10px", color: "white" }}>
-                  <strong>Logo & Emblems Trace</strong><br/>
-                  <span style={{ fontSize: "0.85rem", color: "#a1a1aa" }}>Mode: logo_trace</span>
-                </td>
-                <td style={{ padding: "15px 10px", color: "#a1a1aa" }}>₱23.20</td>
-                <td style={{ padding: "15px 10px", color: "#d4ff59", fontWeight: "bold" }}>40</td>
-                <td style={{ padding: "15px 10px", color: "#a1a1aa" }}>Per image</td>
-              </tr>
-              <tr style={{ borderBottom: "1px solid #27272a" }}>
-                <td style={{ padding: "15px 10px", color: "white" }}>
-                  <strong>Background Remover</strong><br/>
-                  <span style={{ fontSize: "0.85rem", color: "#a1a1aa" }}>Mode: bg_remover</span>
-                </td>
-                <td style={{ padding: "15px 10px", color: "#a1a1aa" }}>₱2.90</td>
-                <td style={{ padding: "15px 10px", color: "#d4ff59", fontWeight: "bold" }}>5</td>
-                <td style={{ padding: "15px 10px", color: "#a1a1aa" }}>Per image</td>
-              </tr>
-            </tbody>
-          </table>
+const services = [
+  { name: "Garment Trace & Vectorization", modes: "keep_artwork · extract_pattern", php: "₱23.20", credits: "40" },
+  { name: "Logo & Emblems Trace", modes: "logo_trace", php: "₱23.20", credits: "40" },
+  { name: "Background Remover", modes: "bg_remover", php: "₱2.90", credits: "5" },
+];
 
-          <h2 style={{ fontSize: "1.5rem", marginBottom: "15px", borderBottom: "1px solid #3f3f46", paddingBottom: "10px" }}>Base URL</h2>
-          <pre style={{ background: "#27272a", padding: "15px", borderRadius: "8px", marginBottom: "40px", color: "#d4ff59" }}>
-            https://syncraftech.com/api/v1/generate
-          </pre>
-
-          <h2 style={{ fontSize: "1.5rem", marginBottom: "15px", borderBottom: "1px solid #3f3f46", paddingBottom: "10px" }}>Authentication</h2>
-          <p style={{ color: "#a1a1aa", marginBottom: "15px" }}>Authenticate your requests by sending your API key in the `Authorization` header as a Bearer token.</p>
-          <pre style={{ background: "#27272a", padding: "15px", borderRadius: "8px", marginBottom: "40px" }}>
-            Authorization: Bearer YOUR_API_KEY
-          </pre>
-
-          <h2 style={{ fontSize: "1.5rem", marginBottom: "15px", borderBottom: "1px solid #3f3f46", paddingBottom: "10px" }}>Request Body Parameters</h2>
-          <table style={{ width: "100%", textAlign: "left", borderCollapse: "collapse", marginBottom: "40px" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid #3f3f46", color: "#a1a1aa" }}>
-                <th style={{ padding: "10px" }}>Parameter</th>
-                <th style={{ padding: "10px" }}>Type</th>
-                <th style={{ padding: "10px" }}>Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr style={{ borderBottom: "1px solid #27272a" }}>
-                <td style={{ padding: "15px 10px", fontWeight: "bold", color: "#d4ff59" }}>image_url</td>
-                <td style={{ padding: "15px 10px", color: "#a1a1aa" }}>string</td>
-                <td style={{ padding: "15px 10px" }}>Required. The public URL of the image you want to process.</td>
-              </tr>
-              <tr style={{ borderBottom: "1px solid #27272a" }}>
-                <td style={{ padding: "15px 10px", fontWeight: "bold", color: "#d4ff59" }}>mode</td>
-                <td style={{ padding: "15px 10px", color: "#a1a1aa" }}>string</td>
-                <td style={{ padding: "15px 10px" }}>
-                  Optional. Determines which AI pipeline to use. Options:<br/>
-                  <code style={{ background: "#27272a", padding: "2px 6px", borderRadius: "4px" }}>keep_artwork</code> (Default, 40 Credits)<br/>
-                  <code style={{ background: "#27272a", padding: "2px 6px", borderRadius: "4px" }}>extract_pattern</code> (40 Credits)<br/>
-                  <code style={{ background: "#27272a", padding: "2px 6px", borderRadius: "4px" }}>logo_trace</code> (40 Credits)<br/>
-                  <code style={{ background: "#27272a", padding: "2px 6px", borderRadius: "4px" }}>bg_remover</code> (5 Credits)
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <h2 style={{ fontSize: "1.5rem", marginBottom: "15px", borderBottom: "1px solid #3f3f46", paddingBottom: "10px" }}>Example Request (cURL)</h2>
-          <pre style={{ background: "#27272a", padding: "15px", borderRadius: "8px", marginBottom: "40px", overflowX: "auto" }}>
-{`curl -X POST https://syncraftech.com/api/v1/generate \\
+const curlExample = `curl -X POST https://syncraftech.com/api/v1/generate \\
 -H "Authorization: Bearer YOUR_API_KEY_HERE" \\
 -H "Content-Type: application/json" \\
 -d '{
   "image_url": "https://example.com/jersey.png",
-  "mode": "extract_pattern" 
-}'`}
-          </pre>
+  "mode": "extract_pattern"
+}'`;
 
-          <h2 style={{ fontSize: "1.5rem", marginBottom: "15px", borderBottom: "1px solid #3f3f46", paddingBottom: "10px" }}>Example Response</h2>
-          <pre style={{ background: "#27272a", padding: "15px", borderRadius: "8px", overflowX: "auto" }}>
-{`{
+const responseExample = `{
   "success": true,
   "company": "Your Company Name",
   "mode": "extract_pattern",
   "credits_charged": 40,
   "image_url": "https://url-to-final-vector.svg",
   "type": "image/svg+xml"
-}`}
-          </pre>
+}`;
 
+function CopyButton({ value, label = "Copy" }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  };
+
+  return (
+    <button type="button" onClick={copy} className={styles.copyButton} aria-label={`${label} to clipboard`}>
+      {copied ? <Check size={15} aria-hidden="true" /> : <Clipboard size={15} aria-hidden="true" />}
+      {copied ? "Copied" : label}
+    </button>
+  );
+}
+
+function CodeBlock({ label, language, value }) {
+  return (
+    <div className={styles.codeBlock}>
+      <div className={styles.codeHeader}>
+        <span><Code2 size={14} aria-hidden="true" /> {label}</span>
+        <CopyButton value={value} />
+      </div>
+      <pre><code data-language={language}>{value}</code></pre>
+    </div>
+  );
+}
+
+export default function ApiDocsPage() {
+  const router = useRouter();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/");
+  };
+
+  return (
+    <div className={styles.pageShell}>
+      <header className={styles.siteHeader}>
+        <div className={styles.headerInner}>
+          <Link href="/" className={styles.brand} aria-label="Syncraft home">
+            <img src="/logo.svg" alt="Syncraft" />
+          </Link>
+          <nav className={styles.headerActions} aria-label="API documentation navigation">
+            <Link href="/api-dashboard" className={styles.dashboardLink}><ArrowLeft size={16} aria-hidden="true" /> Dashboard</Link>
+            <button type="button" onClick={signOut} className={styles.signOutButton}><LogOut size={16} aria-hidden="true" /><span>Sign out</span></button>
+          </nav>
         </div>
-      </main>
+      </header>
+
+      <div className={styles.mobileNavBar}>
+        <span>API documentation</span>
+        <button type="button" onClick={() => setMobileNavOpen((open) => !open)} aria-expanded={mobileNavOpen} aria-controls="docs-mobile-nav">
+          {mobileNavOpen ? <X size={19} aria-hidden="true" /> : <Menu size={19} aria-hidden="true" />}
+          Sections
+        </button>
+      </div>
+
+      <div className={styles.docsLayout}>
+        <aside id="docs-mobile-nav" className={`${styles.sidebar} ${mobileNavOpen ? styles.sidebarOpen : ""}`}>
+          <div className={styles.sidebarInner}>
+            <div className={styles.sidebarLabel}><Code2 size={15} aria-hidden="true" /> API reference</div>
+            <nav aria-label="On this page">
+              {sections.map((section, index) => (
+                <a key={section.href} href={section.href} onClick={() => setMobileNavOpen(false)}>
+                  <span>{String(index + 1).padStart(2, "0")}</span>{section.label}
+                </a>
+              ))}
+            </nav>
+            <div className={styles.sidebarHelp}>
+              <strong>Ready to build?</strong>
+              <p>Create and manage production keys from your dashboard.</p>
+              <Link href="/api-dashboard">Open dashboard <ArrowRight size={14} aria-hidden="true" /></Link>
+            </div>
+          </div>
+        </aside>
+
+        <main className={styles.content}>
+          <section className={styles.hero} id="overview" aria-labelledby="docs-title">
+            <div className={styles.eyebrow}><Sparkles size={15} aria-hidden="true" /> Syncraft developer platform</div>
+            <h1 id="docs-title">Build creative workflows with the <span>Syncraft API.</span></h1>
+            <p>Integrate production-ready garment tracing, logo vectorization, and background removal directly into your applications.</p>
+            <div className={styles.heroActions}>
+              <a href="#examples" className={styles.primaryLink}>View request example <ArrowRight size={17} aria-hidden="true" /></a>
+              <Link href="/api-dashboard" className={styles.secondaryLink}>Get an API key <KeyRound size={16} aria-hidden="true" /></Link>
+            </div>
+            <div className={styles.endpointStrip}>
+              <span><i /> Live endpoint</span>
+              <code>POST&nbsp;&nbsp;https://syncraftech.com/api/v1/generate</code>
+              <CopyButton value="https://syncraftech.com/api/v1/generate" label="Copy URL" />
+            </div>
+          </section>
+
+          <section className={styles.docSection} id="pricing">
+            <div className={styles.sectionHeading}>
+              <span className={styles.sectionIcon}><Coins size={19} aria-hidden="true" /></span>
+              <div><span className={styles.sectionNumber}>01</span><h2>API credit pricing</h2><p>Prepaid credits never expire and are added automatically after a confirmed payment.</p></div>
+            </div>
+            <div className={styles.planGrid}>
+              {plans.map((plan) => (
+                <article key={plan.name} className={`${styles.planCard} ${plan.featured ? styles.featuredPlan : ""}`}>
+                  <div className={styles.planTop}><strong>{plan.name}</strong>{plan.featured && <span>Most popular</span>}</div>
+                  <div className={styles.planPrice}>{plan.price}<small>PHP</small></div>
+                  <div className={styles.planCredits}><span>{plan.credits}</span> API credits</div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className={styles.docSection} id="services">
+            <div className={styles.sectionHeading}>
+              <span className={styles.sectionIcon}><Zap size={19} aria-hidden="true" /></span>
+              <div><span className={styles.sectionNumber}>02</span><h2>Cost per generation</h2><p>Credits are deducted only after a successful generation.</p></div>
+            </div>
+            <div className={styles.serviceList}>
+              <div className={styles.serviceHeader}><span>Service</span><span>PHP</span><span>Credits</span><span>Billing</span></div>
+              {services.map((service) => (
+                <article key={service.name} className={styles.serviceRow}>
+                  <div><strong>{service.name}</strong><code>{service.modes}</code></div>
+                  <span>{service.php}</span><span className={styles.creditValue}>{service.credits}</span><span>Per image</span>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className={styles.docSection} id="authentication">
+            <div className={styles.sectionHeading}>
+              <span className={styles.sectionIcon}><KeyRound size={19} aria-hidden="true" /></span>
+              <div><span className={styles.sectionNumber}>03</span><h2>Authentication</h2><p>Send your private API key as a Bearer token with every request.</p></div>
+            </div>
+            <div className={styles.notice}><KeyRound size={18} aria-hidden="true" /><p><strong>Keep API keys server-side.</strong> Never expose a production key in browser code, public repositories, or mobile app bundles.</p></div>
+            <CodeBlock label="Authorization header" language="http" value="Authorization: Bearer YOUR_API_KEY" />
+          </section>
+
+          <section className={styles.docSection} id="parameters">
+            <div className={styles.sectionHeading}>
+              <span className={styles.sectionIcon}><FileJson size={19} aria-hidden="true" /></span>
+              <div><span className={styles.sectionNumber}>04</span><h2>Request parameters</h2><p>Send a JSON body containing a public image URL and the processing mode.</p></div>
+            </div>
+            <div className={styles.parameterList}>
+              <article className={styles.parameterRow}>
+                <div className={styles.parameterName}><code>image_url</code><span>Required</span></div>
+                <code className={styles.typeBadge}>string</code>
+                <p>A publicly accessible URL for the image you want to process.</p>
+              </article>
+              <article className={styles.parameterRow}>
+                <div className={styles.parameterName}><code>mode</code><span className={styles.optional}>Optional</span></div>
+                <code className={styles.typeBadge}>string</code>
+                <div>
+                  <p>Selects the AI processing pipeline. Defaults to <code>keep_artwork</code>.</p>
+                  <div className={styles.modeGrid}>
+                    <code>keep_artwork <span>40 credits</span></code>
+                    <code>extract_pattern <span>40 credits</span></code>
+                    <code>logo_trace <span>40 credits</span></code>
+                    <code>bg_remover <span>5 credits</span></code>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section className={styles.docSection} id="examples">
+            <div className={styles.sectionHeading}>
+              <span className={styles.sectionIcon}><Code2 size={19} aria-hidden="true" /></span>
+              <div><span className={styles.sectionNumber}>05</span><h2>Request and response</h2><p>A complete example you can paste into your server-side workflow.</p></div>
+            </div>
+            <CodeBlock label="cURL request" language="bash" value={curlExample} />
+            <CodeBlock label="200 · Successful response" language="json" value={responseExample} />
+          </section>
+
+          <footer className={styles.docsFooter}>
+            <div><img src="/logo.svg" alt="" aria-hidden="true" /><p>Production-ready creative automation for your applications.</p></div>
+            <a href="https://syncraftech.com" target="_blank" rel="noreferrer">syncraftech.com <ExternalLink size={14} aria-hidden="true" /></a>
+          </footer>
+        </main>
+      </div>
     </div>
   );
 }

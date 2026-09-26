@@ -22,9 +22,10 @@ export default function MobileWarning() {
   }, []);
 
   if (!isMobile) return null;
-  // The store is a responsive browsing surface, so it should remain usable on phones
-  // even though the infinite-canvas workspace needs a desktop viewport.
-  if (pathname === "/mobile" || pathname === "/store") return null;
+  // Browsing, account, and documentation surfaces are responsive. Keep the
+  // desktop guard scoped to the infinite-canvas product experience.
+  const responsiveRoutes = ["/mobile", "/store", "/api-dashboard", "/docs/api"];
+  if (responsiveRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))) return null;
 
   return (
     <div style={{
