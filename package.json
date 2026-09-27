@@ -20,6 +20,7 @@
     "@supabase/supabase-js": "^2.109.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
+    "ag-psd": "31.0.2",
     "dodopayments": "^2.42.2",
     "dotenv": "^17.4.2",
     "jszip": "^3.10.1",
@@ -32,6 +33,8 @@
     "replicate": "^1.4.0",
     "resend": "^6.17.2",
     "sharp": "0.34.5",
+    "svg-path-bbox": "2.1.0",
+    "svgpath": "2.6.0",
     "ws": "^8.21.1"
   },
   "devDependencies": {
