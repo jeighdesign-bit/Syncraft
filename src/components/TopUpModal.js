@@ -5,6 +5,7 @@ import { X, Shirt, CheckCircle, Package, Tag, Mail, Smartphone, Check, ArrowRigh
 import { toast } from "@/components/Toast";
 import { createClient } from "@/utils/supabase/client";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
+import { MANUAL_GCASH_ENABLED } from "@/lib/paymentMethods.mjs";
 import { CREDIT_COST } from "@/lib/pricing";
 import { trackEvent } from "@/lib/analytics.mjs";
 
@@ -24,7 +25,7 @@ const PLANS = Object.values(CREDIT_PLANS).map((plan) => ({
   traces:     plan.credits,
   price:      plan.price,
   gcashPrice: plan.gcashPrice || plan.price,
-  dodoPrice:  plan.dodoPrice,
+  polarPrice: plan.polarPrice,
   desc:       PLANS_META[plan.key]?.desc || '',
   best:       PLANS_META[plan.key]?.best || false,
   elitePromo: PLANS_META[plan.key]?.elitePromo || false,
@@ -37,11 +38,10 @@ const PLAN_LABELS = Object.fromEntries(
 const PLAN_PRICES = Object.fromEntries(
   Object.values(CREDIT_PLANS).map((p) => [p.key, p.price])
 );
-const DODO_ENABLED_PLANS = new Set(
-  Object.values(CREDIT_PLANS).filter((p) => p.dodoEnabled).map((p) => p.key)
+const POLAR_ENABLED_PLANS = new Set(
+  Object.values(CREDIT_PLANS).filter((p) => p.polarEnabled).map((p) => p.key)
 );
-// Temporary provider switch. Re-enable only after Dodo restores live payments.
-const DODO_CARD_PAYMENTS_AVAILABLE = false;
+const POLAR_CARD_PAYMENTS_AVAILABLE = process.env.NEXT_PUBLIC_POLAR_CARD_PAYMENTS_AVAILABLE === "true";
 const SHOW_ELITE_PROMO_RIBBON = true;
 
 
@@ -52,12 +52,11 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
   const [form, setForm] = useState({ plan: "pro", txnRef: "", screenshotName: "", screenshotFile: null });
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isStartingDodo, setIsStartingDodo] = useState(false);
+  const [isStartingPolar, setIsStartingPolar] = useState(false);
   const [activeTab, setActiveTab] = useState("plans");
   const [logs, setLogs] = useState([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [qrExpanded, setQrExpanded] = useState(false);
-  const [elitePromo, setElitePromo] = useState({ configured: null, limit: 10, remaining: 10 });
   const topUpViewTracked = useRef(false);
 
   useEffect(() => {
@@ -68,25 +67,6 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
       topUpViewTracked.current = false;
     }
   }, [show, form.plan]);
-
-  useEffect(() => {
-    if (!show || !SHOW_ELITE_PROMO_RIBBON) return;
-
-    const controller = new AbortController();
-    fetch("/api/promotions/elite-desaynscale", {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => {
-        if (data && Number.isFinite(data.remaining)) setElitePromo(data);
-      })
-      .catch((error) => {
-        if (error.name !== "AbortError") console.warn("Elite promo counter unavailable", error);
-      });
-
-    return () => controller.abort();
-  }, [show]);
 
   useEffect(() => {
     if (activeTab === "history" && user) {
@@ -124,7 +104,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
     onClose();
     setStep(1);
     setSubmitted(false);
-    setIsStartingDodo(false);
+    setIsStartingPolar(false);
     setActiveTab("plans");
     setForm({ plan: "pro", txnRef: "", screenshotName: "", screenshotFile: null });
     setQrPhData(null);
@@ -217,27 +197,27 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
     }
   }, [user, form.plan, supabase, onLoginRequired]);
 
-  const handleStartDodoCheckout = useCallback(async () => {
+  const handleStartPolarCheckout = useCallback(async () => {
     if (!user) {
       onLoginRequired?.();
       return;
     }
-    if (!DODO_CARD_PAYMENTS_AVAILABLE) {
-      toast.error("Card payments are temporarily unavailable. Please use QR Ph or GCash.");
+    if (!POLAR_CARD_PAYMENTS_AVAILABLE) {
+      toast.error("Card payments are being prepared. Please use QR Ph for now.");
       return;
     }
-    if (!DODO_ENABLED_PLANS.has(form.plan)) {
-      toast.error("Tingi is available via GCash only. Please choose Basic through Elite for card payments.");
+    if (!POLAR_ENABLED_PLANS.has(form.plan)) {
+      toast.error("Tingi is available via QR Ph only. Please choose Basic through Elite for card payments.");
       return;
     }
 
-    setIsStartingDodo(true);
+    setIsStartingPolar(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) throw new Error("Please log in again before checkout.");
 
-      const response = await fetch("/api/payments/dodo/checkout", {
+      const response = await fetch("/api/payments/polar/checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -247,21 +227,21 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to start Dodo checkout");
-      if (!data.checkoutUrl) throw new Error("Dodo checkout URL is missing");
+      if (!response.ok) throw new Error(data.error || "Failed to start card checkout");
+      if (!data.checkoutUrl) throw new Error("Card checkout URL is missing");
 
       const selectedPlan = CREDIT_PLANS[form.plan];
       trackEvent("begin_checkout", {
-        currency: selectedPlan.dodoCurrency,
-        value: selectedPlan.dodoAmount / 100,
-        payment_provider: "dodo",
+        currency: selectedPlan.polarCurrency,
+        value: selectedPlan.polarAmount / 100,
+        payment_provider: "polar",
         plan: selectedPlan.key,
       });
       window.location.href = data.checkoutUrl;
     } catch (err) {
-      toast.error(err.message || "Failed to start Dodo checkout");
+      toast.error(err.message || "Failed to start card checkout");
     } finally {
-      setIsStartingDodo(false);
+      setIsStartingPolar(false);
     }
   }, [form.plan, onLoginRequired, supabase, user]);
 
@@ -429,16 +409,12 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                   <div key={p.key} style={{ background: p.best ? '#222' : '#18181b', border: `1px solid ${p.best ? '#d4ff59' : '#444'}`, padding: '32px 24px', display: 'flex', flexDirection: 'column', position: 'relative', borderRadius: '16px' }}>
                     {SHOW_ELITE_PROMO_RIBBON && p.elitePromo && (
                       <div
-                        aria-label={elitePromo.remaining > 0 ? `Free lifetime DesaynScale image upscaling, ${elitePromo.remaining} slots left` : 'DesaynScale image upscaling promo ended'}
-          style={{ position: 'absolute', top: '-54px', right: '-51px', transform: 'rotate(-5deg)', transformOrigin: 'center', zIndex: 2, minWidth: '252px', padding: '11px 22px 12px 18px', background: elitePromo.remaining > 0 ? '#fff' : '#3f3f46', clipPath: 'polygon(0 0, 96% 0, 100% 12%, 96% 24%, 100% 36%, 96% 50%, 100% 64%, 96% 76%, 100% 88%, 96% 100%, 0 100%, 4% 88%, 0 76%, 4% 64%, 0 50%, 4% 36%, 0 24%, 4% 12%)', whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'center', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.92)', filter: elitePromo.remaining > 0 ? 'drop-shadow(0 7px 0 #a1a1aa) drop-shadow(0 13px 16px rgba(0,0,0,0.3))' : 'drop-shadow(0 7px 0 #25252a) drop-shadow(0 13px 16px rgba(0,0,0,0.3))' }}
+                        aria-label="Free lifetime DesaynScale image upscaling included with every Elite purchase"
+                        style={{ position: 'absolute', top: '-54px', right: '-18px', transform: 'rotate(-5deg)', transformOrigin: 'center', zIndex: 2, minWidth: '252px', padding: '11px 22px 12px 18px', background: '#fff', clipPath: 'polygon(0 0, 96% 0, 100% 12%, 96% 24%, 100% 36%, 96% 50%, 100% 64%, 96% 76%, 100% 88%, 96% 100%, 0 100%, 4% 88%, 0 76%, 4% 64%, 0 50%, 4% 36%, 0 24%, 4% 12%)', whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'center', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.92)', filter: 'drop-shadow(0 7px 0 #a1a1aa) drop-shadow(0 13px 16px rgba(0,0,0,0.3))' }}
                       >
-                        {elitePromo.configured === false ? (
-                          <span style={{ display: 'block', color: '#e4e4e7', fontSize: '9px', fontWeight: '800' }}>PROMO SETUP PENDING</span>
-                        ) : elitePromo.remaining > 0 ? (
-            <><span style={{ display: 'block', color: '#111', fontSize: '10px', fontWeight: '900', letterSpacing: '0.1px', transform: 'translateX(-7px)' }}>FREE IMAGE UPSCALING</span><span style={{ display: 'block', color: '#111', fontSize: '9.5px', fontWeight: '850', marginTop: '3px', transform: 'translateX(-7px)' }}>DESAYNSCALE · LIFETIME ACCESS</span><span style={{ display: 'block', color: '#111', fontSize: '9px', fontWeight: '800', marginTop: '3px', transform: 'translateX(-7px)' }}>FIRST 10 ELITE BUYERS · {elitePromo.remaining} LEFT</span></>
-                        ) : (
-                          <span style={{ display: 'block', color: '#e4e4e7', fontSize: '9px', fontWeight: '800' }}>LAUNCH PROMO ENDED</span>
-                        )}
+                        <span style={{ display: 'block', color: '#111', fontSize: '10px', fontWeight: '900', letterSpacing: '0.1px' }}>FREE IMAGE UPSCALING</span>
+                        <span style={{ display: 'block', color: '#111', fontSize: '9.5px', fontWeight: '850', marginTop: '3px' }}>DESAYNSCALE · LIFETIME ACCESS</span>
+                        <span style={{ display: 'block', color: '#111', fontSize: '9px', fontWeight: '800', marginTop: '3px' }}>INCLUDED WITH ₱899 ELITE</span>
                       </div>
                     )}
                     <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
@@ -494,7 +470,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                 </p>
                 {form.plan === 'tingi' && (
                   <p style={{ margin: '10px 0 0', color: '#d4ff59', fontSize: '13px', fontWeight: '600' }}>
-                    Mini is available through QR Ph or GCash.
+                    Mini is available through QR Ph using GCash, Maya, or a supported banking app.
                   </p>
                 )}
               </div>
@@ -504,10 +480,10 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                 <button
                   type="button"
                   onClick={handleStartPaymongoCheckout}
-                  disabled={isStartingPaymongo || isStartingDodo}
-                  style={{ position: 'relative', background: '#18181b', border: '1px solid #333', color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: (isStartingPaymongo || isStartingDodo) ? 'not-allowed' : 'pointer', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: (isStartingPaymongo || isStartingDodo) ? 0.6 : 1, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
-                  onMouseOver={(e) => { if (!isStartingPaymongo && !isStartingDodo) { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; } }}
-                  onMouseOut={(e) => { if (!isStartingPaymongo && !isStartingDodo) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#18181b'; } }}
+                  disabled={isStartingPaymongo || isStartingPolar}
+                  style={{ position: 'relative', background: '#18181b', border: '1px solid #333', color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: (isStartingPaymongo || isStartingPolar) ? 'not-allowed' : 'pointer', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: (isStartingPaymongo || isStartingPolar) ? 0.6 : 1, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+                  onMouseOver={(e) => { if (!isStartingPaymongo && !isStartingPolar) { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; } }}
+                  onMouseOut={(e) => { if (!isStartingPaymongo && !isStartingPolar) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#18181b'; } }}
                 >
                   <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(212, 255, 89, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <QrCode size={24} color="#d4ff59" />
@@ -537,11 +513,15 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                 {/* 2. Card */}
                 <button
                   type="button"
-                  onClick={handleStartDodoCheckout}
-                  disabled={!DODO_CARD_PAYMENTS_AVAILABLE || isStartingDodo || isStartingPaymongo || form.plan === 'tingi'}
-                  aria-label="Card and international payments are temporarily unavailable"
-                  aria-describedby="dodo-payment-status"
-                  style={{ background: '#141416', border: '1px solid #3d3728', color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: 'not-allowed', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: 0.68, boxShadow: '0 4px 12px rgba(0,0,0,0.16)' }}
+                  onClick={handleStartPolarCheckout}
+                  disabled={!POLAR_CARD_PAYMENTS_AVAILABLE || isStartingPolar || isStartingPaymongo || form.plan === 'tingi'}
+                  aria-label={POLAR_CARD_PAYMENTS_AVAILABLE ? "Pay by Visa or Mastercard" : "Card payments are being prepared"}
+                  aria-describedby="card-payment-status"
+                  style={{ background: '#141416', border: `1px solid ${POLAR_CARD_PAYMENTS_AVAILABLE ? '#3f3f46' : '#3d3728'}`, color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: POLAR_CARD_PAYMENTS_AVAILABLE && form.plan !== 'tingi' && !isStartingPolar && !isStartingPaymongo ? 'pointer' : 'not-allowed', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: POLAR_CARD_PAYMENTS_AVAILABLE ? 1 : 0.68, boxShadow: '0 4px 12px rgba(0,0,0,0.16)', transition: 'border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease' }}
+                  onMouseOver={(e) => { if (POLAR_CARD_PAYMENTS_AVAILABLE && form.plan !== 'tingi' && !isStartingPolar && !isStartingPaymongo) { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(212,255,89,0.08)'; } }}
+                  onMouseOut={(e) => { if (POLAR_CARD_PAYMENTS_AVAILABLE) { e.currentTarget.style.borderColor = '#3f3f46'; e.currentTarget.style.background = '#141416'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.16)'; } }}
+                  onFocus={(e) => { if (POLAR_CARD_PAYMENTS_AVAILABLE && form.plan !== 'tingi') { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(212,255,89,0.22)'; } }}
+                  onBlur={(e) => { if (POLAR_CARD_PAYMENTS_AVAILABLE) { e.currentTarget.style.borderColor = '#3f3f46'; e.currentTarget.style.background = '#141416'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.16)'; } }}
                 >
                   <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(251, 191, 36, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <CreditCard size={24} color="#fbbf24" aria-hidden="true" />
@@ -550,28 +530,29 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                       <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>Card / International</span>
                       <span style={{ background: 'rgba(251, 191, 36, 0.12)', color: '#fbbf24', border: '1px solid rgba(251, 191, 36, 0.25)', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Temporarily unavailable
+                        {isStartingPolar ? 'Opening checkout...' : POLAR_CARD_PAYMENTS_AVAILABLE ? 'Secure card checkout' : 'Setup in progress'}
                       </span>
                     </div>
-                    <span id="dodo-payment-status" style={{ color: '#a1a1aa', fontSize: '13px', lineHeight: '1.4' }}>
-                      Our card provider is reviewing the account. Please use QR Ph or GCash for now.
+                    <span id="card-payment-status" style={{ color: '#a1a1aa', fontSize: '13px', lineHeight: '1.4' }}>
+                      {POLAR_CARD_PAYMENTS_AVAILABLE
+                        ? `Pay securely with Visa or Mastercard (${CREDIT_PLANS[form.plan]?.polarPrice || ''}).`
+                        : 'Card payments are being prepared. Please use QR Ph for now.'}
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingLeft: '16px', borderLeft: '1px solid #2a2a2e', flexShrink: 0, height: '32px', opacity: 0.45 }} aria-hidden="true">
                     <img src="/logos/visa.svg" alt="" style={{ height: '16px', width: 'auto', objectFit: 'contain' }} />
                     <img src="/logos/mastercard.svg" alt="" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
-                    <AlertTriangle size={18} color="#fbbf24" style={{ marginLeft: '4px' }} />
                   </div>
                 </button>
 
-                {/* 3. GCash Manual */}
-                <button
+                {/* Manual GCash can be restored from one shared feature switch if needed. */}
+                {MANUAL_GCASH_ENABLED && <button
                   type="button"
                   onClick={() => setStep(3)}
-                  disabled={isStartingPaymongo || isStartingDodo}
-                  style={{ background: '#18181b', border: '1px solid #333', color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: (isStartingPaymongo || isStartingDodo) ? 'not-allowed' : 'pointer', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: (isStartingPaymongo || isStartingDodo) ? 0.6 : 1, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
-                  onMouseOver={(e) => { if (!isStartingPaymongo && !isStartingDodo) { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; } }}
-                  onMouseOut={(e) => { if (!isStartingPaymongo && !isStartingDodo) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#18181b'; } }}
+                  disabled={isStartingPaymongo || isStartingPolar}
+                  style={{ background: '#18181b', border: '1px solid #333', color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: (isStartingPaymongo || isStartingPolar) ? 'not-allowed' : 'pointer', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: (isStartingPaymongo || isStartingPolar) ? 0.6 : 1, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+                  onMouseOver={(e) => { if (!isStartingPaymongo && !isStartingPolar) { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; } }}
+                  onMouseOut={(e) => { if (!isStartingPaymongo && !isStartingPolar) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#18181b'; } }}
                 >
                   <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Smartphone size={24} color="#aaa" />
@@ -589,17 +570,17 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                     <img src="/logos/gcash.svg" alt="GCash" style={{ height: '18px', width: 'auto', opacity: 0.7, objectFit: 'contain' }} />
                     <ArrowRight size={18} color="#666" style={{ marginLeft: '4px' }} />
                   </div>
-                </button>
+                </button>}
 
-                <div role="status" style={{ background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: '10px', padding: '14px 18px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <AlertTriangle size={16} color="#fbbf24" style={{ flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
+                <div role="status" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.2)', borderRadius: '10px', padding: '14px 18px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <CheckCircle size={16} color="#4ade80" style={{ flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
                   <span style={{ color: '#d4d4d8', fontSize: '13px', lineHeight: '1.5' }}>
-                    Card / International payments are temporarily unavailable while our provider reviews the account. QR Ph and GCash remain available.
+                    Both payment options add credits automatically after successful payment. No receipt upload or manual approval needed.
                   </span>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '12px' }}>
-                  <button onClick={() => setStep(1)} disabled={isStartingDodo || isStartingPaymongo} style={{ padding: '10px 20px', background: 'transparent', color: '#aaa', border: '1px solid #444', borderRadius: '8px', cursor: (isStartingDodo || isStartingPaymongo) ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '500', transition: 'all 0.2s' }}>← Back to Plans</button>
+                  <button onClick={() => setStep(1)} disabled={isStartingPolar || isStartingPaymongo} style={{ padding: '10px 20px', background: 'transparent', color: '#aaa', border: '1px solid #444', borderRadius: '8px', cursor: (isStartingPolar || isStartingPaymongo) ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '500', transition: 'all 0.2s' }}>← Back to Plans</button>
                 </div>
               </div>
 

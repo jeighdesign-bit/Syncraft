@@ -3,8 +3,7 @@
 .agents
 .codex-work
 outputs
-DEMO
-PNG
+assets
 .git
 .next
 node_modules
@@ -22,3 +21,8 @@ public/samples/esports-vector.png
 public/samples/esports-original.jpg
 public/samples/samples sa universal/Syncraft_Untitled_Design_Upscaled.png
 public/samples/samples sa universal/Syncraft_Untitled_Design_Reference.png
+
+# Owner finance tracker is intentionally localhost-only.
+src/app/admin/finance
+src/app/api/admin/finance-snapshot
+src/lib/financeSnapshot.js

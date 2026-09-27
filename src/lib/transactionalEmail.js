@@ -102,7 +102,6 @@ export async function sendPaymentReceipt({
 
 export async function sendDesaynscaleDeliveryEmail({
   to,
-  claimNumber,
   paymentSource,
   paymentRecordId,
 }) {
@@ -125,7 +124,7 @@ export async function sendDesaynscaleDeliveryEmail({
   }
 
   const config = getTransactionalEmailConfig();
-  const email = createDesaynscaleDeliveryEmail({ downloadUrl, claimNumber });
+  const email = createDesaynscaleDeliveryEmail({ downloadUrl });
   const providerKey = String(paymentSource || "payment")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-");

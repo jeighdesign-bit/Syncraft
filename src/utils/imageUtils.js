@@ -15,12 +15,13 @@ export const compressImageClientSide = (file, maxWidthOrHeight = 2048, quality =
       return;
     }
 
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target.result;
-      img.onload = () => {
+    // Object URLs avoid copying large source files into a Base64 string before
+    // decoding, which substantially reduces peak browser memory for uploads.
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    const releaseObjectUrl = () => URL.revokeObjectURL(objectUrl);
+    img.onload = () => {
+      try {
         let width = img.width;
         let height = img.height;
 
@@ -58,9 +59,16 @@ export const compressImageClientSide = (file, maxWidthOrHeight = 2048, quality =
           });
           resolve(compressedFile);
         }, 'image/jpeg', quality);
-      };
-      img.onerror = (error) => reject(error);
+      } catch (error) {
+        reject(error);
+      } finally {
+        releaseObjectUrl();
+      }
     };
-    reader.onerror = (error) => reject(error);
+    img.onerror = () => {
+      releaseObjectUrl();
+      reject(new Error("The selected image could not be decoded."));
+    };
+    img.src = objectUrl;
   });
 };

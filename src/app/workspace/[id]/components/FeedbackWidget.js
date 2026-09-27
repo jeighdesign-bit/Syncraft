@@ -10,6 +10,7 @@ export default function FeedbackWidget({ projectId, initialRating = null }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(!!initialRating);
   const [feedbackText, setFeedbackText] = useState("");
+  const [publishReview, setPublishReview] = useState(false);
 
   const handleSubmit = async () => {
     if (rating === 0 || submitted) return; // Must select a star at least
@@ -26,7 +27,7 @@ export default function FeedbackWidget({ projectId, initialRating = null }) {
       const res = await fetch(`/api/projects/${projectId}/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating, feedback_text: feedbackText }),
+        body: JSON.stringify({ rating, feedback_text: feedbackText, publish_review: publishReview }),
       });
       
       if (!res.ok) {
@@ -59,6 +60,9 @@ export default function FeedbackWidget({ projectId, initialRating = null }) {
         {[1, 2, 3, 4, 5].map((value) => (
           <button
             key={value}
+            type="button"
+            aria-label={`Rate ${value} out of 5 stars`}
+            aria-pressed={rating === value}
             className={styles.starBtn}
             onMouseEnter={() => setHoverRating(value)}
             onMouseLeave={() => setHoverRating(0)}
@@ -72,6 +76,7 @@ export default function FeedbackWidget({ projectId, initialRating = null }) {
               color={(hoverRating || rating) >= value ? "#fbbf24" : "#555"}
               strokeWidth={1.5}
               style={{ transition: "all 0.2s ease" }}
+              aria-hidden="true"
             />
           </button>
         ))}
@@ -83,8 +88,22 @@ export default function FeedbackWidget({ projectId, initialRating = null }) {
           value={feedbackText}
           onChange={(e) => setFeedbackText(e.target.value)}
           disabled={isSubmitting}
+          maxLength={1500}
+          aria-label="Optional written feedback"
         />
+        {feedbackText.trim() && (
+          <label className={styles.publishConsent}>
+            <input
+              type="checkbox"
+              checked={publishReview}
+              onChange={(event) => setPublishReview(event.target.checked)}
+              disabled={isSubmitting}
+            />
+            <span>Allow Syncraft to feature this feedback publicly with my first name and profile photo. Optional; leave unchecked to keep it private.</span>
+          </label>
+        )}
         <button 
+          type="button"
           onClick={handleSubmit} 
           disabled={rating === 0 || isSubmitting}
           className={styles.submitBtn}

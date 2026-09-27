@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 import {
   Check,
@@ -11,6 +12,7 @@ import {
   Mail,
   RefreshCw,
   Star,
+  WalletCards,
   X,
 } from "lucide-react";
 import { toast } from "@/components/Toast";
@@ -110,7 +112,7 @@ export default function AdminDashboard() {
   const [storeStats, setStoreStats] = useState({ pending: 0, fulfilled: 0, rejected: 0, total: 0 });
   const [revenue, setRevenue] = useState({ syncraft: EMPTY_REVENUE, store: EMPTY_REVENUE });
   const [approvedRequests, setApprovedRequests] = useState([]);
-  const [dodoPayments, setDodoPayments] = useState([]);
+  const [polarPayments, setPolarPayments] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [totalProjects, setTotalProjects] = useState(0);
   const [activeCreditsTotal, setActiveCreditsTotal] = useState(0);
@@ -135,7 +137,22 @@ export default function AdminDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
+      if (response.status === 401 && !options.authRetried) {
+        const { data: refreshedAuth, error: refreshError } = await supabase.auth.refreshSession();
+        const refreshedToken = refreshedAuth.session?.access_token;
+        if (!refreshError && refreshedToken) {
+          return fetchRequests(refreshedToken, { ...options, authRetried: true });
+        }
+      }
+      if (!response.ok) {
+        const requestError = new Error(
+          response.status === 401
+            ? "Your session expired. Please sign in again."
+            : data.error || "Failed to load admin data"
+        );
+        requestError.status = response.status;
+        throw requestError;
+      }
 
       const requestRows = data.requests || [];
       setRequests(
@@ -150,7 +167,7 @@ export default function AdminDashboard() {
         syncraft: { ...EMPTY_REVENUE, ...(data.revenue?.syncraft || {}) },
         store: { ...EMPTY_REVENUE, ...(data.revenue?.store || {}) },
       });
-      setDodoPayments(data.dodoPayments || []);
+      setPolarPayments(data.polarPayments || []);
       setReviews(data.reviews || []);
       setTotalProjects(Number(data.totalProjects || 0));
       setActiveCreditsTotal(Number(data.activeCreditsTotal || 0));
@@ -158,8 +175,11 @@ export default function AdminDashboard() {
       if (options.manual) setHasNewRequests(false);
       return true;
     } catch (error) {
+      if (error.status === 401) {
+        await supabase.auth.signOut({ scope: "local" });
+      }
       toast.error(error.message || "Failed to load admin data");
-      console.error(error);
+      if (error.status !== 401 && error.status !== 403) console.error(error);
       return false;
     } finally {
       setLoading(false);
@@ -175,13 +195,13 @@ export default function AdminDashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setLoading(false);
-        router.push("/");
+        router.replace("/");
         return;
       }
 
       const isAuthorized = await fetchRequests(session.access_token);
       if (!isAuthorized) {
-        router.push("/");
+        router.replace("/");
         return;
       }
       setUser(session.user);
@@ -336,6 +356,12 @@ export default function AdminDashboard() {
             <span>Admin</span>
           </button>
           <div className={styles.topbarActions}>
+            {process.env.NODE_ENV !== "production" && (
+              <Link className={styles.secondaryButton} href="/admin/finance">
+                <WalletCards size={16} aria-hidden="true" />
+                Finance tracker
+              </Link>
+            )}
             <button className={styles.secondaryButton} type="button" onClick={handleManualRefresh} disabled={isRefreshing}>
               <RefreshCw size={16} className={isRefreshing ? styles.spin : ""} aria-hidden="true" />
               {isRefreshing ? "Refreshing" : "Refresh"}
@@ -428,12 +454,12 @@ export default function AdminDashboard() {
           </section>
 
           <section className={styles.panel}>
-            <SectionHeader title="Automated payments" description="Latest Dodo checkout activity." count={dodoPayments.length} />
-            {dodoPayments.length === 0 ? (
-              <EmptyState title="No automated payments" description="Dodo transactions appear here." />
+            <SectionHeader title="Polar payments" description="Latest Visa and Mastercard checkout activity." count={polarPayments.length} />
+            {polarPayments.length === 0 ? (
+              <EmptyState title="No Polar payments" description="Completed and pending Polar transactions appear here." />
             ) : (
               <div className={styles.list}>
-                {dodoPayments.map((payment) => (
+                {polarPayments.map((payment) => (
                   <article className={styles.compactRow} key={payment.id}>
                     <div className={styles.rowBody}>
                       <span className={styles.rowMeta}>{formatDate(payment.created_at)}</span>

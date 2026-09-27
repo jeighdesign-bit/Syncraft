@@ -10,6 +10,8 @@ export const CREDIT_PLANS = {
     currency: "PHP",
     dodoProductEnv: "DODO_PRODUCT_TINGI",
     dodoEnabled: false,
+    polarProductEnv: null,
+    polarEnabled: false,
   },
   basic: {
     key: "basic",
@@ -24,6 +26,11 @@ export const CREDIT_PLANS = {
     dodoCurrency: "USD",
     dodoProductEnv: "DODO_PRODUCT_BASIC",
     dodoEnabled: true,
+    polarProductEnv: "POLAR_PRODUCT_BASIC",
+    polarEnabled: true,
+    polarPrice: "$2.49",
+    polarAmount: 249,
+    polarCurrency: "USD",
   },
   starter: {
     key: "starter",
@@ -38,6 +45,11 @@ export const CREDIT_PLANS = {
     dodoCurrency: "USD",
     dodoProductEnv: "DODO_PRODUCT_STARTER",
     dodoEnabled: true,
+    polarProductEnv: "POLAR_PRODUCT_STARTER",
+    polarEnabled: true,
+    polarPrice: "$5.99",
+    polarAmount: 599,
+    polarCurrency: "USD",
   },
   pro: {
     key: "pro",
@@ -52,6 +64,11 @@ export const CREDIT_PLANS = {
     dodoCurrency: "USD",
     dodoProductEnv: "DODO_PRODUCT_PRO",
     dodoEnabled: true,
+    polarProductEnv: "POLAR_PRODUCT_PRO",
+    polarEnabled: true,
+    polarPrice: "$9.99",
+    polarAmount: 999,
+    polarCurrency: "USD",
   },
   elite: {
     key: "elite",
@@ -66,6 +83,11 @@ export const CREDIT_PLANS = {
     dodoCurrency: "USD",
     dodoProductEnv: "DODO_PRODUCT_ELITE",
     dodoEnabled: true,
+    polarProductEnv: "POLAR_PRODUCT_ELITE",
+    polarEnabled: true,
+    polarPrice: "$15.99",
+    polarAmount: 1599,
+    polarCurrency: "USD",
   },
 };
 
@@ -76,4 +98,9 @@ export function getCreditPlan(planKey) {
 export function getDodoProductId(plan) {
   if (!plan?.dodoProductEnv) return null;
   return process.env[plan.dodoProductEnv] || null;
+}
+
+export function getPolarProductId(plan) {
+  if (!plan?.polarProductEnv) return null;
+  return process.env[plan.polarProductEnv] || null;
 }

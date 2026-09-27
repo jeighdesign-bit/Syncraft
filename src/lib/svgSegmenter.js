@@ -1,15 +1,15 @@
 /**
  * svgSegmenter.js
  * ─────────────────────────────────────────────────────────────────────────────
- * Post-processes an SVG (produced by Recraft vectorize) using Fal vision
- * to classify each path into a semantic layer (Background, Stripe, Logo, etc.)
- * and wraps them in named <g id="layer-..."> groups.
+ * Fidelity guard for SVGs produced by Recraft vectorize.
+ *
+ * Semantic regrouping is intentionally disabled because rebuilding the SVG
+ * changes painter order and discards parent context such as transforms, masks,
+ * clipping, and inherited styles. The original provider SVG is authoritative.
  *
  * GUARANTEES:
- *  - The rendered SVG is pixel-identical before and after (paths are never modified)
- *  - On ANY failure (API error, timeout, parse error), the original svgText is
- *    returned unchanged — this step is completely non-fatal
- *  - No extra credit is charged; this runs inside the existing Step 3 API call
+ *  - The SVG is returned byte-for-byte unchanged.
+ *  - No extra provider call or credit is required.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -295,64 +295,23 @@ function rebuildSvgWithGroups(svgText, shapes, labelMap) {
 }
 
 /**
- * Main export: Segment an SVG into named semantic layers using Gemini vision.
+ * Main export: preserve the provider SVG exactly.
  *
  * @param {string} svgText              The raw SVG string from Recraft vectorize
  * @param {string} originalImageBase64  Base64-encoded source image (pre-AI-generation)
  * @param {string} originalMimeType     MIME type e.g. 'image/png'
  * @param {string|null} traceType       'logo' | 'jersey' | null — context hint for Gemini
- * @returns {Promise<string>}           Semantically grouped SVG, or original on failure
+ * @returns {Promise<string>}           The original SVG, unchanged
  */
 export async function segmentSvgLayers(svgText, originalImageBase64, originalMimeType = 'image/png', traceType = null) {
-  try {
-    console.log('[SVG Segmenter] Starting semantic layer grouping...');
-
-    // 1. Parse all SVG shape elements
-    const allShapes = parseSvgShapes(svgText);
-    if (allShapes.length === 0) {
-      console.warn('[SVG Segmenter] No parseable shapes found — skipping grouping');
-      return svgText;
-    }
-    console.log(`[SVG Segmenter] Found ${allShapes.length} shape elements in SVG`);
-
-    // 2. Get viewBox dimensions for coordinate normalisation
-    const { vw, vh } = getSvgViewBox(svgText);
-
-    // 3. Cap at MAX_PATHS_FOR_SEGMENTATION — sort by area, classify the largest ones,
-    //    group overflow paths under "other" without an extra API call.
-    let shapesToClassify = allShapes;
-    let overflowShapes = [];
-    if (allShapes.length > MAX_PATHS_FOR_SEGMENTATION) {
-      const sorted = [...allShapes].sort((a, b) => (b.bbox.area ?? 0) - (a.bbox.area ?? 0));
-      const topNIndices = new Set(sorted.slice(0, MAX_PATHS_FOR_SEGMENTATION).map(s => s.index));
-      shapesToClassify = allShapes.filter(s => topNIndices.has(s.index));
-      overflowShapes = allShapes.filter(s => !topNIndices.has(s.index));
-      console.log(`[SVG Segmenter] Classifying top ${shapesToClassify.length} paths; ${overflowShapes.length} small paths → "other"`);
-    }
-
-    // 4. Call Gemini Flash for semantic classification
-    const labelMap = await callGeminiForSegmentation(
-      shapesToClassify, originalImageBase64, originalMimeType, traceType, vw, vh
-    );
-
-    // Assign overflow paths to "other"
-    for (const s of overflowShapes) {
-      labelMap[String(s.index)] = 'other';
-    }
-
-    console.log('[SVG Segmenter] Gemini response:', labelMap);
-
-    // 5. Rebuild SVG with semantic <g> groups
-    const groupedSvg = rebuildSvgWithGroups(svgText, allShapes, labelMap);
-
-    const uniqueLabels = [...new Set(Object.values(labelMap))];
-    console.log(`[SVG Segmenter] ✓ Complete — ${uniqueLabels.length} semantic layers: ${uniqueLabels.join(', ')}`);
-
-    return groupedSvg;
-
-  } catch (err) {
-    // NON-FATAL: always return the original SVG unchanged on any error
-    console.warn('[SVG Segmenter] Segmentation skipped (non-fatal):', err.message);
-    return svgText;
-  }
+  // Visual fidelity is the source of truth. Rebuilding the provider SVG into
+  // semantic groups moved paths out of their original parents and reordered the
+  // global painter stack. That can drop inherited transforms/styles/clipping and
+  // hide highlights behind later shapes. PSD generation already has a safe
+  // ungrouped fallback, so preserve the provider SVG byte-for-byte here.
+  void originalImageBase64;
+  void originalMimeType;
+  void traceType;
+  console.log('[SVG Segmenter] Semantic regrouping skipped to preserve exact rendering');
+  return svgText;
 }

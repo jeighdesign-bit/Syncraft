@@ -14,10 +14,13 @@ export async function POST(request, { params }) {
     const resolvedParams = await params;
     const { id: projectId } = resolvedParams;
     const body = await request.json();
-    const { rating, feedback_text } = body;
+    const { rating, feedback_text, publish_review } = body;
+    const normalizedRating = Number(rating);
+    const normalizedFeedback = typeof feedback_text === "string" ? feedback_text.trim().slice(0, 1500) : "";
+    const publishReview = publish_review === true && normalizedFeedback.length > 0;
 
-    if (!projectId || rating === undefined) {
-      return NextResponse.json({ error: "Missing projectId or rating" }, { status: 400 });
+    if (!projectId || !Number.isInteger(normalizedRating) || normalizedRating < 1 || normalizedRating > 5) {
+      return NextResponse.json({ error: "A rating from 1 to 5 is required" }, { status: 400 });
     }
 
     // Verify ownership
@@ -40,16 +43,33 @@ export async function POST(request, { params }) {
     const reviewer_avatar = user.user_metadata?.avatar_url || null;
 
     // Update the rating
-    const { error: updateError } = await adminSupabase
+    let { error: updateError } = await adminSupabase
       .from("projects")
       .update({ 
-        rating, 
-        feedback_text: feedback_text || null,
-        reviewer_name,
-        reviewer_avatar
+        rating: normalizedRating,
+        feedback_text: normalizedFeedback || null,
+        review_public: publishReview,
+        reviewer_name: publishReview ? reviewer_name : null,
+        reviewer_avatar: publishReview ? reviewer_avatar : null
       })
       .eq("id", projectId)
       .eq("user_id", user.id);
+
+    // Until the consent migration is applied, preserve the private feedback
+    // without storing or exposing profile data.
+    if (updateError?.code === "42703") {
+      const fallbackResult = await adminSupabase
+        .from("projects")
+        .update({
+          rating: normalizedRating,
+          feedback_text: normalizedFeedback || null,
+          reviewer_name: null,
+          reviewer_avatar: null
+        })
+        .eq("id", projectId)
+        .eq("user_id", user.id);
+      updateError = fallbackResult.error;
+    }
 
     if (updateError) {
       console.error("[Review API] Error updating rating:", updateError);

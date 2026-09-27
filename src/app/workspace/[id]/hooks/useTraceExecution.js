@@ -372,6 +372,7 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
         || error.code === "FAL_RECOVERY_FAILED"
         || error.code === "FOREGROUND_MASK_NOT_FOUND"
         || error.code === "FOREGROUND_DETECTION_UNAVAILABLE"
+        || error.code === "FAL_NETWORK_FAILED"
         || error.code === "RECOVERY_NETWORK_FAILED";
       if (!isTimeout && !isExpectedRecoveryOutcome) {
         // Only surface unexpected errors to the dev overlay, not timeout noise

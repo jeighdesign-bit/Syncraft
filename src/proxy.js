@@ -24,6 +24,14 @@ const RATE_LIMIT_CONFIG = {
   '/api/proxy':         { window: '60 s', windowMs: 60_000, max: 120 },
 };
 
+// The owner finance tracker contains private business records and must never be
+// reachable from a deployed hostname, even if its source exists in a checkout.
+const LOCAL_ONLY_PREFIXES = ['/admin/finance', '/api/admin/finance-snapshot'];
+
+function isLocalHostname(hostname) {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+}
+
 // ─── In-Memory Fallback ───────────────────────────────────────────────────────
 // Used when UPSTASH_REDIS_REST_URL is not set (local dev, or Upstash not yet configured).
 // NOTE: This is per-instance only — not suitable for production multi-region.
@@ -114,6 +122,11 @@ export async function proxy(request) {
   }
 
   const { pathname } = url;
+
+  if (LOCAL_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix)) && !isLocalHostname(host)) {
+    return new NextResponse('Not Found', { status: 404 });
+  }
+
   const routePrefix = getRoutePrefix(pathname);
 
   if (!routePrefix) return NextResponse.next(); // Route not rate-limited

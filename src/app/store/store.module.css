@@ -951,6 +951,27 @@
   margin-top: 6px;
 }
 
+.purchaseConsent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #b8b8b8;
+  font-size: 12px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.purchaseConsent input {
+  margin-top: 3px;
+  accent-color: #d4ff59;
+}
+
+.purchaseConsent a {
+  color: #d4ff59;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .purchaseMessage {
   margin: 12px 0 0 !important;
   color: #b6d66b !important;

@@ -598,11 +598,25 @@ If any difference is detected, continue refining until the reconstruction is vis
         }
 
         const outputUrl = result.data.images[0].url;
-        const { response: imgRes, buffer: generatedBuffer } = await fetchWithSSRFProtection(outputUrl, {
-          allowedHosts: getAllowedProviderHosts(),
-          maxBytes: DEFAULT_MAX_IMAGE_BYTES,
-          allowedContentTypes: ['image/'],
-        });
+        let downloadedImage;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            downloadedImage = await fetchWithSSRFProtection(outputUrl, {
+              allowedHosts: getAllowedProviderHosts(),
+              maxBytes: DEFAULT_MAX_IMAGE_BYTES,
+              timeoutMs: 10_000,
+              allowedContentTypes: ['image/'],
+            });
+            break;
+          } catch (downloadError) {
+            const isNetworkFailure = downloadError?.message === "fetch failed"
+              || downloadError?.name === "AbortError";
+            if (!isNetworkFailure || attempt === 1) throw downloadError;
+            console.warn("[API Step 1] Generated image download interrupted; retrying once.");
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+        const { response: imgRes, buffer: generatedBuffer } = downloadedImage;
         if (!imgRes.ok) throw new Error("Failed to download generated image from fal.ai URL");
 
         generatedImageBuffer = generatedBuffer;
@@ -642,12 +656,17 @@ If any difference is detected, continue refining until the reconstruction is vis
         providerError.status = Number(err?.status) || 502;
         const isBalanceLock = providerError.status === 403
           && /exhausted\s+balance|user\s+is\s+locked|top\s+up|billing/i.test(providerMessage);
+        const isNetworkFailure = err?.message === "fetch failed"
+          || err?.cause?.code === "UND_ERR_CONNECT_TIMEOUT"
+          || err?.name === "AbortError";
         providerError.code = isBalanceLock
           ? "FAL_BALANCE_EXHAUSTED"
           : providerError.status === 401
           ? "FAL_AUTH_FAILED"
           : providerError.status === 403
             ? "FAL_REQUEST_FORBIDDEN"
+            : isNetworkFailure
+              ? "FAL_NETWORK_FAILED"
             : "FAL_GENERATION_FAILED";
         providerError.providerRequestId = err?.requestId || null;
         throw providerError;
@@ -818,6 +837,7 @@ If any difference is detected, continue refining until the reconstruction is vis
       || actualErrorMsg === 'Unauthorized';
     const isProviderBalanceExhausted = error.code === "FAL_BALANCE_EXHAUSTED";
     const isProviderForbidden = error.code === "FAL_REQUEST_FORBIDDEN";
+    const isProviderNetworkFailure = error.code === "FAL_NETWORK_FAILED";
     const safeMessage = isProviderBalanceExhausted
       ? `AI generation is temporarily unavailable because the provider balance is exhausted. ${refundIssued
           ? 'Your credit has been refunded automatically. Please try again after service is restored.'
@@ -830,11 +850,15 @@ If any difference is detected, continue refining until the reconstruction is vis
         ? `The AI provider could not process this artwork. ${refundIssued
             ? 'Your credit has been refunded automatically. Please retry once or use a tighter crop.'
             : 'Please retry once or use a tighter crop.'}`
+      : isProviderNetworkFailure
+        ? `The image provider connection was interrupted. ${refundIssued
+            ? 'Your credit has been refunded automatically. Please try again.'
+            : 'Please try again. If a credit was deducted, contact support.'}`
       : (actualErrorMsg || 'Failed to process trace step');
     return NextResponse.json({
       error: safeMessage,
       code: error.code || "TRACE_FAILED",
       refunded: refundIssued,
-    }, { status: isProviderBalanceExhausted ? 503 : isProviderForbidden ? 422 : 500 });
+    }, { status: isProviderBalanceExhausted || isProviderNetworkFailure ? 503 : isProviderForbidden ? 422 : 500 });
   }
 }

@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+/.codex-work/
+/outputs/
 /.pnp
 .pnp.*
 .yarn/*
@@ -50,6 +52,13 @@ test-*.js
 test-*.mjs
 test_*.js
 test_*.mjs
+
+# Private owner finance tracker — localhost only, never commit or deploy.
+/src/app/admin/finance/
+/src/app/api/admin/finance-snapshot/
+/src/lib/financeSnapshot.js
+/src/lib/financeTrackerBaseline.js
+/outputs/*/Syncraft_Fal_Reserve_Tracker*.xlsx
 
 # typescript
 *.tsbuildinfo

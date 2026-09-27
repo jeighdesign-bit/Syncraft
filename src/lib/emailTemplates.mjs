@@ -105,15 +105,8 @@ export function createPaymentReceiptEmail({
 
 export function createDesaynscaleDeliveryEmail({
   downloadUrl,
-  claimNumber,
 }) {
   const safeDownloadUrl = escapeHtml(downloadUrl);
-  const displayClaimNumber = Number.isInteger(Number(claimNumber))
-    ? Number(claimNumber)
-    : null;
-  const claimLabel = displayClaimNumber
-    ? `Elite launch bonus #${displayClaimNumber}`
-    : "Elite launch bonus";
 
   const html = `
     <!doctype html>
@@ -128,14 +121,14 @@ export function createDesaynscaleDeliveryEmail({
               <p style="margin:28px 0 8px;color:${COLORS.accent};font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase">Free Elite bonus unlocked</p>
               <h1 style="margin:0 0 12px;font-size:28px;line-height:1.2;letter-spacing:-.5px">Your DesaynScale access is ready</h1>
               <p style="max-width:440px;margin:0 auto;color:${COLORS.muted};font-size:15px;line-height:1.65">
-                Thank you for purchasing the Syncraft Elite plan. You are one of the first 10 qualified buyers and receive <strong style="color:#ffffff">DesaynScale image upscaling with lifetime access</strong> for free.
+                Thank you for purchasing the Syncraft Elite plan. Your purchase includes <strong style="color:#ffffff">DesaynScale image upscaling with lifetime access</strong> for free.
               </p>
             </div>
             <div style="padding:18px 28px 32px">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:${COLORS.panel};border:1px solid ${COLORS.border};border-radius:12px;padding:8px 18px;border-collapse:separate">
                 ${detailRow("Bonus", "DesaynScale image upscaling")}
                 ${detailRow("Access", "Lifetime", { accent: true })}
-                ${detailRow("Qualification", claimLabel, { last: true })}
+                ${detailRow("Included with", "₱899 Elite plan", { last: true })}
               </table>
               <div style="margin-top:24px;text-align:center">
                 <a href="${safeDownloadUrl}" style="display:inline-block;background:${COLORS.accent};color:#090a09;text-decoration:none;padding:14px 26px;border-radius:9px;font-size:14px;font-weight:900;line-height:1">Open DesaynScale files&nbsp;&nbsp;&rarr;</a>
@@ -156,10 +149,10 @@ export function createDesaynscaleDeliveryEmail({
   const text = [
     "Your free DesaynScale access is ready",
     "",
-    "Thank you for purchasing the Syncraft Elite plan. You are one of the first 10 qualified buyers.",
+    "Thank you for purchasing the Syncraft Elite plan. Your purchase includes free DesaynScale image upscaling with lifetime access.",
     "Bonus: DesaynScale image upscaling",
     "Access: Lifetime",
-    `Qualification: ${claimLabel}`,
+    "Included with: ₱899 Elite plan",
     "",
     `Open the DesaynScale files: ${downloadUrl}`,
     "",

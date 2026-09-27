@@ -10,7 +10,18 @@ function configuredAdminEmails() {
   );
 }
 
-export async function authenticateAdminRequest(request) {
+export async function authenticateAdminRequest(request, { allowLocalDevelopment = false } = {}) {
+  if (allowLocalDevelopment && process.env.NODE_ENV === "development") {
+    const hostname = new URL(request.url).hostname.toLowerCase();
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return {
+        user: { id: "local-finance", email: DEFAULT_ADMIN_EMAIL },
+        status: 200,
+        error: null,
+      };
+    }
+  }
+
   if (!adminSupabase) {
     return { user: null, status: 503, error: "Admin services are not configured." };
   }
