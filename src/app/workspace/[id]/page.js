@@ -8,7 +8,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
-import { Home, Keyboard, Pencil, CheckCircle2 } from "lucide-react";
+import { Home, Pencil, CheckCircle2 } from "lucide-react";
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 import { useTraceExecution } from "./hooks/useTraceExecution";
@@ -331,6 +331,58 @@ export default function Workspace() {
     }
   }, [project, logToConsole, forceDownload]);
 
+  const handleDownloadPsd = useCallback(async () => {
+    if (!project?.svg_url) return;
+    logToConsole("[PSD] Preparing rasterized SVG layers...", "normal");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Your login session expired. Please log in again.");
+
+      const res = await fetch("/api/prepare-psd", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ projectId: project.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to prepare layered PSD");
+
+      setProject((prev) => ({
+        ...prev,
+        canvas_data: {
+          ...(prev.canvas_data || {}),
+          layered_psd: {
+            ...(prev.canvas_data?.layered_psd || {}),
+            url: data.psdUrl,
+            source_svg_url: prev.svg_url,
+            width: data.width,
+            height: data.height,
+            layer_count: data.layerCount,
+            shape_layer_count: data.shapeLayerCount || 0,
+          },
+        },
+      }));
+
+      await forceDownload(
+        `/api/proxy?url=${encodeURIComponent(data.psdUrl)}`,
+        data.fileName || `Syncraft_${project.name}_Layered.psd`,
+      );
+      trackExport({ tool: project.trace_type, format: "psd" });
+      const shapeCount = data.shapeLayerCount || 0;
+      const rasterCount = Math.max(0, (data.layerCount || 0) - shapeCount);
+      logToConsole(
+        data.cached
+          ? `[Success] Cached PSD download started (${shapeCount} editable shapes, ${rasterCount} raster layers).`
+          : `[Success] PSD created with ${shapeCount} editable shapes and ${rasterCount} raster layers.`,
+        "success",
+      );
+    } catch (error) {
+      logToConsole(`[Error] PSD export failed: ${error.message}`, "error");
+    }
+  }, [project, logToConsole, forceDownload]);
+
   // ─── Trace Execution Wrapper ──────────────────────────────────────────────
   const onExecuteTrace = useCallback(async (vectorColors) => {
     if (project?.trace_type === "universal") {
@@ -545,9 +597,6 @@ export default function Workspace() {
           <span className="workspace-mode-title__rail workspace-mode-title__rail--end" aria-hidden="true" />
         </div>
         <div className="syncraft-header-controls">
-          <button type="button" onClick={() => setShowShortcuts(true)} className="syncraft-header-control">
-            <Keyboard size={14} aria-hidden="true" /> Shortcuts
-          </button>
           <button
             type="button"
             onClick={() => setShowTopUpModal(true)}
@@ -670,6 +719,7 @@ export default function Workspace() {
           onExecuteTrace={onExecuteTrace}
           onRetryVector={handleRetryVector}
           onDownloadSvg={handleDownloadSvg}
+          onDownloadPsd={handleDownloadPsd}
           onDownloadRaster={handleDownloadUpscaled}
           onDownloadAll={handleDownloadAll}
           onOpenCompare={() => setShowCompare(true)}
@@ -690,39 +740,33 @@ export default function Workspace() {
       </main>
 
       {/* ── Status Bar ───────────────────────────────────────────────── */}
-      <div style={{ height: "28px", background: "#141414", borderTop: "1px solid #222", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <div className="workspace-statusbar">
+        <div className="workspace-statusbar__message" role="status" aria-live="polite">
           {project?.trace_type === "upscale" && project.generated_image_url && upscaleStatus !== "legacy" ? (
             <>
-              <CheckCircle2 size={12} color="#4ade80" />
-              <span style={{ fontSize: "10px", color: "#4ade80", fontWeight: "600" }}>Upscale complete</span>
-              <span style={{ fontSize: "10px", color: "#444", marginLeft: "4px" }}>Permanent project result ready to download.</span>
+              <CheckCircle2 size={14} className="workspace-statusbar__success-icon" aria-hidden="true" />
+              <span className="workspace-statusbar__title">Upscale complete</span>
+              <span className="workspace-statusbar__detail">Result ready to download</span>
             </>
           ) : project?.svg_url ? (
             <>
-              <CheckCircle2 size={12} color="#4ade80" />
-              <span style={{ fontSize: "10px", color: "#4ade80", fontWeight: "600" }}>Vectorization complete</span>
-              <span style={{ fontSize: "10px", color: "#444", marginLeft: "4px" }}>Clean shapes, optimized paths, and high quality output.</span>
+              <CheckCircle2 size={14} className="workspace-statusbar__success-icon" aria-hidden="true" />
+              <span className="workspace-statusbar__title">Vectorization complete</span>
+              <span className="workspace-statusbar__detail">Your vector is ready to download</span>
             </>
           ) : project?.trace_type === "upscale" ? (
-            <span style={{ fontSize: "10px", color: "#555" }}>
+            <span className="workspace-statusbar__title workspace-statusbar__title--neutral">
               {upscaleStatus === "processing" ? "Processing upscale…" : upscaleStatus === "legacy" ? "Legacy result needs restoration" : "Ready"}
             </span>
           ) : project ? (
-            <span style={{ fontSize: "10px", color: "#555" }}>
+            <span className="workspace-statusbar__title workspace-statusbar__title--neutral">
               {traceState !== "idle" ? "Processing trace…" : "Ready"}
             </span>
           ) : null}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <button onClick={() => setShowShortcuts(true)} style={{ background: "none", border: "none", color: "#444", cursor: "pointer", fontSize: "10px", transition: "color 0.2s" }} onMouseOver={e => e.currentTarget.style.color="#aaa"} onMouseOut={e => e.currentTarget.style.color="#444"}>
-            Need help?
-          </button>
-          <span style={{ color: "#333" }}>·</span>
-          <button style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "10px", display: "flex", alignItems: "center", gap: "4px", transition: "color 0.2s" }} onMouseOver={e => e.currentTarget.style.color="#d4ff59"} onMouseOut={e => e.currentTarget.style.color="#555"}>
-            &gt; View Guide
-          </button>
-        </div>
+        <button type="button" onClick={() => setShowShortcuts(true)} className="workspace-statusbar__help">
+          Need help?
+        </button>
       </div>
 
       {/* ─── Modals ─────────────────────────────────────────────────────────── */}

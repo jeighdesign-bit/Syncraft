@@ -11,6 +11,7 @@ export const DEFAULT_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 export const DEFAULT_MAX_UPSCALED_IMAGE_BYTES = 96 * 1024 * 1024;
 export const DEFAULT_MAX_SVG_BYTES = 8 * 1024 * 1024;
 export const DEFAULT_MAX_ZIP_BYTES = 120 * 1024 * 1024;
+export const DEFAULT_MAX_PSD_BYTES = 256 * 1024 * 1024;
 
 function supabaseStorageHost() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return null;

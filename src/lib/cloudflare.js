@@ -35,7 +35,7 @@ export async function getUploadUrl(fileName, contentType) {
   };
 }
 
-export async function uploadToR2(buffer, fileName, contentType) {
+export async function uploadToR2(buffer, fileName, contentType, options = {}) {
   try {
     const command = new PutObjectCommand({
       Bucket: bucketName,
@@ -53,12 +53,13 @@ export async function uploadToR2(buffer, fileName, contentType) {
     
     const { adminStorageSupabase, adminSupabase, supabase } = await import('@/lib/supabase');
     const storageBucket = 'project-assets';
+    const fallbackContentType = options.fallbackContentType || contentType;
 
     let { data: storageData, error: storageError } = await adminStorageSupabase
       .storage
       .from(storageBucket)
       .upload(fileName, buffer, {
-        contentType,
+        contentType: fallbackContentType,
         upsert: false,
       });
 
@@ -74,7 +75,7 @@ export async function uploadToR2(buffer, fileName, contentType) {
           .storage
           .from(storageBucket)
           .upload(fileName, buffer, {
-            contentType,
+            contentType: fallbackContentType,
             upsert: true,
           });
         storageData = result.data;

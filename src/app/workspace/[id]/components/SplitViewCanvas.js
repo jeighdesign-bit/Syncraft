@@ -325,9 +325,6 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
     }
   }, [project?.svg_url, activeTab]);
 
-  // Right-side label
-  const rightLabel = isUpscale ? "4X HD UPSCALE" : activeTab === "generated" ? "FLAT EXTRACT" : activeTab === "upscaled" ? "HD UPSCALE" : "VECTOR PREVIEW";
-
   const renderStatus = () => {
     if (traceState !== "idle") {
       return (
@@ -404,15 +401,12 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
     <div ref={containerRef} style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", backgroundColor: "#1a1a1a", position: "relative" }}>
 
       {/* ── Sub-toolbar: tool buttons LEFT, Tabs CENTER, zoom controls RIGHT ── */}
-      <div style={{ display: "flex", alignItems: "center", padding: "0 16px", background: "#1a1a1a", borderBottom: "1px solid #2a2a2a", height: "48px", flexShrink: 0, gap: "12px", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "0 16px", background: "#1a1a1a", borderBottom: "1px solid #2a2a2a", height: "48px", boxSizing: "border-box", flexShrink: 0, gap: "12px", justifyContent: "space-between" }}>
 
         {/* Left: tool buttons (only in idle) */}
         <div className="canvas-toolbar-side canvas-toolbar-side--left">
           {leftControls}
-          <div className="canvas-toolbar-pane-label">
-            <span className="canvas-toolbar-pane-label__text">Original Upload</span>
-            {rotateTallPreview && <span style={{ marginLeft: "8px", color: "#9effc8", fontSize: "9px", fontWeight: 700 }}>ROTATED PREVIEW</span>}
-          </div>
+          {rotateTallPreview && <span style={{ color: "#9effc8", fontSize: "9px", fontWeight: 700 }}>ROTATED PREVIEW</span>}
         </div>
 
         {/* Center: right-panel tab label (Segmented Control) */}
@@ -449,9 +443,6 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
 
         {/* Right: zoom controls — replaced by an Extend-mode hint while editing */}
         <div className="canvas-toolbar-side canvas-toolbar-side--right">
-          <div className="canvas-toolbar-pane-label">
-            <span className="canvas-toolbar-pane-label__text">{extendMode ? "EXTEND — FLAT EXTRACT" : rightLabel}</span>
-          </div>
           {extendMode ? (
             <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#d4ff59", fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px" }}>
               <Expand size={13} /> EXTEND MODE

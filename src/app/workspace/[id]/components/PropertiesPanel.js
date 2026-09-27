@@ -50,8 +50,10 @@ const panelStyle = {
 const headerStyle = {
   display: "flex",
   alignItems: "center",
-  justifyContent: "space-between",
-  padding: `${SPACE.md}px ${SPACE.lg}px`,
+  justifyContent: "center",
+  height: "48px",
+  boxSizing: "border-box",
+  padding: `0 ${SPACE.lg}px`,
   borderBottom: `1px solid ${COLOR.border}`,
   background: COLOR.surface,
   flexShrink: 0,
@@ -122,6 +124,34 @@ const noticeIconStyle = {
   fontSize: "10px"
 };
 
+function AdobeAppIcon({ app, active = true }) {
+  const isPhotoshop = app === "ps";
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        width: 18,
+        height: 18,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        borderRadius: 3,
+        border: "1px solid rgba(255,255,255,0.8)",
+        background: "#050505",
+        color: "#ffffff",
+        fontSize: 9,
+        lineHeight: 1,
+        fontWeight: 700,
+        letterSpacing: "-0.25px",
+        opacity: active ? 1 : 0.4,
+      }}
+    >
+      {isPhotoshop ? "Ps" : "Ai"}
+    </span>
+  );
+}
+
 /**
  * PropertiesPanel — Right sidebar.
  * Matches the "AI TRACE SETTINGS" design from the workspace screenshot.
@@ -135,6 +165,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
   onExecuteTrace,
   onRetryVector,
   onDownloadSvg,
+  onDownloadPsd,
   onDownloadRaster,
   onDownloadAll,
   onOpenCompare,
@@ -191,7 +222,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
     ? "Get More Credits"
     : !isCropped
     ? "Crop Image First"
-    : `Run Syncraft (−${executionCost} Credits)`;
+    : "Generate Now";
 
   // "Unlocked" mirrors the original enable condition exactly — kept as its
   // own branch because this button has a 3-state style (busy / unlocked /
@@ -199,6 +230,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
   const traceUnlocked = canRetryVector || noCredits || isCropped;
 
   const svgActive = !!project?.svg_url && !downloading;
+  const psdActive = !!project?.svg_url && !downloading && !isBusy;
   const zipActive = !!project?.original_image_url && !downloading;
   const pngActive = !!project?.upscaled_image_url && !downloading;
   const compareActive = !!project?.svg_url;
@@ -209,7 +241,6 @@ const PropertiesPanel = memo(function PropertiesPanel({
       {/* ── Header ─────────────────────────────────────────── */}
       <div style={headerStyle}>
         <span style={eyebrowStyle}>AI Trace Settings</span>
-        <X size={13} color={COLOR.textFaint} style={{ cursor: "pointer" }} />
       </div>
 
       {/* ── Vector Engine ───────────────────────────────────── */}
@@ -328,70 +359,98 @@ const PropertiesPanel = memo(function PropertiesPanel({
         </div>
       </div>
 
+      {/* Run Syncraft and Compare intentionally share one workflow slot. Once
+          an SVG exists, Compare replaces Run without becoming an export item. */}
+      <div style={{ ...sectionStyle, flexShrink: 0 }}>
+        {!hasSvg ? (
+          <button
+            onClick={() => {
+              if (isBusy) return;
+              if (canRetryVector) { onRetryVector?.(vectorColors); return; }
+              if (isUnauthenticated || noCredits) { onOpenTopUp?.(); return; }
+              if (isCropped) onExecuteTrace(vectorColors);
+            }}
+            disabled={isBusy || (!isCropped && !noCredits)}
+            style={{
+              width: "100%",
+              background: isBusy ? "rgba(255,255,255,0.02)" : traceUnlocked ? "#ffffff" : "rgba(255,255,255,0.05)",
+              border: isBusy ? "1px solid rgba(255,255,255,0.05)" : traceUnlocked ? "1px solid #ffffff" : "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "8px",
+              color: isBusy ? "#555" : traceUnlocked ? "#000000" : "#666",
+              minHeight: "56px",
+              padding: "9px 16px",
+              fontSize: "11px",
+              fontWeight: 600,
+              letterSpacing: "0.5px",
+              whiteSpace: "nowrap",
+              cursor: (!isBusy && traceUnlocked) ? "pointer" : "not-allowed",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "3px",
+              opacity: isBusy ? 0.6 : 1,
+              transition: "all 0.2s",
+              boxShadow: (!isBusy && traceUnlocked) ? "0 4px 12px rgba(255,255,255,0.15)" : "none",
+            }}
+            onMouseOver={e => { if (!isBusy && traceUnlocked) e.currentTarget.style.background = "#e5e5e5"; }}
+            onMouseOut={e => { if (!isBusy && traceUnlocked) e.currentTarget.style.background = "#ffffff"; }}
+          >
+            {traceButtonLabel === "Generate Now" ? (
+              <>
+                <span style={{ fontSize: "15px", fontWeight: 700, lineHeight: 1.15, letterSpacing: "0.5px" }}>GENERATE NOW</span>
+                <span style={{ fontSize: "11px", fontWeight: 500, lineHeight: 1.15, letterSpacing: "0.2px", opacity: 0.68 }}>{executionCost} credits</span>
+              </>
+            ) : (
+              <span style={{ textTransform: "uppercase" }}>{traceButtonLabel}</span>
+            )}
+          </button>
+        ) : (
+          <button
+            onClick={onOpenCompare}
+            disabled={!compareActive}
+            style={{
+              ...primaryBtnStyle(compareActive),
+              textTransform: "uppercase",
+              whiteSpace: "nowrap",
+            }}
+            onMouseOver={e => { if (compareActive) e.currentTarget.style.background = "#e5e5e5"; }}
+            onMouseOut={e => { if (compareActive) e.currentTarget.style.background = "#ffffff"; }}
+          >
+            <Monitor size={16} aria-hidden="true" />
+            Before / After Compare
+          </button>
+        )}
+      </div>
+
       {/* ── Exportation ────────────────────────────────────────── */}
       <div style={{ ...sectionStyle, flexShrink: 0, borderBottom: "none" }}>
         <span style={{ ...eyebrowStyle, display: "block", marginBottom: SPACE.md }}>Exportation</span>
 
         <div style={{ display: "flex", flexDirection: "column", gap: SPACE.sm }}>
-
-          {/* Primary slot: always the one next action, always first. */}
-          {!hasSvg ? (
-            <button
-              onClick={() => {
-                if (isBusy) return;
-                if (canRetryVector) { onRetryVector?.(vectorColors); return; }
-                if (isUnauthenticated || noCredits) { onOpenTopUp?.(); return; }
-                if (isCropped) onExecuteTrace(vectorColors);
-              }}
-              disabled={isBusy || (!isCropped && !noCredits)}
-              style={{
-                width: "100%",
-                background: isBusy ? "rgba(255,255,255,0.02)" : traceUnlocked ? "#ffffff" : "rgba(255,255,255,0.05)",
-                border: isBusy ? "1px solid rgba(255,255,255,0.05)" : traceUnlocked ? "1px solid #ffffff" : "1px solid rgba(255,255,255,0.1)",
-                borderRadius: "8px",
-                color: isBusy ? "#555" : traceUnlocked ? "#000000" : "#666",
-                padding: "14px 16px",
-                fontSize: "13px",
-                fontWeight: 600,
-                letterSpacing: "0.3px",
-                whiteSpace: "nowrap",
-                cursor: (!isBusy && traceUnlocked) ? "pointer" : "not-allowed",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: SPACE.sm,
-                opacity: isBusy ? 0.6 : 1,
-                transition: "all 0.2s",
-                boxShadow: (!isBusy && traceUnlocked) ? "0 4px 12px rgba(255,255,255,0.15)" : "none",
-              }}
-              onMouseOver={e => { if (!isBusy && traceUnlocked) e.currentTarget.style.background = "#e5e5e5"; }}
-              onMouseOut={e => { if (!isBusy && traceUnlocked) e.currentTarget.style.background = "#ffffff"; }}
-            >
-              {traceButtonLabel}
-            </button>
-          ) : (
-            <button
-              onClick={() => handleDownloadClick('svg', onDownloadSvg)}
-              disabled={!project?.svg_url || !!downloading}
-              style={primaryBtnStyle(svgActive)}
-              onMouseOver={e => { if (svgActive) e.currentTarget.style.background = "#e5e5e5"; }}
-              onMouseOut={e => { if (svgActive) e.currentTarget.style.background = "#ffffff"; }}
-            >
-              {downloading === 'svg' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} strokeWidth={2.5} />}
-              Export as SVG
-            </button>
-          )}
-
-          {/* Secondary actions, in constant order regardless of pipeline stage. */}
           <button
-            onClick={() => handleDownloadClick('all', onDownloadAll)}
-            disabled={!zipActive}
-            style={secondaryBtnStyle(zipActive)}
-            onMouseOver={e => { if (zipActive) e.currentTarget.style.borderColor = "#484848"; }}
-            onMouseOut={e => { if (zipActive) e.currentTarget.style.borderColor = COLOR.border; }}
+            onClick={() => handleDownloadClick('svg', onDownloadSvg)}
+            disabled={!svgActive}
+            style={secondaryBtnStyle(svgActive)}
+            onMouseOver={e => { if (svgActive) e.currentTarget.style.borderColor = "#484848"; }}
+            onMouseOut={e => { if (svgActive) e.currentTarget.style.borderColor = COLOR.border; }}
+            title={hasSvg ? "Download the editable Illustrator-compatible SVG" : "Generate the Vector SVG first"}
           >
-            {downloading === 'all' ? <Loader2 size={14} className="animate-spin" /> : <FolderDown size={14} />}
-            Download All (ZIP)
+            {downloading === 'svg' ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <AdobeAppIcon app="ai" active={svgActive} />}
+            Export as SVG
+          </button>
+
+          <button
+            onClick={() => handleDownloadClick('psd', onDownloadPsd)}
+            disabled={!psdActive}
+            style={secondaryBtnStyle(psdActive)}
+            onMouseOver={e => { if (psdActive) e.currentTarget.style.borderColor = COLOR.accent; }}
+            onMouseOut={e => { if (psdActive) e.currentTarget.style.borderColor = COLOR.border; }}
+            title={hasSvg ? "Create and download a PSD with rasterized SVG layers" : "Generate the Vector SVG first"}
+            aria-label={downloading === 'psd' ? "Preparing PSD" : "Export as PSD"}
+          >
+            {downloading === 'psd' ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <AdobeAppIcon app="ps" active={psdActive} />}
+            {downloading === 'psd' ? "Preparing PSD…" : "Export as PSD"}
           </button>
 
           <button
@@ -401,21 +460,20 @@ const PropertiesPanel = memo(function PropertiesPanel({
             onMouseOver={e => { if (pngActive) e.currentTarget.style.borderColor = "#484848"; }}
             onMouseOut={e => { if (pngActive) e.currentTarget.style.borderColor = COLOR.border; }}
           >
-            {downloading === 'raster' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            {downloading === 'raster' ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Download size={14} aria-hidden="true" />}
             Export as PNG
           </button>
 
           <button
-            onClick={onOpenCompare}
-            disabled={!compareActive}
-            style={secondaryBtnStyle(compareActive)}
-            onMouseOver={e => { if (compareActive) e.currentTarget.style.borderColor = "#484848"; }}
-            onMouseOut={e => { if (compareActive) e.currentTarget.style.borderColor = COLOR.border; }}
+            onClick={() => handleDownloadClick('all', onDownloadAll)}
+            disabled={!zipActive}
+            style={secondaryBtnStyle(zipActive)}
+            onMouseOver={e => { if (zipActive) e.currentTarget.style.borderColor = "#484848"; }}
+            onMouseOut={e => { if (zipActive) e.currentTarget.style.borderColor = COLOR.border; }}
           >
-            <Monitor size={14} />
-            Before / After Compare
+            {downloading === 'all' ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <FolderDown size={14} aria-hidden="true" />}
+            Download All (ZIP)
           </button>
-
         </div>
       </div>
     </aside>
@@ -430,9 +488,9 @@ function primaryBtnStyle(active) {
     borderRadius: "8px",
     color: active ? "#000000" : "#666",
     padding: "14px 16px",
-    fontSize: "13px",
+    fontSize: "11px",
     fontWeight: 600,
-    letterSpacing: "0.3px",
+    letterSpacing: "0.5px",
     cursor: active ? "pointer" : "not-allowed",
     display: "flex",
     alignItems: "center",
