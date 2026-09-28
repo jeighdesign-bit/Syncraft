@@ -7,7 +7,7 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 import { snapToAllowedAspectRatio } from "@/lib/aspectRatio";
 import { buildGarmentExtractionInput, garmentExtractionMode, shouldSaveGarmentExtractionServerSide } from "@/lib/garmentExtractionConfig.mjs";
-import { buildGarmentFlexibilityGuard, resolveGarmentPromptMode } from "@/lib/garmentPromptRules.mjs";
+import { buildGarmentExtractionPrompt, buildGarmentExtractionSystemPrompt, resolveGarmentPromptMode } from "@/lib/garmentPromptRules.mjs";
 import { uploadToR2 } from "@/lib/cloudflare";
 
 // IMPORTANT: Must use Node.js runtime (not edge) so we get real 120s timeouts.
@@ -155,155 +155,7 @@ export async function POST(request) {
       let prompt = "";
       const promptMode = resolveGarmentPromptMode(project);
       if (project) {
-        if (promptMode === 'ERASE_LOGOS') {
-          prompt = `🔴 CRITICAL REFERENCE LOCK — THIS IS THE MOST IMPORTANT INSTRUCTION:
-You are given an INPUT IMAGE. That input image IS the source of truth. Every color, every shape, every stripe, every pattern in your output MUST be copied EXACTLY from that input image. Do NOT invent. Do NOT approximate. Do NOT be creative. COPY EXACTLY.
-If you deviate from the input image in ANY way — wrong color, wrong stripe angle, wrong shape position, wrong pattern — you have FAILED.
-
-⚠️ HARDEST RULE — READ THIS FIRST AND OBEY IT ALWAYS:
-DO NOT DRAW A SHIRT. DO NOT DRAW A JERSEY SHAPE. DO NOT DRAW A NECKLINE. DO NOT DRAW ARMHOLES. DO NOT DRAW SLEEVES. DO NOT DRAW ANY CLOTHING SILHOUETTE WHATSOEVER.
-Your output canvas is a PLAIN RECTANGLE filled edge-to-edge with the BACKGROUND DESIGN ONLY, with all text, identity elements, and foreground subjects removed.
-
-== REFERENCE IMAGE ANALYSIS — DO THIS FIRST, BEFORE ANYTHING ELSE ==
-Step 0 (mandatory): Look at the input image. Count every color. Note every stripe direction and angle. Note every shape. Memorize the exact color of each zone (top-left, top-right, center, bottom-left, bottom-right). You will reproduce ALL of this exactly.
-
-== FINAL OUTPUT STANDARD — THIS IS YOUR TARGET ==
-Your output must look EXACTLY like the flat rectangular source artwork panel shown next to a jersey product mockup image — the kind you see on stock design websites where the jersey photo is on the LEFT and the flat pattern file is on the RIGHT. That flat pattern on the RIGHT is your target output:
-- A perfectly flat rectangle filled completely edge-to-edge with the jersey's design
-- Zero shirt shape — no collar outline, no sleeve silhouette, no armhole curve
-- Preserve ALL intricate design details: halftones, dot patterns, fine lines, and design gradients.
-- ONLY remove 3D lighting: no fabric wrinkles, no fold shadows, no lens vignette.
-- All lines are perfectly geometric (straight or smoothly curved AS DESIGNED — not distorted by the 3D shirt/body)
-- It looks like a professional Adobe Illustrator sublimation print file, ready to send to a fabric printer
-- The SAME pattern that is on the jersey — not a reinterpretation, not a reinvention — the EXACT same design
-
-You are a FORENSIC COPY ARTIST. Your ONLY task is to make a pixel-accurate flat rectangular replica of the DESIGN PATTERN on this jersey. You are NOT allowed to be creative. You are NOT allowed to invent anything.
-
-== STEP 1: ANALYZE THE REFERENCE IMAGE (DO THIS FIRST) ==
-Before drawing anything, mentally catalog EVERY design element with surgical precision:
-- What are the EXACT background colors? (list every color zone)
-- What geometric shapes exist? (stripes, polygons, chevrons, curves, sublimation patterns — describe each one's exact angle, thickness, size, and position)
-- Where exactly is each color zone? (top-left corner, center-left, bottom-right, etc. — use a mental grid)
-- What exact colors are used? (e.g. "navy blue", "golden yellow", "white", "black")
-- How many stripes, polygons, or pattern repeats are there? Count them exactly.
-
-== STEP 2: PERSPECTIVE CORRECTION (MANDATORY) ==
-- The photo may show the jersey worn on a person, hung on a hanger, or shot at an angle. Mentally "cut open" the fabric and lay it completely flat.
-- Output the design as if the jersey fabric is unfolded into a flat rectangle — 100% straight-on, no perspective, no tilt, no 3D.
-- If both front and back panels are visible, ONLY reproduce the FRONT panel. Completely ignore the back.
-- The output must be a perfect upright rectangle — never crooked, never skewed.
-
-== STEP 2B: DE-PERSPECTIVE & STRAIGHTEN ALL LINES (MANDATORY) ==
-- ANY line, stripe, border, or panel edge that appears curved or diagonal in the photo ONLY because of fabric drape, body curvature, or camera angle MUST be straightened to a perfect geometric line in the output.
-- Side panels (left stripe, right stripe) that look curved because of the shirt shape must be output as perfectly straight vertical bands.
-- If a stripe appears to curve inward at the waist due to the body shape — straighten it. Output it as a ruler-straight vertical or diagonal line.
-- The output must look like the design was drawn in Adobe Illustrator with straight crisp lines and no fabric distortion whatsoever.
-- CRITICAL DISTINCTION: Lines that are curved IN THE DESIGN ITSELF (intentional artistic curves/waves) must remain. But lines that are only curved because of the 3D shirt/body/camera angle — must be output as straight.
-
-== STEP 3: CANVAS REQUIREMENTS ==
-- The output is a RECTANGLE. No shirt shape. No neckline cutout. No sleeve cutouts. No armholes. JUST A SOLID RECTANGLE.
-- Fill the entire canvas completely edge-to-edge with the design pattern.
-- Every color zone, stripe, and shape must bleed fully to all four canvas edges — no white space, no padding, no border.
-
-== STEP 4: SHAPE & COLOR ACCURACY — THIS IS ABSOLUTE LAW ==
-- EXACT HEX COLORS: You MUST extract and use the exact same color hex codes as the original. Do not saturate, brighten, or wash out the colors.
-- COPY EVERY SHAPE EXACTLY: same position on the canvas, same angle, same size, same color. No exceptions.
-- ANTI-HALLUCINATION RULE (CRITICAL): Do NOT substitute real design elements with invented ones.
-  If you see HOT PINK, output HOT PINK. If you see diagonal straight stripes, output STRAIGHT STRIPES — NOT wavy swirls.
-  Do NOT reimagine or "improve" any element. COPY IT EXACTLY.
-- SUBLIMATION PATTERNS: Reproduce the EXACT SAME sublimation shapes, colors, waves, or geometric polygons. Do not replace them with a generic pattern.
-- Zero tolerance for invented elements: every output pixel must correspond to a real element in the reference image.
-
-== STEP 5: BACKGROUND-ONLY EXTRACTION — REMOVE ALL FOREGROUND CONTENT ==
-- REMOVE all visible text, letters, words, names, numbers, equations, readable handwriting, team/sponsor/brand wordmarks, logos, chest crests, badges, taglines, years, labels, and signatures.
-- REMOVE all foreground subjects and focal artwork: mascots, characters, animals, people, objects, emblems, standalone icons, and central illustrations.
-- PRESERVE only the background design: color fields, gradients, textures, halftones, stripes, panels, flames, splashes, brush strokes, abstract geometry, repeating motifs, and non-semantic decorative shapes.
-- Large or compositionally integrated foreground artwork must still be removed. For example, a large central wordmark or mascot is not background pattern.
-- If an element is ambiguous, retain only the portions that clearly form a continuous non-semantic background pattern.
-- Erase the complete foreground footprint and conservatively continue the nearest supported background pattern underneath it.
-- No white boxes, smudges, blank gaps, broad invented replacements, or redesign of the surrounding background composition.
-
-== STEP 6: FINISHING ==
-- Flatten all fabric wrinkles, fold shadows, and photographic lighting into clean 2D artwork.
-- CRITICAL: Do NOT flatten intentional design gradients, halftone dots, or intricate patterns into solid blocks. Reproduce them exactly.
-- The final output must look like a professional rectangular sublimation print file — perfectly clean, print-ready.
-
-== STEP 7: SHAPE PLACEMENT LOCK — CRITICAL FOR ACCURACY ==
-- Divide the canvas into a 4x4 grid (16 cells). Before outputting, verify every shape is in the correct grid cell matching the reference.
-- Left-side shapes stay left. Right-side shapes stay right. Center shapes stay center. Top shapes stay top. Bottom shapes stay bottom.
-- Do NOT mirror, flip, or reposition any element. Shape drift is a failure.
-- EXACT COLOR MATCHING: Preserve every source color relationship. Do NOT brighten, over-saturate, wash out, or shift any hue.
-- ELEMENT COUNT LOCK: Preserve the exact count of every repeated stripe, panel, shape, symbol, motif, and pattern element visible in the reference.
-
-== STEP 8: NO MIRRORING — ABSOLUTE RULE ==
-- DO NOT mirror, reflect, or symmetrize the design. The output must NOT be left-right symmetric unless the reference design itself is symmetric.
-- If the left side has a pattern and the right side is different — reproduce them differently, exactly as in the reference.
-- DO NOT create a butterfly/kaleidoscope/mirror effect. This is a real design file.
-- Every asymmetric element (logo position, stripe layout, patch placement) must remain asymmetric exactly as in the original.
-
-== STEP 9: EXACT GEOMETRY PRESERVATION — ZERO TOLERANCE ==
-You are now operating as a FORENSIC GEOMETRY ENGINE. Every polygon in the original image has a specific shape. You must preserve it with absolute precision.
-- Preserve every original polygon, every angle, every corner, every cut, every notch, every diagonal, every intersection, every edge, every offset, every taper, every thickness, every spacing, every proportion, every alignment, every symmetry.
-- No approximations. No simplification. No smoothing. No redesign. Zero tolerance for invented geometry.
-
-== STEP 10: EXACT SHAPE MATCHING ==
-- Every visible background shape must be reconstructed exactly, regardless of its color or style.
-- Every panel and color region must keep its original borders, proportions, and overlap order.
-- Every background stripe, curve, wave, flame, splash, organic contour, geometric motif, and repeated element must retain its original placement and structure.
-- Every line angle and intentional curve must remain identical.
-- Every notch, zigzag, beveled edge, clipped corner, overlapping panel, partial element, and internal contour must be reproduced.
-- Nothing may be guessed. Nothing may be replaced. Nothing may be stylized.
-
-== STEP 11: FORCE PIXEL ANALYSIS (MANDATORY) ==
-- Inspect the image pixel-by-pixel. Analyze at maximum zoom.
-- Compare neighboring pixels. Trace every color boundary. Follow every edge transition.
-- Reconstruct directly from observed pixels.
-- Never infer missing shapes. Never hallucinate geometry. Never invent symmetry. Never "clean up" irregularities.
-
-== STEP 12: VECTOR TRACE MODE ==
-Behave like Adobe Illustrator Image Trace combined with manual Pen Tool tracing — not like an illustrator, not a concept artist, not a designer.
-- Every path must follow the original image exactly.
-- No artistic interpretation whatsoever.
-
-== STEP 13: DOMINANT ARTWORK AND PATTERN RECONSTRUCTION — HIGHEST PRIORITY ==
-- Identify the actual dominant visual language of this specific reference instead of assuming it uses chevrons, esports geometry, or any particular style.
-- Preserve the source's dominant elements—whether geometric, organic, typographic, illustrated, photographic, minimal, maximal, symmetric, or asymmetric—with identical scale, placement, spacing, clipping, layering, and intersections.
-- Do not replace an unfamiliar design with generic stripes, V shapes, waves, flames, gradients, or esports graphics. Each source element is independent and unique.
-
-== STEP 14: MICRO DETAILS — MUST SURVIVE ==
-Preserve all of the following without exception:
-- micro triangles, micro slashes, tiny bevels, tiny chamfers, small clipped corners, micro zigzags, micro offsets, hidden intersections, partial shapes, cropped polygons, thin connectors, tiny angular cuts, subtle breaks, edge discontinuities.
-Every one of these must survive extraction intact.
-
-== STEP 15: COLOR REGION PRESERVATION ==
-- Never merge two adjacent color regions, even if they appear similar.
-- Never merge subtly different shades. Every color island must remain independent.
-- Every boundary must remain intact.
-- Do not average colors. Do not simplify gradients into flat fills. Keep every distinct region separate.
-
-== STEP 16: TOPOLOGY LOCK ==
-- Preserve the exact topology of the original artwork.
-- The number of visible shapes in the output should remain nearly identical to the original.
-- The hierarchy of overlapping panels must remain identical.
-- Do not reduce complexity. Do not merge polygons. Do not split polygons unless required by the source image.
-
-== STEP 17: STRUCTURAL FIDELITY OVER CLEANLINESS ==
-- Prioritize structural fidelity over visual cleanliness.
-- If the original contains asymmetry, preserve it. If the original contains irregular cuts, preserve them. If the original contains imperfect geometry, preserve it.
-- Never beautify. Never improve. Never redesign. Only reconstruct.
-
-== STEP 18: ANTI-HALLUCINATION — STRICT EVIDENCE ONLY ==
-- If any preserved shape is partially obscured, reconstruct it ONLY from visible evidence in the image.
-- Never fabricate hidden geometry or invent missing edges. The only permitted continuation is a conservative local fill directly beneath an explicitly removed overlay, using the nearest supported background evidence.
-- Never replace unknown details with generic esports patterns.
-
-== STEP 19: FINAL VALIDATION (MANDATORY BEFORE OUTPUT) ==
-Before producing the final output, internally compare your reconstruction against the original image.
-Verify every single one of the following:
-- overall background geometry, every pattern family, every polygon, every stripe, every curve, every angle, every border, every spacing, every notch, every layer, every color region, and every intersection. Confirm that all text, numbers, logos, badges, mascots, characters, objects, emblems, and focal illustrations are absent.
-If any difference is detected, continue refining until the reconstruction is visually indistinguishable from the original. Only then produce the final output.`;
-
-        } else if (promptMode === 'LOGO_FLATTEN') {
+        if (promptMode === 'LOGO_FLATTEN') {
           prompt = `You are a FORENSIC LOGO REPRODUCTION ARTIST. Your task is to create a 100% pixel-accurate, flat vector-ready copy of the logo in this reference image. You are NOT allowed to be creative. You are NOT allowed to simplify, stylize, or interpret. Copy it EXACTLY.
 
 == ACCURACY IS THE ONLY RULE (TARGET: 99%+ MATCH) ==
@@ -386,153 +238,9 @@ Verify: overall geometry, every polygon, every shape, every angle, every border,
 If any difference is detected, continue refining until the reconstruction is visually indistinguishable from the original.`;
 
         } else {
-          prompt = `🔴 CRITICAL REFERENCE LOCK — THIS IS THE MOST IMPORTANT INSTRUCTION:
-You are given an INPUT IMAGE. That input image IS the source of truth. Every color, every shape, every stripe, every pattern in your output MUST be copied EXACTLY from that input image. Do NOT invent. Do NOT approximate. Do NOT be creative. COPY EXACTLY.
-If you deviate from the input image in ANY way — wrong color, wrong stripe angle, wrong shape position, wrong pattern — you have FAILED.
-
-⚠️ HARDEST RULE — READ THIS FIRST AND OBEY IT ALWAYS:
-DO NOT DRAW A SHIRT. DO NOT DRAW A JERSEY SHAPE. DO NOT DRAW A NECKLINE. DO NOT DRAW ARMHOLES. DO NOT DRAW SLEEVES. DO NOT DRAW ANY CLOTHING SILHOUETTE WHATSOEVER.
-Your output canvas is a PLAIN RECTANGLE filled edge-to-edge with the COMPLETE VISIBLE PRINTED DESIGN, INCLUDING ALL ARTWORK.
-
-== REFERENCE IMAGE ANALYSIS — DO THIS FIRST, BEFORE ANYTHING ELSE ==
-Step 0 (mandatory): Look at the input image. Count every color. Note every stripe direction and angle. Note every shape. Memorize the exact color of each zone (top-left, top-right, center, bottom-left, bottom-right). You will reproduce ALL of this exactly.
-
-== FINAL OUTPUT STANDARD — THIS IS YOUR TARGET ==
-Your output must look EXACTLY like the flat rectangular source artwork panel shown next to a jersey product mockup image — the kind you see on stock design websites where the jersey photo is on the LEFT and the flat pattern file is on the RIGHT. That flat pattern on the RIGHT is your target output:
-- A perfectly flat rectangle filled completely edge-to-edge with the jersey's design
-- Zero shirt shape — no collar outline, no sleeve silhouette, no armhole curve anywhere in the output
-- Preserve ALL intricate design details: halftones, dot patterns, fine lines, and design gradients.
-- ONLY remove 3D lighting: no fabric wrinkles, no fold shadows, no lens vignette.
-- All lines are perfectly geometric (straight or smoothly curved AS DESIGNED — not distorted by the 3D shirt/body)
-- It looks like a professional Adobe Illustrator sublimation print file, ready to send to a fabric printer
-- The SAME pattern that is on the jersey — not a reinterpretation, not a reinvention — the EXACT same design colors, shapes, and layout
-
-You are a FORENSIC COPY ARTIST. Your ONLY task is to make a pixel-accurate flat rectangular replica of the COMPLETE VISIBLE PRINTED DESIGN on this jersey. You are NOT allowed to be creative. You are NOT allowed to invent or omit anything.
-
-== STEP 1: ANALYZE THE REFERENCE IMAGE (DO THIS FIRST) ==
-Before drawing anything, mentally catalog EVERY design element with surgical precision:
-- What are the EXACT background colors? (list every color zone)
-- What geometric shapes exist? (stripes, polygons, chevrons, curves, sublimation patterns — describe each one's exact angle, thickness, size, and position)
-- Where exactly is each color zone? (top-left corner, center-left, bottom-right, etc. — use a mental grid)
-- What exact colors are used? (e.g. "navy blue", "golden yellow", "white", "black")
-- How many stripes, polygons, or pattern repeats are there? Count them exactly.
-
-== STEP 2: PERSPECTIVE CORRECTION (MANDATORY) ==
-- The photo may show the jersey worn on a person, hung on a hanger, or shot at an angle. Mentally "cut open" the fabric and lay it completely flat.
-- Output the design as if the jersey fabric is unfolded into a flat rectangle — 100% straight-on, no perspective, no tilt, no 3D.
-- If both front and back panels are visible, ONLY reproduce the FRONT panel. Completely ignore the back.
-- The output must be a perfect upright rectangle — never crooked, never skewed.
-
-== STEP 2B: DE-PERSPECTIVE & STRAIGHTEN ALL LINES (MANDATORY) ==
-- ANY line, stripe, border, or panel edge that appears curved or bent in the photo ONLY because of fabric drape, body curvature, or camera angle MUST be straightened to a perfect geometric line in the output.
-- Side panels (left stripe, right stripe) that look curved because of the shirt shape must be output as perfectly straight vertical bands.
-- If a stripe appears to curve inward at the waist due to the body shape — straighten it. Output it as a ruler-straight vertical or diagonal line.
-- The output must look like the design was drawn in Adobe Illustrator with straight crisp lines and no fabric distortion whatsoever.
-- CRITICAL DISTINCTION: Lines that are curved IN THE DESIGN ITSELF (intentional artistic curves/waves) must remain. But lines that are only curved because of the 3D shirt/body/camera angle — must be output as straight.
-
-== STEP 3: CANVAS REQUIREMENTS ==
-- The output is a RECTANGLE. No shirt shape. No neckline cutout. No sleeve cutouts. No armholes. JUST A SOLID RECTANGLE.
-- Fill the entire canvas completely edge-to-edge with the design pattern.
-- Every color zone, stripe, and shape must bleed fully to all four canvas edges — no white space, no padding, no border.
-
-== STEP 4: SHAPE & COLOR ACCURACY — THIS IS ABSOLUTE LAW ==
-- EXACT HEX COLORS: You MUST extract and use the exact same color hex codes as the original. Do not saturate, brighten, or wash out the colors.
-- COPY EVERY SHAPE EXACTLY: same position on the canvas, same angle, same size, same color. No exceptions.
-- ANTI-HALLUCINATION RULE (CRITICAL): Do NOT substitute real design elements with invented ones.
-  If you see HOT PINK, output HOT PINK. If you see TEAL/CYAN, output TEAL/CYAN. If you see diagonal straight stripes, output STRAIGHT STRIPES — NOT wavy swirls.
-  Do NOT reimagine or "improve" any element. COPY IT EXACTLY.
-- SUBLIMATION PATTERNS: Reproduce the EXACT SAME sublimation shapes, colors, waves, or geometric polygons. Do not replace them with a generic pattern.
-- Zero tolerance for invented elements: every output pixel must correspond to a real element in the reference image.
-
-== STEP 5: TEXT, NUMBERS, AND LOGOS ==
-- STRICT KEEP-ALL RULE: PRESERVE every visible text block, letter, number, player name, team name, sponsor name, quote, year, tagline, logo, chest crest, badge, mascot, character, and illustration.
-- Reproduce large, small, horizontal, vertical, diagonal, curved, repeated, and partially visible text exactly where it appears.
-- Do NOT autocorrect spelling, rewrite wording, substitute a font, invent unreadable characters, or omit difficult content. Preserve the visible letterforms and shapes as evidence allows.
-- Printed artwork is never removable in this mode. Only the physical shirt presentation, lighting, wrinkles, folds, and perspective distortion may be removed.
-
-== STEP 6: FINISHING ==
-- Flatten all fabric wrinkles, fold shadows, and photographic lighting into clean 2D artwork.
-- CRITICAL: Do NOT flatten intentional design gradients, halftone dots, or intricate patterns into solid blocks. Reproduce them exactly.
-- The final output must look like a professional rectangular sublimation print file — perfectly clean, print-ready. NO SHIRT SHAPE. NO MOCKUP. RECTANGLE ONLY.
-
-== STEP 7: SHAPE PLACEMENT LOCK — CRITICAL FOR ACCURACY ==
-- Divide the canvas into a 4x4 grid (16 cells). Before outputting, verify every shape is in the correct grid cell matching the reference.
-- Left-side shapes stay left. Right-side shapes stay right. Center shapes stay center. Top shapes stay top. Bottom shapes stay bottom.
-- Do NOT mirror, flip, or reposition any element. Shape drift is a failure.
-- EXACT COLOR MATCHING: Preserve every source color relationship. Do NOT brighten, over-saturate, wash out, or shift any hue.
-- ELEMENT COUNT LOCK: Preserve the exact count of every repeated stripe, panel, shape, symbol, motif, text block, logo, and pattern element visible in the reference.
-
-== STEP 8: NO MIRRORING — ABSOLUTE RULE ==
-- DO NOT mirror, reflect, or symmetrize the design. The output must NOT be left-right symmetric unless the reference design itself is symmetric.
-- If the left side has a pattern and the right side is different — reproduce them differently, exactly as in the reference.
-- DO NOT create a butterfly/kaleidoscope/mirror effect. This is a real sublimation print file, not a reflected pattern.
-- Every asymmetric element (logo position, stripe layout, graphic placement) must remain asymmetric exactly as in the original.
-
-== STEP 9: EXACT GEOMETRY PRESERVATION — ZERO TOLERANCE ==
-You are now operating as a FORENSIC GEOMETRY ENGINE. Every polygon in the original image has a specific shape. You must preserve it with absolute precision.
-- Preserve every original polygon, every angle, every corner, every cut, every notch, every diagonal, every intersection, every edge, every offset, every taper, every thickness, every spacing, every proportion, every alignment, every symmetry.
-- No approximations. No simplification. No smoothing. No redesign. Zero tolerance for invented geometry.
-
-== STEP 10: EXACT SHAPE MATCHING ==
-- Every visible shape must be reconstructed exactly, regardless of its color, style, or subject.
-- Every panel and color region must keep its original borders, proportions, and overlap order.
-- Every stripe, curve, wave, flame, splash, organic contour, illustration, character, text block, logo, geometric motif, and repeated element must retain its original placement and structure.
-- Every line angle and intentional curve must remain identical.
-- Every notch, zigzag, beveled edge, clipped corner, overlapping panel, partial element, and internal contour must be reproduced.
-- Nothing may be guessed. Nothing may be replaced. Nothing may be stylized.
-
-== STEP 11: FORCE PIXEL ANALYSIS (MANDATORY) ==
-- Inspect the image pixel-by-pixel. Analyze at maximum zoom.
-- Compare neighboring pixels. Trace every color boundary. Follow every edge transition.
-- Reconstruct directly from observed pixels.
-- Never infer missing shapes. Never hallucinate geometry. Never invent symmetry. Never "clean up" irregularities.
-
-== STEP 12: VECTOR TRACE MODE ==
-Behave like Adobe Illustrator Image Trace combined with manual Pen Tool tracing — not like an illustrator, not a concept artist, not a designer.
-- Every path must follow the original image exactly.
-- No artistic interpretation whatsoever.
-
-== STEP 13: DOMINANT ARTWORK AND PATTERN RECONSTRUCTION — HIGHEST PRIORITY ==
-- Identify the actual dominant visual language of this specific reference instead of assuming it uses chevrons, esports geometry, or any particular style.
-- Preserve the source's dominant elements—whether geometric, organic, typographic, illustrated, photographic, minimal, maximal, symmetric, or asymmetric—with identical scale, placement, spacing, clipping, layering, and intersections.
-- Do not replace an unfamiliar design with generic stripes, V shapes, waves, flames, gradients, or esports graphics. Each source element is independent and unique.
-
-== STEP 14: MICRO DETAILS — MUST SURVIVE ==
-Preserve all of the following without exception:
-- micro triangles, micro slashes, tiny bevels, tiny chamfers, small clipped corners, micro zigzags, micro offsets, hidden intersections, partial shapes, cropped polygons, thin connectors, tiny angular cuts, subtle breaks, edge discontinuities.
-Every one of these must survive extraction intact.
-
-== STEP 15: COLOR REGION PRESERVATION ==
-- Never merge two adjacent color regions, even if they appear similar.
-- Never merge subtly different shades. Every color island must remain independent.
-- Every boundary must remain intact.
-- Do not average colors. Do not simplify gradients into flat fills. Keep every distinct region separate.
-
-== STEP 16: TOPOLOGY LOCK ==
-- Preserve the exact topology of the original artwork.
-- The number of visible shapes in the output should remain nearly identical to the original.
-- The hierarchy of overlapping panels must remain identical.
-- Do not reduce complexity. Do not merge polygons. Do not split polygons unless required by the source image.
-
-== STEP 17: STRUCTURAL FIDELITY OVER CLEANLINESS ==
-- Prioritize structural fidelity over visual cleanliness.
-- If the original contains asymmetry, preserve it. If the original contains irregular cuts, preserve them. If the original contains imperfect geometry, preserve it.
-- Never beautify. Never improve. Never redesign. Only reconstruct.
-
-== STEP 18: ANTI-HALLUCINATION — STRICT EVIDENCE ONLY ==
-- If any shape is partially obscured, reconstruct it ONLY from visible evidence in the image.
-- Never fabricate hidden geometry. Never invent missing edges. Never continue lines based on assumptions.
-- Never replace unknown details with generic esports patterns.
-
-== STEP 19: FINAL VALIDATION (MANDATORY BEFORE OUTPUT) ==
-Before producing the final output, internally compare your reconstruction against the original image.
-Verify every single one of the following:
-- overall geometry, every text block, logo, illustration, character, pattern family, polygon, stripe, curve, angle, border, spacing, notch, layer, color region, and intersection. Confirm that no visible printed element was omitted.
-If any difference is detected, continue refining until the reconstruction is visually indistinguishable from the original. Only then produce the final output.`;
+          prompt = buildGarmentExtractionPrompt(promptMode === 'ERASE_LOGOS' ? 'ERASE_LOGOS' : 'PRESERVE_LOGOS');
         }
 
-        const flexibilityGuard = buildGarmentFlexibilityGuard(promptMode);
-        if (flexibilityGuard) prompt = `${prompt}\n\n${flexibilityGuard}`;
       }
 
       let generatedImageBuffer;
@@ -563,11 +271,13 @@ If any difference is detected, continue refining until the reconstruction is vis
           aspectRatio: targetAspectRatio,
           mode: extractionMode,
         });
+        if (project.trace_type === "mockup") extractionInput.system_prompt = buildGarmentExtractionSystemPrompt();
         console.log("[API Step 1] Garment extraction configuration:", {
           mode: extractionMode,
           resolution: extractionInput.resolution || "provider-default",
           outputFormat: extractionInput.output_format || "provider-default",
           aspectRatio: targetAspectRatio,
+          promptMode,
         });
 
         const result = await fal.subscribe("fal-ai/nano-banana-pro/edit", {
@@ -711,22 +421,42 @@ If any difference is detected, continue refining until the reconstruction is vis
 
     if (step === 2) {
       // ==========================================
-      // STAGE 2: CRISP UPSCALE WITH RECRAFT
+      // STAGE 2: HD UPSCALE
       // ==========================================
-      // All extraction types (garment, logo, and universal) use the same
-      // structure-preserving upscale before Recraft vectorization.
+      // Garments use ESRGAN 4x; other extraction types retain Recraft Crisp.
       // ==========================================
       if (!project.generated_image_url || project.generated_image_url === 'REFUNDED') {
         return NextResponse.json({ error: "Step 1 (Auto-Trace) must be completed before upscaling." }, { status: 403 });
       }
-      const recraftApiToken = process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY;
-      if (!recraftApiToken) throw new Error("RECRAFT_API_TOKEN is missing in environment variables.");
-
       const upscaleInputUrl = normalizeUserImageUrl(project.generated_image_url, new URL(request.url).origin);
       if (!isOwnedStorageUrl(upscaleInputUrl, { userId: user.id, projectId }) || !(await validateUrlForSSRF(upscaleInputUrl, { allowedHosts: getAllowedStorageHosts() }))) {
         return NextResponse.json({ error: "Invalid or unauthorized generated image URL" }, { status: 400 });
       }
 
+      if (project.trace_type === "mockup") {
+        if (!process.env.FAL_KEY) throw new Error("FAL_KEY is missing in environment variables.");
+        const { fal } = await import("@fal-ai/client");
+        console.log("[API Step 2] Upscaling garment with fal-ai/esrgan...");
+        const result = await fal.subscribe("fal-ai/esrgan", {
+          input: { image_url: upscaleInputUrl, scale: 4 },
+        });
+        const upscaledUrl = result?.data?.image?.url || result?.data?.image_url;
+        if (!upscaledUrl) throw new Error("ESRGAN did not return a valid image URL.");
+        const traceCharge = await findLatestProjectCharge(projectId);
+        await recordProviderUsage({
+          creditTransactionId: traceCharge?.transactionId || null,
+          projectId,
+          userId,
+          provider: "fal",
+          endpoint: "fal-ai/esrgan",
+          providerRequestId: result?.requestId || null,
+          isOwnerTest: traceCharge?.isOwnerTest === true,
+        });
+        return NextResponse.json({ success: true, step: 2, fileUrl: upscaledUrl, mimeType: result?.data?.image?.content_type || "image/png" });
+      }
+
+      const recraftApiToken = process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY;
+      if (!recraftApiToken) throw new Error("RECRAFT_API_TOKEN is missing in environment variables.");
       console.log(`[API Step 2] Upscaling ${project.trace_type || "extraction"} with Recraft Crisp...`);
       const crispRes = await fetchWithRetry("https://external.api.recraft.ai/v1/images/crispUpscale", {
         method: "POST",

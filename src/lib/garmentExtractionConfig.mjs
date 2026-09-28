@@ -10,26 +10,22 @@ export function buildGarmentExtractionInput({ imageUrl, prompt, aspectRatio, mod
     image_urls: [imageUrl],
     prompt,
     aspect_ratio: aspectRatio,
+    num_images: 1,
+    output_format: "png",
+    limit_generations: true,
   };
 
   if (selectedMode === ENHANCED_MODE) {
     return {
       ...baseInput,
-      num_images: 1,
-      output_format: "png",
       resolution: "2K",
-      limit_generations: true,
     };
   }
 
-  // Keep the deployed request shape available for a zero-risk rollback while
-  // the enhanced, provider-supported configuration is evaluated in preview.
-  return {
-    ...baseInput,
-    guidance_scale: 10,
-    num_inference_steps: 50,
-    image_strength: 0.55,
-  };
+  // Nano Banana Pro does not expose diffusion guidance, steps or image strength.
+  // Sending those fields cannot enforce reference fidelity. Legacy retains the
+  // provider's default resolution and the existing browser save flow.
+  return baseInput;
 }
 
 // 2K PNGs can exceed the browser-to-server request body limit when Base64
