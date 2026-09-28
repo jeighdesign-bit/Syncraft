@@ -842,7 +842,7 @@ export default function StartScreen() {
         
         {/* ────────────────────────────────────────────────────────────────────── */}
         <div style={{ width: "100%", maxWidth: "1200px", margin: "60px auto 40px", padding: "0 20px" }}>
-          <img src="/Banner.webp" alt="Syncraft AI production workflow for print-ready artwork" width={1600} height={691} style={{ width: "100%", height: "auto", borderRadius: "12px", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }} />
+          <img src="/SYNCRAFT%20copy.jpg" alt="Syncraft AI production workflow for print-ready artwork" width={6000} height={2571} style={{ width: "100%", height: "auto", borderRadius: "12px", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }} />
         </div>
 
         <EduSection />
