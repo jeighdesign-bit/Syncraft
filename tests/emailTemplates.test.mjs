@@ -58,12 +58,12 @@ test("payment receipt uses safe fallbacks instead of blank details", () => {
 test("DesaynScale delivery email includes lifetime access and an escaped download link", () => {
   const email = createDesaynscaleDeliveryEmail({
     downloadUrl: `https://drive.google.com/folder?id=1&next=<script>`,
-    claimNumber: 2,
   });
 
   assert.match(email.subject, /FREE DesaynScale lifetime access/);
   assert.match(email.html, /Lifetime/);
-  assert.match(email.html, /Elite launch bonus #2/);
+  assert.match(email.html, /₱899 Elite plan/);
+  assert.doesNotMatch(email.html, /first 10|slots? left/i);
   assert.match(email.html, /id=1&amp;next=&lt;script&gt;/);
   assert.doesNotMatch(email.html, /next=<script>/);
   assert.match(email.text, /Open the DesaynScale files: https:\/\/drive\.google\.com/);

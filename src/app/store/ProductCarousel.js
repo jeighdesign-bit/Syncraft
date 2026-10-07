@@ -33,6 +33,7 @@ export default function ProductCarousel({ sections }) {
   const [requestForm, setRequestForm] = useState({ email: "", receiptFile: null });
   const [purchaseMessage, setPurchaseMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [acceptedPurchaseTerms, setAcceptedPurchaseTerms] = useState(false);
 
   const catalog = useMemo(() => {
     const sectionMap = new Map(
@@ -83,6 +84,7 @@ export default function ProductCarousel({ sections }) {
     setRequestForm({ email: "", receiptFile: null });
     setPurchaseMessage("");
     setIsSubmitting(false);
+    setAcceptedPurchaseTerms(false);
   };
 
   const closeProduct = () => {
@@ -91,11 +93,16 @@ export default function ProductCarousel({ sections }) {
     setRequestForm({ email: "", receiptFile: null });
     setPurchaseMessage("");
     setIsSubmitting(false);
+    setAcceptedPurchaseTerms(false);
   };
 
   const handleRequestSubmit = async (event) => {
     event.preventDefault();
     if (!selectedProduct || selectedProduct.price === "Free") return;
+    if (!acceptedPurchaseTerms) {
+      setPurchaseMessage("Please accept the purchase terms before submitting.");
+      return;
+    }
 
     setIsSubmitting(true);
     setPurchaseMessage("");
@@ -377,7 +384,18 @@ export default function ProductCarousel({ sections }) {
                       </div>
                     </div>
                   </label>
-                  <button className={styles.buyButton} type="submit" disabled={isSubmitting}>
+                  <label className={styles.purchaseConsent}>
+                    <input
+                      type="checkbox"
+                      checked={acceptedPurchaseTerms}
+                      onChange={(event) => setAcceptedPurchaseTerms(event.target.checked)}
+                      required
+                    />
+                    <span>
+                      I agree to the <a href="/terms" target="_blank" rel="noreferrer">Terms</a>, <a href="/refunds" target="_blank" rel="noreferrer">Refund Policy</a>, and <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.
+                    </span>
+                  </label>
+                  <button className={styles.buyButton} type="submit" disabled={isSubmitting || !acceptedPurchaseTerms}>
                     {isSubmitting ? "Submitting..." : "Send purchase request"} <ArrowUpRight size={17} aria-hidden="true" />
                   </button>
                 </form>

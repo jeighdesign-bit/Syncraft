@@ -3,14 +3,11 @@ import "server-only";
 import { adminSupabase } from "@/lib/supabase";
 import { sendDesaynscaleDeliveryEmail } from "@/lib/transactionalEmail";
 
-export const ELITE_DESAYNSCALE_PROMO_LIMIT = 10;
-
 async function deliverPendingClaim({
   userId,
   email,
   paymentSource,
   paymentId,
-  claimNumber,
 }) {
   const { data: claim, error: claimError } = await adminSupabase
     .from("elite_desaynscale_promo_claims")
@@ -29,7 +26,6 @@ async function deliverPendingClaim({
 
   const delivery = await sendDesaynscaleDeliveryEmail({
     to: claim.email || email,
-    claimNumber,
     paymentSource: claim.payment_source || paymentSource,
     paymentRecordId: claim.payment_id || paymentId,
   });
@@ -63,7 +59,7 @@ export async function claimEliteDesaynscalePromo({
 }) {
   if (planKey !== "elite") return { eligible: false };
   if (!adminSupabase || !userId || !paymentSource || !paymentId) {
-    return { eligible: true, granted: false, error: "Promo claim is not configured." };
+    return { eligible: true, granted: false, error: "Elite access is not configured." };
   }
 
   const { data, error } = await adminSupabase.rpc("claim_elite_desaynscale_promo", {
@@ -75,7 +71,18 @@ export async function claimEliteDesaynscalePromo({
 
   if (error) {
     console.error("[DesaynScale Promo] Claim failed:", error.message);
-    return { eligible: true, granted: false, error: error.message };
+    const delivery = await sendDesaynscaleDeliveryEmail({
+      to: email,
+      paymentSource,
+      paymentRecordId: paymentId,
+    });
+    return {
+      eligible: true,
+      granted: delivery.sent,
+      delivery,
+      fallbackDelivery: true,
+      error: error.message,
+    };
   }
 
   const row = Array.isArray(data) ? data[0] : data;
@@ -84,29 +91,36 @@ export async function claimEliteDesaynscalePromo({
   const claimNumber = Number(row?.claim_number || 0) || null;
   let delivery = null;
 
-  if ((granted || alreadyEntitled) && claimNumber) {
+  if (granted || alreadyEntitled) {
     delivery = await deliverPendingClaim({
       userId,
       email,
       paymentSource,
       paymentId,
-      claimNumber,
+    });
+  } else {
+    // Backward compatibility while production still has the original first-10
+    // database function. Resend's payment-based idempotency key prevents duplicates.
+    delivery = await sendDesaynscaleDeliveryEmail({
+      to: email,
+      paymentSource,
+      paymentRecordId: paymentId,
     });
   }
 
   return {
     eligible: true,
-    granted,
+    granted: granted || Boolean(delivery?.sent),
     alreadyEntitled,
     claimNumber,
-    remainingSlots: Number(row?.slots_remaining ?? ELITE_DESAYNSCALE_PROMO_LIMIT),
+    fallbackDelivery: !granted && !alreadyEntitled,
     delivery,
   };
 }
 
 export async function getEliteDesaynscalePromoStatus() {
   if (!adminSupabase) {
-    return { configured: false, limit: ELITE_DESAYNSCALE_PROMO_LIMIT, claimed: 0, remaining: 0 };
+    return { configured: false, entitled: 0 };
   }
 
   const { count, error } = await adminSupabase
@@ -115,15 +129,12 @@ export async function getEliteDesaynscalePromoStatus() {
 
   if (error) {
     console.warn("[DesaynScale Promo] Status unavailable:", error.message);
-    return { configured: false, limit: ELITE_DESAYNSCALE_PROMO_LIMIT, claimed: 0, remaining: 0 };
+    return { configured: false, entitled: 0 };
   }
 
-  const claimed = Math.min(Number(count || 0), ELITE_DESAYNSCALE_PROMO_LIMIT);
   return {
     configured: true,
-    limit: ELITE_DESAYNSCALE_PROMO_LIMIT,
-    claimed,
-    remaining: Math.max(0, ELITE_DESAYNSCALE_PROMO_LIMIT - claimed),
+    entitled: Number(count || 0),
   };
 }
 
@@ -151,7 +162,6 @@ export async function retryFailedDesaynscaleDeliveries({
       email: claim.email,
       paymentSource: claim.payment_source,
       paymentId: claim.payment_id,
-      claimNumber: claim.claim_number,
     });
 
     if (delivery.sent) result.sent++;

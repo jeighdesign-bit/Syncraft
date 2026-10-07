@@ -17,21 +17,21 @@ export async function GET() {
       );
     }
 
-    // Securely fetch real avatars without leaking emails
+    // Prefer recently active accounts, remove duplicate URLs, and return only
+    // public profile-photo URLs (never email addresses or other auth data).
     const { data: authData, error: authError } = await adminSupabase.auth.admin.listUsers();
-    let realAvatars = [];
-    
-    if (!authError && authData && authData.users) {
-      realAvatars = authData.users
-        .map(u => u.user_metadata?.avatar_url) // Extract only the avatar string
-        .filter(url => url)                    // Remove nulls/undefined
-        .slice(0, 5);                          // Get only top 5
-    }
+    const users = authError || !authData?.users ? [] : [...authData.users];
+    const avatars = [...new Set(
+      users
+        .sort((a, b) => Date.parse(b.last_sign_in_at || b.created_at || 0) - Date.parse(a.last_sign_in_at || a.created_at || 0))
+        .map((user) => user.user_metadata?.avatar_url)
+        .filter((url) => typeof url === "string" && url.startsWith("https://"))
+    )].slice(0, 5);
 
     return NextResponse.json({
       success: true,
       totalUsers: count || 0,
-      avatars: realAvatars
+      avatars
     });
   } catch (err) {
     console.error("Failed to fetch user stats", err);

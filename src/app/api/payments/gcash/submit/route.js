@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { MANUAL_PAYMENT_HISTORY_STATUSES } from "@/lib/paymentApprovalRules.mjs";
 import { adminSupabase } from "@/lib/supabase";
 import { getCreditPlan } from "@/lib/paymentPlans";
+import { MANUAL_GCASH_ENABLED } from "@/lib/paymentMethods.mjs";
 import { enforceRateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -13,6 +14,13 @@ function normalizeReference(value) {
 }
 
 export async function POST(request) {
+  if (!MANUAL_GCASH_ENABLED) {
+    return NextResponse.json(
+      { error: "Manual GCash submissions are currently disabled. Please use QR Ph or card checkout for automatic crediting." },
+      { status: 410 }
+    );
+  }
+
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader) {

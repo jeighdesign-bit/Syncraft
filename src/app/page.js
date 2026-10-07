@@ -3,7 +3,7 @@
 // ─── React & Routing ──────────────────────────────────────────────────────────
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import Image from "next/image";
 
 // ─── Data & Auth ──────────────────────────────────────────────────────────────
 import { createClient } from "@/utils/supabase/client";
@@ -12,7 +12,7 @@ import { compressImageClientSide } from "@/utils/imageUtils";
 import { fetchWithAuthRetry, uploadImageToStorage } from "@/utils/uploadClient";
 import { trackEvent } from "@/lib/analytics.mjs";
 
-import { ImageIcon, Monitor, LogIn, User, Trash2, LogOut, CheckCircle2, X, Loader2, Scan, Scissors, ShieldCheck, Code2, Upload, ShoppingBag } from "lucide-react";
+import { ImageIcon, Trash2, X, Loader2, Scan, Scissors, Code2, Upload, ArrowRight } from "lucide-react";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 import "./globals.css";
@@ -20,6 +20,7 @@ import "./home.css";
 
 // ─── Components ───────────────────────────────────────────────────────────────
 import TopUpModal from "@/components/TopUpModal";
+import AccountCreditMenu from "@/components/AccountCreditMenu";
 import LoginModal from "./components/LoginModal";
 import NewProjectModal from "./components/NewProjectModal";
 import OnboardingModal from "./components/OnboardingModal";
@@ -30,13 +31,13 @@ import BeforeAfterSlider from "./components/BeforeAfterSlider";
 import PromoModal from "./components/PromoModal";
 import AIDisclaimerModal from "./components/AIDisclaimerModal";
 import ProductionProofSection from "./components/TestimonialSection";
+import PricingSection from "./components/PricingSection";
 import FAQSection from "./components/FAQSection";
 import GreatForSection from "./components/GreatForSection";
 import FloatingPromoVideo from "./components/FloatingPromoVideo";
-import QRCode from "react-qr-code";
 import FeedbackWidget from "@/app/workspace/[id]/components/FeedbackWidget";
 
-const marqueeFeatures = [
+const workflowFeatures = [
   "Garment Pattern Extraction",
   "Universal Design Recovery",
   "Logo & Wordmark Tracing",
@@ -46,6 +47,27 @@ const marqueeFeatures = [
   "Sublimation Design Extraction",
   "Artwork Recovery",
 ];
+
+const landingNavItems = [
+  { id: "creative-tools", label: "Features" },
+  { id: "how-it-works", label: "How It Works" },
+  { id: "samples-section", label: "Examples" },
+  { id: "pricing", label: "Pricing" },
+  { id: "faq", label: "FAQ" },
+];
+
+const landingScrollSectionIds = [
+  "creative-tools",
+  "how-it-works",
+  "samples-section",
+  "pricing",
+  "production-proof",
+  "faq",
+];
+
+// Originals are resized to a 2048px JPEG before upload. This limit protects
+// browser memory while allowing modern phone/camera files larger than 10MB.
+const MAX_SOURCE_IMAGE_MB = 25;
 
 function SocialIcon({ name }) {
   const paths = {
@@ -69,10 +91,6 @@ export default function StartScreen() {
   const bgRemoveInputRef = useRef(null);
   const containerRef = useRef(null);
 
-  const [syncSessionId, setSyncSessionId] = useState("");
-  const [showQrModal, setShowQrModal] = useState(false);
-  const [isQrConnected, setIsQrConnected] = useState(false);
-
   // ─── Data State ─────────────────────────────────────────────────────────────
   const [recentProjects, setRecentProjects] = useState([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
@@ -84,10 +102,12 @@ export default function StartScreen() {
   const [isDraggingGlobal, setIsDraggingGlobal] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showTopUpModal, setShowTopUpModal] = useState(false);
+  const [selectedPricingPlan, setSelectedPricingPlan] = useState("pro");
+  const [topUpInitialStep, setTopUpInitialStep] = useState(1);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [showCopyrightNotice, setShowCopyrightNotice] = useState(true);
+  const [activeLandingSection, setActiveLandingSection] = useState(null);
+  const [showPsdUpdate, setShowPsdUpdate] = useState(true);
   const [pendingFile, setPendingFile] = useState(null); // holds file waiting for type selection
 
   // ─── Modal Specific State ───────────────────────────────────────────────────
@@ -103,7 +123,39 @@ export default function StartScreen() {
 
   // ─── Initialization ─────────────────────────────────────────────────────────
   useEffect(() => {
-    setShowCopyrightNotice(localStorage.getItem("syncraft-copyright-notice-dismissed") !== "1");
+    setShowPsdUpdate(localStorage.getItem("syncraft-psd-export-update-dismissed-v1") !== "1");
+  }, []);
+
+  useEffect(() => {
+    const scrollContainer = containerRef.current;
+    if (!scrollContainer) return undefined;
+
+    let animationFrame = null;
+    const updateActiveSection = () => {
+      animationFrame = null;
+      const containerBounds = scrollContainer.getBoundingClientRect();
+      const activationLine = containerBounds.top + Math.min(containerBounds.height * 0.38, 360);
+      let currentSection = null;
+
+      landingScrollSectionIds.forEach((id) => {
+        const section = document.getElementById(id);
+        if (section && section.getBoundingClientRect().top <= activationLine) currentSection = id;
+      });
+
+      setActiveLandingSection((current) => current === currentSection ? current : currentSection);
+    };
+    const scheduleUpdate = () => {
+      if (animationFrame === null) animationFrame = window.requestAnimationFrame(updateActiveSection);
+    };
+
+    updateActiveSection();
+    scrollContainer.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    return () => {
+      scrollContainer.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+    };
   }, []);
 
   useEffect(() => {
@@ -127,40 +179,37 @@ export default function StartScreen() {
     };
     window.addEventListener("dragover", handleGlobalDragOver);
 
-    const handleScroll = () => setScrolled(window.scrollY > 100);
-    window.addEventListener("scroll", handleScroll);
-
     return () => {
       window.removeEventListener("dragover", handleGlobalDragOver);
-      window.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
-  // Handle QR Sync Session Generation
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      let syncId = localStorage.getItem("globalSyncSessionId");
-      if (!syncId) {
-        syncId = crypto.randomUUID();
-        localStorage.setItem("globalSyncSessionId", syncId);
-      }
-      setSyncSessionId(syncId);
-    }
-  }, []);
+    if (!user) return;
 
-  // Handle Return from Online Payments (PayMongo QR Ph / Dodo)
+    const pendingPlan = sessionStorage.getItem("syncraft_pending_pricing_plan");
+    if (!pendingPlan) return;
+
+    sessionStorage.removeItem("syncraft_pending_pricing_plan");
+    setSelectedPricingPlan(pendingPlan);
+    setTopUpInitialStep(2);
+    setShowLoginModal(false);
+    setShowTopUpModal(true);
+  }, [user]);
+
+  // Handle Return from Online Payments (PayMongo QR Ph / Dodo / Polar)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const topupStatus = params.get("topup");
     if (!topupStatus) return;
 
-    if (topupStatus === "paymongo-return" || topupStatus === "dodo-return") {
+    if (["paymongo-return", "dodo-return", "polar-return"].includes(topupStatus)) {
       trackEvent("checkout_return", { payment_provider: topupStatus.split("-")[0] });
       toast.success("Payment completed! Your credits are being credited.");
       if (user?.id) fetchCredits(user.id);
       window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (topupStatus === "paymongo-cancelled" || topupStatus === "dodo-cancelled") {
+    } else if (["paymongo-cancelled", "dodo-cancelled", "polar-cancelled"].includes(topupStatus)) {
       trackEvent("checkout_cancelled", { payment_provider: topupStatus.split("-")[0] });
       toast.info("Payment checkout was cancelled.");
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -182,9 +231,6 @@ export default function StartScreen() {
       const pendingUrl = sessionStorage.getItem("pendingMobileImage");
       if (pendingUrl && user) {
         sessionStorage.removeItem("pendingMobileImage");
-        setIsQrConnected(true);
-        setShowQrModal(false);
-
         try {
           const response = await fetch(pendingUrl);
           const blob = await response.blob();
@@ -221,7 +267,7 @@ export default function StartScreen() {
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            setPublicStats({ totalUsers: data.totalUsers, avatars: data.avatars });
+            setPublicStats({ totalUsers: data.totalUsers, avatars: data.avatars || [] });
           }
         })
         .catch(console.error);
@@ -350,8 +396,7 @@ export default function StartScreen() {
 
     const finalTraceType = isBgRemover ? "bg_remover" : (mobileTraceType || modalTraceType);
 
-    // Limit upload to 10MB to save bandwidth and prevent AI processing timeouts
-    const maxSizeInMB = isBgRemover ? 20 : 10;
+    const maxSizeInMB = MAX_SOURCE_IMAGE_MB;
     if (file.size > maxSizeInMB * 1024 * 1024) {
       trackEvent("upload_failure", { tool: finalTraceType, reason: "file_too_large" });
       toast.error(`File is too large! Maximum allowed size is ${maxSizeInMB}MB.`);
@@ -435,7 +480,7 @@ export default function StartScreen() {
   const openModalWithFile = (file) => {
     if (!file || !file.type.startsWith("image/")) return;
     if (!user) { setShowLoginModal(true); return; }
-    const maxSizeInMB = 10;
+    const maxSizeInMB = MAX_SOURCE_IMAGE_MB;
     if (file.size > maxSizeInMB * 1024 * 1024) {
       toast.error(`File is too large! Maximum allowed size is ${maxSizeInMB}MB.`);
       return;
@@ -446,7 +491,7 @@ export default function StartScreen() {
 
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="start-screen-container" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} onClick={() => setOpenMenuId(null)}>
+    <div ref={containerRef} className="start-screen-container" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} onClick={() => setOpenMenuId(null)}>
       {/* Global Drag & Drop Overlay */}
       {isDraggingGlobal && (
         <div
@@ -470,61 +515,53 @@ export default function StartScreen() {
       {/* Top Navigation Bar */}
       <header style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "64px", background: "rgba(17, 17, 17, 0.85)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.05)", zIndex: 50, display: "flex", justifyContent: "center", padding: "0 20px" }}>
 
-          <div style={{ display: "flex", width: "100%", maxWidth: "1200px", alignItems: "center", justifyContent: "space-between" }}>
+          <div className="landing-header-inner">
           {/* Left: Brand navigation */}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", opacity: scrolled ? 1 : 0, pointerEvents: scrolled ? "auto" : "none", transition: "opacity 0.3s ease" }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-              <img src="/logo.svg" alt="Syncraft Navbar Logo" width={765} height={137} style={{ height: "32px", width: "auto" }} />
-            </div>
+          <div className="landing-header-brand">
+            <button
+              type="button"
+              className="landing-home-logo"
+              onClick={() => {
+                const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+                containerRef.current?.scrollTo({ top: 0, behavior });
+                window.scrollTo({ top: 0, behavior });
+              }}
+              aria-label="Back to the top of the Syncraft landing page"
+            >
+              <img src="/logo.svg" alt="" width={765} height={137} />
+            </button>
           </div>
+
+          <nav className="landing-header-nav" aria-label="Landing page navigation">
+            {landingNavItems.map(({ id, label }) => (
+              <a
+                key={id}
+                href={`#${id}`}
+                className={activeLandingSection === id ? "landing-header-nav__active" : undefined}
+                aria-current={activeLandingSection === id ? "location" : undefined}
+                onClick={() => setActiveLandingSection(id)}
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
 
           {/* Right: Auth & Credits */}
           <div className="syncraft-header-controls">
             {user ? (
-              <>
-                {/* Store Navigation */}
-                <Link
-                  href="/store"
-                  aria-label="Open Syncraft Store"
-                  className="syncraft-header-control syncraft-header-control--store"
-                >
-                  <ShoppingBag size={14} aria-hidden="true" />
-                  STORE
-                </Link>
-
-                {/* Premium Credits Badge */}
-                <button
-                  type="button"
-                  onClick={() => setShowTopUpModal(true)}
-                  className="syncraft-header-control"
-                  aria-label={credits <= 0 ? "Buy credits. Open top up" : `${credits} credits. Open top up`}
-                >
-                  {credits <= 0 ? (
-                    "BUY CREDITS"
-                  ) : (
-                    <>
-                      <span className="syncraft-header-control__value">{credits}</span>
-                      <span className="syncraft-header-control__label">CREDITS</span>
-                    </>
-                  )}
-                </button>
-
-                {/* Profile Pill */}
-                <div className="syncraft-header-control">
-                  {user.user_metadata?.avatar_url ? (
-                    <img src={user.user_metadata.avatar_url} referrerPolicy="no-referrer" className="syncraft-header-control__avatar" alt="Avatar" />
-                  ) : <div className="syncraft-header-control__avatar" style={{ background: "#333", display: "flex", alignItems: "center", justifyContent: "center" }}><User size={14} color="#aaa" /></div>}
-                  <span className="syncraft-header-control__text">{user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0]}</span>
-                </div>
-
-                {/* Logout Icon Button */}
-                <button onClick={handleLogout} style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", padding: "8px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", transition: "all 0.2s" }} onMouseOver={e => { e.currentTarget.style.color = "#ff4444"; e.currentTarget.style.background = "rgba(255,68,68,0.1)"; }} onMouseOut={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.background = "transparent"; }} title="Logout">
-                  <LogOut size={18} />
-                </button>
-              </>
+              <AccountCreditMenu
+                user={user}
+                credits={credits}
+                onOpenTopUp={() => {
+                  setSelectedPricingPlan("pro");
+                  setTopUpInitialStep(1);
+                  setShowTopUpModal(true);
+                }}
+                onSignOut={handleLogout}
+              />
             ) : (
-              <button onClick={handleLogin} className="start-btn" style={{ background: "#d4ff59", color: "#000", borderColor: "#d4ff59", display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", padding: "8px 16px", borderRadius: "12px", textTransform: "uppercase", letterSpacing: "1px" }}>
-                <LogIn size={16} /> Log In
+              <button type="button" onClick={handleLogin} className="header-sign-in">
+                Sign in
               </button>
             )}
           </div>
@@ -532,100 +569,74 @@ export default function StartScreen() {
       </header>
 
       {/* FULL WIDTH HERO SECTION */}
-      <div style={{ position: "relative", width: "calc(100% + 40px)", marginLeft: "-20px", marginRight: "-20px", background: "#1a1a1a", paddingTop: "100px", paddingBottom: "40px", color: "#fff" }}>
-        {showCopyrightNotice && (
-          <div style={{ position: "absolute", top: 0, left: 0, width: "100%", background: "#111", borderBottom: "1px solid rgba(255,255,255,0.08)", zIndex: 3 }}>
-            <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "center", gap: "14px", color: "#d8d8d8", fontSize: "12px", lineHeight: "1.5", textAlign: "center" }}>
-              <ShieldCheck size={15} color="#d4ff59" style={{ flexShrink: 0 }} />
-              <span>
-                Copyright reminder: only upload or generate designs you own, are authorized to use, or have rights to process. Unauthorized copyrighted or trademarked content may be removed.
-              </span>
+      <div style={{ position: "relative", width: "calc(100% + 40px)", marginLeft: "-20px", marginRight: "-20px", backgroundColor: "#1a1a1a", backgroundImage: user ? "radial-gradient(rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px)" : "radial-gradient(ellipse at 50% 78%, rgba(255, 184, 45, 0.16) 0%, rgba(255, 184, 45, 0.075) 30%, transparent 64%), radial-gradient(rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px)", backgroundSize: user ? "24px 24px" : "100% 100%, 24px 24px", backgroundPosition: user ? "0 0" : "center, 0 0", backgroundRepeat: user ? "repeat" : "no-repeat, repeat", paddingTop: "100px", paddingBottom: user ? "40px" : "110px", color: "#fff" }}>
+        {user && showPsdUpdate && (
+          <aside className="product-update-banner" aria-label="Product update">
+            <div className="product-update-banner__inner">
+              <div className="product-update-banner__message">
+                <img
+                  className="product-update-banner__ps"
+                  src="https://www.adobe.com/cc-shared/assets/img/product-icons/svg/photoshop.svg"
+                  alt=""
+                  width="20"
+                  height="20"
+                />
+                <span className="product-update-banner__copy">
+                  <strong><span>NEW UPDATE:</span> Export your designs as layered PSD files.</strong>
+                  <span>Open organized raster layers directly in Photoshop.</span>
+                </span>
+              </div>
               <button
                 type="button"
-                aria-label="Dismiss copyright notice"
+                className="product-update-banner__dismiss"
+                aria-label="Dismiss PSD export update"
                 onClick={() => {
-                  localStorage.setItem("syncraft-copyright-notice-dismissed", "1");
-                  setShowCopyrightNotice(false);
+                  localStorage.setItem("syncraft-psd-export-update-dismissed-v1", "1");
+                  setShowPsdUpdate(false);
                 }}
-                style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "auto" }}
               >
                 <X size={16} />
               </button>
             </div>
-          </div>
+          </aside>
         )}
         <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px", position: "relative", zIndex: 2 }}>
 
           <div className="hero-section" style={{ justifyContent: "flex-start", margin: 0 }}>
             {/* LOGO AND UPLOAD BOX (ALWAYS VISIBLE) */}
             <div className="hero-left" style={{ margin: "0" }}>
+              {user ? (
+                <>
               <div className="start-logo" style={{ marginBottom: "30px", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-                <img src="/logo.svg" alt="Syncraft Logo" width={765} height={137} style={{ width: "350px", maxWidth: "100%", height: "auto", margin: 0 }} />
-
                 {/* BRAND BADGE */}
-                <img src="/logo_full.png" alt="Syncraft" width={1312} height={293} style={{ display: "block", width: "132px", height: "auto", maxWidth: "100%", marginTop: "12px" }} />
+                <img src="/logo_full.png" alt="DesaynBro" width={1312} height={293} style={{ display: "block", width: "280px", height: "auto", maxWidth: "100%", margin: 0 }} />
 
                 {/* PUBLIC STATS BADGE */}
                 {publicStats.totalUsers > 0 && (
-                  <div style={{ 
-                    display: "inline-flex", 
-                    alignItems: "center", 
-                    background: "linear-gradient(135deg, rgba(212, 255, 89, 0.08) 0%, rgba(20,20,20,0) 100%)", 
-                    border: "1px solid rgba(212, 255, 89, 0.15)", 
-                    padding: "6px 16px 6px 6px", 
-                    borderRadius: "99px", 
-                    marginTop: "24px", 
-                    gap: "14px",
-                    boxShadow: "0 8px 32px rgba(212, 255, 89, 0.05)",
-                    backdropFilter: "blur(10px)"
-                  }}>
-
-                    {/* Avatar Group (Real User Profiles) */}
-                    <div style={{ display: "flex", alignItems: "center" }}>
-                      {publicStats.avatars.length > 0 && publicStats.avatars.map((url, i) => (
-                        <img 
-                          key={i} 
-                          src={url} 
-                          alt="User" 
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23888888'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>";
+                  <div className="guest-beta-badge user-beta-badge">
+                    <div className="guest-beta-avatars" aria-hidden="true">
+                      {publicStats.avatars.map((url, i) => (
+                        <img
+                          key={url}
+                          src={url}
+                          alt=""
+                          referrerPolicy="no-referrer"
+                          decoding="async"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
                           }}
-                          style={{ 
-                            width: "32px", 
-                            height: "32px", 
-                            borderRadius: "50%", 
-                            border: "2px solid #111", 
-                            marginLeft: i > 0 ? "-14px" : "0", 
-                            backgroundColor: "#222", 
-                            objectFit: "cover", 
-                            zIndex: 10 - i, 
-                            boxShadow: "0 4px 10px rgba(0,0,0,0.4)"
-                          }} 
+                          style={{ zIndex: 10 - i }}
                         />
                       ))}
                     </div>
-
-                    {/* Stats Info (Modern Layout) */}
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "#aaa", fontWeight: "500", letterSpacing: "0.2px" }}>
-                      <span style={{ color: "#d4ff59", fontWeight: "700" }}>
-                        {publicStats.totalUsers.toLocaleString()}+
-                      </span>
-                      Creatives using the Beta
+                    <div className="guest-beta-copy">
+                      <strong>{publicStats.totalUsers.toLocaleString()}+</strong>
+                      <span>Creatives using the Beta</span>
                     </div>
                   </div>
                 )}
 
-                <h1 style={{
-                  fontSize: "15px", 
-                  color: "#e2e2e2", 
-                  textAlign: "center", 
-                  margin: "24px 0 0",
-                  maxWidth: "580px", 
-                  lineHeight: "1.6", 
-                  textWrap: "balance", 
-                  fontWeight: "600"
-                }}>
+                <h1 className="user-hero-tagline">
                   Instantly transform your raster images (PNG, JPG) into ultra-clean, scalable vector graphics (SVG) using our advanced AI neural engine.
                 </h1>
               </div>
@@ -763,6 +774,55 @@ export default function StartScreen() {
                   </div>
                 </div>
               </div>
+                </>
+              ) : (
+                <div className="guest-hero-lead">
+                  {publicStats.totalUsers > 0 && (
+                    <div className="guest-beta-badge">
+                      <div className="guest-beta-avatars" aria-hidden="true">
+                        {publicStats.avatars.map((url, i) => (
+                          <img
+                            key={url}
+                            src={url}
+                            alt=""
+                            referrerPolicy="no-referrer"
+                            decoding="async"
+                            onError={(event) => {
+                              event.currentTarget.style.display = "none";
+                            }}
+                            style={{ zIndex: 10 - i }}
+                          />
+                        ))}
+                      </div>
+                      <div className="guest-beta-copy">
+                        <strong>{publicStats.totalUsers.toLocaleString()}+</strong>
+                        <span>Creatives using the Beta</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <Image
+                    className="guest-hero-art"
+                    src="/landing%20page.png"
+                    alt="Turn references into editable design"
+                    width={3016}
+                    height={1195}
+                    priority
+                  />
+
+                  <h1 className="guest-hero-tagline">
+                    Instantly transform your raster images (PNG, JPG) into ultra-clean, scalable vector graphics (SVG) using our advanced AI neural engine.
+                  </h1>
+
+                  <div className="guest-hero-cta">
+                    <button type="button" className="guest-hero-cta__button" onClick={handleLogin}>
+                      <span>Start Your First Design</span>
+                      <ArrowRight size={15} strokeWidth={2.2} aria-hidden="true" />
+                    </button>
+                    <span className="guest-hero-cta__helper">Sign in to upload your image</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* RIGHT PANEL — Recent Projects (logged in) OR Sample Extractions (guest) */}
@@ -789,15 +849,13 @@ export default function StartScreen() {
                 {/* Single featured recovery sample */}
                 <div style={{
                   position: 'relative',
-                  borderRadius: '24px',
-                  padding: '16px',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  backdropFilter: 'blur(24px)',
-                  WebkitBackdropFilter: 'blur(24px)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderLeft: '1px solid rgba(255, 255, 255, 0.15)',
-                  boxShadow: '0 30px 60px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
+                  borderRadius: '18px',
+                  padding: '10px',
+                  background: 'rgba(12, 12, 12, 0.68)',
+                  backdropFilter: 'blur(16px)',
+                  WebkitBackdropFilter: 'blur(16px)',
+                  border: '1px solid rgba(255, 255, 255, 0.11)',
+                  boxShadow: '0 22px 50px rgba(0, 0, 0, 0.42)',
                   width: '100%',
                   maxWidth: '560px'
                 }}>
@@ -817,6 +875,7 @@ export default function StartScreen() {
                       resultLabel="Recovered Flat Art"
                       height="360px"
                       objectFit="cover"
+                      minimal
                     />
                   </div>
                 </div>
@@ -832,38 +891,44 @@ export default function StartScreen() {
       {/* Main Content Wrapper (For the rest of the page) */}
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px", width: "100%" }}>
 
-        {/* SCROLLING FEATURE MARQUEE */}
-        <div className="marquee-container" style={{ 
-          padding: "20px 0",
-          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.022) 50%, transparent)", 
-          borderTop: "1px solid rgba(255,255,255,0.09)",
-          borderBottom: "1px solid rgba(255,255,255,0.09)",
-          width: "100%",
-          marginBottom: "0px",
-          marginTop: "24px"
-        }}>
-          <div className="marquee-content">
-            {[...marqueeFeatures, ...marqueeFeatures].map((label, index) => (
-              <div className="marquee-feature-group" key={`${label}-${index}`}>
-                <span className="marquee-feature">{label}</span>
-                <span className="marquee-separator" aria-hidden="true" />
-              </div>
+        <section id="creative-tools" className="toolkit-marquee" aria-label="Creative tools">
+          <div className="toolkit-marquee__track">
+            {[0, 1].map((copy) => (
+              <ul className="toolkit-marquee__list" key={copy} aria-hidden={copy === 1 ? true : undefined}>
+                {workflowFeatures.map((label) => (
+                  <li className="toolkit-marquee__item" key={label}>
+                    <span>{label}</span>
+                    <span className="toolkit-marquee__dot" aria-hidden="true" />
+                  </li>
+                ))}
+              </ul>
             ))}
           </div>
-        </div>
-
-        {/* ─── GREAT FOR SECTION ────────────────────────────────────────────── */}
+        </section>  {/* ─── GREAT FOR SECTION ────────────────────────────────────────────── */}
         <GreatForSection />
         
         {/* ────────────────────────────────────────────────────────────────────── */}
         <div style={{ width: "100%", maxWidth: "1200px", margin: "60px auto 40px", padding: "0 20px" }}>
-          <img src="/Banner.webp" alt="Syncraft AI production workflow for print-ready artwork" width={1600} height={691} style={{ width: "100%", height: "auto", borderRadius: "12px", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }} />
+          <img src="/SYNCRAFT%20copy.jpg" alt="Syncraft AI production workflow for print-ready artwork" width={6000} height={2571} style={{ width: "100%", height: "auto", borderRadius: "12px", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }} />
         </div>
 
         <EduSection />
 
         {/* Feature Cards below Hero */}
         <SamplesSection />
+        <PricingSection
+          isSignedIn={Boolean(user)}
+          onSelectPlan={(planKey) => {
+            setSelectedPricingPlan(planKey);
+            if (user) {
+              setTopUpInitialStep(2);
+              setShowTopUpModal(true);
+            } else {
+              sessionStorage.setItem("syncraft_pending_pricing_plan", planKey);
+              setShowLoginModal(true);
+            }
+          }}
+        />
         <ProductionProofSection />
         <FAQSection />
         {/* Hidden File Input — shows type-selector modal before uploading */}
@@ -898,6 +963,8 @@ export default function StartScreen() {
         <TopUpModal
           show={showTopUpModal}
           user={user}
+          initialPlanKey={selectedPricingPlan}
+          initialStep={topUpInitialStep}
           supabase={supabase}
           onClose={() => setShowTopUpModal(false)}
           onLoginRequired={() => { setShowTopUpModal(false); setShowLoginModal(true); }}
@@ -925,64 +992,6 @@ export default function StartScreen() {
                 <button className="btn-secondary" onClick={() => setProjectToDelete(null)}>Cancel</button>
                 <button className="btn-primary bg-danger" style={{ backgroundColor: "#ff4444", color: "#fff" }} onClick={deleteProject}>Delete Forever</button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* QR Sync Modal */}
-        {showQrModal && (
-          <div className="modal-overlay" onClick={() => setShowQrModal(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "420px", textAlign: "center", padding: "40px", position: "relative" }}>
-
-              {/* Minimal Close Button */}
-              <button
-                onClick={() => setShowQrModal(false)}
-                style={{
-                  position: "absolute",
-                  top: "16px",
-                  right: "16px",
-                  background: "none",
-                  border: "none",
-                  color: "#666",
-                  cursor: "pointer",
-                  padding: "4px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: "50%",
-                  transition: "all 0.2s"
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "#666"; e.currentTarget.style.background = "none"; }}
-              >
-                <X size={20} />
-              </button>
-
-              <h3 style={{ margin: "0 0 10px 0", fontSize: "24px" }}>Scan to Upload</h3>
-              <p style={{ color: "#aaa", margin: "0 0 30px 0", fontSize: "14px" }}>
-                Point your phone's camera at this QR code. Take a picture of your logo or business card, and it will magically appear here.
-              </p>
-
-              <div style={{ background: "#fff", padding: "20px", borderRadius: "16px", display: "inline-block", marginBottom: "30px" }}>
-                <QRCode
-                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/mobile?sync=${syncSessionId}`}
-                  size={220}
-                  bgColor="#ffffff"
-                  fgColor="#000000"
-                  level="H"
-                />
-              </div>
-
-              {isQrConnected ? (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", color: "#22c55e" }}>
-                  <CheckCircle2 size={18} /> <span style={{ fontWeight: "bold" }}>Receiving Image...</span>
-                </div>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", color: "#888" }}>
-                  <Monitor size={16} className="animate-pulse" /> <span>Waiting for your phone...</span>
-                </div>
-              )}
-
             </div>
           </div>
         )}
@@ -1019,6 +1028,14 @@ export default function StartScreen() {
                 <a href="/privacy">Privacy Policy</a>
                 <a href="/terms">Terms of Service</a>
                 <a href="/refunds">Refund Policy</a>
+                <a href="/acceptable-use">Acceptable Use</a>
+                <a href="/copyright">Copyright</a>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new Event("syncraft:open-cookie-settings"))}
+                >
+                  Cookie Settings
+                </button>
                 <a href="#faq">FAQ</a>
               </div>
               <div>

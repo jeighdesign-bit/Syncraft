@@ -13,6 +13,7 @@ function classifyExchangeError(error) {
 export async function GET(request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const flowId = searchParams.get('sb_flow_id')
   const providerError = searchParams.get('error')
   const providerErrorDescription = searchParams.get('error_description')
   // if "next" is in param, use it as the redirect URL
@@ -20,7 +21,10 @@ export async function GET(request) {
 
   if (code) {
     const supabase = await createClient()
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(
+      code,
+      flowId ? { flowId } : undefined
+    )
     if (!error) {
       const createdAt = Date.parse(data?.user?.created_at || '')
       const lastSignInAt = Date.parse(data?.user?.last_sign_in_at || '')

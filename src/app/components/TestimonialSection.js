@@ -105,7 +105,7 @@ export default function ProductionProofSection() {
   }, []);
 
   return (
-    <section className={styles.sectionWrapper} aria-labelledby="production-proof-title">
+    <section id="production-proof" className={styles.sectionWrapper} aria-labelledby="production-proof-title">
       <div className={styles.proofShell}>
         <div className={styles.glow} aria-hidden="true" />
         <header className={styles.proofHeader}>
@@ -140,10 +140,10 @@ export default function ProductionProofSection() {
         <div className={styles.testimonialSection} aria-labelledby="testimonial-title">
           <header className={styles.testimonialHeader}>
             <div>
-              <p className={styles.eyebrow}>Community feedback</p>
+              <p className={styles.eyebrow}>Featured verified feedback</p>
               <h2 id="testimonial-title">What Syncraft users say</h2>
             </div>
-            <p>Reviews submitted directly from Syncraft project workspaces.</p>
+            <p>Project-linked reviews published with the reviewer&apos;s permission.</p>
           </header>
 
           <div className={styles.reviewGrid}>

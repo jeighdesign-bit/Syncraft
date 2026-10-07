@@ -19,15 +19,24 @@ test("garment extraction stays in legacy mode unless enhanced is explicit", () =
   assert.equal(garmentExtractionMode(" ENHANCED "), "enhanced");
 });
 
-test("legacy mode preserves the currently deployed request shape", () => {
+test("standard mode uses supported controls at the provider default resolution", () => {
   assert.deepEqual(buildGarmentExtractionInput({ ...commonInput, mode: "legacy" }), {
     image_urls: [commonInput.imageUrl],
     prompt: commonInput.prompt,
     aspect_ratio: commonInput.aspectRatio,
-    guidance_scale: 10,
-    num_inference_steps: 50,
-    image_strength: 0.55,
+    num_images: 1,
+    output_format: "png",
+    limit_generations: true,
   });
+});
+
+test("neither mode sends unsupported diffusion controls as fidelity settings", () => {
+  for (const mode of ["legacy", "enhanced"]) {
+    const input = buildGarmentExtractionInput({ ...commonInput, mode });
+    for (const unsupported of ["guidance_scale", "num_inference_steps", "image_strength"]) {
+      assert.equal(unsupported in input, false);
+    }
+  }
 });
 
 test("enhanced mode requests supported 2K PNG output", () => {

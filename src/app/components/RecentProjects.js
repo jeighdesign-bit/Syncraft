@@ -51,9 +51,10 @@ const RecentProjects = memo(function RecentProjects({
             </div>
           </div>
           <div style={{ position: "relative", width: "260px" }}>
-            <Search size={14} color="#666" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
+            <Search size={14} color="#666" aria-hidden="true" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
             <input 
               type="text" 
+              aria-label="Search recent projects"
               placeholder="Search projects..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -81,7 +82,7 @@ const RecentProjects = memo(function RecentProjects({
           </span>
           <div style={{ minWidth: 0 }}>
             <p style={{ margin: "0 0 3px", fontSize: "12.5px", fontWeight: "650", color: "#e8e8e8", lineHeight: 1.25 }}>Your work stays yours</p>
-            <p style={{ margin: 0, fontSize: "11px", color: "#929292", lineHeight: 1.5 }}>Syncraft does not claim, sell, or reuse your uploaded or extracted designs. You retain ownership, and projects are permanently deleted after 3 days.</p>
+            <p style={{ margin: 0, fontSize: "11px", color: "#929292", lineHeight: 1.5 }}>Syncraft does not claim or sell your uploaded designs. You keep the rights you hold, and project files are scheduled for deletion within 3 days.</p>
           </div>
         </div>
 
@@ -92,7 +93,21 @@ const RecentProjects = memo(function RecentProjects({
         ) : (
           <div className="recent-grid">
             {filteredProjects.map(proj => (
-              <div key={proj.id} className="recent-card" onClick={() => onNavigate(proj)}>
+              <div
+                key={proj.id}
+                className="recent-card"
+                role="link"
+                tabIndex={0}
+                aria-label={`Open project ${proj.name}`}
+                onClick={() => onNavigate(proj)}
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) return;
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onNavigate(proj);
+                  }
+                }}
+              >
               <div className="recent-thumb" style={{
                   backgroundImage: proj.original_image_url
                     ? `url(/api/proxy?url=${encodeURIComponent(proj.original_image_url)})`
@@ -111,18 +126,25 @@ const RecentProjects = memo(function RecentProjects({
                         onKeyDown={(e) => e.key === 'Enter' && onSaveRename(e, proj.id)}
                         autoFocus
                       />
-                      <button onClick={(e) => onSaveRename(e, proj.id)} className="save-btn"><Check size={14}/></button>
-                      <button onClick={onCancelEditing} className="cancel-btn"><X size={14}/></button>
+                      <button type="button" aria-label={`Save new name for ${proj.name}`} onClick={(e) => onSaveRename(e, proj.id)} className="save-btn"><Check size={14} aria-hidden="true" /></button>
+                      <button type="button" aria-label="Cancel renaming" onClick={onCancelEditing} className="cancel-btn"><X size={14} aria-hidden="true" /></button>
                     </div>
                   ) : (
                     <>
                       <div className="recent-name" title={proj.name}>{proj.name}</div>
-                      <div className="menu-container" onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === proj.id ? null : proj.id); }}>
-                        <button className="dots-btn"><MoreVertical size={16} /></button>
+                      <div className="menu-container" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="dots-btn"
+                          aria-label={`Actions for ${proj.name}`}
+                          aria-haspopup="menu"
+                          aria-expanded={openMenuId === proj.id}
+                          onClick={() => setOpenMenuId(openMenuId === proj.id ? null : proj.id)}
+                        ><MoreVertical size={16} aria-hidden="true" /></button>
                         {openMenuId === proj.id && (
-                          <div className="dropdown-menu">
-                            <button onClick={(e) => onStartEditing(e, proj)}><Edit3 size={14} /> Rename</button>
-                            <button onClick={(e) => onConfirmDelete(e, proj)} className="delete-option"><Trash2 size={14} /> Delete</button>
+                          <div className="dropdown-menu" role="menu">
+                            <button type="button" role="menuitem" onClick={(e) => onStartEditing(e, proj)}><Edit3 size={14} aria-hidden="true" /> Rename</button>
+                            <button type="button" role="menuitem" onClick={(e) => onConfirmDelete(e, proj)} className="delete-option"><Trash2 size={14} aria-hidden="true" /> Delete</button>
                           </div>
                         )}
                       </div>

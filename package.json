@@ -16,10 +16,12 @@
     "@fal-ai/client": "^1.10.1",
     "@google/generative-ai": "^0.24.1",
     "@marsidev/react-turnstile": "^1.5.3",
-    "@supabase/ssr": "^0.12.0",
+    "@polar-sh/sdk": "^0.49.0",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.109.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
+    "ag-psd": "^31.0.2",
     "dodopayments": "^2.42.2",
     "dotenv": "^17.4.2",
     "jszip": "^3.10.1",
@@ -32,6 +34,9 @@
     "replicate": "^1.4.0",
     "resend": "^6.17.2",
     "sharp": "0.34.5",
+    "standardwebhooks": "^1.0.0",
+    "svg-path-bbox": "^2.1.0",
+    "svgpath": "^2.6.0",
     "ws": "^8.21.1"
   },
   "devDependencies": {

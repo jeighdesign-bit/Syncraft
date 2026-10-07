@@ -178,8 +178,6 @@ html, body {
   padding: 40px;
 }
 
-/* Pane names live in the existing toolbar whitespace, keeping the canvas
-   completely unobstructed at every zoom level. */
 .canvas-toolbar-side {
   display: flex;
   align-items: center;
@@ -188,54 +186,8 @@ html, body {
   flex: 1;
 }
 
-.canvas-toolbar-side--left .canvas-toolbar-pane-label {
-  margin-right: clamp(16px, 6vw, 110px);
-  margin-left: auto;
-}
-
-.canvas-toolbar-side--right .canvas-toolbar-pane-label {
-  margin-right: auto;
-  margin-left: clamp(16px, 6vw, 110px);
-}
-
-.canvas-toolbar-pane-label {
-  display: inline-flex;
-  align-items: center;
-  flex: 0 1 auto;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  pointer-events: none;
-}
-
-.canvas-toolbar-pane-label__text {
-  min-width: 0;
-  overflow: hidden;
-  color: #fff;
-  font-size: 12px;
-  line-height: 1.1;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-shadow: 0 0 14px rgba(255, 255, 255, 0.08);
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-@media (max-width: 1250px) {
-  .canvas-toolbar-side--left .canvas-toolbar-pane-label,
-  .canvas-toolbar-side--right .canvas-toolbar-pane-label {
-    margin-right: 16px;
-    margin-left: 16px;
-  }
-
-}
-
-@media (max-width: 1050px) {
-  .canvas-toolbar-pane-label {
-    display: none;
-  }
+.canvas-toolbar-side--right {
+  justify-content: flex-end;
 }
 
 .pipeline-container {
@@ -865,7 +817,7 @@ html, body {
   align-items: center;
   height: 54px;
   flex-shrink: 0;
-  padding: 0 24px;
+  padding: 0 48px 0 24px;
   border-bottom: 1px solid #2a2a2a;
   background: #181818;
 }
@@ -1055,10 +1007,84 @@ a.syncraft-header-control.syncraft-header-control--store:hover {
   flex-shrink: 0;
 }
 
+.workspace-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 36px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  padding: 0 16px;
+  border-top: 1px solid #2a2a2a;
+  background: #181818;
+  font-size: 11px;
+}
+
+.workspace-statusbar__message {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.workspace-statusbar__success-icon {
+  flex-shrink: 0;
+  color: #4ade80;
+}
+
+.workspace-statusbar__title {
+  flex-shrink: 0;
+  color: #86efac;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.workspace-statusbar__title--neutral {
+  color: #c8c8c8;
+}
+
+.workspace-statusbar__detail {
+  overflow: hidden;
+  margin-left: 6px;
+  color: #a3a3a3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-statusbar__help {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  flex-shrink: 0;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: #b8b8b8;
+  font: inherit;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.workspace-statusbar__help:hover {
+  color: #fff;
+}
+
+.workspace-statusbar__help:focus-visible {
+  outline: 2px solid #d4ff59;
+  outline-offset: -2px;
+}
+
+@media (max-width: 600px) {
+  .workspace-statusbar__detail {
+    display: none;
+  }
+}
+
 @media (max-width: 860px) {
   .workspace-topbar {
     grid-template-columns: auto 1fr auto;
-    padding: 0 12px;
+    padding: 0 20px 0 12px;
   }
 
   .workspace-mode-title {

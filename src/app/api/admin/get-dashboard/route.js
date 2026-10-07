@@ -91,9 +91,38 @@ async function fetchActiveCreditsTotal() {
 
 export async function GET(request) {
   try {
-    const adminAuth = await authenticateAdminRequest(request);
+    const adminAuth = await authenticateAdminRequest(request, { allowLocalDevelopment: true });
     if (!adminAuth.user) {
       return NextResponse.json({ error: adminAuth.error }, { status: adminAuth.status });
+    }
+
+    // The Finance page only needs payment rows and the active-credit reserve.
+    // Avoid its previous dependency on the much heavier admin dashboard load
+    // (receipt signing, reviews, and per-user Auth lookups).
+    if (new URL(request.url).searchParams.get("view") === "finance") {
+      const [manualResult, dodoResult, paymongoResult, polarResult, activeCreditsTotal] = await Promise.all([
+        adminSupabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(100),
+        adminSupabase.from("dodo_payments").select("*").order("created_at", { ascending: false }).limit(100),
+        adminSupabase.from("paymongo_payments").select("*").order("created_at", { ascending: false }).limit(100),
+        adminSupabase.from("polar_payments").select("*").order("created_at", { ascending: false }).limit(100),
+        fetchActiveCreditsTotal(),
+      ]);
+
+      const queryError = [manualResult, dodoResult, paymongoResult, polarResult]
+        .map((result) => result.error)
+        .find(Boolean);
+      if (queryError) {
+        console.error("[Finance] Payment query error:", queryError.message);
+      }
+
+      return NextResponse.json({
+        success: true,
+        requests: manualResult.data || [],
+        dodoPayments: dodoResult.data || [],
+        paymongoPayments: paymongoResult.data || [],
+        polarPayments: polarResult.data || [],
+        activeCreditsTotal,
+      });
     }
 
     // Fetch all payment requests
@@ -152,7 +181,7 @@ export async function GET(request) {
       console.warn("[Admin] store_requests threw:", e.message);
     }
 
-    // Fetch Dodo payments
+    // Keep legacy Dodo rows for historical revenue, while Polar is the active provider.
     let dodoPayments = [];
     try {
       const { data: dodoRows, error: dodoErr } = await adminSupabase
@@ -167,6 +196,38 @@ export async function GET(request) {
       }
     } catch (dodoFetchErr) {
       console.error("Error fetching Dodo payments:", dodoFetchErr.message);
+    }
+
+    let paymongoPayments = [];
+    try {
+      const { data: paymongoRows, error: paymongoError } = await adminSupabase
+        .from('paymongo_payments')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (paymongoError) {
+        console.error("Failed to fetch PayMongo payments:", paymongoError.message);
+      } else {
+        paymongoPayments = paymongoRows || [];
+      }
+    } catch (paymongoFetchError) {
+      console.error("Error fetching PayMongo payments:", paymongoFetchError.message);
+    }
+
+    let polarPayments = [];
+    try {
+      const { data: polarRows, error: polarError } = await adminSupabase
+        .from('polar_payments')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (polarError) {
+        console.error("Failed to fetch Polar payments:", polarError.message);
+      } else {
+        polarPayments = polarRows || [];
+      }
+    } catch (polarFetchError) {
+      console.error("Error fetching Polar payments:", polarFetchError.message);
     }
 
     // Fetch total generations (projects) count
@@ -263,7 +324,8 @@ export async function GET(request) {
     }
 
     const approvedManualPayments = requests.filter((payment) => countsAsManualRevenue(payment.status));
-    const paidAutomatedPayments = dodoPayments.filter((payment) => payment.status === "paid");
+    const paidAutomatedPayments = [...dodoPayments, ...paymongoPayments, ...polarPayments]
+      .filter((payment) => payment.status === "paid");
     const fulfilledStoreRequests = storeRequests.filter((storeRequest) => storeRequest.status === "fulfilled");
     const storeStats = {
       pending: storeRequests.filter((storeRequest) => storeRequest.status === "pending").length,
@@ -292,7 +354,9 @@ export async function GET(request) {
         syncraft: syncraftRevenue,
         store: storeRevenue,
       },
-      dodoPayments: dodoPayments.slice(0, 50),
+      dodoPayments: dodoPayments.slice(0, 100),
+      paymongoPayments: paymongoPayments.slice(0, 100),
+      polarPayments: polarPayments.slice(0, 100),
       totalProjects: projCount || 0,
       activeCreditsTotal,
       reviews: reviews || [],

@@ -91,7 +91,7 @@ export async function POST(request) {
     if (!rasterImgRes.ok) throw new Error("Failed to fetch upscaled image from R2");
 
     // ─── Step 3 Pre-processing ────────────────────────────────────────────────
-    // Recraft crispUpscale (Step 2) already sharpened and enhanced the image.
+    // ESRGAN (Step 2) already upscaled the image.
     // Here we only resize to 2048px max (Recraft vectorize has a 4096px hard limit,
     // and smaller inputs process faster without sacrificing SVG path quality)
     // and convert to lossless PNG for clean color data.

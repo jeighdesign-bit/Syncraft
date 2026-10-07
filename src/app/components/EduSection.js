@@ -32,14 +32,14 @@ const EduSection = memo(function EduSection() {
   return (
     <>
       {/* HOW TO USE / DEMO VIDEO SECTION */}
-      <div className={styles.howToWrapper}>
+      <div id="how-it-works" className={styles.howToWrapper}>
         <div className={styles.howToGrid}>
           
           {/* Left: Video Showcase */}
           <div ref={videoContainerRef} className={styles.videoContainer}>
             <div className={styles.videoInner}>
               <video 
-                src={shouldLoadVideo ? "/TUTORIAL.mp4" : undefined}
+                src={shouldLoadVideo ? "/syncraft%20video/syncraft%20video.mp4" : undefined}
                 poster="/Banner.webp"
                 preload="none"
                 autoPlay={shouldLoadVideo}
@@ -67,12 +67,12 @@ const EduSection = memo(function EduSection() {
               
               <div className={styles.stepItem}>
                 <div className={styles.stepNumber}>2</div>
-                <div className={styles.stepText}>Our neural engine cleans noise and traces perfect vector paths.</div>
+                <div className={styles.stepText}>Our AI processing cleans noise and produces editable vector paths.</div>
               </div>
               
               <div className={styles.stepItem}>
                 <div className={styles.stepNumber}>3</div>
-                <div className={styles.stepText}>Download your crisp, infinitely scalable SVG instantly.</div>
+                <div className={styles.stepText}>Download a crisp, scalable SVG for review and editing.</div>
               </div>
             </div>
           </div>

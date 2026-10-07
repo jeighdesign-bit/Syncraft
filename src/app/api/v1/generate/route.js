@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { buildGarmentExtractionPrompt, buildGarmentExtractionSystemPrompt } from "@/lib/garmentPromptRules.mjs";
+import { buildGarmentExtractionInput } from "@/lib/garmentExtractionConfig.mjs";
 import { validateApiKey } from "@/services/b2b/authService";
 import { checkBalance, deductAndLog } from "@/services/b2b/billingService";
 import { fetchWithRetry } from "@/lib/fetchWithRetry";
-import { fetchWithSSRFProtection, getAllowedProviderHosts, DEFAULT_MAX_IMAGE_BYTES } from "@/lib/ssrf";
+import { fetchWithSSRFProtection, getAllowedProviderHosts, DEFAULT_MAX_UPSCALED_IMAGE_BYTES } from "@/lib/ssrf";
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -11,24 +13,8 @@ export const maxDuration = 120;
 // PROMPTS
 // ==========================================
 const PROMPTS = {
-  extract_pattern: `🔴 CRITICAL REFERENCE LOCK — THIS IS THE MOST IMPORTANT INSTRUCTION:
-You are given an INPUT IMAGE. That input image IS the source of truth. Every color, every shape, every stripe, every pattern in your output MUST be copied EXACTLY from that input image. Do NOT invent. Do NOT approximate. Do NOT be creative. COPY EXACTLY.
-If you deviate from the input image in ANY way — wrong color, wrong stripe angle, wrong shape position, wrong pattern — you have FAILED.
-
-⚠️ HARDEST RULE — READ THIS FIRST AND OBEY IT ALWAYS:
-DO NOT DRAW A SHIRT. DO NOT DRAW A JERSEY SHAPE. DO NOT DRAW A NECKLINE. DO NOT DRAW ARMHOLES. DO NOT DRAW SLEEVES. DO NOT DRAW ANY CLOTHING SILHOUETTE WHATSOEVER.
-Your output canvas is a PLAIN RECTANGLE filled edge-to-edge with design pattern ONLY.
-
-== ADDITIONAL: LOGO ERASURE ==
-You MUST perfectly erase all text, numbers, and sponsor logos from the pattern. Reconstruct the background pattern behind where the text used to be. Do not leave smudges.`,
-
-  keep_artwork: `🔴 CRITICAL REFERENCE LOCK — THIS IS THE MOST IMPORTANT INSTRUCTION:
-You are given an INPUT IMAGE. That input image IS the source of truth. Every color, every shape, every stripe, every pattern in your output MUST be copied EXACTLY from that input image. Do NOT invent. Do NOT approximate. Do NOT be creative. COPY EXACTLY.
-
-⚠️ HARDEST RULE — READ THIS FIRST AND OBEY IT ALWAYS:
-DO NOT DRAW A SHIRT. DO NOT DRAW A JERSEY SHAPE. DO NOT DRAW A NECKLINE. DO NOT DRAW ARMHOLES. DO NOT DRAW SLEEVES. DO NOT DRAW ANY CLOTHING SILHOUETTE WHATSOEVER.
-Your output canvas is a PLAIN RECTANGLE filled edge-to-edge with design pattern ONLY.
-Preserve ALL intricate design details: halftones, dot patterns, fine lines, logos, and text perfectly.`,
+  extract_pattern: buildGarmentExtractionPrompt("ERASE_LOGOS"),
+  keep_artwork: buildGarmentExtractionPrompt("PRESERVE_LOGOS"),
 
   logo_trace: `You are a FORENSIC LOGO REPRODUCTION ARTIST. Your task is to create a 100% pixel-accurate, flat vector-ready copy of the logo in this reference image. You are NOT allowed to be creative. You are NOT allowed to simplify, stylize, or interpret. Copy it EXACTLY.
 
@@ -41,7 +27,7 @@ Preserve ALL intricate design details: halftones, dot patterns, fine lines, logo
 export async function POST(request) {
   let authResult;
   let B2B_CREDIT_COST = 40;
-  let B2B_RAW_COST_USD = 0.161; 
+  let B2B_RAW_COST_USD = 0.164;
   let mode = 'keep_artwork';
 
   try {
@@ -74,7 +60,7 @@ export async function POST(request) {
       B2B_RAW_COST_USD = 0.002;
     } else {
       B2B_CREDIT_COST = 40;
-      B2B_RAW_COST_USD = 0.161;
+      B2B_RAW_COST_USD = 0.164;
     }
 
     // 3. Check Billing Balance
@@ -102,40 +88,41 @@ export async function POST(request) {
       if (!finalImageUrl) throw new Error("BiRefNet failed to return an image.");
     } 
     // ==========================================
-    // PIPELINE 2: VECTOR TRACING (Nano Banana -> ESRGAN -> Recraft)
+    // PIPELINE 2: VECTOR TRACING (Nano Banana -> ESRGAN -> Recraft Vectorize)
     // ==========================================
     else {
       const finalPrompt = PROMPTS[mode] || PROMPTS['keep_artwork'];
       const sharp = (await import('sharp')).default;
+      const extractionInput = buildGarmentExtractionInput({
+        imageUrl: image_url,
+        prompt: finalPrompt,
+        aspectRatio: "auto",
+        mode: "legacy",
+      });
+      if (mode !== 'logo_trace') extractionInput.system_prompt = buildGarmentExtractionSystemPrompt();
 
       console.log(`[B2B - ${company.name}] Starting Nano Banana Pro [${mode}]...`);
       const nanoResult = await fal.subscribe("fal-ai/nano-banana-pro/edit", {
-        input: {
-          image_urls: [image_url],
-          prompt: finalPrompt,
-          aspect_ratio: "auto",
-          guidance_scale: 10,
-          num_inference_steps: 50,
-          image_strength: 0.55,
-        }
+        input: extractionInput,
       });
       const extractedUrl = nanoResult?.data?.images?.[0]?.url;
       if (!extractedUrl) throw new Error("Nano Banana Pro failed to return an image.");
 
+      const { fal } = await import("@fal-ai/client");
+      const recraftApiToken = process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY;
+      if (!recraftApiToken) throw new Error("RECRAFT_API_TOKEN is missing.");
+
       console.log(`[B2B - ${company.name}] Starting ESRGAN Upscale...`);
       const esrganResult = await fal.subscribe("fal-ai/esrgan", {
-        input: {
-          image_url: extractedUrl,
-          scale: 4,
-        }
+        input: { image_url: extractedUrl, scale: 4 },
       });
       const upscaledUrl = esrganResult?.data?.image?.url || esrganResult?.data?.image_url;
       if (!upscaledUrl) throw new Error("ESRGAN failed to return an image.");
 
-      console.log(`[B2B - ${company.name}] Downloading ESRGAN output for Recraft...`);
+      console.log(`[B2B - ${company.name}] Downloading ESRGAN output for vectorization...`);
       const { response: imgRes, buffer: imgBuffer } = await fetchWithSSRFProtection(upscaledUrl, {
         allowedHosts: getAllowedProviderHosts(),
-        maxBytes: DEFAULT_MAX_IMAGE_BYTES,
+        maxBytes: DEFAULT_MAX_UPSCALED_IMAGE_BYTES,
         allowedContentTypes: ['image/'],
       });
       if (!imgRes.ok) throw new Error("Failed to download upscaled image.");
@@ -152,7 +139,7 @@ export async function POST(request) {
       console.log(`[B2B - ${company.name}] Starting Recraft Vectorize...`);
       const recraftVectorRes = await fetchWithRetry("https://external.api.recraft.ai/v1/images/vectorize", {
         method: "POST",
-        headers: { "Authorization": `Bearer ${process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY}` },
+        headers: { "Authorization": `Bearer ${recraftApiToken}` },
         body: vectorizeFormData,
         signal: AbortSignal.timeout(110000),
       });

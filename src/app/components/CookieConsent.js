@@ -9,15 +9,27 @@ export default function CookieConsent() {
 
   useEffect(() => {
     const consent = localStorage.getItem("cookie_consent");
+    const openSettings = () => {
+      setLeaving(false);
+      setVisible(true);
+    };
+
+    window.addEventListener("syncraft:open-cookie-settings", openSettings);
     if (!consent) {
       // Slight delay so it doesn't pop up on initial render flash
       const t = setTimeout(() => setVisible(true), 1500);
-      return () => clearTimeout(t);
+      return () => {
+        clearTimeout(t);
+        window.removeEventListener("syncraft:open-cookie-settings", openSettings);
+      };
     }
+
+    return () => window.removeEventListener("syncraft:open-cookie-settings", openSettings);
   }, []);
 
   const accept = () => {
     localStorage.setItem("cookie_consent", "accepted");
+    localStorage.setItem("cookie_consent_updated_at", new Date().toISOString());
     window.dispatchEvent(
       new CustomEvent("syncraft:cookie-consent", { detail: "accepted" })
     );
@@ -26,6 +38,7 @@ export default function CookieConsent() {
 
   const decline = () => {
     localStorage.setItem("cookie_consent", "declined");
+    localStorage.setItem("cookie_consent_updated_at", new Date().toISOString());
     window.dispatchEvent(
       new CustomEvent("syncraft:cookie-consent", { detail: "declined" })
     );
@@ -41,6 +54,9 @@ export default function CookieConsent() {
 
   return (
     <div
+      className="syncraft-cookie-banner"
+      role="region"
+      aria-label="Cookie preferences"
       style={{
         position: "fixed",
         bottom: "20px",
@@ -69,6 +85,9 @@ export default function CookieConsent() {
         @keyframes slideDown {
           from { opacity: 1; transform: translateX(-50%) translateY(0); }
           to   { opacity: 0; transform: translateX(-50%) translateY(30px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .syncraft-cookie-banner { animation: none !important; }
         }
       `}</style>
 

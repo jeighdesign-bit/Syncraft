@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DEFAULT_MAX_IMAGE_BYTES, DEFAULT_MAX_SVG_BYTES, DEFAULT_MAX_UPSCALED_IMAGE_BYTES, DEFAULT_MAX_ZIP_BYTES, fetchWithSSRFProtection, validateUrlForSSRF } from "@/lib/ssrf";
+import { DEFAULT_MAX_IMAGE_BYTES, DEFAULT_MAX_PSD_BYTES, DEFAULT_MAX_SVG_BYTES, DEFAULT_MAX_UPSCALED_IMAGE_BYTES, DEFAULT_MAX_ZIP_BYTES, fetchWithSSRFProtection, validateUrlForSSRF } from "@/lib/ssrf";
 
 // SSRF Protection: only allow proxying from our own Cloudflare R2 domains.
 // Never fetch arbitrary URLs from the server — that opens internal metadata attacks.
@@ -70,6 +70,8 @@ export async function GET(request) {
     const lowerPath = parsedUrl.pathname.toLowerCase();
     const maxBytes = lowerPath.endsWith('.svg')
       ? DEFAULT_MAX_SVG_BYTES
+      : lowerPath.endsWith('.psd')
+        ? DEFAULT_MAX_PSD_BYTES
       : lowerPath.endsWith('.zip')
         ? DEFAULT_MAX_ZIP_BYTES
       : /\/upscaled[-_]/.test(lowerPath)
@@ -98,6 +100,8 @@ export async function GET(request) {
       const upstreamType = upstream.headers.get('content-type') || '';
       const contentType = lowerPath.endsWith('.zip')
         ? 'application/zip'
+        : lowerPath.endsWith('.psd')
+          ? 'application/vnd.adobe.photoshop'
         : upstreamType.startsWith('image/')
           ? upstreamType
           : 'image/png';
