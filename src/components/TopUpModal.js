@@ -79,7 +79,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
   useEffect(() => {
     if (activeTab === "history" && user) {
       setIsLoadingLogs(true);
-      
+
       const fetchLogs = async () => {
         try {
           const { data: { session } } = await supabase.auth.getSession();
@@ -318,7 +318,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
   return (
     <div className="modal-overlay" onClick={handleClose} style={{ padding: '24px' }}>
       <div className="modal-content" style={{ maxWidth: (activeTab === 'plans' && step === 1) ? '1250px' : '780px', width: '100%', maxHeight: 'calc(100vh - 48px)', padding: '0', overflow: 'hidden', borderRadius: '16px', border: '1px solid #333', background: '#111', display: 'flex', flexDirection: 'column', transition: 'max-width 0.3s ease', margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
-        
+
         {/* Modal Header */}
         <div style={{ background: '#18181b', borderBottom: '1px solid #444', padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -330,14 +330,14 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
 
         {/* Tab Navigation */}
         <div style={{ display: 'flex', background: '#18181b', borderBottom: '1px solid #444', padding: '0 24px', flexShrink: 0 }}>
-          <button 
-            onClick={() => { setActiveTab('plans'); setStep(1); }} 
+          <button
+            onClick={() => { setActiveTab('plans'); setStep(1); }}
             style={{ padding: '16px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'plans' ? '2px solid #d4ff59' : '2px solid transparent', color: activeTab === 'plans' ? '#d4ff59' : '#888', fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
             <Package size={16} /> Top-Up Plans
           </button>
-          <button 
-            onClick={() => { setActiveTab('history'); setStep(1); }} 
+          <button
+            onClick={() => { setActiveTab('history'); setStep(1); }}
             style={{ padding: '16px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'history' ? '2px solid #d4ff59' : '2px solid transparent', color: activeTab === 'history' ? '#d4ff59' : '#888', fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
             <History size={16} /> Token Logs
@@ -351,7 +351,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                 <h2 style={{ margin: '0 0 8px', fontSize: '24px', fontWeight: '700', color: '#fff' }}>Token History</h2>
                 <p style={{ margin: 0, color: '#aaa', fontSize: '14px' }}>View your recent credit transactions and usage. Logs are automatically deleted after 3 days.</p>
               </div>
-              
+
               {!user ? (
                 <div style={{ textAlign: 'center', padding: '40px 20px', color: '#888' }}>Please log in to view your token history.</div>
               ) : isLoadingLogs ? (
@@ -429,20 +429,20 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                       </div>
                       <span style={{ fontSize: '12px', color: '#888' }}>{p.traces} credits</span>
                     </div>
-                    
+
                     <p style={{ color: '#aaa', fontSize: '13px', lineHeight: '1.5', margin: '0 0 24px', minHeight: '40px' }}>{p.desc}</p>
 
-                    <button 
-                      onClick={() => { 
+                    <button
+                      onClick={() => {
                         if (!user) {
                           onLoginRequired?.();
                           return;
                         }
-                        setForm(f => ({ ...f, plan: p.key })); 
-                        setStep(2); 
+                        setForm(f => ({ ...f, plan: p.key }));
+                        setStep(2);
                       }}
                       style={{ width: '100%', padding: '12px 8px', background: p.best ? '#d4ff59' : 'transparent', color: p.best ? '#000' : '#d5d5d5', border: p.best ? 'none' : '1px solid #555', fontWeight: '600', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginBottom: '24px', borderRadius: '8px', whiteSpace: 'nowrap' }}
-                      onMouseOver={e => { e.target.style.opacity = '0.9'; if (!p.best) { e.target.style.background = '#3a3a3a'; e.target.style.borderColor = '#777'; } }} 
+                      onMouseOver={e => { e.target.style.opacity = '0.9'; if (!p.best) { e.target.style.background = '#3a3a3a'; e.target.style.borderColor = '#777'; } }}
                       onMouseOut={e => { e.target.style.opacity = '1'; if (!p.best) { e.target.style.background = 'transparent'; e.target.style.borderColor = '#555'; } }}
                     >
                       {user ? 'Select Plan' : 'Log in to Purchase'} <ArrowRight size={14} />
@@ -596,8 +596,8 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
               <p style={{ color: '#aaa', fontSize: '15px', margin: '0 0 28px', maxWidth: '420px', lineHeight: '1.5' }}>
                 <strong style={{ color: '#d4ff59' }}>{CREDIT_PLANS[form.plan]?.credits || 24} Credits</strong> have been added directly to your account.
               </p>
-              <button 
-                onClick={handleClose} 
+              <button
+                onClick={handleClose}
                 style={{ padding: '14px 36px', background: '#d4ff59', color: '#000', border: 'none', borderRadius: '10px', fontWeight: '700', fontSize: '15px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 16px rgba(212, 255, 89, 0.25)' }}
                 onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
                 onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
@@ -622,10 +622,10 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', alignItems: 'stretch' }}>
                 {/* Left Card: QR Code */}
                 <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-                  <img 
-                    src={qrPhData.qrBase64} 
-                    alt="QR Ph Payment Code" 
-                    style={{ width: '100%', maxWidth: '260px', height: 'auto', aspectRatio: '1/1', objectFit: 'contain', display: 'block' }} 
+                  <img
+                    src={qrPhData.qrBase64}
+                    alt="QR Ph Payment Code"
+                    style={{ width: '100%', maxWidth: '260px', height: 'auto', aspectRatio: '1/1', objectFit: 'contain', display: 'block' }}
                   />
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #eee', width: '100%', justifyContent: 'center' }}>
                     <img src="/logos/qrph.png?v=2" alt="QR Ph" style={{ height: '16px', width: 'auto' }} />
@@ -739,9 +739,9 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button type="button" onClick={() => setStep(1)} disabled={isSubmitting} style={{ flex: 1, padding: '16px', background: 'transparent', color: '#aaa', border: '1px solid #444', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>Back</button>
-                <button 
-                  onClick={handleSubmit} 
-                  disabled={!form.txnRef || !form.screenshotFile || isSubmitting} 
+                <button
+                  onClick={handleSubmit}
+                  disabled={!form.txnRef || !form.screenshotFile || isSubmitting}
                   style={{ flex: 2, padding: '16px', background: (!form.txnRef || !form.screenshotFile || isSubmitting) ? '#222' : '#d4ff59', color: (!form.txnRef || !form.screenshotFile || isSubmitting) ? '#666' : '#000', border: 'none', borderRadius: '8px', cursor: (!form.txnRef || !form.screenshotFile || isSubmitting) ? 'not-allowed' : 'pointer', fontWeight: '600', fontSize: '15px' }}
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Payment'}

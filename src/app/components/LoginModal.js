@@ -32,16 +32,16 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
       toast.error("Please complete the security check first.");
       return;
     }
-    
+
     // Strict token handling: Capture and clear immediately to prevent leak/reuse
     const secureToken = turnstileToken;
     setTurnstileToken(null);
     setIsLoadingGoogle(true);
-    
+
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { 
+        options: {
           redirectTo: `${window.location.origin}/api/auth/callback`,
           captchaToken: secureToken
         }
