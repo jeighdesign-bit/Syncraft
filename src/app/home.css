@@ -996,26 +996,34 @@
           line-height: 1.6;
         }
 
+        .site-footer-social-title {
+          margin: 28px 0 12px;
+          color: rgba(255, 255, 255, 0.82);
+          font-size: 13px;
+          font-weight: 650;
+          letter-spacing: -0.01em;
+        }
+
         .site-footer-socials {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 10px;
-          margin-top: 24px;
+          display: grid;
+          grid-template-columns: repeat(3, 40px);
+          gap: 9px;
+          width: fit-content;
         }
 
         .site-footer-socials a,
         .site-footer-socials button {
           display: inline-grid;
-          width: 36px;
-          height: 36px;
+          width: 40px;
+          height: 40px;
           box-sizing: border-box;
           place-items: center;
           padding: 0;
           align-items: center;
-          border: 1px solid rgba(255, 255, 255, 0.18);
-          border-radius: 7px;
-          color: rgba(255, 255, 255, 0.86);
-          background: transparent;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 9px;
+          color: rgba(255, 255, 255, 0.92);
+          background: #303034;
           cursor: pointer;
           text-decoration: none;
           transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
@@ -1027,14 +1035,22 @@
         }
 
         .site-footer-socials a:hover {
-          border-color: rgba(255, 255, 255, 0.46);
-          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.24);
+          background: #3a3a3f;
           color: #fff;
+        }
+
+        .site-footer-socials a:focus-visible,
+        .site-footer-socials button:focus-visible {
+          outline: 2px solid #fff;
+          outline-offset: 3px;
         }
 
         .site-footer-socials button:disabled {
           cursor: not-allowed;
-          opacity: 0.4;
+          color: rgba(255, 255, 255, 0.34);
+          background: #29292d;
+          opacity: 1;
         }
 
         .site-footer-links {

@@ -411,6 +411,96 @@ html, body {
   animation: spin 1s linear infinite;
 }
 
+/* Full-canvas AI generation loader: a restrained dot field behind the
+   existing looping Syncraft mark. */
+.generation-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  overflow: hidden;
+  isolation: isolate;
+  background: rgba(10, 10, 10, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.generation-loading__dots {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.3;
+  background-image: radial-gradient(circle, rgba(202, 205, 200, 0.34) 0 0.9px, transparent 1.2px);
+  background-size: 13px 13px;
+}
+
+.generation-loading__dots::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(218, 220, 216, 0.64) 0 1px, transparent 1.3px);
+  background-size: 13px 13px;
+  mask-image: linear-gradient(108deg, transparent 36%, rgba(0, 0, 0, 0.22) 43%, #000 49%, #000 51%, rgba(0, 0, 0, 0.22) 57%, transparent 64%);
+  -webkit-mask-image: linear-gradient(108deg, transparent 36%, rgba(0, 0, 0, 0.22) 43%, #000 49%, #000 51%, rgba(0, 0, 0, 0.22) 57%, transparent 64%);
+  mask-size: 230% 100%;
+  -webkit-mask-size: 230% 100%;
+  mask-position: 145% 0;
+  -webkit-mask-position: 145% 0;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  animation: generationDotSweep 5.2s ease-in-out infinite;
+}
+
+.generation-loading__logo {
+  width: 96px;
+  height: 96px;
+  display: block;
+  filter: brightness(0) invert(0.72);
+  animation: generationLogoLoop 2.6s linear infinite;
+}
+
+@keyframes generationDotSweep {
+  0%, 10% {
+    mask-position: 145% 0;
+    -webkit-mask-position: 145% 0;
+    opacity: 0;
+  }
+  26% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.62;
+  }
+  74% {
+    opacity: 0.3;
+  }
+  90%, 100% {
+    mask-position: -45% 0;
+    -webkit-mask-position: -45% 0;
+    opacity: 0;
+  }
+}
+
+@keyframes generationLogoLoop {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .generation-loading__dots::after,
+  .generation-loading__logo {
+    animation: none;
+  }
+
+  .generation-loading__dots::after {
+    mask-position: 50% 0;
+    -webkit-mask-position: 50% 0;
+    opacity: 0.34;
+  }
+}
+
 .placeholder-node {
   display: flex;
   align-items: center;

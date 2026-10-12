@@ -8,6 +8,7 @@ import { CREDIT_PLANS } from "@/lib/paymentPlans";
 import { MANUAL_GCASH_ENABLED } from "@/lib/paymentMethods.mjs";
 import { CREDIT_COST } from "@/lib/pricing";
 import { trackEvent } from "@/lib/analytics.mjs";
+import CurrencyToggle from "@/components/CurrencyToggle";
 
 // Derived from CREDIT_PLANS — single source of truth.
 // To change prices, edit src/lib/paymentPlans.js only.
@@ -43,12 +44,34 @@ const POLAR_ENABLED_PLANS = new Set(
 );
 const POLAR_CARD_PAYMENTS_AVAILABLE = process.env.NEXT_PUBLIC_POLAR_CARD_PAYMENTS_AVAILABLE === "true";
 const SHOW_ELITE_PROMO_RIBBON = true;
+const PAYMENT_STATUS_STYLE = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  minHeight: '24px',
+  padding: '3px 8px',
+  border: '1px solid rgba(255,255,255,0.13)',
+  borderRadius: '999px',
+  color: '#c4c4c9',
+  background: 'rgba(255,255,255,0.045)',
+  fontSize: '11px',
+  fontWeight: '650',
+  lineHeight: 1.3,
+  letterSpacing: '0.05px',
+  whiteSpace: 'nowrap',
+};
+const PAYMENT_SUCCESS_STATUS_STYLE = {
+  ...PAYMENT_STATUS_STYLE,
+  borderColor: 'rgba(212,255,89,0.25)',
+  color: '#d4ff59',
+  background: 'rgba(212,255,89,0.08)',
+};
 
 
 const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supabaseProp, initialPlanKey = "pro", initialStep = 1, onClose, onLoginRequired, onCreditUpdated }) {
   const [fallbackSupabase] = useState(() => createClient());
   const supabase = supabaseProp || fallbackSupabase;
   const [step, setStep] = useState(initialStep);
+  const [displayCurrency, setDisplayCurrency] = useState("PHP");
   const [form, setForm] = useState({ plan: CREDIT_PLANS[initialPlanKey] ? initialPlanKey : "pro", txnRef: "", screenshotName: "", screenshotFile: null });
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -405,6 +428,8 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                 <p style={{ margin: 0, color: '#aaa', fontSize: '14px', maxWidth: '500px', marginLeft: 'auto', marginRight: 'auto' }}>Choose the credit package that fits your workflow.</p>
               </div>
 
+              <CurrencyToggle value={displayCurrency} onChange={setDisplayCurrency} />
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
                 {PLANS.map(p => (
                   <div key={p.key} style={{ background: p.best ? '#222' : '#18181b', border: `1px solid ${p.best ? '#d4ff59' : '#444'}`, padding: '32px 24px', display: 'flex', flexDirection: 'column', position: 'relative', borderRadius: '16px' }}>
@@ -425,9 +450,10 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
 
                     <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '32px', fontWeight: '700', color: '#fff', letterSpacing: '-1px' }}>{p.gcashPrice}</span>
+                        <span style={{ fontSize: '32px', fontWeight: '700', color: '#fff', letterSpacing: '-1px' }}>{displayCurrency === 'USD' && p.polarPrice ? p.polarPrice : p.gcashPrice}</span>
                       </div>
                       <span style={{ fontSize: '12px', color: '#888' }}>{p.traces} credits</span>
+                      {p.key === 'tingi' && <span style={{ color: '#d4ff59', fontSize: '10px', fontWeight: '700' }}>PHP only · QR Ph payment</span>}
                     </div>
 
                     <p style={{ color: '#aaa', fontSize: '13px', lineHeight: '1.5', margin: '0 0 24px', minHeight: '40px' }}>{p.desc}</p>
@@ -459,6 +485,10 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                     </div>
                   </div>
                 ))}
+              </div>
+              <div style={{ maxWidth: '860px', margin: '0 auto', color: '#777', fontSize: '11px', lineHeight: '1.6', textAlign: 'center' }}>
+                <p style={{ margin: '0 0 5px' }}>The ₱60 Tingi plan is not available for international cards because card-processing costs make this small transaction impractical.</p>
+                <p style={{ margin: 0 }}>USD card prices are separate checkout prices—not direct peso conversions—and may include payment processing, cross-border or currency-conversion costs, and applicable taxes.</p>
               </div>
             </>
           ) : step === 2 ? (
@@ -492,17 +522,14 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                       <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>QR Ph (GCash & Maya)</span>
-                      <span style={{ background: 'rgba(212, 255, 89, 0.15)', color: '#d4ff59', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        {isStartingPaymongo ? 'Loading...' : 'Instant Auto-Credit'}
+                      <span style={PAYMENT_SUCCESS_STATUS_STYLE}>
+                        {isStartingPaymongo ? 'Loading…' : 'Instant credit'}
                       </span>
                     </div>
                     <span style={{ color: '#888', fontSize: '13px', lineHeight: '1.4' }}>
                       Scan dynamic QR with GCash, Maya, ShopeePay, or PH banking apps ({PLAN_PRICES[form.plan]}).
                     </span>
                   </div>
-                  <span style={{ position: 'absolute', top: 0, right: '20px', transform: 'translateY(-50%)', zIndex: 1, background: '#d4ff59', color: '#111', fontSize: '10px', fontWeight: '800', padding: '4px 9px', borderRadius: '999px', textTransform: 'uppercase', letterSpacing: '0.6px', lineHeight: 1, whiteSpace: 'nowrap' }}>
-                    Recommended
-                  </span>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingLeft: '16px', borderLeft: '1px solid #2a2a2e', flexShrink: 0, height: '32px' }}>
                     <img src="/logos/qrph.png?v=2" alt="QR Ph" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
                     <img src="/logos/gcash.svg" alt="GCash" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
@@ -530,8 +557,8 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                       <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>Card / International</span>
-                      <span style={{ background: 'rgba(251, 191, 36, 0.12)', color: '#fbbf24', border: '1px solid rgba(251, 191, 36, 0.25)', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        {isStartingPolar ? 'Opening checkout...' : POLAR_CARD_PAYMENTS_AVAILABLE ? 'Secure card checkout' : 'Setup in progress'}
+                      <span style={PAYMENT_STATUS_STYLE}>
+                        {isStartingPolar ? 'Opening checkout…' : POLAR_CARD_PAYMENTS_AVAILABLE ? 'Secure checkout' : 'Setup in progress'}
                       </span>
                     </div>
                     <span id="card-payment-status" style={{ color: '#a1a1aa', fontSize: '13px', lineHeight: '1.4' }}>
@@ -561,7 +588,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                       <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>GCash Manual (Backup)</span>
-                      <span style={{ background: '#27272a', color: '#aaa', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manual Approval</span>
+                      <span style={PAYMENT_STATUS_STYLE}>Manual approval</span>
                     </div>
                     <span style={{ color: '#888', fontSize: '13px', lineHeight: '1.4' }}>
                       Scan static QR code, upload payment receipt, and receive credits in 10-30 mins.

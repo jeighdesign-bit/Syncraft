@@ -74,6 +74,9 @@ function SocialIcon({ name }) {
     facebook: <path fill="currentColor" stroke="none" d="M13.5 21v-7h2.5l.5-3h-3V9.1c0-.9.3-1.6 1.7-1.6H16V4.8c-.4-.1-1.2-.2-2.2-.2-2.2 0-3.8 1.4-3.8 3.9V11H7.5v3H10v7h3.5Z" />,
     instagram: <><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" /></>,
     tiktok: <path fill="currentColor" stroke="none" d="M14.5 4c.2 1.8 1.2 3.2 3 3.8v2.7c-1.1-.1-2.1-.5-3-1.2v5.7a4.6 4.6 0 1 1-4-4.6v2.8a1.8 1.8 0 1 0 1.2 1.7V4h2.8Z" />,
+    youtube: <path fill="currentColor" stroke="none" d="M21.2 7.2a2.8 2.8 0 0 0-2-2C17.5 4.8 12 4.8 12 4.8s-5.5 0-7.2.4a2.8 2.8 0 0 0-2 2A29 29 0 0 0 2.4 12a29 29 0 0 0 .4 4.8 2.8 2.8 0 0 0 2 2c1.7.4 7.2.4 7.2.4s5.5 0 7.2-.4a2.8 2.8 0 0 0 2-2 29 29 0 0 0 .4-4.8 29 29 0 0 0-.4-4.8ZM10 15.1V8.9l5.4 3.1-5.4 3.1Z" />,
+    x: <path fill="currentColor" stroke="none" d="M5.2 4h3.5l3.9 5.2L17 4h1.8l-5.4 6.5L19.8 20h-3.5l-4.4-5.9L7 20H5.2l5.9-7.2L5.2 4Zm2.6 1.5 9.2 13h1L8.8 5.5h-1Z" />,
+    discord: <path fill="currentColor" stroke="none" d="M18.9 5.3A16 16 0 0 0 15 4.1l-.5 1a14 14 0 0 0-5 0l-.6-1A16 16 0 0 0 5 5.3C2.5 9 1.8 12.7 2.1 16.4a16 16 0 0 0 4.8 2.4l1.2-1.6-1.8-.9.4-.3a11.5 11.5 0 0 0 10.6 0l.4.3-1.8.9 1.2 1.6a16 16 0 0 0 4.8-2.4c.4-4.3-.8-8-3-11.1ZM8.5 14.4c-1 0-1.8-1-1.8-2.2S7.5 10 8.5 10s1.8 1 1.8 2.2-.8 2.2-1.8 2.2Zm7 0c-1 0-1.8-1-1.8-2.2s.8-2.2 1.8-2.2 1.8 1 1.8 2.2-.8 2.2-1.8 2.2Z" />,
   };
 
   return (
@@ -929,7 +932,7 @@ export default function StartScreen() {
             }
           }}
         />
-        <ProductionProofSection />
+        <ProductionProofSection publicStats={publicStats} />
         <FAQSection />
         {/* Hidden File Input — shows type-selector modal before uploading */}
         <input type="file" ref={fileInputRef} onChange={(e) => { if (e.target.files[0]) openModalWithFile(e.target.files[0]); e.target.value = ""; }} accept="image/*" style={{ display: "none" }} />
@@ -1015,10 +1018,14 @@ export default function StartScreen() {
             <div className="site-footer-brand">
               <img src="/logo.svg" alt="Syncraft" width={765} height={137} />
               <p>AI-powered production tools for clean SVG tracing, background removal, upscaling, and print-ready artwork delivery.</p>
+              <h3 className="site-footer-social-title">Social Profiles</h3>
               <div className="site-footer-socials" aria-label="Social media">
-                <a href="https://web.facebook.com/profile.php?id=61562539277199" target="_blank" rel="noreferrer" aria-label="Syncraft on Facebook"><SocialIcon name="facebook" /></a>
+                <button type="button" disabled aria-label="YouTube profile coming soon"><SocialIcon name="youtube" /></button>
+                <button type="button" disabled aria-label="X profile coming soon"><SocialIcon name="x" /></button>
                 <button type="button" disabled aria-label="Instagram profile coming soon"><SocialIcon name="instagram" /></button>
+                <a href="https://web.facebook.com/profile.php?id=61562539277199" target="_blank" rel="noreferrer" aria-label="Syncraft on Facebook"><SocialIcon name="facebook" /></a>
                 <a href="https://www.tiktok.com/@syncraftech1" target="_blank" rel="noreferrer" aria-label="Syncraft on TikTok"><SocialIcon name="tiktok" /></a>
+                <button type="button" disabled aria-label="Discord community coming soon"><SocialIcon name="discord" /></button>
               </div>
             </div>
 

@@ -1,15 +1,10 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
-  BadgeCheck,
   CheckCircle2,
   Download,
   Quote,
   ShieldCheck,
   Star,
-  User,
 } from "lucide-react";
 import styles from "./TestimonialSection.module.css";
 
@@ -40,69 +35,9 @@ const proofs = [
   },
 ];
 
-function ReviewCard({ review }) {
-  const rating = Math.max(1, Math.min(5, Math.round(Number(review.rating) || 5)));
-
-  return (
-    <article className={styles.reviewCard}>
-      <Quote className={styles.quoteIcon} size={32} aria-hidden="true" />
-      <div className={styles.reviewStars} aria-label={`${rating} out of 5 stars`}>
-        {Array.from({ length: 5 }, (_, index) => (
-          <Star
-            key={index}
-            size={15}
-            fill={index < rating ? "currentColor" : "none"}
-            aria-hidden="true"
-          />
-        ))}
-      </div>
-      <blockquote>“{review.feedback_text}”</blockquote>
-      <footer className={styles.reviewer}>
-        {review.reviewer_avatar ? (
-          <img
-            src={review.reviewer_avatar}
-            alt=""
-            referrerPolicy="no-referrer"
-            className={styles.avatar}
-          />
-        ) : (
-          <span className={styles.avatarFallback} aria-hidden="true">
-            <User size={18} />
-          </span>
-        )}
-        <span>
-          <strong>{review.reviewer_name || "Syncraft user"}</strong>
-          <small><BadgeCheck size={13} aria-hidden="true" /> Project feedback</small>
-        </span>
-      </footer>
-    </article>
-  );
-}
-
-export default function ProductionProofSection() {
-  const [reviews, setReviews] = useState([]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadReviews() {
-      try {
-        const response = await fetch("/api/reviews");
-        const data = await response.json();
-
-        if (!active) return;
-
-        if (response.ok && data.success && Array.isArray(data.reviews)) {
-          setReviews(data.reviews.slice(0, 6));
-        }
-      } catch {
-        // Keep the public section hidden when verified reviews are unavailable.
-      }
-    }
-
-    loadReviews();
-    return () => { active = false; };
-  }, []);
+export default function ProductionProofSection({ publicStats = { totalUsers: 0, avatars: [] } }) {
+  const totalUsers = Number(publicStats.totalUsers) || 0;
+  const avatars = Array.isArray(publicStats.avatars) ? publicStats.avatars.slice(0, 4) : [];
 
   return (
     <section id="production-proof" className={styles.sectionWrapper} aria-labelledby="production-proof-title">
@@ -136,23 +71,78 @@ export default function ProductionProofSection() {
         </div>
       </div>
 
-      {reviews.length > 0 && (
-        <div className={styles.testimonialSection} aria-labelledby="testimonial-title">
-          <header className={styles.testimonialHeader}>
-            <div>
-              <p className={styles.eyebrow}>Featured verified feedback</p>
-              <h2 id="testimonial-title">What Syncraft users say</h2>
-            </div>
-            <p>Project-linked reviews published with the reviewer&apos;s permission.</p>
-          </header>
+      <div className={styles.testimonialSection} aria-labelledby="testimonial-title">
+        <header className={styles.testimonialHeader}>
+          <div>
+            <p className={styles.eyebrow}>Testimonials</p>
+            <h2 id="testimonial-title">Made for real creative workflows.</h2>
+          </div>
+          <p>Real feedback from a designer who discovered Syncraft during its early release.</p>
+        </header>
 
-          <div className={styles.reviewGrid}>
-            {reviews.map((review, index) => (
-              <ReviewCard review={review} key={`${review.reviewer_name || "review"}-${review.created_at || index}`} />
-            ))}
+        <div className={styles.testimonialBento}>
+          <div className={styles.testimonialColumn}>
+            <article className={styles.featuredReview}>
+              <div className={styles.featuredTopline}>
+                <span className={styles.pendingLabel}>Early user feedback</span>
+                <Quote size={34} aria-hidden="true" />
+              </div>
+              <blockquote>
+                “This is actually usable and knowing it is expensive, Imagine what price will be 5 years from now once other ai see that this is the best tool for graphic designers. Ama put it on my wishlist.”
+              </blockquote>
+              <div className={styles.featuredStars} aria-label="5 out of 5 stars">
+                {Array.from({ length: 5 }, (_, index) => <Star key={index} size={17} fill="currentColor" aria-hidden="true" />)}
+              </div>
+              <div className={styles.featuredFooter}>
+                <footer className={styles.reviewer}>
+                  <span className={styles.avatarFallback} aria-hidden="true">TT</span>
+                  <span>
+                    <strong>Thee Toxicidea</strong>
+                    <small>Author feedback</small>
+                  </span>
+                </footer>
+                <div className={styles.communityInline} aria-label="Syncraft community">
+                  <div className={styles.communityVisuals} aria-hidden="true">
+                    <div className={styles.communityAvatars}>
+                      {avatars.length > 0
+                        ? avatars.map((url, index) => <img key={url} src={url} alt="" referrerPolicy="no-referrer" style={{ zIndex: avatars.length - index }} />)
+                        : <span>TT</span>}
+                    </div>
+                    <div className={styles.communityStars}>
+                      {Array.from({ length: 5 }, (_, index) => <Star key={index} size={15} fill="currentColor" />)}
+                    </div>
+                  </div>
+                  <p>{totalUsers > 0 ? <>Loved by <strong>{totalUsers.toLocaleString()}+</strong> creatives</> : <>A growing community of <strong>creative users</strong></>}</p>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div className={styles.testimonialColumn}>
+            <div className={styles.outcomeGrid} aria-label="Syncraft workflow facts">
+              <article className={`${styles.outcomeCard} ${styles.exportCard}`}>
+                <strong><b>4</b> formats</strong>
+                <p>Export SVG, PNG, transparent PNG, or a packaged ZIP.</p>
+              </article>
+              <article className={`${styles.outcomeCard} ${styles.privacyCard}`}>
+                <strong><b>3</b> days</strong>
+                <p>Project files are scheduled for deletion after three days.</p>
+              </article>
+            </div>
+
+            <article className={styles.secondaryReview}>
+              <span className={styles.supportLabel}>A complete vector workflow</span>
+              <h3>Less tracing. More designing.</h3>
+              <p>Upload a reference, recover clean vector paths, and export files ready for editing or delivery.</p>
+              <ul className={styles.supportFacts}>
+                <li><span>Input</span><strong>PNG &amp; JPEG</strong></li>
+                <li><span>Output</span><strong>Editable SVG</strong></li>
+                <li><span>Delivery</span><strong>PNG &amp; ZIP</strong></li>
+              </ul>
+            </article>
           </div>
         </div>
-      )}
+      </div>
     </section>
   );
 }

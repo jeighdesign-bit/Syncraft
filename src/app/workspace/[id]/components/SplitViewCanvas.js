@@ -356,12 +356,17 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
               />
             )}
           </div>
-          <div style={{ position: 'absolute', inset: 0, zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(10, 10, 10, 0.75)', backdropFilter: 'blur(6px)' }}>
+          <div
+            className="generation-loading"
+            role="status"
+            aria-live="polite"
+            aria-label="Generating your design"
+          >
+            <div className="generation-loading__dots" aria-hidden="true" />
             <img 
               src="/Syncraft Logo-14.svg" 
-              alt="Loading" 
-              className="animate-spin" 
-              style={{ width: '100px', height: '100px', filter: 'brightness(0) invert(0.6)', animationDuration: '2.5s', animationTimingFunction: 'linear' }} 
+              alt=""
+              className="generation-loading__logo"
             />
           </div>
         </div>

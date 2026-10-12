@@ -1,6 +1,10 @@
+"use client";
+
+import { useState } from "react";
 import { ArrowRight, CheckCircle } from "lucide-react";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
 import { CREDIT_COST } from "@/lib/pricing";
+import CurrencyToggle from "@/components/CurrencyToggle";
 import styles from "./PricingSection.module.css";
 
 const PLAN_DETAILS = {
@@ -20,6 +24,8 @@ const PLANS = Object.values(CREDIT_PLANS).map((plan) => ({
 }));
 
 export default function PricingSection({ isSignedIn, onSelectPlan }) {
+  const [currency, setCurrency] = useState("PHP");
+
   return (
     <section id="pricing" className={styles.section} aria-labelledby="pricing-heading">
       <header className={styles.header}>
@@ -27,6 +33,8 @@ export default function PricingSection({ isSignedIn, onSelectPlan }) {
         <h2 id="pricing-heading">Affordable pricing</h2>
         <p className={styles.intro}>Choose the credit package that fits your workflow.</p>
       </header>
+
+      <CurrencyToggle value={currency} onChange={setCurrency} />
 
       <div className={styles.grid}>
         {PLANS.map((plan) => (
@@ -48,8 +56,13 @@ export default function PricingSection({ isSignedIn, onSelectPlan }) {
             </div>
 
             <div className={styles.priceBlock}>
-              <p className={styles.price}>{plan.gcashPrice || plan.price}</p>
+              <p className={styles.price}>
+                {currency === "USD" && plan.polarPrice ? plan.polarPrice : plan.gcashPrice || plan.price}
+              </p>
               <p className={styles.credits}>{plan.credits} credits</p>
+              {plan.key === "tingi" && (
+                <p className={styles.paymentLimit}>PHP only · QR Ph payment</p>
+              )}
             </div>
             <p className={styles.description}>{plan.description}</p>
 
@@ -70,7 +83,12 @@ export default function PricingSection({ isSignedIn, onSelectPlan }) {
         ))}
       </div>
 
-      <p className={styles.note}>One standard generation uses {CREDIT_COST.trace} credits. Some advanced workflows use more.</p>
+      <div className={styles.notes}>
+        <p className={styles.note}>One standard generation uses {CREDIT_COST.trace} credits. Some advanced workflows use more.</p>
+        <p className={styles.note}>
+          The ₱60 Tingi plan is not available for international cards because card-processing costs make this small transaction impractical. USD card prices are separate checkout prices—not direct peso conversions—and may include payment processing, cross-border or currency-conversion costs, and applicable taxes.
+        </p>
+      </div>
     </section>
   );
 }

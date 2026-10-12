@@ -163,11 +163,309 @@
 }
 
 .testimonialHeader {
+  display: block;
+  max-width: 700px;
+  margin: 0 auto;
   padding: 0 4px;
+  text-align: center;
 }
 
 .testimonialHeader h2 {
+  max-width: none;
   font-size: clamp(28px, 3.4vw, 42px);
+}
+
+.testimonialHeader .eyebrow {
+  display: inline-block;
+  margin-bottom: 16px;
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  color: #d5d5d8;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+}
+
+.testimonialHeader > p {
+  max-width: 570px;
+  margin: 14px auto 0;
+  color: #aaaab0;
+}
+
+.testimonialBento {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
+  gap: 14px;
+  margin-top: 36px;
+}
+
+.testimonialColumn {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  align-content: stretch;
+  gap: 14px;
+}
+
+.testimonialColumn:first-child {
+  display: block;
+}
+
+.featuredReview,
+.outcomeCard,
+.secondaryReview {
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  background: #1b1b1e;
+}
+
+.featuredReview {
+  display: flex;
+  height: 100%;
+  min-height: 480px;
+  flex-direction: column;
+  padding: clamp(26px, 4vw, 42px);
+}
+
+.featuredTopline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.featuredTopline > svg {
+  color: rgba(255, 255, 255, 0.16);
+}
+
+.pendingLabel {
+  color: #aaaab0;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+}
+
+.featuredReview blockquote {
+  max-width: 620px;
+  margin: 54px 0 42px;
+  color: #f4f4f5;
+  font-size: clamp(23px, 2.7vw, 35px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.featuredStars {
+  display: flex;
+  gap: 4px;
+  margin: auto 0 22px;
+  color: #f4ad3e;
+}
+
+.featuredReview .reviewer strong {
+  color: #f4f4f5;
+}
+
+.featuredReview .reviewer small {
+  color: #8f8f96;
+}
+
+.featuredReview .avatarFallback {
+  border-color: rgba(255, 255, 255, 0.13);
+  color: #d7d7da;
+  background: #26262a;
+}
+
+.featuredFooter {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.communityVisuals {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.communityAvatars {
+  display: flex;
+  align-items: center;
+}
+
+.communityAvatars img,
+.communityAvatars span {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  margin-left: -8px;
+  border: 2px solid #1b1b1e;
+  border-radius: 50%;
+  color: #d7d7da;
+  background: #303034;
+  font-size: 10px;
+  font-weight: 750;
+  object-fit: cover;
+}
+
+.communityAvatars > :first-child {
+  margin-left: 0;
+}
+
+.communityStars {
+  display: flex;
+  gap: 3px;
+  color: #f4ad3e;
+}
+
+.communityInline p {
+  margin: 8px 0 0;
+  color: #8f8f96;
+  font-size: 12px;
+  text-align: right;
+}
+
+.communityInline p strong {
+  color: #e9e9eb;
+}
+
+.outcomeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.outcomeCard {
+  min-height: 190px;
+  padding: 24px;
+}
+
+.outcomeCard strong {
+  display: block;
+  margin-bottom: 18px;
+  color: #f1f1f2;
+  font-size: 16px;
+  letter-spacing: -0.025em;
+}
+
+.outcomeCard strong b {
+  display: block;
+  font-size: 42px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.outcomeCard p {
+  margin: 0;
+  color: #a1a1a8;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.exportCard {
+  border-color: rgba(126, 91, 239, 0.24);
+  background: #211e2b;
+}
+
+.exportCard strong b {
+  color: #9a7cf5;
+}
+
+.privacyCard {
+  border-color: rgba(54, 150, 156, 0.25);
+  background: #192629;
+}
+
+.privacyCard strong b {
+  color: #62b7bb;
+}
+
+.secondaryReview {
+  position: relative;
+  display: flex;
+  min-height: 276px;
+  height: 100%;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 26px;
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #17171a;
+}
+
+.supportLabel {
+  margin-bottom: 18px;
+  color: #b9b9bf;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.secondaryReview h3 {
+  max-width: 420px;
+  margin: 0 0 10px;
+  color: #f2f2f3;
+  font-size: 22px;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.secondaryReview p {
+  max-width: 520px;
+  margin: 0;
+  color: #96969d;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.supportFacts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.supportFacts li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.supportFacts span,
+.supportFacts strong {
+  display: block;
+}
+
+.supportFacts span {
+  margin-bottom: 0;
+  color: #717179;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.supportFacts strong {
+  overflow: hidden;
+  color: #d9d9dc;
+  font-size: 11px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .reviewGrid {
@@ -287,6 +585,18 @@
     grid-template-columns: 1fr;
   }
 
+  .testimonialBento {
+    grid-template-columns: 1fr;
+  }
+
+  .featuredReview {
+    min-height: 360px;
+  }
+
+  .featuredFooter {
+    align-items: flex-start;
+  }
+
   .proofCard {
     min-height: 248px;
   }
@@ -330,6 +640,59 @@
 
   .testimonialSection {
     margin-top: 72px;
+  }
+
+  .testimonialBento {
+    gap: 10px;
+    margin-top: 28px;
+  }
+
+  .featuredReview {
+    min-height: 330px;
+    padding: 24px;
+    border-radius: 18px;
+  }
+
+  .featuredReview blockquote {
+    margin: 42px 0 34px;
+    font-size: 25px;
+  }
+
+  .outcomeGrid {
+    gap: 10px;
+  }
+
+  .outcomeCard {
+    min-height: 160px;
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .outcomeCard strong {
+    font-size: 17px;
+  }
+
+  .secondaryReview {
+    min-height: 220px;
+    padding: 24px;
+    border-radius: 18px;
+  }
+
+  .supportFacts {
+    grid-template-columns: 1fr;
+  }
+
+  .supportFacts strong {
+    white-space: normal;
+  }
+
+  .featuredFooter {
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .communityInline p {
+    text-align: left;
   }
 
   .reviewGrid {

@@ -114,6 +114,14 @@
   font-size: 12px;
 }
 
+.paymentLimit {
+  margin: 3px 0 0;
+  color: #d4ff59;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .description {
   min-height: 40px;
   margin: 0 0 24px;
@@ -252,11 +260,18 @@
 }
 
 .note {
-  margin: 18px 4px 0;
+  margin: 0;
   color: #777;
   font-size: 11px;
   line-height: 1.6;
   text-align: center;
+}
+
+.notes {
+  display: grid;
+  gap: 6px;
+  max-width: 860px;
+  margin: 18px auto 0;
 }
 
 @media (max-width: 1050px) {

@@ -53,28 +53,37 @@ const EduSection = memo(function EduSection() {
 
           {/* Right: Text & Steps */}
           <div className={styles.textContainer}>
-            <h3 className={styles.sectionSubtitle}>How to Use Syncraft</h3>
+            <p className={styles.sectionSubtitle}>How it works</p>
             <h2 className={styles.sectionTitle}>Convert images in seconds.</h2>
             <p className={styles.sectionDescription}>
               Our advanced AI handles the complex tracing process for you. No manual pen tool required.
             </p>
             
-            <div className={styles.stepsList}>
-              <div className={styles.stepItem}>
-                <div className={styles.stepNumber}>1</div>
-                <div className={styles.stepText}>Upload any PNG or JPEG logo, sketch, or photo.</div>
-              </div>
+            <ol className={styles.stepsList}>
+              <li className={styles.stepItem}>
+                <span className={styles.stepNumber} aria-hidden="true">01</span>
+                <div className={styles.stepContent}>
+                  <h3>Upload your image</h3>
+                  <p>Add any PNG or JPEG logo, sketch, or photo.</p>
+                </div>
+              </li>
               
-              <div className={styles.stepItem}>
-                <div className={styles.stepNumber}>2</div>
-                <div className={styles.stepText}>Our AI processing cleans noise and produces editable vector paths.</div>
-              </div>
+              <li className={styles.stepItem}>
+                <span className={styles.stepNumber} aria-hidden="true">02</span>
+                <div className={styles.stepContent}>
+                  <h3>Let Syncraft trace it</h3>
+                  <p>AI cleans the image and creates editable vector paths.</p>
+                </div>
+              </li>
               
-              <div className={styles.stepItem}>
-                <div className={styles.stepNumber}>3</div>
-                <div className={styles.stepText}>Download a crisp, scalable SVG for review and editing.</div>
-              </div>
-            </div>
+              <li className={styles.stepItem}>
+                <span className={styles.stepNumber} aria-hidden="true">03</span>
+                <div className={styles.stepContent}>
+                  <h3>Download your vector</h3>
+                  <p>Export a crisp, scalable SVG ready for editing.</p>
+                </div>
+              </li>
+            </ol>
           </div>
 
         </div>
