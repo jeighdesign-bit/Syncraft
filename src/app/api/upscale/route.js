@@ -13,6 +13,7 @@ import {
   isOwnedStorageUrl,
   validateUrlForSSRF,
 } from "@/lib/ssrf";
+import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -65,20 +66,17 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing projectId" }, { status: 400 });
     }
 
-    const { data: project, error: projectError } = await adminSupabase
-      .from("projects")
-      .select("*")
-      .eq("id", projectId)
-      .eq("user_id", userId)
-      .eq("trace_type", "upscale")
-      .single();
+    const access = await getProjectAccess(userId, projectId, { required: PROJECT_ACCESS.EDIT });
+    const project = access.project?.trace_type === "upscale" ? access.project : null;
 
-    if (projectError || !project) {
+    if (!project) {
       return NextResponse.json({ error: "Upscale project not found" }, { status: 404 });
     }
 
     const finalImageUrl = project.original_image_url;
-    if (!isOwnedStorageUrl(finalImageUrl, { userId, projectId }) || !(await validateUrlForSSRF(finalImageUrl, { allowedHosts: getAllowedStorageHosts() }))) {
+    const sourceIsOwned = isOwnedStorageUrl(finalImageUrl, { userId, projectId })
+      || isOwnedStorageUrl(finalImageUrl, { userId: project.user_id, projectId });
+    if (!sourceIsOwned || !(await validateUrlForSSRF(finalImageUrl, { allowedHosts: getAllowedStorageHosts() }))) {
       return NextResponse.json({ error: "Invalid or unauthorized image URL" }, { status: 400 });
     }
 
@@ -142,7 +140,6 @@ export async function POST(request) {
           canvas_data: { ...(project.canvas_data || {}), upscale_status: "processing" },
         })
         .eq("id", projectId)
-        .eq("user_id", userId)
         .or("credit_deducted.eq.false,credit_deducted.is.null")
         .select("id");
 
@@ -166,8 +163,7 @@ export async function POST(request) {
         await adminSupabase
           .from("projects")
           .update({ credit_deducted: false, canvas_data: project.canvas_data || {} })
-          .eq("id", projectId)
-          .eq("user_id", userId);
+          .eq("id", projectId);
         if (billingError.code === "INSUFFICIENT_CREDITS" || billingError.code === "PROFILE_NOT_FOUND") {
           return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
         }
@@ -178,8 +174,7 @@ export async function POST(request) {
       await adminSupabase
         .from("projects")
         .update({ canvas_data: { ...(project.canvas_data || {}), upscale_status: "processing" } })
-        .eq("id", projectId)
-        .eq("user_id", userId);
+        .eq("id", projectId);
     }
 
     // Process via fal.ai
@@ -267,8 +262,7 @@ export async function POST(request) {
         refunded: false,
         canvas_data: { ...(project.canvas_data || {}), upscale_status: "complete" },
       })
-      .eq("id", projectId)
-      .eq("user_id", userId);
+      .eq("id", projectId);
     if (saveError) throw new Error("Failed to save the upscaled image");
 
     await markCreditTransaction({ transactionId: chargeTransactionId, status: "succeeded" });
@@ -296,7 +290,6 @@ export async function POST(request) {
         .from("projects")
         .select("canvas_data")
         .eq("id", projectId)
-        .eq("user_id", userId)
         .single();
       await adminSupabase
         .from("projects")
@@ -304,8 +297,7 @@ export async function POST(request) {
           ...(chargedThisRequest ? { credit_deducted: refunded ? false : true, refunded } : {}),
           canvas_data: { ...(failedProject?.canvas_data || {}), upscale_status: "failed" },
         })
-        .eq("id", projectId)
-        .eq("user_id", userId);
+        .eq("id", projectId);
     }
     const providerRejectedInput = error.status === 422 || error.message === "Unprocessable Entity";
     const safeMessage = providerRejectedInput

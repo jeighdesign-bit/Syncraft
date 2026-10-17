@@ -7,6 +7,7 @@ import { DEFAULT_MAX_IMAGE_BYTES, DEFAULT_MAX_UPSCALED_IMAGE_BYTES, fetchWithSSR
 import { ANCHORS, BLEED_PERCENTS, RATIO_VALUES, SEED_MODES, evaluateExtend, evaluateExtendIntent } from "@/lib/aspectRatio";
 import { CREDIT_COST } from "@/lib/pricing";
 import { buildExtendPrompt } from "@/lib/prompts";
+import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 import { fal } from "@fal-ai/client";
 
 export const runtime = 'nodejs';
@@ -303,15 +304,10 @@ export async function POST(request) {
     }
 
     // Fetch project AND verify ownership in one query — prevents IDOR attacks
-    const { data: project, error: projError } = await adminSupabase
-      .from('projects')
-      .select('*')
-      .eq('id', projectId)
-      .eq('user_id', user.id)
-      .single();
+    const { project, error: accessError } = await getProjectAccess(user.id, projectId, { required: PROJECT_ACCESS.EDIT });
 
-    if (projError || !project) {
-      return NextResponse.json({ error: "Project not found or access denied" }, { status: 404 });
+    if (!project) {
+      return NextResponse.json({ error: accessError }, { status: 404 });
     }
 
     // Extend operates on the Stage 1 flat extract, not the original upload —
@@ -322,7 +318,8 @@ export async function POST(request) {
       return NextResponse.json({ error: "NO_FLAT_EXTRACT" }, { status: 400 });
     }
 
-    if (!isOwnedStorageUrl(sourceUrl, { userId: user.id, projectId }) || !(await validateUrlForSSRF(sourceUrl, { allowedHosts: getAllowedStorageHosts() }))) {
+    const sourceIsOwned = isOwnedStorageUrl(sourceUrl, { userId: user.id, projectId }) || isOwnedStorageUrl(sourceUrl, { userId: project.user_id, projectId });
+    if (!sourceIsOwned || !(await validateUrlForSSRF(sourceUrl, { allowedHosts: getAllowedStorageHosts() }))) {
       return NextResponse.json({ error: "Invalid or unauthorized image URL" }, { status: 400 });
     }
 
@@ -607,8 +604,7 @@ export async function POST(request) {
         zip_signature: null,
         zip_generated_at: null,
       })
-      .eq('id', projectId)
-      .eq('user_id', user.id);
+      .eq('id', projectId);
 
     if (updateError) {
       throw new Error("Failed to update project with the extended image");

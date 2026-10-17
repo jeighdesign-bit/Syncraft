@@ -5,6 +5,7 @@ import { CREDIT_COST } from "@/lib/pricing";
 import { uploadToR2 } from "@/lib/cloudflare";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 import { fal } from "@fal-ai/client";
+import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
 export const runtime = 'nodejs';
 export const maxDuration = 120; // Enough time for BG removal + R2 upload
@@ -37,22 +38,21 @@ export async function POST(request) {
     }
 
     // Fetch project AND verify ownership
-    const { data: project, error: projError } = await adminSupabase
-      .from('projects')
-      .select('*')
-      .eq('id', projectId)
-      .eq('user_id', user.id)
-      .single();
+    const { project, error: accessError } = await getProjectAccess(user.id, projectId, {
+      required: PROJECT_ACCESS.EDIT,
+    });
 
-    if (projError || !project) {
-      return NextResponse.json({ error: "Project not found or access denied" }, { status: 404 });
+    if (!project) {
+      return NextResponse.json({ error: accessError }, { status: 404 });
     }
 
     if (!project.original_image_url) {
       return NextResponse.json({ error: "No image found to process" }, { status: 400 });
     }
 
-    if (!isOwnedStorageUrl(project.original_image_url, { userId: user.id, projectId }) || !(await validateUrlForSSRF(project.original_image_url, { allowedHosts: getAllowedStorageHosts() }))) {
+    const sourceIsOwned = isOwnedStorageUrl(project.original_image_url, { userId: user.id, projectId })
+      || isOwnedStorageUrl(project.original_image_url, { userId: project.user_id, projectId });
+    if (!sourceIsOwned || !(await validateUrlForSSRF(project.original_image_url, { allowedHosts: getAllowedStorageHosts() }))) {
       return NextResponse.json({ error: "Invalid or unauthorized image URL" }, { status: 400 });
     }
 
@@ -85,8 +85,7 @@ export async function POST(request) {
     await adminSupabase
       .from('projects')
       .update({ credit_deducted: true })
-      .eq('id', projectId)
-      .eq('user_id', user.id);
+      .eq('id', projectId);
 
     // ============================================================
     // PROCESS WITH FAL.AI (BiRefNet)
@@ -166,8 +165,7 @@ export async function POST(request) {
     const { error: updateError } = await adminSupabase
       .from('projects')
       .update(updatePayload)
-      .eq('id', projectId)
-      .eq('user_id', user.id);
+      .eq('id', projectId);
 
     if (updateError) {
       throw new Error("Failed to update project with new image URL");
@@ -195,7 +193,7 @@ export async function POST(request) {
         });
         refunded = refund.refunded;
         if (refunded && projectId) {
-          await adminSupabase.from('projects').update({ refunded: true }).eq('id', projectId).eq('user_id', userId);
+          await adminSupabase.from('projects').update({ refunded: true }).eq('id', projectId);
         }
       } catch (refundErr) {
         console.error('[Remove BG] CRITICAL: Failed to refund credit:', refundErr);

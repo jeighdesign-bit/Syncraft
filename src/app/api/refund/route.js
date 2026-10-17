@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
 import { refundCreditVerified } from "@/lib/creditLedger";
+import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
 export async function POST(request) {
   try {
@@ -24,14 +25,13 @@ export async function POST(request) {
     }
 
     // Fetch project — use shared adminSupabase singleton (no new DB connections per request)
-    const { data: proj } = await adminSupabase
-      .from('projects')
-      .select('user_id, credit_deducted, refunded')
-      .eq('id', projectId)
-      .single();
+    const { project: proj } = await getProjectAccess(user.id, projectId, {
+      required: PROJECT_ACCESS.EDIT,
+      select: 'id,user_id,created_at,credit_deducted,refunded',
+    });
     
     // Security check: only the project owner can request a refund
-    if (!proj || proj.user_id !== user.id) {
+    if (!proj) {
       return NextResponse.json({ error: "Project not found or access denied" }, { status: 403 });
     }
 
@@ -80,8 +80,7 @@ export async function POST(request) {
     const { error: updateErr } = await adminSupabase
       .from('projects')
       .update({ generated_image_url: 'REFUNDED', refunded: true })
-      .eq('id', projectId)
-      .eq('user_id', user.id);
+      .eq('id', projectId);
     if (updateErr) throw updateErr;
 
     console.log(`[Refund API] ✅ Successfully processed refund for project ${projectId} (User: ${user.id})`);

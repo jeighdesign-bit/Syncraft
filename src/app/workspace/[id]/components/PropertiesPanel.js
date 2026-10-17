@@ -185,6 +185,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
   onEnterExtend,
   onProceedExtend,
   onCancelExtend,
+  readOnly = false,
 }) {
   const [downloading, setDownloading] = useState(null);
 
@@ -229,10 +230,10 @@ const PropertiesPanel = memo(function PropertiesPanel({
   // locked) that the simpler active/inactive secondary buttons don't need.
   const traceUnlocked = canRetryVector || noCredits || isCropped;
 
-  const svgActive = !!project?.svg_url && !downloading;
-  const psdActive = !!project?.svg_url && !downloading && !isBusy;
-  const zipActive = !!project?.original_image_url && !downloading;
-  const pngActive = !!project?.upscaled_image_url && !downloading;
+  const svgActive = !readOnly && !!project?.svg_url && !downloading;
+  const psdActive = !readOnly && !!project?.svg_url && !downloading && !isBusy;
+  const zipActive = !readOnly && !!project?.original_image_url && !downloading;
+  const pngActive = !readOnly && !!project?.upscaled_image_url && !downloading;
   const compareActive = !!project?.svg_url;
 
   return (
@@ -243,11 +244,19 @@ const PropertiesPanel = memo(function PropertiesPanel({
         <span style={eyebrowStyle}>AI Trace Settings</span>
       </div>
 
+      {readOnly && (
+        <div role="status" style={{ ...noticeStyle, margin: `${SPACE.md}px ${SPACE.lg}px 0`, borderColor: "rgba(212,255,89,0.22)" }}>
+          <span style={{ ...noticeIconStyle, color: COLOR.accent }}>i</span>
+          <span>View-only access. Editing tools and exports are locked.</span>
+        </div>
+      )}
+
       {/* ── Vector Engine ───────────────────────────────────── */}
       <div style={sectionStyle}>
         <label style={fieldLabelStyle}>Vector Engine (Beta)</label>
         <div style={{ position: "relative" }}>
           <select
+            disabled={readOnly}
             value={vectorColors}
             onChange={(e) => onVectorColorsChange(e.target.value)}
             style={selectStyle}
@@ -292,28 +301,28 @@ const PropertiesPanel = memo(function PropertiesPanel({
         <div style={{ display: "flex", flexDirection: "column", gap: SPACE.sm }}>
           <button
             onClick={onOpenRemoveBg}
-            disabled={isBusy}
-            style={secondaryBtnStyle(!isBusy)}
-            onMouseOver={e => { if (!isBusy) e.currentTarget.style.borderColor = "#484848"; }}
-            onMouseOut={e => { if (!isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
+            disabled={readOnly || isBusy}
+            style={secondaryBtnStyle(!readOnly && !isBusy)}
+            onMouseOver={e => { if (!readOnly && !isBusy) e.currentTarget.style.borderColor = "#484848"; }}
+            onMouseOut={e => { if (!readOnly && !isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
           >
             <ImageMinus size={14} /> Remove BG
           </button>
           <button
             onClick={onOpenErase}
-            disabled={isBusy}
-            style={secondaryBtnStyle(!isBusy)}
-            onMouseOver={e => { if (!isBusy) e.currentTarget.style.borderColor = "#484848"; }}
-            onMouseOut={e => { if (!isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
+            disabled={readOnly || isBusy}
+            style={secondaryBtnStyle(!readOnly && !isBusy)}
+            onMouseOver={e => { if (!readOnly && !isBusy) e.currentTarget.style.borderColor = "#484848"; }}
+            onMouseOut={e => { if (!readOnly && !isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
           >
             <Eraser size={14} /> Erase Noise
           </button>
           <button
             onClick={onOpenCrop}
-            disabled={isBusy}
-            style={secondaryBtnStyle(!isBusy)}
-            onMouseOver={e => { if (!isBusy) e.currentTarget.style.borderColor = "#484848"; }}
-            onMouseOut={e => { if (!isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
+            disabled={readOnly || isBusy}
+            style={secondaryBtnStyle(!readOnly && !isBusy)}
+            onMouseOver={e => { if (!readOnly && !isBusy) e.currentTarget.style.borderColor = "#484848"; }}
+            onMouseOut={e => { if (!readOnly && !isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
           >
             <Scissors size={14} /> Crop Region
           </button>
@@ -324,10 +333,10 @@ const PropertiesPanel = memo(function PropertiesPanel({
           {!extendMode ? (
             <button
               onClick={onEnterExtend}
-              disabled={isBusy || !canExtend}
-              style={secondaryBtnStyle(!isBusy && canExtend)}
-              onMouseOver={e => { if (!isBusy && canExtend) e.currentTarget.style.borderColor = "#484848"; }}
-              onMouseOut={e => { if (!isBusy && canExtend) e.currentTarget.style.borderColor = COLOR.border; }}
+              disabled={readOnly || isBusy || !canExtend}
+              style={secondaryBtnStyle(!readOnly && !isBusy && canExtend)}
+              onMouseOver={e => { if (!readOnly && !isBusy && canExtend) e.currentTarget.style.borderColor = "#484848"; }}
+              onMouseOut={e => { if (!readOnly && !isBusy && canExtend) e.currentTarget.style.borderColor = COLOR.border; }}
               title={canExtend ? "Drag the canvas edges to add space, then generate" : "Run Syncraft first — Extend works on the flat extract"}
             >
               <Expand size={14} /> Extend Design
@@ -370,28 +379,28 @@ const PropertiesPanel = memo(function PropertiesPanel({
               if (isUnauthenticated || noCredits) { onOpenTopUp?.(); return; }
               if (isCropped) onExecuteTrace(vectorColors);
             }}
-            disabled={isBusy || (!isCropped && !noCredits)}
+            disabled={readOnly || isBusy || (!isCropped && !noCredits)}
             style={{
               width: "100%",
-              background: isBusy ? "rgba(255,255,255,0.02)" : traceUnlocked ? "#ffffff" : "rgba(255,255,255,0.05)",
-              border: isBusy ? "1px solid rgba(255,255,255,0.05)" : traceUnlocked ? "1px solid #ffffff" : "1px solid rgba(255,255,255,0.1)",
+              background: (readOnly || isBusy) ? "rgba(255,255,255,0.02)" : traceUnlocked ? "#ffffff" : "rgba(255,255,255,0.05)",
+              border: (readOnly || isBusy) ? "1px solid rgba(255,255,255,0.05)" : traceUnlocked ? "1px solid #ffffff" : "1px solid rgba(255,255,255,0.1)",
               borderRadius: "8px",
-              color: isBusy ? "#555" : traceUnlocked ? "#000000" : "#666",
+              color: (readOnly || isBusy) ? "#555" : traceUnlocked ? "#000000" : "#666",
               minHeight: "56px",
               padding: "9px 16px",
               fontSize: "11px",
               fontWeight: 600,
               letterSpacing: "0.5px",
               whiteSpace: "nowrap",
-              cursor: (!isBusy && traceUnlocked) ? "pointer" : "not-allowed",
+              cursor: (!readOnly && !isBusy && traceUnlocked) ? "pointer" : "not-allowed",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
               gap: "3px",
-              opacity: isBusy ? 0.6 : 1,
+              opacity: (readOnly || isBusy) ? 0.6 : 1,
               transition: "all 0.2s",
-              boxShadow: (!isBusy && traceUnlocked) ? "0 4px 12px rgba(255,255,255,0.15)" : "none",
+              boxShadow: (!readOnly && !isBusy && traceUnlocked) ? "0 4px 12px rgba(255,255,255,0.15)" : "none",
             }}
             onMouseOver={e => { if (!isBusy && traceUnlocked) e.currentTarget.style.background = "#e5e5e5"; }}
             onMouseOut={e => { if (!isBusy && traceUnlocked) e.currentTarget.style.background = "#ffffff"; }}

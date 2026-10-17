@@ -7,6 +7,7 @@ import { normalizeRecoveryAnalysis } from "@/lib/recovery";
 import { isRecoveryInProgress } from "@/lib/recoveryPolicy.mjs";
 import { snapToAllowedAspectRatio } from "@/lib/aspectRatio";
 import { CREDIT_COST } from "@/lib/pricing";
+import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -20,7 +21,10 @@ export async function POST(request) {
     if (!limit.success) return limit.response;
 
     const { projectId } = await request.json();
-    const { data: project } = await adminSupabase.from("projects").select("id,user_id,trace_type,original_image_url,canvas_data,ai_prompt").eq("id", projectId).eq("user_id", user.id).single();
+    const { project } = await getProjectAccess(user.id, projectId, {
+      required: PROJECT_ACCESS.EDIT,
+      select: "id,user_id,created_at,trace_type,original_image_url,canvas_data,ai_prompt",
+    });
     if (!project || project.trace_type !== "universal") return NextResponse.json({ error: "Universal project not found" }, { status: 404 });
     if (isRecoveryInProgress(project.canvas_data?.universal_recovery?.status)) {
       return NextResponse.json({
@@ -30,7 +34,7 @@ export async function POST(request) {
     }
 
     const sourceUrl = normalizeUserImageUrl(project.original_image_url, new URL(request.url).origin);
-    if (!isOwnedStorageUrl(sourceUrl, { userId: user.id, projectId }) || !(await validateUrlForSSRF(sourceUrl, { allowedHosts: getAllowedStorageHosts() }))) {
+    if ((!isOwnedStorageUrl(sourceUrl, { userId: user.id, projectId }) && !isOwnedStorageUrl(sourceUrl, { userId: project.user_id, projectId })) || !(await validateUrlForSSRF(sourceUrl, { allowedHosts: getAllowedStorageHosts() }))) {
       return NextResponse.json({ error: "Invalid image URL" }, { status: 400 });
     }
     const fetched = await fetchWithSSRFProtection(sourceUrl, { allowedHosts: getAllowedStorageHosts(), maxBytes: DEFAULT_MAX_IMAGE_BYTES, allowedContentTypes: ["image/"] });
@@ -101,7 +105,7 @@ export async function POST(request) {
         universal_mode: selectedMode,
         universal_recovery: recovery,
       },
-    }).eq("id", projectId).eq("user_id", user.id);
+    }).eq("id", projectId);
     // The vision call above can take several seconds. Re-check the persisted
     // JSON status as part of the update so a delayed analysis cannot overwrite
     // a generation that acquired the lock while analysis was in flight.

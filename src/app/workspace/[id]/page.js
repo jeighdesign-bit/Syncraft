@@ -8,7 +8,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
-import { Home, Pencil, CheckCircle2 } from "lucide-react";
+import { Eye, Pencil, CheckCircle2, Share2 } from "lucide-react";
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 import { useTraceExecution } from "./hooks/useTraceExecution";
@@ -25,6 +25,7 @@ import NoCreditsModal from "./components/NoCreditsModal";
 import TopUpModal from "@/components/TopUpModal";
 import AccountCreditMenu from "@/components/AccountCreditMenu";
 import ShortcutsModal from "./components/ShortcutsModal";
+import ShareProjectModal from "./components/ShareProjectModal";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 import { CREDIT_COST } from "@/lib/pricing";
@@ -112,6 +113,11 @@ export default function Workspace() {
   const [editTitleValue, setEditTitleValue] = useState("");
   const [upscaleStatus, setUpscaleStatus] = useState("idle");
   const [upscaleError, setUpscaleError] = useState("");
+  const [projectAccess, setProjectAccess] = useState(null);
+  const [projectExpiresAt, setProjectExpiresAt] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const canEditProject = projectAccess === "owner" || projectAccess === "edit";
+  const isProjectOwner = projectAccess === "owner";
 
   // ─── Hooks ────────────────────────────────────────────────────────────────
   const {
@@ -133,15 +139,23 @@ export default function Workspace() {
     const fetchData = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session) setUser(session.user);
-
-        const { data: projData, error: projError } = await supabase
-          .from("projects").select("*").eq("id", projectId).single();
-
-        if (projError || !projData) {
+        if (!session) {
           router.push("/");
           return;
         }
+        setUser(session.user);
+
+        const projectResponse = await fetch(`/api/workspace-project?id=${encodeURIComponent(projectId)}`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const projectPayload = await projectResponse.json();
+        const projData = projectPayload.project;
+        if (!projectResponse.ok || !projData) {
+          router.push("/");
+          return;
+        }
+        setProjectAccess(projectPayload.access);
+        setProjectExpiresAt(projectPayload.expiresAt || null);
         const recovery = projData.canvas_data?.universal_recovery;
         setProject(recovery ? {
           ...projData,
@@ -155,7 +169,7 @@ export default function Workspace() {
             && !projData.generated_image_url.includes("/projects/")
             && !projData.generated_image_url.includes("/storage/v1/object/");
           setUpscaleStatus(isLegacyResult ? "legacy" : "idle");
-        } else if (!projData.generated_image_url) {
+        } else if (!projData.generated_image_url && projectPayload.access !== "view") {
           setShowCropModal(true);
         }
 
@@ -603,6 +617,17 @@ export default function Workspace() {
           <span className="workspace-mode-title__rail workspace-mode-title__rail--end" aria-hidden="true" />
         </div>
         <div className="syncraft-header-controls">
+          {isProjectOwner ? (
+            <button type="button" className="workspace-share-button" onClick={() => setShowShareModal(true)}>
+              <Share2 size={14} aria-hidden="true" />
+              <span>Share</span>
+            </button>
+          ) : projectAccess ? (
+            <span className="workspace-access-badge">
+              {projectAccess === "edit" ? <Pencil size={13} aria-hidden="true" /> : <Eye size={13} aria-hidden="true" />}
+              <span>{projectAccess === "edit" ? "Can edit" : "View only"}</span>
+            </span>
+          ) : null}
           <AccountCreditMenu
             user={user}
             credits={userCredits}
@@ -639,7 +664,7 @@ export default function Workspace() {
               }}
               leftControls={
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  {isEditingTitle ? (
+                  {isEditingTitle && canEditProject ? (
                     <input
                       autoFocus
                       value={editTitleValue}
@@ -647,8 +672,13 @@ export default function Workspace() {
                       onBlur={async () => {
                         setIsEditingTitle(false);
                         if (editTitleValue.trim() !== project.name) {
-                          const { error } = await supabase.from('projects').update({ name: editTitleValue.trim() }).eq('id', project.id);
-                          if (!error) setProject(prev => ({ ...prev, name: editTitleValue.trim() }));
+                          const { data: { session } } = await supabase.auth.getSession();
+                          const response = await fetch('/api/project', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+                            body: JSON.stringify({ projectId: project.id, newName: editTitleValue.trim() }),
+                          });
+                          if (response.ok) setProject(prev => ({ ...prev, name: editTitleValue.trim() }));
                         }
                       }}
                       onKeyDown={async (e) => {
@@ -670,20 +700,23 @@ export default function Workspace() {
                       }}
                     />
                   ) : (
-                    <div 
+                    <button
+                      type="button"
+                      disabled={!canEditProject}
+                      aria-label={canEditProject ? "Rename project" : "Project title"}
+                      title={canEditProject ? "Rename project" : "View-only access"}
                       onClick={() => {
+                        if (!canEditProject) return;
                         setEditTitleValue(project.name || "Untitled Project");
                         setIsEditingTitle(true);
                       }}
-                      style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", padding: "4px 8px", borderRadius: "6px", transition: "all 0.2s" }}
-                      onMouseOver={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#fff"; }}
-                      onMouseOut={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#ccc"; }}
+                      style={{ display: "flex", alignItems: "center", gap: "6px", cursor: canEditProject ? "pointer" : "default", padding: "4px 8px", borderRadius: "6px", transition: "all 0.2s", border: 0, background: "transparent", color: "#ccc" }}
                     >
                       <span style={{ fontSize: "13px", fontWeight: "500", color: "inherit", letterSpacing: "0.5px" }}>
                         {project.name || "Untitled Project"}
                       </span>
-                      <Pencil size={11} color="inherit" />
-                    </div>
+                      {canEditProject && <Pencil size={11} color="inherit" />}
+                    </button>
                   )}
                   {savedAgo && (
                     <span style={{ fontSize: "10px", color: "#666", marginLeft: "4px" }}>{savedAgo}</span>
@@ -705,6 +738,7 @@ export default function Workspace() {
             onDownload={handleDownloadUpscaleProject}
             onCompare={() => setShowCompare(true)}
             onOpenTopUp={() => setShowTopUpModal(true)}
+            readOnly={!canEditProject}
           />
         ) : (
         <PropertiesPanel
@@ -732,6 +766,7 @@ export default function Workspace() {
           onEnterExtend={handleEnterExtend}
           onProceedExtend={handleProceedExtend}
           onCancelExtend={handleCancelExtend}
+          readOnly={!canEditProject}
         />
         )}
       </main>
@@ -768,7 +803,7 @@ export default function Workspace() {
 
       {/* ─── Modals ─────────────────────────────────────────────────────────── */}
       <CropModal
-        show={showCropModal}
+        show={showCropModal && canEditProject}
         project={project}
         supabase={supabase}
         onClose={() => setShowCropModal(false)}
@@ -777,7 +812,7 @@ export default function Workspace() {
       />
 
       <EraseModal
-        show={showEraseModal}
+        show={showEraseModal && canEditProject}
         project={project}
         supabase={supabase}
         onClose={() => setShowEraseModal(false)}
@@ -786,7 +821,7 @@ export default function Workspace() {
       />
 
       <RemoveBgModal
-        show={showRemoveBgModal}
+        show={showRemoveBgModal && canEditProject}
         project={project}
         supabase={supabase}
         onClose={() => setShowRemoveBgModal(false)}
@@ -797,8 +832,8 @@ export default function Workspace() {
         show={showCompare}
         project={project}
         onClose={() => setShowCompare(false)}
-        onDownloadAll={handleDownloadAll}
-        onDownloadSvg={handleDownloadSvg}
+        onDownloadAll={canEditProject ? handleDownloadAll : undefined}
+        onDownloadSvg={canEditProject ? handleDownloadSvg : undefined}
       />
 
       <NoCreditsModal
@@ -817,6 +852,15 @@ export default function Workspace() {
       <ShortcutsModal
         show={showShortcuts}
         onClose={() => setShowShortcuts(false)}
+      />
+
+      <ShareProjectModal
+        show={showShareModal && isProjectOwner}
+        project={project}
+        user={user}
+        supabase={supabase}
+        expiresAt={projectExpiresAt}
+        onClose={() => setShowShareModal(false)}
       />
     </div>
   );

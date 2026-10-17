@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
 import { isAllowedStorageUrl } from "@/lib/ssrf";
+import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
 export const maxDuration = 30;
 
@@ -32,8 +33,10 @@ export async function POST(request) {
     }
 
     // Update project in Supabase — only if the user owns it
-    const { data: ownedProject } = await adminSupabase
-      .from('projects').select('trace_type,canvas_data').eq('id', projectId).eq('user_id', user.id).single();
+    const { project: ownedProject } = await getProjectAccess(user.id, projectId, {
+      required: PROJECT_ACCESS.EDIT,
+      select: 'id,user_id,created_at,trace_type,canvas_data',
+    });
     if (!ownedProject) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
     const baseReset = {
@@ -65,8 +68,7 @@ export async function POST(request) {
     const { error } = await adminSupabase
       .from('projects')
       .update(reset)
-      .eq('id', projectId)
-      .eq('user_id', user.id); // ownership check
+      .eq('id', projectId);
 
     if (error) throw error;
 

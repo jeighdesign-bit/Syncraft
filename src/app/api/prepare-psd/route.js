@@ -10,6 +10,7 @@ import {
   getAllowedStorageHosts,
   isOwnedStorageUrl,
 } from "@/lib/ssrf";
+import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -52,20 +53,18 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing projectId" }, { status: 400 });
     }
 
-    const { data: project, error: projectError } = await adminSupabase
-      .from("projects")
-      .select("id, user_id, name, trace_type, svg_url, canvas_data")
-      .eq("id", projectId)
-      .eq("user_id", user.id)
-      .single();
+    const { project } = await getProjectAccess(user.id, projectId, {
+      required: PROJECT_ACCESS.EDIT,
+      select: "id,user_id,created_at,name,trace_type,svg_url,canvas_data",
+    });
 
-    if (projectError || !project) {
+    if (!project) {
       return NextResponse.json({ error: "Project not found or access denied" }, { status: 404 });
     }
     if (!project.svg_url) {
       return NextResponse.json({ error: "Generate the Vector SVG before exporting a layered PSD." }, { status: 409 });
     }
-    if (!isOwnedStorageUrl(project.svg_url, { userId: user.id, projectId })) {
+    if (!isOwnedStorageUrl(project.svg_url, { userId: user.id, projectId }) && !isOwnedStorageUrl(project.svg_url, { userId: project.user_id, projectId })) {
       return NextResponse.json({ error: "The project SVG is not stored in an approved location." }, { status: 403 });
     }
 
@@ -78,7 +77,7 @@ export async function POST(request) {
       cached?.url
       && cached.signature === signature
       && cached.source_svg_url === project.svg_url
-      && isOwnedStorageUrl(cached.url, { userId: user.id, projectId })
+      && (isOwnedStorageUrl(cached.url, { userId: user.id, projectId }) || isOwnedStorageUrl(cached.url, { userId: project.user_id, projectId }))
     ) {
       return NextResponse.json({
         success: true,
@@ -135,7 +134,6 @@ export async function POST(request) {
       .from("projects")
       .select("svg_url, canvas_data")
       .eq("id", projectId)
-      .eq("user_id", user.id)
       .single();
     if (currentError || !currentProject || currentProject.svg_url !== project.svg_url) {
       await deleteFromR2(uploadedPsdUrl, { allowedPrefixes: [`projects/${projectId}/`] }).catch(() => {});
@@ -165,8 +163,7 @@ export async function POST(request) {
           layered_psd: nextPsdMetadata,
         },
       })
-      .eq("id", projectId)
-      .eq("user_id", user.id);
+      .eq("id", projectId);
 
     if (updateError) throw updateError;
 

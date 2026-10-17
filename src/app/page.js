@@ -110,7 +110,6 @@ export default function StartScreen() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [activeLandingSection, setActiveLandingSection] = useState(null);
-  const [showPsdUpdate, setShowPsdUpdate] = useState(true);
   const [pendingFile, setPendingFile] = useState(null); // holds file waiting for type selection
 
   // ─── Modal Specific State ───────────────────────────────────────────────────
@@ -125,9 +124,6 @@ export default function StartScreen() {
   const [openMenuId, setOpenMenuId] = useState(null);
 
   // ─── Initialization ─────────────────────────────────────────────────────────
-  useEffect(() => {
-    setShowPsdUpdate(localStorage.getItem("syncraft-psd-export-update-dismissed-v1") !== "1");
-  }, []);
 
   useEffect(() => {
     const scrollContainer = containerRef.current;
@@ -573,36 +569,6 @@ export default function StartScreen() {
 
       {/* FULL WIDTH HERO SECTION */}
       <div style={{ position: "relative", width: "calc(100% + 40px)", marginLeft: "-20px", marginRight: "-20px", backgroundColor: "#1a1a1a", backgroundImage: user ? "radial-gradient(rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px)" : "radial-gradient(ellipse at 50% 78%, rgba(255, 184, 45, 0.16) 0%, rgba(255, 184, 45, 0.075) 30%, transparent 64%), radial-gradient(rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px)", backgroundSize: user ? "24px 24px" : "100% 100%, 24px 24px", backgroundPosition: user ? "0 0" : "center, 0 0", backgroundRepeat: user ? "repeat" : "no-repeat, repeat", paddingTop: "100px", paddingBottom: user ? "40px" : "110px", color: "#fff" }}>
-        {user && showPsdUpdate && (
-          <aside className="product-update-banner" aria-label="Product update">
-            <div className="product-update-banner__inner">
-              <div className="product-update-banner__message">
-                <img
-                  className="product-update-banner__ps"
-                  src="https://www.adobe.com/cc-shared/assets/img/product-icons/svg/photoshop.svg"
-                  alt=""
-                  width="20"
-                  height="20"
-                />
-                <span className="product-update-banner__copy">
-                  <strong><span>NEW UPDATE:</span> Export your designs as layered PSD files.</strong>
-                  <span>Open organized raster layers directly in Photoshop.</span>
-                </span>
-              </div>
-              <button
-                type="button"
-                className="product-update-banner__dismiss"
-                aria-label="Dismiss PSD export update"
-                onClick={() => {
-                  localStorage.setItem("syncraft-psd-export-update-dismissed-v1", "1");
-                  setShowPsdUpdate(false);
-                }}
-              >
-                <X size={16} />
-              </button>
-            </div>
-          </aside>
-        )}
         <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px", position: "relative", zIndex: 2 }}>
 
           <div className="hero-section" style={{ justifyContent: "flex-start", margin: 0 }}>

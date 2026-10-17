@@ -10,6 +10,7 @@ import { buildGarmentExtractionInput, garmentExtractionMode, shouldSaveGarmentEx
 import { buildGarmentExtractionPrompt, buildGarmentExtractionSystemPrompt, resolveGarmentPromptMode } from "@/lib/garmentPromptRules.mjs";
 import { uploadToR2 } from "@/lib/cloudflare";
 import { usesNativeTraceUpscale, resizeTraceForUpscale } from "@/lib/traceUpscale.mjs";
+import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
 // IMPORTANT: Must use Node.js runtime (not edge) so we get real 120s timeouts.
 // Edge runtime on Vercel has a hard 30s cap which causes all Gemini generations to fail.
@@ -62,19 +63,16 @@ export async function POST(request) {
     }
 
     // Fetch project AND verify ownership in one query — prevents IDOR attacks
-    const { data: project, error: projError } = await adminSupabase
-      .from('projects')
-      .select('*')
-      .eq('id', projectId)
-      .eq('user_id', user.id) // ← ownership check: users can only trace their own projects
-      .single();
+    const { project, error: accessError } = await getProjectAccess(user.id, projectId, {
+      required: PROJECT_ACCESS.EDIT,
+    });
 
-    if (projError || !project) {
+    if (!project) {
       // Log the denial — this branch covers "row missing", "owned by someone
       // else" and "malformed id" alike, which are indistinguishable from the
       // client's 404 and previously left no server-side trace.
       console.warn(
-        `[Trace] Ownership check failed — projectId=${projectId} requestUser=${user.id} dbError=${projError?.message || 'none'}`
+        `[Trace] Access check failed — projectId=${projectId} requestUser=${user.id} reason=${accessError || 'unknown'}`
       );
       return NextResponse.json({ error: "Project not found or access denied" }, { status: 404 });
     }
@@ -88,7 +86,9 @@ export async function POST(request) {
     let rawSourceBuffer;
     if (step === 1) {
       sourceUrl = normalizeUserImageUrl(croppedImageUrl || project.original_image_url, new URL(request.url).origin);
-      if (!isOwnedStorageUrl(sourceUrl, { userId: user.id, projectId }) || !(await validateUrlForSSRF(sourceUrl, { allowedHosts: getAllowedStorageHosts() }))) {
+      const sourceIsOwned = isOwnedStorageUrl(sourceUrl, { userId: user.id, projectId })
+        || isOwnedStorageUrl(sourceUrl, { userId: project.user_id, projectId });
+      if (!sourceIsOwned || !(await validateUrlForSSRF(sourceUrl, { allowedHosts: getAllowedStorageHosts() }))) {
         return NextResponse.json({ error: "Invalid or unauthorized image URL" }, { status: 400 });
       }
       let sourceFetch;
@@ -111,7 +111,7 @@ export async function POST(request) {
     if (step === 1) {
       try {
         const charge = await chargeCreditsVerified({
-          userId: project.user_id,
+          userId: user.id,
           projectId,
           feature: "garment_logo_extract",
           action: "Extract & Vectorize",
@@ -134,8 +134,7 @@ export async function POST(request) {
       const { error: flagErr } = await adminSupabase
         .from('projects')
         .update({ credit_deducted: true })
-        .eq('id', projectId)
-        .eq('user_id', user.id);
+        .eq('id', projectId);
       if (flagErr) {
         console.error(`[Billing] Could not set credit_deducted for project ${projectId}:`, flagErr.message);
       }
@@ -396,8 +395,7 @@ If any difference is detected, continue refining until the reconstruction is vis
             zip_signature: null,
             zip_generated_at: null,
           })
-          .eq("id", projectId)
-          .eq("user_id", user.id);
+          .eq("id", projectId);
         if (saveError) throw new Error(`Could not save flat extract: ${saveError.message}`);
 
         console.log("[API Step 1] Saved enhanced extract directly to storage.");
@@ -431,7 +429,9 @@ If any difference is detected, continue refining until the reconstruction is vis
         return NextResponse.json({ error: "Step 1 (Auto-Trace) must be completed before upscaling." }, { status: 403 });
       }
       const upscaleInputUrl = normalizeUserImageUrl(project.generated_image_url, new URL(request.url).origin);
-      if (!isOwnedStorageUrl(upscaleInputUrl, { userId: user.id, projectId }) || !(await validateUrlForSSRF(upscaleInputUrl, { allowedHosts: getAllowedStorageHosts() }))) {
+      const upscaleInputIsOwned = isOwnedStorageUrl(upscaleInputUrl, { userId: user.id, projectId })
+        || isOwnedStorageUrl(upscaleInputUrl, { userId: project.user_id, projectId });
+      if (!upscaleInputIsOwned || !(await validateUrlForSSRF(upscaleInputUrl, { allowedHosts: getAllowedStorageHosts() }))) {
         return NextResponse.json({ error: "Invalid or unauthorized generated image URL" }, { status: 400 });
       }
 
@@ -450,8 +450,7 @@ If any difference is detected, continue refining until the reconstruction is vis
         const finalUrl = await uploadToR2(upscaledBuffer, fileName, "image/png");
         const { error: saveError } = await adminSupabase.from('projects')
           .update({ upscaled_image_url: finalUrl, zip_url: null, zip_signature: null, zip_generated_at: null })
-          .eq('id', projectId)
-          .eq('user_id', user.id);
+          .eq('id', projectId);
         if (saveError) throw new Error(`Could not save palette-preserving upscale: ${saveError.message}`);
 
         return NextResponse.json({ success: true, step: 2, fileUrl: finalUrl, mimeType: "image/png", alreadySaved: true, palettePreserved: true, fidelitySafe: true });
@@ -531,8 +530,7 @@ If any difference is detected, continue refining until the reconstruction is vis
               generated_image_url: 'REFUNDED',
               refunded: true,
             })
-            .eq('id', projectId)
-            .eq('user_id', userId);
+            .eq('id', projectId);
         }
       }
     } catch (refundErr) {

@@ -3,10 +3,10 @@
   left: clamp(16px, 2vw, 32px);
   bottom: clamp(18px, 3vw, 42px);
   z-index: 48;
-  width: clamp(260px, 18vw, 326px);
+  width: clamp(210px, 15vw, 260px);
   aspect-ratio: 16 / 9;
   padding: 5px;
-  overflow: visible;
+  overflow: hidden;
   background: #101110;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 18px;
@@ -38,11 +38,11 @@
 
 .closeButton {
   position: absolute;
-  top: -13px;
-  right: -13px;
+  top: 9px;
+  right: 9px;
   z-index: 2;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -86,7 +86,7 @@
 
 @media (max-width: 900px) {
   .player {
-    width: min(288px, calc(100vw - 40px));
+    width: min(230px, calc(100vw - 40px));
     bottom: 20px;
   }
 }
@@ -95,7 +95,7 @@
   .player {
     left: 12px;
     bottom: 12px;
-    width: min(248px, calc(100vw - 36px));
+    width: min(200px, calc(100vw - 36px));
     border-radius: 14px;
   }
 
@@ -104,10 +104,10 @@
   }
 
   .closeButton {
-    top: -11px;
-    right: -11px;
-    width: 34px;
-    height: 34px;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
   }
 }
 

@@ -5,6 +5,7 @@ import { findLatestProjectCharge, recordProviderUsage } from "@/lib/creditLedger
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { segmentSvgLayers } from "@/lib/svgSegmenter";
 import { DEFAULT_MAX_IMAGE_BYTES, DEFAULT_MAX_SVG_BYTES, DEFAULT_MAX_UPSCALED_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, validateUrlForSSRF } from "@/lib/ssrf";
+import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
 export const runtime = 'nodejs';
 export const maxDuration = 240; // Complex extended artwork can take over 2 minutes to vectorize.
@@ -56,20 +57,10 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const { data: project, error: projError } = await adminSupabase
-      .from('projects')
-      .select('*')
-      .eq('id', projectId)
-      .eq('user_id', user.id)
-      .single();
+    const { project } = await getProjectAccess(user.id, projectId, { required: PROJECT_ACCESS.EDIT });
 
-    if (projError || !project) {
+    if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
-    }
-
-    // Verify caller owns this project
-    if (project.user_id !== user.id) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // ==========================================
@@ -79,7 +70,7 @@ export async function POST(request) {
     // color reduction before handing off to Recraft vectorize.
     // ==========================================
     if (!project.upscaled_image_url) throw new Error("No upscaled image found for Step 3");
-    if (!isOwnedStorageUrl(project.upscaled_image_url, { userId: user.id, projectId }) || !(await validateUrlForSSRF(project.upscaled_image_url, { allowedHosts: getAllowedStorageHosts() }))) {
+    if ((!isOwnedStorageUrl(project.upscaled_image_url, { userId: user.id, projectId }) && !isOwnedStorageUrl(project.upscaled_image_url, { userId: project.user_id, projectId })) || !(await validateUrlForSSRF(project.upscaled_image_url, { allowedHosts: getAllowedStorageHosts() }))) {
       return NextResponse.json({ error: "Invalid or unauthorized upscaled image URL" }, { status: 400 });
     }
 
@@ -233,7 +224,7 @@ export async function POST(request) {
     // ─────────────────────────────────────────────────────────────────────────
     try {
       // Fetch the original (pre-AI) image to give Gemini context about the design
-      if (!isOwnedStorageUrl(project.original_image_url, { userId: user.id, projectId })) {
+      if (!isOwnedStorageUrl(project.original_image_url, { userId: user.id, projectId }) && !isOwnedStorageUrl(project.original_image_url, { userId: project.user_id, projectId })) {
         throw new Error('Original image URL is not owned by this user/project');
       }
       const { response: originalImgRes, buffer: originalImgBuf } = await fetchWithSSRFProtection(project.original_image_url, {
@@ -267,8 +258,7 @@ export async function POST(request) {
     await adminSupabase
       .from('projects')
       .update({ svg_url: finalSvgUrl, zip_url: null, zip_signature: null, zip_generated_at: null })
-      .eq('id', projectId)
-      .eq('user_id', user.id);
+      .eq('id', projectId);
 
     return NextResponse.json({ success: true, step: 3, svg_url: finalSvgUrl });
 

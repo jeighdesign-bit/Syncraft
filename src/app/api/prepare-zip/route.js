@@ -12,6 +12,7 @@ import {
   getAllowedStorageHosts,
   isOwnedStorageUrl,
 } from "@/lib/ssrf";
+import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -53,14 +54,12 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing projectId" }, { status: 400 });
     }
 
-    const { data: project, error: projectError } = await adminSupabase
-      .from("projects")
-      .select("id, user_id, name, original_image_url, generated_image_url, upscaled_image_url, svg_url, zip_url, zip_signature")
-      .eq("id", projectId)
-      .eq("user_id", user.id)
-      .single();
+    const { project } = await getProjectAccess(user.id, projectId, {
+      required: PROJECT_ACCESS.EDIT,
+      select: "id,user_id,created_at,name,original_image_url,generated_image_url,upscaled_image_url,svg_url,zip_url,zip_signature",
+    });
 
-    if (projectError || !project) {
+    if (!project) {
       return NextResponse.json({ error: "Project not found or access denied" }, { status: 404 });
     }
 
@@ -90,7 +89,7 @@ export async function POST(request) {
     let addedFiles = 0;
 
     for (const asset of assets) {
-      if (!isOwnedStorageUrl(asset.url, { userId: user.id, projectId })) {
+      if (!isOwnedStorageUrl(asset.url, { userId: user.id, projectId }) && !isOwnedStorageUrl(asset.url, { userId: project.user_id, projectId })) {
         console.warn(`[Prepare ZIP] Skipping unowned asset URL: ${asset.name}`);
         continue;
       }
@@ -127,8 +126,7 @@ export async function POST(request) {
         zip_signature: signature,
         zip_generated_at: new Date().toISOString(),
       })
-      .eq("id", projectId)
-      .eq("user_id", user.id);
+      .eq("id", projectId);
 
     if (updateError) {
       throw updateError;

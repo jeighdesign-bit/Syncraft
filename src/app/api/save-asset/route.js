@@ -3,6 +3,7 @@ import { uploadToR2 } from "@/lib/cloudflare";
 import { adminSupabase } from "@/lib/supabase";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, DEFAULT_MAX_SVG_BYTES, DEFAULT_MAX_UPSCALED_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, normalizeUserImageUrl } from "@/lib/ssrf";
+import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
 export const maxDuration = 180;
 
@@ -45,14 +46,12 @@ export async function POST(request) {
     }
 
     // Verify the user owns this project before allowing any writes
-    const { data: project, error: projError } = await adminSupabase
-      .from('projects')
-      .select('user_id')
-      .eq('id', projectId)
-      .eq('user_id', user.id)
-      .single();
+    const { project } = await getProjectAccess(user.id, projectId, {
+      required: PROJECT_ACCESS.EDIT,
+      select: 'id,user_id,created_at',
+    });
 
-    if (projError || !project) {
+    if (!project) {
       return NextResponse.json({ error: 'Project not found or access denied' }, { status: 403 });
     }
 
@@ -96,7 +95,7 @@ export async function POST(request) {
     if (step === 1) {
       const fileName = `projects/${projectId}/generated_flat_${Date.now()}.${ext}`;
       const finalUrl = await uploadToR2(buffer, fileName, finalMimeType);
-      const { error: saveError } = await adminSupabase.from('projects').update({ generated_image_url: finalUrl, ai_prompt: null, zip_url: null, zip_signature: null, zip_generated_at: null }).eq('id', projectId).eq('user_id', user.id);
+      const { error: saveError } = await adminSupabase.from('projects').update({ generated_image_url: finalUrl, ai_prompt: null, zip_url: null, zip_signature: null, zip_generated_at: null }).eq('id', projectId);
       if (saveError) throw new Error(`Could not save flat extract: ${saveError.message}`);
       return NextResponse.json({ success: true, url: finalUrl });
     }
@@ -113,7 +112,7 @@ export async function POST(request) {
       }
       const fileName = `projects/${projectId}/upscaled_${Date.now()}.${ext}`;
       const finalUrl = await uploadToR2(buffer, fileName, finalMimeType);
-      const { error: saveError } = await adminSupabase.from('projects').update({ upscaled_image_url: finalUrl, zip_url: null, zip_signature: null, zip_generated_at: null }).eq('id', projectId).eq('user_id', user.id);
+      const { error: saveError } = await adminSupabase.from('projects').update({ upscaled_image_url: finalUrl, zip_url: null, zip_signature: null, zip_generated_at: null }).eq('id', projectId);
       if (saveError) throw new Error(`Could not save upscaled image: ${saveError.message}`);
       return NextResponse.json({ success: true, url: finalUrl });
     }
@@ -121,7 +120,7 @@ export async function POST(request) {
     if (step === 3) {
       const fileName = `projects/${projectId}/vector_${Date.now()}.svg`;
       const finalUrl = await uploadToR2(buffer, fileName, "image/svg+xml");
-      await adminSupabase.from('projects').update({ svg_url: finalUrl, zip_url: null, zip_signature: null, zip_generated_at: null }).eq('id', projectId).eq('user_id', user.id);
+      await adminSupabase.from('projects').update({ svg_url: finalUrl, zip_url: null, zip_signature: null, zip_generated_at: null }).eq('id', projectId);
       return NextResponse.json({ success: true, url: finalUrl });
     }
 

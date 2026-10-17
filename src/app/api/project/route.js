@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
 import { deleteFromR2 } from "@/lib/cloudflare";
+import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
 export async function PATCH(request) {
   try {
@@ -22,12 +23,13 @@ export async function PATCH(request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Only allow renaming own projects
+    const access = await getProjectAccess(user.id, projectId, { required: PROJECT_ACCESS.EDIT, select: "id,user_id,created_at" });
+    if (!access.project) return NextResponse.json({ error: access.error }, { status: 403 });
+
     const { error } = await adminSupabase
       .from('projects')
       .update({ name: newName })
-      .eq('id', projectId)
-      .eq('user_id', user.id); // ownership check built into the WHERE clause
+      .eq('id', projectId);
 
     if (error) throw error;
 

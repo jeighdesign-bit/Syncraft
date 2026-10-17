@@ -1,0 +1,47 @@
+.backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: rgba(0,0,0,.72); backdrop-filter: blur(4px); }
+.dialog { width: min(480px,100%); max-height: min(640px,calc(100dvh - 40px)); overflow-y: auto; color: #ededed; background: #242424; border: 1px solid #3a3a3a; border-radius: 18px; box-shadow: 0 24px 70px rgba(0,0,0,.5); outline: none; }
+.header { position: relative; display: flex; align-items: center; justify-content: center; min-height: 86px; padding: 8px 54px; }
+.header h2 { margin: 0; max-width: 100%; overflow-wrap: anywhere; color: #f4f4f4; font-size: 26px; line-height: 1.2; font-weight: 700; letter-spacing: -.7px; text-align: center; }
+.iconButton,.removeButton { display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; color: #9b9b9b; background: transparent; border: 0; border-radius: 50%; cursor: pointer; }
+.iconButton { position: absolute; top: 13px; right: 13px; }
+.iconButton:hover,.removeButton:hover { color: #fff; background: rgba(255,255,255,.06); }
+.iconButton:focus-visible,.removeButton:focus-visible,.copyButton:focus-visible,.primaryButton:focus-visible,.dialog input:focus-visible,.dialog select:focus-visible { outline: 2px solid #d4ff59; outline-offset: 2px; }
+.inviteForm { padding: 0 32px 22px; }
+.inviteRow { display: grid; grid-template-columns: minmax(0,1fr) 78px; gap: 10px; }
+.dialog input,.dialog select { min-width: 0; height: 42px; box-sizing: border-box; padding: 0 13px; color: #eee; background: #292929; border: 1px solid #444; border-radius: 9px; font: inherit; font-size: 12px; }
+.dialog input::placeholder { color: #8c8c8c; }
+.primaryButton,.copyButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 15px; color: #111; background: #d4ff59; border: 1px solid #d4ff59; border-radius: 9px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.primaryButton:disabled { color: #777; background: #353535; border-color: #353535; opacity: 1; cursor: not-allowed; }
+.message { margin: 9px 0 0; color: #bdbdbd; font-size: 11px; line-height: 1.5; }
+.restriction { display: grid; grid-template-columns: 38px minmax(0,1fr) auto; gap: 12px; align-items: center; margin: 0 32px; padding: 18px 0; border-top: 1px solid #363636; border-bottom: 1px solid #363636; }
+.lockIcon { display: inline-grid; place-items: center; width: 36px; height: 36px; box-sizing: border-box; color: #bcbcbc; border: 1px solid #505050; border-radius: 50%; }
+.lockIcon svg { display: block; }
+.restriction > div > strong,.restriction > div > span { display: block; font-size: 12px; line-height: 1.45; }
+.restriction > div > span { color: #8d8d8d; font-size: 10px; }
+.permissionMenu { position: relative; justify-self: end; }
+.permissionTrigger { display: inline-flex; align-items: center; justify-content: space-between; gap: 12px; width: 112px; min-height: 40px; padding: 0 10px 0 12px; color: #ededed; background: transparent; border: 1px solid transparent; border-radius: 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.permissionTrigger:hover,.permissionTrigger[aria-expanded="true"] { background: #303030; border-color: #484848; }
+.permissionTrigger:focus-visible,.permissionOption:focus-visible { outline: 2px solid #d4ff59; outline-offset: 2px; }
+.permissionTrigger svg { transition: transform 160ms ease; }
+.permissionTrigger[aria-expanded="true"] svg { transform: rotate(180deg); }
+.permissionPopover { position: absolute; top: calc(100% + 5px); right: 0; z-index: 10; width: 132px; padding: 5px; background: #2d2d2d; border: 1px solid #4a4a4a; border-radius: 12px; box-shadow: 0 12px 28px rgba(0,0,0,.42); }
+.permissionOption { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 40px; padding: 0 9px; color: #e8e8e8; background: transparent; border: 0; border-radius: 8px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.permissionOption:hover,.permissionOption[aria-selected="true"] { background: #393939; }
+.people { padding: 20px 32px 24px; }
+.sectionLabel { margin: 0 0 8px; color: #8d8d8d; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.personRow { display: grid; grid-template-columns: 36px minmax(0,1fr) auto auto; gap: 11px; align-items: center; min-height: 56px; }
+.avatar { display: inline-grid; place-items: center; width: 32px; height: 32px; overflow: hidden; color: #101010; background: #2ec9b0; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; font-size: 12px; font-weight: 800; }
+.avatarImage { display: block; width: 100%; height: 100%; object-fit: cover; }
+.identity { min-width: 0; }
+.identity strong,.identity small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.identity strong { color: #ededed; font-size: 12px; font-weight: 650; }
+.identity small,.ownerRole,.loading { color: #8a8a8a; font-size: 10px; }
+.personRow .permissionTrigger { width: 104px; }
+.removeButton { width: 36px; height: 36px; color: #777; }
+.loading { display: flex; align-items: center; gap: 8px; min-height: 54px; }
+.footer { padding: 0 32px 32px; }
+.copyButton { width: 100%; color: #ededed; background: #383838; border-color: #383838; }
+.copyButton:hover { background: #414141; border-color: #414141; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+@media (max-width: 560px) { .dialog { border-radius: 14px; } .header h2 { font-size: 21px; } .inviteForm,.people,.footer { padding-right: 20px; padding-left: 20px; } .restriction { margin-right: 20px; margin-left: 20px; grid-template-columns: 38px minmax(0,1fr) auto; } .permissionTrigger { width: 104px; } .personRow { grid-template-columns: 36px minmax(0,1fr) auto auto; } .removeButton { width: 34px; } }
+@media (prefers-reduced-motion: reduce) { .dialog * { transition: none !important; } }

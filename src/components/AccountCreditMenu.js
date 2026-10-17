@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Coins, FileText, LogOut, Menu, ShoppingBag } from "lucide-react";
+import { Coins, FileText, LogOut, Menu, Send, ShoppingBag } from "lucide-react";
 import styles from "./AccountCreditMenu.module.css";
 
 export default function AccountCreditMenu({ user, credits, onOpenTopUp, onSignOut }) {
@@ -82,6 +82,10 @@ export default function AccountCreditMenu({ user, credits, onOpenTopUp, onSignOu
           <Link href="/terms" role="menuitem" onClick={closeMenu} className={styles.item}>
             <FileText size={17} aria-hidden="true" />
             <span>Legal &amp; policies</span>
+          </Link>
+          <Link href="/feedback" role="menuitem" onClick={closeMenu} className={styles.item}>
+            <Send size={17} aria-hidden="true" />
+            <span>Request a feature</span>
           </Link>
 
           <div className={styles.divider} />

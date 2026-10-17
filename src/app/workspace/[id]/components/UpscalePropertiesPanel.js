@@ -51,6 +51,7 @@ const UpscalePropertiesPanel = memo(function UpscalePropertiesPanel({
   onDownload,
   onCompare,
   onOpenTopUp,
+  readOnly = false,
 }) {
   const [downloading, setDownloading] = useState(false);
   const [visibleActivityCount, setVisibleActivityCount] = useState(1);
@@ -87,6 +88,12 @@ const UpscalePropertiesPanel = memo(function UpscalePropertiesPanel({
       <div style={{ padding: "14px 16px", borderBottom: `1px solid ${colors.border}`, background: colors.surface }}>
         <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase" }}>AI Upscale Settings</span>
       </div>
+
+      {readOnly && (
+        <div role="status" style={{ margin: "12px 16px 0", padding: "11px 12px", color: "#aaa", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(212,255,89,0.22)", borderRadius: "8px", fontSize: "11px", lineHeight: 1.5 }}>
+          View-only access. Editing tools and exports are locked.
+        </div>
+      )}
 
       <div style={{ padding: "16px", borderBottom: `1px solid ${colors.border}` }}>
         <span style={{ display: "block", marginBottom: "10px", color: colors.muted, fontSize: "10px", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase" }}>Output</span>
@@ -132,15 +139,15 @@ const UpscalePropertiesPanel = memo(function UpscalePropertiesPanel({
           {!hasResult && (
             <button
               type="button"
-              disabled={busy}
+              disabled={readOnly || busy}
               onClick={!legacyResult && noCredits ? onOpenTopUp : onGenerate}
-              style={buttonStyle(!busy, true)}
+              style={buttonStyle(!readOnly && !busy, true)}
             >
               {busy ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}
               {busy ? "Generating…" : legacyResult ? "Restore Result (Free)" : noCredits ? "Get More Credits" : `Generate (−${CREDIT_COST.upscale})`}
             </button>
           )}
-          <button type="button" disabled={!hasResult || downloading} onClick={handleDownload} style={buttonStyle(hasResult && !downloading)}>
+          <button type="button" disabled={readOnly || !hasResult || downloading} onClick={handleDownload} style={buttonStyle(!readOnly && hasResult && !downloading)}>
             {downloading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
             Download PNG
           </button>

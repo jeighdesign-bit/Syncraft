@@ -6,6 +6,7 @@ import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHos
 import { buildRecoveryPrompt, normalizeRecoveryAnalysis } from "@/lib/recovery";
 import { backgroundOnlyFailureMessage, normalizedCorrelation, recoveryAspectRatioDrift, shouldFallbackToSource, shouldPreserveExactRecoverySource, shouldRejectBackgroundOnly, sourceFallbackCorrection } from "@/lib/recoveryPolicy.mjs";
 import { CREDIT_COST } from "@/lib/pricing";
+import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 import { uploadToR2 } from "@/lib/cloudflare";
 import sharp from "sharp";
 
@@ -306,7 +307,7 @@ async function refund(userId, projectId, chargeTransactionId, reason, validation
   } catch (refundError) {
     console.error("[Universal Recovery] Verified refund failed:", refundError);
   }
-  const { data: project } = await adminSupabase.from("projects").select("canvas_data").eq("id", projectId).eq("user_id", userId).single();
+  const { data: project } = await adminSupabase.from("projects").select("canvas_data").eq("id", projectId).single();
   const currentRecovery = project?.canvas_data?.universal_recovery || {};
   await adminSupabase.from("projects").update({
     credit_deducted: !ok,
@@ -320,7 +321,7 @@ async function refund(userId, projectId, chargeTransactionId, reason, validation
         ...(validation ? { validation } : {}),
       },
     },
-  }).eq("id", projectId).eq("user_id", userId);
+  }).eq("id", projectId);
   return ok;
 }
 
@@ -339,7 +340,7 @@ export async function POST(request) {
     if (!limit.success) return limit.response;
 
     ({ projectId } = await request.json());
-    const { data: project } = await adminSupabase.from("projects").select("*").eq("id", projectId).eq("user_id", user.id).single();
+    const { project } = await getProjectAccess(user.id, projectId, { required: PROJECT_ACCESS.EDIT });
     if (!project || project.trace_type !== "universal") return NextResponse.json({ error: "Universal project not found" }, { status: 404 });
     const recovery = project.canvas_data?.universal_recovery;
     if (!recovery?.analysis) return NextResponse.json({ error: "RECOVERY_NOT_ANALYZED" }, { status: 409 });
@@ -353,7 +354,7 @@ export async function POST(request) {
     };
     const { data: locked, error: lockError } = await adminSupabase.from("projects")
       .update({ canvas_data: generatingCanvas, credit_deducted: true, refunded: false })
-      .eq("id", projectId).eq("user_id", user.id)
+      .eq("id", projectId)
       .or("credit_deducted.eq.false,credit_deducted.is.null").select("id");
     if (lockError) throw new Error(`Could not start recovery: ${lockError.message}`);
     if (!locked?.length) return NextResponse.json({
@@ -383,7 +384,7 @@ export async function POST(request) {
     }
 
     const sourceUrl = normalizeUserImageUrl(project.original_image_url, new URL(request.url).origin);
-    if (!isOwnedStorageUrl(sourceUrl, { userId: user.id, projectId }) || !(await validateUrlForSSRF(sourceUrl, { allowedHosts: getAllowedStorageHosts() }))) throw new Error("Invalid source image URL");
+    if ((!isOwnedStorageUrl(sourceUrl, { userId: user.id, projectId }) && !isOwnedStorageUrl(sourceUrl, { userId: project.user_id, projectId })) || !(await validateUrlForSSRF(sourceUrl, { allowedHosts: getAllowedStorageHosts() }))) throw new Error("Invalid source image URL");
     const source = await fetchRecoveryAsset(sourceUrl, {
       allowedHosts: getAllowedStorageHosts(),
       maxBytes: DEFAULT_MAX_IMAGE_BYTES,
@@ -627,7 +628,7 @@ export async function POST(request) {
           },
         },
       },
-    }).eq("id", projectId).eq("user_id", user.id);
+    }).eq("id", projectId);
     if (saveError) throw new Error(`Could not save Universal flat extract: ${saveError.message}`);
 
     await markCreditTransaction({
