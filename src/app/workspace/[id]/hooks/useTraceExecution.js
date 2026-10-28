@@ -2,16 +2,14 @@
 
 import { useState, useCallback, useRef } from "react";
 import { CREDIT_COST } from "@/lib/pricing";
+import { TRACE_REQUEST_TIMEOUT_MS, traceTimeoutMessage } from "@/lib/traceRequestPolicy.mjs";
 import {
   trackGenerationFailure,
   trackGenerationStart,
   trackGenerationSuccess,
 } from "@/lib/analytics.mjs";
 
-// Universal Background-only can include flattening, dual foreground detection,
-// masked inpainting, and validation. Keep the browser just below the route's
-// 300-second ceiling so it does not abort a healthy server run prematurely.
-const REQUEST_TIMEOUT_MS = 290_000;
+const REQUEST_TIMEOUT_MS = TRACE_REQUEST_TIMEOUT_MS;
 
 /**
  * useTraceExecution — Manages the full 3-step AI pipeline execution.
@@ -111,12 +109,13 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
         });
       } catch (error) {
         if (error?.name === "AbortError") {
-          const timeoutError = new Error("Request timed out. Please try again with a simpler crop.");
+          const timeoutError = new Error(traceTimeoutMessage(label));
           timeoutError.code = "REQUEST_TIMEOUT";
           timeoutError.status = 504;
           timeoutError.label = label;
           throw timeoutError;
         }
+        error.label = label;
         throw error;
       } finally {
         clearTimeout(timeoutId);
@@ -342,7 +341,7 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       if (project.trace_type !== "universal" && error.refunded) {
         logToConsole(`[System] Generation failed. ${CREDIT_COST.trace} Credits have been refunded.`, "success");
         if (userCredits !== null) setUserCredits(prev => prev + CREDIT_COST.trace);
-      } else if (project.trace_type !== "universal") try {
+      } else if (project.trace_type !== "universal" && !["step2", "save2", "step3"].includes(error.label)) try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           const refundRes = await fetch("/api/refund", {
@@ -364,7 +363,7 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       }
 
       const displayMsg = isTimeout
-        ? "Request timed out. Please crop the image to make it simpler and try again."
+        ? traceTimeoutMessage(error.label)
         : error.message;
 
       const isExpectedRecoveryOutcome = error.code === "RECOVERY_ALREADY_RUNNING"
@@ -416,9 +415,9 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       return { success: true };
     } catch (error) {
       setTraceState("idle");
-      const isTimeout = error.message?.includes("504") || error.message?.includes("Failed to fetch");
+      const isTimeout = error.status === 504 || error.code === "REQUEST_TIMEOUT" || /timeout|timed out|Failed to fetch/i.test(error.message || "");
       logToConsole(`[Error] ${isTimeout
-        ? "Request Timed Out. Your extended design is safe — retry the vectorize."
+        ? traceTimeoutMessage(error.label)
         : error.message}`, "error");
       return { success: false };
     }

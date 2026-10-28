@@ -12,10 +12,9 @@ import { uploadToR2 } from "@/lib/cloudflare";
 import { usesNativeTraceUpscale, resizeTraceForUpscale } from "@/lib/traceUpscale.mjs";
 import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
-// IMPORTANT: Must use Node.js runtime (not edge) so we get real 120s timeouts.
-// Edge runtime on Vercel has a hard 30s cap which causes all Gemini generations to fail.
+// Allow queued provider jobs and image transfers to finish before Vercel stops the run.
 export const runtime = 'nodejs';
-export const maxDuration = 120; // Vercel Pro plan allows up to 300s; 120s is safe
+export const maxDuration = 300;
 
 export async function POST(request) {
   let projectId;

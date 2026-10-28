@@ -744,6 +744,7 @@ export default function Workspace() {
           consoleRef={consoleRef}
           onExecuteTrace={onExecuteTrace}
           onRetryVector={handleRetryVector}
+          onResumeUpscale={handleResumeFromStep2}
           onDownloadSvg={handleDownloadSvg}
           onDownloadPsd={handleDownloadPsd}
           onDownloadRaster={handleDownloadUpscaled}

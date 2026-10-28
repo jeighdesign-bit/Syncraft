@@ -3,6 +3,7 @@
 import { memo, useState } from "react";
 import { Download, Monitor, ChevronDown, FolderDown, Loader2, X, ImageMinus, Eraser, Scissors, Expand } from "lucide-react";
 import { CREDIT_COST } from "@/lib/pricing";
+import { canResumeTraceUpscale } from "@/lib/traceRequestPolicy.mjs";
 import FeedbackWidget from "./FeedbackWidget";
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
@@ -164,6 +165,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
   consoleRef,
   onExecuteTrace,
   onRetryVector,
+  onResumeUpscale,
   onDownloadSvg,
   onDownloadPsd,
   onDownloadRaster,
@@ -198,6 +200,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
   const isBusy = traceState !== "idle" || isSavingCrop || extendMode;
   const hasSvg = !!project?.svg_url;
   const canRetryVector = !!project?.upscaled_image_url && !hasSvg;
+  const canResumeUpscale = canResumeTraceUpscale(project);
   // 'REFUNDED' is the sentinel a failed trace leaves in generated_image_url.
   const canExtend = !!project?.generated_image_url && project.generated_image_url !== "REFUNDED";
 
@@ -217,6 +220,8 @@ const PropertiesPanel = memo(function PropertiesPanel({
     ? "Processing..."
     : canRetryVector
     ? "Retry Vector SVG (Free)"
+    : canResumeUpscale
+    ? "Resume HD Upscale (Free)"
     : isUnauthenticated
     ? "Login to Trace"
     : noCredits
@@ -228,7 +233,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
   // "Unlocked" mirrors the original enable condition exactly — kept as its
   // own branch because this button has a 3-state style (busy / unlocked /
   // locked) that the simpler active/inactive secondary buttons don't need.
-  const traceUnlocked = canRetryVector || noCredits || isCropped;
+  const traceUnlocked = canRetryVector || canResumeUpscale || noCredits || isCropped;
 
   const svgActive = !readOnly && !!project?.svg_url && !downloading;
   const psdActive = !readOnly && !!project?.svg_url && !downloading && !isBusy;
@@ -376,6 +381,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
             onClick={() => {
               if (isBusy) return;
               if (canRetryVector) { onRetryVector?.(vectorColors); return; }
+              if (canResumeUpscale) { onResumeUpscale?.(vectorColors); return; }
               if (isUnauthenticated || noCredits) { onOpenTopUp?.(); return; }
               if (isCropped) onExecuteTrace(vectorColors);
             }}
