@@ -1,0 +1,23 @@
+.trigger { display: inline-flex; align-items: center; justify-content: center; gap: 7px; justify-self: end; padding: 9px 12px; border: 1px solid #655273; border-radius: 10px; background: #2b2333; color: #e6d5f2; font-size: 11px; white-space: nowrap; }
+.trigger:hover { background: #3b2d47; }
+.dialog { margin: auto; width: min(1000px, calc(100vw - 32px)); max-height: min(90vh, 940px); padding: 28px; border: 1px solid #ffffff08; border-radius: 14px; background: #0c0c0e; color: #eeebf3; overflow-y: auto; box-shadow: 0 24px 100px #0009; }
+.dialog::backdrop { background: #000b; backdrop-filter: blur(4px); }
+.dialog header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+.dialog h2 { margin: 0; font-size: 20px; }
+.dialog p { font-size: 12px; line-height: 1.5; color: #b9b0c2; }
+.dialog header > button { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid #504658; border-radius: 9px; background: #302a36; color: #eeebf3; }
+.filter { width: 170px; min-width: 0; }
+.filter select { padding: 8px 12px; border: 1px solid #504658; border-radius: 8px; background: #28232e; color: #eeebf3; font: inherit; color-scheme: dark; }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.card { position: relative; min-width: 0; padding: 0; border: 0; border-radius: 6px; background: #27222d; color: #eee9f2; overflow: hidden; text-align: left; cursor: pointer; }
+.card img { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; background: #eee; }
+.card > span { display: flex; flex-direction: column; gap: 4px; padding: 10px; }
+.card strong { font-size: 12px; font-weight: 500; }
+.card small { font-size: 10px; color: #b9afc4; }
+.card em { position: absolute; left: 50%; top: 65%; transform: translate(-50%, -50%); padding: 8px 12px; border-radius: 8px; background: #211828e8; color: white; font-size: 11px; font-style: normal; opacity: 0; white-space: nowrap; }
+.card:hover, .card:focus-visible { outline: 2px solid #b8a7ff; outline-offset: -2px; }
+.card:hover em, .card:focus-visible em { opacity: 1; }
+@media (hover: none) { .card em { opacity: 1; top: auto; bottom: 10px; transform: translateX(-50%); } }
+.note { margin-bottom: 0; }
+@media(max-width: 700px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dialog { padding: 16px; } .trigger { font-size: 10px; padding: 8px; } }
+@media(max-width:760px) { .dialog { max-height:calc(100dvh - 32px); } .dialog header > button { width:44px; height:44px; flex-shrink:0; } .trigger { min-height:44px; } }

@@ -3,6 +3,7 @@
 import { memo, useEffect, useState } from "react";
 import { Download, Info, Loader2, Monitor, ShieldCheck, Wand2 } from "lucide-react";
 import { CREDIT_COST } from "@/lib/pricing";
+import GenerateButton from "@/components/GenerateButton";
 
 const colors = {
   panel: "#181818",
@@ -84,7 +85,7 @@ const UpscalePropertiesPanel = memo(function UpscalePropertiesPanel({
   };
 
   return (
-    <aside style={{ width: "280px", background: colors.panel, borderLeft: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", flexShrink: 0, overflowY: "auto", color: colors.text }}>
+    <aside className="workspace-properties" style={{ width: "280px", background: colors.panel, borderLeft: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", flexShrink: 0, overflowY: "auto", color: colors.text }}>
       <div style={{ padding: "14px 16px", borderBottom: `1px solid ${colors.border}`, background: colors.surface }}>
         <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase" }}>AI Upscale Settings</span>
       </div>
@@ -137,15 +138,14 @@ const UpscalePropertiesPanel = memo(function UpscalePropertiesPanel({
         <span style={{ display: "block", marginBottom: "12px", color: colors.muted, fontSize: "10px", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase" }}>Actions</span>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {!hasResult && (
-            <button
-              type="button"
+            <GenerateButton
               disabled={readOnly || busy}
               onClick={!legacyResult && noCredits ? onOpenTopUp : onGenerate}
-              style={buttonStyle(!readOnly && !busy, true)}
+              detail={!busy && !legacyResult && !noCredits ? `${CREDIT_COST.upscale} credits` : undefined}
             >
               {busy ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}
-              {busy ? "Generating…" : legacyResult ? "Restore Result (Free)" : noCredits ? "Get More Credits" : `Generate (−${CREDIT_COST.upscale})`}
-            </button>
+              {busy ? "Generating…" : legacyResult ? "Restore Result (Free)" : noCredits ? "Buy More Credits" : "Generate Now"}
+            </GenerateButton>
           )}
           <button type="button" disabled={readOnly || !hasResult || downloading} onClick={handleDownload} style={buttonStyle(!readOnly && hasResult && !downloading)}>
             {downloading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}

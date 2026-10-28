@@ -38,7 +38,7 @@ const GreatForSection = memo(function GreatForSection() {
     <section className={styles.sectionWrapper} aria-labelledby="workflow-formats-title">
       <div className={styles.header}>
         <span className={styles.eyebrow}>Export &amp; Edit</span>
-        <h2 id="workflow-formats-title" className={styles.heading}>Built for your creative workflow.</h2>
+        <h2 id="workflow-formats-title" className={styles.heading}>Your artwork, ready for the tools you use.</h2>
         <p className={styles.intro}>Move your Syncraft output into the tools and formats your production process already uses.</p>
       </div>
 

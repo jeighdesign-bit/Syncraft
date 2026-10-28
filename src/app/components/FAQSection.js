@@ -1,50 +1,47 @@
 import { CREDIT_COST } from "@/lib/pricing";
+import SectionBadge from "./SectionBadge";
 import styles from "./FAQSection.module.css";
 
 const faqs = [
   {
-    "question": "What can I create with Syncraft?",
-    "answer": "Extract garment patterns and sublimation artwork, recover designs from photographed surfaces with Universal Design Recovery, and trace logos or wordmarks into vectors. You can also remove backgrounds, upscale images, and use Extend Design to expand artwork in your workspace."
+    question: "What can I make with Syncraft?",
+    answer: "Create logos from text, a photo, or a sketch in Logo Studio. You can also recover artwork from garments and printed surfaces, trace images into vectors, remove backgrounds, and upscale images."
   },
   {
-    "question": "How do I sign in?",
-    "answer": "Choose Continue with Google to sign in or create an account. Complete the security check and accept the Terms and Privacy Policy before continuing."
+    question: "How do I get started?",
+    answer: "Sign in with Google to open your workspace and choose a tool. For image tools, upload your file; for Logo Studio, start with a short idea, a photo, or a sketch. You can visit the homepage anytime without signing out."
   },
   {
-    "question": "What files can I upload and download?",
-    "answer": "Start with a clear image such as a PNG or JPG. Depending on the tool and completed processing steps, you can download a Vector SVG, a raster PNG, a layered PSD, or a ZIP bundle of available project files. Background removal produces a transparent PNG."
+    question: "How does Logo Studio work?",
+    answer: "Choose Text to Logo, Image to Logo, or Sketch to Logo, then pick a style. A short idea is enough. You can refine the result and choose optional colors or design controls."
   },
   {
-    "question": "Can I export a layered Photoshop file?",
-    "answer": "Yes. Generate the Vector SVG first, then choose Export as PSD in your workspace. Syncraft prepares a layered Photoshop file from the generated artwork. Layer structure depends on the design; it does not restore the original source file or guarantee editable text."
+    question: "Can I change a logo after creating it?",
+    answer: "Yes. Open the saved logo to make an AI edit, generate a variation, remove its background, or vectorize it. The available action and credit cost appear beside the preview."
   },
   {
-    "question": "How do credits work?",
-    "answer": `Syncraft uses prepaid credits. Tracing, background removal, image upscaling, and Extend Design each cost ${CREDIT_COST.trace} credits per run. Universal Design Recovery costs ${CREDIT_COST.universal} credits per run. Check the displayed cost before starting an operation.`,
+    question: "What can I upload and download?",
+    answer: "Upload a clear PNG, JPG, or WebP image. Logo Studio downloads include PNG and JPG; vectorize a logo first to download SVG. Other workspaces may offer transparent PNG, SVG, layered PSD, or ZIP when those outputs are available."
   },
   {
-    "question": "How can I buy more credits?",
-    "answer": "Open the credit top-up menu, choose a package, and pay through QR Ph using a supported wallet or banking app, such as GCash or Maya. Credits are added after payment confirmation without uploading a receipt. Card / International checkout is available when enabled; the payment menu shows its current availability."
+    question: "Can I export a Photoshop file?",
+    answer: "In a supported artwork workspace, generate the Vector SVG first, then choose Export as PSD. The layers depend on the artwork; text may not remain editable."
   },
   {
-    "question": "Can I remove backgrounds or upscale an image?",
-    "answer": "Yes. Use Remove Background for a transparent cutout, or Image Upscale to enlarge an image. These tools are available separately, so you can use them without generating a vector."
+    question: "How do credits work?",
+    answer: `A Logo Studio creation or AI edit costs ${CREDIT_COST.logoGenerate} credits per output; vectorizing or removing its background costs ${CREDIT_COST.logoVectorize}. Most other tools cost ${CREDIT_COST.trace} credits per run, while Universal Design Recovery costs ${CREDIT_COST.universal}. The cost appears before you start, and you can add credits from the credit menu.`
   },
   {
-    "question": "What if my Vector SVG is not generated?",
-    "answer": "If your project already has a processed image but no SVG, use Retry Vector SVG (Free) in the workspace. This retries the vector step without charging for a new full generation."
+    question: "How can I get cleaner results?",
+    answer: "Use a sharp image and crop around the subject you want to keep. In Logo Studio, pick the closest style and add a short note only when you want to guide a detail. Review fine lines and text before production."
   },
   {
-    "question": "What happens if a processing run fails?",
-    "answer": "Eligible failed processing runs return the charged credits to your balance automatically. If a processed image is available but vector generation fails, try the free vector retry. If credits remain deducted after an error, contact support with your project details."
+    question: "What if a run fails?",
+    answer: "Eligible failed runs return their charged credits automatically. If an image is ready but its Vector SVG failed, use the free vector retry in that workspace."
   },
   {
-    "question": "How can I get better results?",
-    "answer": "Upload a sharp, well-lit image and crop closely around the artwork you want to recover. Choose the tool that matches your image, then review the result before printing. Blurry details, folds, and hidden areas can affect accuracy."
-  },
-  {
-    "question": "How long are my project files kept?",
-    "answer": "Project files are available in your personal history and scheduled for automatic deletion from active cloud storage within 3 days of creation. Download your uploads and finished exports before then; project history is temporary storage."
+    question: "How long are my files kept?",
+    answer: "Project files are scheduled for deletion from active cloud storage within 3 days. Download the finished files you want to keep."
   }
 ];
 
@@ -52,9 +49,9 @@ export default function FAQSection() {
   return (
     <section id="faq" className={styles.section} aria-labelledby="faq-heading">
       <div className={styles.intro}>
-        <p className={styles.eyebrow}>Need to know</p>
-        <h2 id="faq-heading">Frequently asked questions</h2>
-        <p>Quick answers about tools, exports, credits, and your account.</p>
+        <SectionBadge className={styles.eyebrow}>FAQ</SectionBadge>
+        <h2 id="faq-heading">Frequently asked<br />questions.</h2>
+        <p>Quick answers about creating, exporting, and credits.</p>
       </div>
 
       <div className={styles.list}>

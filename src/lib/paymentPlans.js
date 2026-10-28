@@ -3,10 +3,10 @@ export const CREDIT_PLANS = {
     key: "tingi",
     label: "Tingi",
     credits: 24,        // 2 generates × 12 tokens
-    price: "₱60",
-    gcashPrice: "₱60",
+    price: "₱79",
+    gcashPrice: "₱79",
     dodoPrice: null,
-    amount: 6000,
+    amount: 7900,
     currency: "PHP",
     dodoProductEnv: "DODO_PRODUCT_TINGI",
     dodoEnabled: false,
@@ -17,10 +17,10 @@ export const CREDIT_PLANS = {
     key: "basic",
     label: "Basic",
     credits: 60,        // 5 generations × 12 credits
-    price: "₱149",
-    gcashPrice: "₱149",
+    price: "₱189",
+    gcashPrice: "₱189",
     dodoPrice: "$2.49",
-    amount: 14900,
+    amount: 18900,
     dodoAmount: 249,
     currency: "PHP",
     dodoCurrency: "USD",
@@ -28,18 +28,18 @@ export const CREDIT_PLANS = {
     dodoEnabled: true,
     polarProductEnv: "POLAR_PRODUCT_BASIC",
     polarEnabled: true,
-    polarPrice: "$2.49",
-    polarAmount: 249,
+    polarPrice: "$3.49",
+    polarAmount: 349,
     polarCurrency: "USD",
   },
   starter: {
     key: "starter",
     label: "Starter",
     credits: 168,       // 14 generations × 12 credits
-    price: "₱299",
-    gcashPrice: "₱299",
+    price: "₱399",
+    gcashPrice: "₱399",
     dodoPrice: "$5.99",
-    amount: 29900,
+    amount: 39900,
     dodoAmount: 599,
     currency: "PHP",
     dodoCurrency: "USD",
@@ -47,18 +47,18 @@ export const CREDIT_PLANS = {
     dodoEnabled: true,
     polarProductEnv: "POLAR_PRODUCT_STARTER",
     polarEnabled: true,
-    polarPrice: "$5.99",
-    polarAmount: 599,
+    polarPrice: "$7.49",
+    polarAmount: 749,
     polarCurrency: "USD",
   },
   pro: {
     key: "pro",
     label: "Pro",
     credits: 288,       // 24 generations × 12 credits
-    price: "₱499",
-    gcashPrice: "₱499",
+    price: "₱649",
+    gcashPrice: "₱649",
     dodoPrice: "$9.99",
-    amount: 49900,
+    amount: 64900,
     dodoAmount: 999,
     currency: "PHP",
     dodoCurrency: "USD",
@@ -66,18 +66,18 @@ export const CREDIT_PLANS = {
     dodoEnabled: true,
     polarProductEnv: "POLAR_PRODUCT_PRO",
     polarEnabled: true,
-    polarPrice: "$9.99",
-    polarAmount: 999,
+    polarPrice: "$11.99",
+    polarAmount: 1199,
     polarCurrency: "USD",
   },
   elite: {
     key: "elite",
     label: "Elite",
     credits: 528,       // 44 generations × 12 credits
-    price: "₱899",
-    gcashPrice: "₱899",
+    price: "₱1,149",
+    gcashPrice: "₱1,149",
     dodoPrice: "$15.99",
-    amount: 89900,
+    amount: 114900,
     dodoAmount: 1599,
     currency: "PHP",
     dodoCurrency: "USD",
@@ -85,8 +85,8 @@ export const CREDIT_PLANS = {
     dodoEnabled: true,
     polarProductEnv: "POLAR_PRODUCT_ELITE",
     polarEnabled: true,
-    polarPrice: "$15.99",
-    polarAmount: 1599,
+    polarPrice: "$20.99",
+    polarAmount: 2099,
     polarCurrency: "USD",
   },
 };
@@ -103,4 +103,21 @@ export function getDodoProductId(plan) {
 export function getPolarProductId(plan) {
   if (!plan?.polarProductEnv) return null;
   return process.env[plan.polarProductEnv] || null;
+}
+
+export function getPolarCheckoutPricing(plan, productId) {
+  if (!plan?.polarEnabled || !productId || !Number.isInteger(plan.polarAmount) || plan.polarAmount <= 0) {
+    throw new Error("Invalid Polar checkout plan");
+  }
+
+  // Fixed ad-hoc prices override the catalog only for this new checkout.
+  // Polar ignores the top-level `amount` field for fixed-price products.
+  const currency = plan.polarCurrency.toLowerCase();
+  return {
+    products: [productId],
+    currency,
+    prices: {
+      [productId]: [{ amountType: "fixed", priceAmount: plan.polarAmount, priceCurrency: currency }],
+    },
+  };
 }

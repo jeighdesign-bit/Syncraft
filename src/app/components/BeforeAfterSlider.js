@@ -79,19 +79,37 @@ export default function BeforeAfterSlider({
   rasterUrl,
   vectorUrl,
   height = '400px',
+  aspectRatio,
   objectFit = 'cover',
+  objectPosition = '50% 50%',
+  zoom = 1,
   originalLabel = 'Original Photo',
   resultLabel = 'Vectorized SVG',
   minimal = false,
+  canvasBackground = 'transparent',
+  resultBackground = 'transparent',
 }) {
   const [sliderPosition, setSliderPosition] = useState(50);
+  const imageStyle = {
+    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+    objectFit, objectPosition, transform: `scale(${zoom})`, transformOrigin: objectPosition,
+  };
 
   return (
     <div style={{ textAlign: 'center', width: '100%' }}>
       
-      <div style={{ position: 'relative', width: '100%', height, background: 'transparent', overflow: 'hidden', border: minimal ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.08)', borderRadius: minimal ? '12px' : '16px' }}>
+      <div style={{ position: 'relative', width: '100%', height, aspectRatio, background: canvasBackground, overflow: 'hidden', border: minimal ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.08)', borderRadius: minimal ? '12px' : '16px' }}>
         
-        {/* Original Image (Background / Right Side) */}
+        {/* Finished result fills the right side behind the original. */}
+        {resultBackground !== 'transparent' && (
+          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: resultBackground }} />
+        )}
+        <InlineSVG
+          url={vectorUrl}
+          objectFit={objectFit}
+          style={{ ...imageStyle, zIndex: 1 }}
+        />
+        <div style={{ position: 'absolute', inset: 0, clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`, background: canvasBackground, zIndex: 2 }}>
         <img 
           src={rasterUrl} 
           alt={`${title || 'Sample'} original reference`}
@@ -99,17 +117,12 @@ export default function BeforeAfterSlider({
           height="800"
           loading="lazy"
           decoding="async"
-          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit }} 
+          draggable={false}
+          style={imageStyle}
         />
-        <span style={{ position: 'absolute', top: 12, right: 12, background: minimal ? 'rgba(12,12,12,0.76)' : 'rgba(0,0,0,0.7)', padding: minimal ? '5px 9px' : '4px 10px', border: minimal ? '1px solid rgba(255,255,255,0.12)' : 'none', fontSize: minimal ? '10px' : '11px', fontWeight: minimal ? 650 : 400, letterSpacing: minimal ? '0.02em' : 'normal', color: minimal ? 'rgba(255,255,255,0.78)' : '#fff', borderRadius: minimal ? '999px' : '0', backdropFilter: minimal ? 'blur(10px)' : 'none', zIndex: 1 }}>{originalLabel}</span>
-        
-        {/* Vectorized SVG (Foreground / Left Side) */}
-        <InlineSVG 
-          url={vectorUrl} 
-          objectFit={objectFit}
-          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit, clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`, zIndex: 2 }} 
-        />
-        <span style={{ position: 'absolute', top: 12, left: 12, background: minimal ? 'rgba(12,12,12,0.76)' : '#d4ff59', padding: minimal ? '5px 9px' : '4px 10px', border: minimal ? '1px solid rgba(212,255,89,0.38)' : 'none', fontSize: minimal ? '10px' : '11px', color: minimal ? '#d4ff59' : '#000', fontWeight: minimal ? 700 : 'bold', letterSpacing: minimal ? '0.02em' : 'normal', borderRadius: minimal ? '999px' : '0', backdropFilter: minimal ? 'blur(10px)' : 'none', zIndex: 3, opacity: sliderPosition > 10 ? 1 : 0, transition: 'opacity 0.2s' }}>{resultLabel}</span>
+        </div>
+        <span style={{ position: 'absolute', top: 12, left: 12, background: minimal ? 'rgba(12,12,12,0.76)' : 'rgba(0,0,0,0.7)', padding: minimal ? '5px 9px' : '4px 10px', border: minimal ? '1px solid rgba(255,255,255,0.12)' : 'none', fontSize: minimal ? '10px' : '11px', fontWeight: minimal ? 650 : 400, letterSpacing: minimal ? '0.02em' : 'normal', color: minimal ? 'rgba(255,255,255,0.78)' : '#fff', borderRadius: minimal ? '999px' : '0', backdropFilter: minimal ? 'blur(10px)' : 'none', zIndex: 3, opacity: sliderPosition > 10 ? 1 : 0, transition: 'opacity 0.2s' }}>{originalLabel}</span>
+        <span style={{ position: 'absolute', top: 12, right: 12, background: minimal ? 'rgba(12,12,12,0.76)' : '#d4ff59', padding: minimal ? '5px 9px' : '4px 10px', border: minimal ? '1px solid rgba(212,255,89,0.38)' : 'none', fontSize: minimal ? '10px' : '11px', color: minimal ? '#d4ff59' : '#000', fontWeight: minimal ? 700 : 'bold', letterSpacing: minimal ? '0.02em' : 'normal', borderRadius: minimal ? '999px' : '0', backdropFilter: minimal ? 'blur(10px)' : 'none', zIndex: 3, opacity: sliderPosition < 90 ? 1 : 0, transition: 'opacity 0.2s' }}>{resultLabel}</span>
 
         {/* Slider Divider Line */}
         <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${sliderPosition}%`, width: minimal ? '1px' : '2px', background: '#d4ff59', boxShadow: minimal ? '0 0 12px rgba(212,255,89,0.22)' : 'none', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none' }}></div>
@@ -126,6 +139,7 @@ export default function BeforeAfterSlider({
         <input 
           type="range" 
           aria-label={`Compare ${title || 'sample'} original and result`}
+          aria-valuetext={`${sliderPosition}% original, ${100 - sliderPosition}% result`}
           min="0" max="100" 
           value={sliderPosition} 
           onChange={e => setSliderPosition(e.target.value)} 

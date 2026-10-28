@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 // The client you created from the Server-Side Auth instructions
 import { createClient } from '@/utils/supabase/server'
+import { getSignInDestination } from '@/lib/authNavigation.mjs'
 
 function classifyExchangeError(error) {
   const message = String(error?.message || '').toLowerCase()
@@ -16,8 +17,7 @@ export async function GET(request) {
   const flowId = searchParams.get('sb_flow_id')
   const providerError = searchParams.get('error')
   const providerErrorDescription = searchParams.get('error_description')
-  // if "next" is in param, use it as the redirect URL
-  let next = searchParams.get('next') ?? '/'
+  const destination = getSignInDestination(origin, searchParams.get('next'))
 
   if (code) {
     const supabase = await createClient()
@@ -33,17 +33,8 @@ export async function GET(request) {
         && Math.abs(lastSignInAt - createdAt) <= 10_000
       const authEvent = isNewUser ? 'sign_up' : 'login'
 
-      // Securely construct redirect URL to prevent Open Redirects
-      try {
-        const redirectUrl = new URL(next, origin)
-        if (redirectUrl.origin !== origin) {
-          throw new Error('Invalid redirect')
-        }
-        redirectUrl.searchParams.set('auth_event', authEvent)
-        return NextResponse.redirect(redirectUrl.href)
-      } catch (err) {
-        return NextResponse.redirect(`${origin}/?auth_event=${authEvent}`)
-      }
+      destination.searchParams.set('auth_event', authEvent)
+      return NextResponse.redirect(destination.href)
     }
 
     // Never include the OAuth code in logs. The error code/message is safe and

@@ -1,4 +1,5 @@
 "use client";
+import BackLink from "@/components/BackLink";
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -97,7 +98,7 @@ export default function FeedbackPage() {
 
   return <div className={styles.page}>
     <header className={styles.topbar}>
-      <Link href="/" aria-label="Syncraft home"><img src="/logo.svg" alt="Syncraft" width="126" height="32" /></Link>
+      <BackLink aria-label="Back to previous page"><img src="/logo.svg" alt="Syncraft" width="126" height="32" /></BackLink>
     </header>
     <main className={styles.main}>
       <div className={styles.intro}><span>COMMUNITY FEEDBACK</span><h1>Help shape Syncraft.</h1><p>Suggest something useful, report a problem, or join the conversation.</p></div>

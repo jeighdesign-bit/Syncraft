@@ -1,81 +1,21 @@
 import {
-  ArrowUpRight,
-  CheckCircle2,
-  Download,
   Quote,
-  ShieldCheck,
   Star,
 } from "lucide-react";
 import styles from "./TestimonialSection.module.css";
+import SectionBadge from "./SectionBadge";
 
-const proofs = [
-  {
-    step: "01",
-    title: "Inspect real transformations",
-    description: "Compare the supplied reference with Syncraft's recovered output in the interactive before-and-after gallery.",
-    href: "#samples-section",
-    linkLabel: "Explore the samples",
-    Icon: CheckCircle2,
-  },
-  {
-    step: "02",
-    title: "Export production-ready files",
-    description: "Move from preview to editable SVG, high-resolution PNG, transparent PNG, or a packaged ZIP export.",
-    href: "/#syncraft-upload",
-    linkLabel: "Try your own artwork",
-    Icon: Download,
-  },
-  {
-    step: "03",
-    title: "Stay in control of your work",
-    description: "You keep ownership of your uploaded artwork, with project files scheduled for deletion after three days.",
-    href: "/privacy",
-    linkLabel: "Review our privacy policy",
-    Icon: ShieldCheck,
-  },
-];
-
-export default function ProductionProofSection({ publicStats = { totalUsers: 0, avatars: [] } }) {
+export default function TestimonialSection({ publicStats = { totalUsers: 0, avatars: [] } }) {
   const totalUsers = Number(publicStats.totalUsers) || 0;
   const avatars = Array.isArray(publicStats.avatars) ? publicStats.avatars.slice(0, 4) : [];
 
   return (
-    <section id="production-proof" className={styles.sectionWrapper} aria-labelledby="production-proof-title">
-      <div className={styles.proofShell}>
-        <div className={styles.glow} aria-hidden="true" />
-        <header className={styles.proofHeader}>
-          <div>
-            <p className={styles.eyebrow}>See the workflow in action</p>
-            <h2 id="production-proof-title">Proof you can inspect, not promises you have to trust.</h2>
-          </div>
-          <p className={styles.proofIntro}>
-            Review real examples, confirm the formats you need, and understand how your files are handled before you start.
-          </p>
-        </header>
-
-        <div className={styles.proofGrid}>
-          {proofs.map(({ step, title, description, href, linkLabel, Icon }) => (
-            <article className={styles.proofCard} key={title}>
-              <div className={styles.cardTopline}>
-                <span className={styles.proofIcon} aria-hidden="true"><Icon size={20} /></span>
-                <span className={styles.step}>{step}</span>
-              </div>
-              <h3>{title}</h3>
-              <p>{description}</p>
-              <a href={href}>
-                {linkLabel}
-                <ArrowUpRight size={16} aria-hidden="true" />
-              </a>
-            </article>
-          ))}
-        </div>
-      </div>
-
+    <section className={styles.sectionWrapper} aria-labelledby="testimonial-title">
       <div className={styles.testimonialSection} aria-labelledby="testimonial-title">
         <header className={styles.testimonialHeader}>
           <div>
-            <p className={styles.eyebrow}>Testimonials</p>
-            <h2 id="testimonial-title">Made for real creative workflows.</h2>
+            <SectionBadge className={styles.eyebrow}>Testimonials</SectionBadge>
+            <h2 id="testimonial-title">See what a real creator thinks.</h2>
           </div>
           <p>Real feedback from a designer who discovered Syncraft during its early release.</p>
         </header>

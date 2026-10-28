@@ -1,0 +1,144 @@
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: #171717;
+  border-left: 1px solid #303030;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+  transition: width 180ms ease;
+}
+
+.expanded { width: 244px; }
+.collapsed { width: 48px; }
+
+.header {
+  min-height: 78px;
+  padding: 18px 10px 16px 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 6px;
+  border-bottom: 1px solid #292929;
+}
+
+.collapsed .header { min-height: 56px; padding: 10px 5px; border-bottom-color: transparent; }
+
+.heading { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 6px; padding-top: 3px; }
+
+.title {
+  color: #f4f4f4;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.subtitle { margin: 0; color: #aaa; font-size: 10px; line-height: 1.5; }
+
+.toggle {
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #a9a9a9;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.toggle:hover,
+.toggle:focus-visible {
+  background: #262626;
+  border-color: #414141;
+  color: #fff;
+}
+
+.content { display: flex; flex: 1; min-height: 0; flex-direction: column; }
+.content[hidden], .body[hidden] { display: none; }
+
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex-shrink: 0;
+  gap: 3px;
+  margin: 16px 14px 0;
+  padding: 3px;
+  border: 1px solid #303030;
+  border-radius: 9px;
+  background: #121212;
+}
+
+.tabs button {
+  min-height: 33px;
+  padding: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #a6a6a6;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tabs button[aria-selected="true"] { background: #303030; color: #f2f2f2; box-shadow: 0 1px 3px #0004; }
+.tabs button:hover { color: #f2f2f2; }
+.tabs button:focus-visible, .logoCard:focus-visible, .garmentCaption:focus-visible, .usePrompt:focus-visible { outline: 2px solid #c9b9ed; outline-offset: 2px; }
+
+.body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 14px 24px; scrollbar-width: thin; scrollbar-color: #454545 transparent; }
+.hint { margin: 0 0 14px; color: #a2a2a2; font-size: 11px; line-height: 1.6; }
+.logoGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.logoCard { position: relative; display: block; min-width: 0; padding: 0; border: 1px solid #363636; border-radius: 9px; background: #242424; overflow: hidden; cursor: pointer; }
+.logoCard img { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; user-select: none; }
+.logoCard:hover { border-color: #a99bbb; }
+.cardOverlay { position: absolute; right: 0; bottom: 0; left: 0; padding: 18px 5px 7px; background: linear-gradient(transparent, #000b); color: white; font-size: 10px; font-weight: 600; text-align: center; opacity: 0; transition: opacity 140ms ease; }
+.logoCard:hover .cardOverlay, .logoCard:focus-visible .cardOverlay { opacity: 1; }
+.garmentList { display: grid; gap: 12px; }
+.garmentCard { width: 100%; padding: 8px 8px 0; overflow: hidden; border: 1px solid #3b3b3b; border-radius: 19px; background: #202020; box-shadow: 0 3px 0 #111, 0 9px 18px #0002; }
+.garmentSlider { border-radius: 12px; }
+.garmentSlider:has(input:focus-visible), .garmentPreviewSlider:has(input:focus-visible) { outline: 2px solid #c9b9ed; outline-offset: 2px; }
+.garmentCaption { display: flex; width: 100%; flex-direction: column; gap: 6px; padding: 9px 5px 16px; border: 0; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.garmentCaption:hover > span { color: #ddd; }
+.garmentCaption strong { color: #e8e8e8; font-size: 13px; font-weight: 650; }
+.garmentCaption > span { display: flex; align-items: center; justify-content: space-between; color: #aaa; font-size: 10px; }
+.garmentCaption .garmentEyebrow { color: #bcaed0; font-size: 8px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+.comparisonToolbar { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 7px 0; }
+.comparisonViewer { width: 100%; }
+.comparisonToolbar > span { color: #999; font-size: 9px; }
+.zoomControls { display: flex; align-items: center; border: 1px solid #3b3b3b; border-radius: 7px; background: #191919; }
+.zoomControls button { display: grid; place-items: center; width: 24px; min-height: 28px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: #ddd; font: inherit; cursor: pointer; }
+.zoomControls button:hover:not(:disabled) { background: #303030; }
+.zoomControls button:focus-visible { outline: 2px solid #c9b9ed; outline-offset: 1px; }
+.zoomControls button:disabled { color: #5e5e5e; cursor: default; }
+.zoomControls .zoomValue { width: 37px; font-size: 9px; font-variant-numeric: tabular-nums; }
+
+.preview { box-sizing: border-box; margin: auto; width: min(440px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); padding: 0; overflow-y: auto; border: 1px solid #414141; border-radius: 16px; background: #202020; color: #eee; box-shadow: 0 24px 80px #0008; }
+.preview::backdrop { background: #000a; backdrop-filter: blur(4px); }
+.previewHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px 10px 18px; }
+.previewHeader h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.previewImage { display: block; width: calc(100% - 24px); height: auto; aspect-ratio: 1; object-fit: contain; margin: 0 12px; border-radius: 10px; }
+.previewDetails { padding: 18px; }
+.styleLabel { display: inline-block; padding: 4px 8px; border: 1px solid #4b4254; border-radius: 6px; background: #2b2630; color: #d7c7e6; font-size: 10px; }
+.previewDetails p { margin: 12px 0 18px; color: #c3c3c3; font-size: 12px; line-height: 1.7; }
+.usePrompt { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 0 14px; border: 1px solid #6d5d7c; border-radius: 8px; background: #382e42; color: #eee6f6; text-decoration: none; font-size: 12px; font-weight: 600; }
+.usePrompt:hover { background: #463852; }
+.widePreview { width: min(640px, calc(100vw - 32px)); }
+.garmentPreviewSlider { width: calc(100% - 28px); margin: 0 auto; border-radius: 12px; }
+.widePreview .previewDetails p { margin: 0; }
+
+@media (max-width: 700px) {
+  .expanded { width: min(244px, calc(100vw - 48px)); }
+}
+@media (max-width: 1100px) {
+  .header { min-height: 82px; padding-right: 60px; }
+  .toggle, .tabs button { min-height: 44px; }
+  .cardOverlay { opacity: 1; }
+  .zoomControls button { min-width: 36px; min-height: 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel, .cardOverlay { transition: none; }
+}

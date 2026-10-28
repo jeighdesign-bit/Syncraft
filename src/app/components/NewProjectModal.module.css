@@ -82,6 +82,15 @@
   letter-spacing: -0.025em;
 }
 
+.selectedImageName {
+  margin: -10px 0 20px;
+  color: #b8b8be;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .formGroup { margin-bottom: 22px; }
 
 .fieldLabel {

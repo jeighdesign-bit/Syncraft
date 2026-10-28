@@ -6,9 +6,10 @@
 .title { margin: 0 0 12px; text-align: center; font-size: 24px; font-weight: 700; line-height: 1.3; letter-spacing: -.6px; }
 .description { text-align: center; color: #9b9ba6; font-size: 13px; line-height: 1.6; margin: 0 0 28px; }
 .form { width: 100%; border-top: 1px solid #2a2a30; padding-top: 28px; }
-.google { display: flex; justify-content: center; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 12px; background: #242428; color: #fafafa; border: 1px solid #34343b; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .2s, border-color .2s; }
-.google:hover:not(:disabled) { background: #303035; border-color: #55555f; }
-.google:disabled { color: #aaaab3; cursor: not-allowed; }
+.google { display: flex; justify-content: center; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 12px; background: linear-gradient(180deg, #38383e, #29292e 58%, #222227); color: #fafafa; border: 1px solid #505057; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: inset 0 1px 0 #ffffff24, 0 3px 0 #111115, 0 10px 18px #0007; transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+.google:hover:not(:disabled) { transform: translateY(-1px); border-color: #707078; box-shadow: inset 0 1px 0 #ffffff30, 0 4px 0 #111115, 0 13px 22px #0008; }
+.google:active:not(:disabled) { transform: translateY(2px); box-shadow: inset 0 1px 0 #ffffff20, 0 1px 0 #111115, 0 4px 8px #0007; }
+.google:disabled { color: #aaaab3; cursor: not-allowed; box-shadow: none; }
 .google svg { flex-shrink: 0; }
 .security { display: flex; justify-content: center; margin-top: 20px; }
 .captcha { min-height: 65px; width: 300px; max-width: 100%; }
@@ -25,6 +26,6 @@
 .dialog button:focus-visible, .dialog input:focus-visible, .dialog a:focus-visible { outline: 2px solid #d4ff59; outline-offset: 4px; }
 @media (max-width: 768px) { .dialog { max-width: 420px; } .art { display: none; } }
 @media (max-width: 400px) { .overlay { padding: 10px; } .dialog { max-height: calc(100dvh - 20px); border-radius: 18px; } .content { padding: 48px 20px 24px; } }
-@media (prefers-reduced-motion: reduce) { .google { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .google { transition: none; } .google:hover:not(:disabled), .google:active:not(:disabled) { transform: none; } }
 
 @media (max-width: 360px) { .overlay { padding: 6px; } .content { padding-left: 3px; padding-right: 3px; } .title, .description { padding-inline: 12px; } }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
-import { getCreditPlan, getPolarProductId } from "@/lib/paymentPlans";
+import { getCreditPlan, getPolarProductId, getPolarCheckoutPricing } from "@/lib/paymentPlans";
 import { getCustomerIpAddress, getPolarClient, getSiteUrl } from "@/lib/polar";
 import { enforceRateLimit } from "@/lib/rateLimit";
 
@@ -67,7 +67,7 @@ export async function POST(request) {
 
     const siteUrl = getSiteUrl(request);
     const checkout = await getPolarClient().checkouts.create({
-      products: [productId],
+      ...getPolarCheckoutPricing(plan, productId),
       externalCustomerId: user.id,
       customerEmail: user.email,
       customerName: user.user_metadata?.full_name || user.email?.split("@")[0] || undefined,

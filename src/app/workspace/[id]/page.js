@@ -1,6 +1,7 @@
 "use client";
 
 // ─── React & Routing ──────────────────────────────────────────────────────────
+import BackToWorkspace from "@/components/BackToWorkspace";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 
@@ -600,14 +601,7 @@ export default function Workspace() {
         className="workspace-topbar"
         style={{ "--workspace-accent": workspaceMode.accent }}
       >
-        <button
-          type="button"
-          onClick={() => router.push('/')}
-          className="workspace-home-button"
-          aria-label="Return to Syncraft home"
-        >
-          <img src="/logo.svg" alt="" className="workspace-home-button__logo" />
-        </button>
+        <BackToWorkspace />
         <div className="workspace-mode-title" aria-live="polite">
           <span className="workspace-mode-title__rail" aria-hidden="true" />
           <span className="workspace-mode-title__copy">
@@ -704,6 +698,7 @@ export default function Workspace() {
                       type="button"
                       disabled={!canEditProject}
                       aria-label={canEditProject ? "Rename project" : "Project title"}
+                      className="workspace-project-title"
                       title={canEditProject ? "Rename project" : "View-only access"}
                       onClick={() => {
                         if (!canEditProject) return;

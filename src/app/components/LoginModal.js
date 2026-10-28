@@ -5,8 +5,9 @@ import { X, Loader2 } from "lucide-react";
 import { toast } from "@/components/Toast";
 import styles from "./LoginModal.module.css";
 import { Turnstile } from '@marsidev/react-turnstile';
+import { DEFAULT_SIGN_IN_PATH } from '@/lib/authNavigation.mjs';
 
-const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
+const LoginModal = memo(function LoginModal({ show, onClose, supabase, returnTo = DEFAULT_SIGN_IN_PATH }) {
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState(null);
@@ -42,7 +43,7 @@ const LoginModal = memo(function LoginModal({ show, onClose, supabase }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/api/auth/callback`,
+          redirectTo: `${window.location.origin}/api/auth/callback${returnTo?.startsWith('/') && !returnTo.startsWith('//') ? `?next=${encodeURIComponent(returnTo)}` : ''}`,
           captchaToken: secureToken
         }
       });

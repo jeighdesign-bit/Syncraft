@@ -121,13 +121,13 @@ const CropModal = memo(function CropModal({
             Crop Pattern Region
           </h3>
           {!isMandatoryUniversalCrop && (
-            <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "4px", borderRadius: "50%", transition: "all 0.2s" }} onMouseOver={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }} onMouseOut={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.background = "transparent"; }}>
+            <button aria-label="Close crop" onClick={onClose} style={{ minWidth: "44px", minHeight: "44px", flexShrink: 0, background: "transparent", border: "none", color: "#888", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "4px", borderRadius: "50%", transition: "all 0.2s" }} onMouseOver={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }} onMouseOut={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.background = "transparent"; }}>
               <X size={20} />
             </button>
           )}
         </div>
 
-        <div style={{ display: "flex", gap: "20px", flex: 1, minHeight: 0, flexDirection: "row" }}>
+        <div className="workspace-editor-columns" style={{ display: "flex", gap: "20px", flex: 1, minHeight: 0, flexDirection: "row" }}>
           {/* Left Column: The Cropper */}
           <div style={{ flex: "1 1 65%", backgroundColor: "#0a0a0a", backgroundImage: "radial-gradient(rgba(255, 255, 255, 0.1) 1.5px, transparent 1.5px)", backgroundSize: "24px 24px", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "12px", display: "flex", justifyContent: "center", alignItems: "center", padding: "16px", minHeight: "400px", overflow: "hidden" }}>
             <ReactCrop

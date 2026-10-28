@@ -165,12 +165,12 @@ const EraseModal = memo(function EraseModal({
             <Eraser size={18} />
             Manual Eraser Tool
           </h3>
-          <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", padding: "4px" }}>
+          <button aria-label="Close eraser" onClick={onClose} style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", padding: "4px", minWidth: "44px", minHeight: "44px", flexShrink: 0 }}>
             <X size={20} />
           </button>
         </div>
 
-        <div style={{ display: "flex", gap: "20px", flex: 1, minHeight: 0, flexDirection: "row" }}>
+        <div className="workspace-editor-columns" style={{ display: "flex", gap: "20px", flex: 1, minHeight: 0, flexDirection: "row" }}>
           
           {/* Left Column: Canvas Area */}
           <div 

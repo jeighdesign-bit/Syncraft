@@ -1,6 +1,7 @@
 // src/utils/uploadClient.js
 
 import { createClient } from "@/utils/supabase/client";
+import { readApiResponse } from "@/lib/apiResponse.mjs";
 
 /**
  * Uploads an image to storage from the browser.
@@ -107,7 +108,7 @@ export async function uploadImageToStorage(file, { token, fileName, contentType 
     }, activeToken);
     const urlRes = authResult.response;
     activeToken = authResult.token;
-    const urlData = await urlRes.json();
+    const urlData = await readApiResponse(urlRes);
     if (!urlRes.ok || !urlData.uploadUrl) throw new Error(urlData.error || "Failed to get upload URL");
 
     const putRes = await fetch(urlData.uploadUrl, {
@@ -133,7 +134,7 @@ export async function uploadImageToStorage(file, { token, fileName, contentType 
     body: formData,
   }, activeToken);
   const fallbackRes = fallbackResult.response;
-  const fallbackData = await fallbackRes.json();
+  const fallbackData = await readApiResponse(fallbackRes, "Image upload is temporarily unavailable. Please try again shortly.");
   if (!fallbackRes.ok || !fallbackData.publicUrl) {
     throw new Error(fallbackData.error || "Failed to upload image to storage");
   }

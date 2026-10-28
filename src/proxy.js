@@ -16,7 +16,6 @@ const RATE_LIMIT_CONFIG = {
   '/api/trace':         { window: '60 s', windowMs: 60_000, max: 10  },
   '/api/recovery/analyze':  { window: '60 s', windowMs: 60_000, max: 10 },
   '/api/recovery/generate': { window: '60 s', windowMs: 60_000, max: 3  },
-  '/api/upload-mobile': { window: '60 s', windowMs: 60_000, max: 10  },
   '/api/upload':        { window: '60 s', windowMs: 60_000, max: 20  },
   '/api/crop':          { window: '60 s', windowMs: 60_000, max: 30  },
   '/api/remove-bg':     { window: '60 s', windowMs: 60_000, max: 10  },
@@ -133,16 +132,53 @@ export async function proxy(request) {
 
   const ip = getClientIP(request);
   const cfg = RATE_LIMIT_CONFIG[routePrefix];
-  const limiters = getUpstashLimiters();
+  try {
+    const limiters = getUpstashLimiters();
+    if (limiters) {
+      // ── Distributed Upstash Redis rate limiting ────────────────────────────
+      const limiter = limiters[routePrefix];
+      const { success, remaining, reset } = await limiter.limit(ip);
 
-  if (limiters) {
-    // ── Distributed Upstash Redis rate limiting ────────────────────────────
-    const limiter = limiters[routePrefix];
-    const { success, remaining, reset } = await limiter.limit(ip);
+      if (!success) {
+        const retryAfter = Math.ceil((reset - Date.now()) / 1000);
+        console.warn(`[Rate Limit/Upstash] Blocked ${ip} on ${pathname}. Retry after ${retryAfter}s`);
+        return new NextResponse(
+          JSON.stringify({ error: 'Too many requests. Please slow down and try again shortly.' }),
+          {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'Retry-After': String(retryAfter),
+              'X-RateLimit-Limit': String(cfg.max),
+              'X-RateLimit-Remaining': '0',
+            },
+          }
+        );
+      }
 
-    if (!success) {
-      const retryAfter = Math.ceil((reset - Date.now()) / 1000);
-      console.warn(`[Rate Limit/Upstash] Blocked ${ip} on ${pathname}. Retry after ${retryAfter}s`);
+      const response = NextResponse.next();
+      response.headers.set('X-RateLimit-Limit', String(cfg.max));
+      response.headers.set('X-RateLimit-Remaining', String(remaining));
+      return response;
+      }
+    } catch {
+      // Do not let an unavailable rate-limit service crash the route with a
+      // plain-text 500. Keep protection in place rather than bypassing it.
+      console.error('[Rate Limit] Service unavailable for', routePrefix);
+      return NextResponse.json(
+        { error: 'The service is temporarily unavailable. Please try again shortly.', code: 'RATE_LIMIT_SERVICE_UNAVAILABLE' },
+        { status: 503, headers: { 'Retry-After': '30' } }
+      );
+    }
+
+    // ── In-memory fallback ─────────────────────────────────────────────────────
+    maybeCleanup();
+    const key = `${ip}:${routePrefix}`;
+    const { allowed, remaining, resetAt } = checkInMemoryRateLimit(key, cfg.windowMs, cfg.max);
+
+    if (!allowed) {
+      const retryAfter = Math.ceil((resetAt - Date.now()) / 1000);
+      console.warn(`[Rate Limit/Memory] Blocked ${ip} on ${pathname}. Retry after ${retryAfter}s`);
       return new NextResponse(
         JSON.stringify({ error: 'Too many requests. Please slow down and try again shortly.' }),
         {
@@ -163,42 +199,14 @@ export async function proxy(request) {
     return response;
   }
 
-  // ── In-memory fallback ─────────────────────────────────────────────────────
-  maybeCleanup();
-  const key = `${ip}:${routePrefix}`;
-  const { allowed, remaining, resetAt } = checkInMemoryRateLimit(key, cfg.windowMs, cfg.max);
-
-  if (!allowed) {
-    const retryAfter = Math.ceil((resetAt - Date.now()) / 1000);
-    console.warn(`[Rate Limit/Memory] Blocked ${ip} on ${pathname}. Retry after ${retryAfter}s`);
-    return new NextResponse(
-      JSON.stringify({ error: 'Too many requests. Please slow down and try again shortly.' }),
-      {
-        status: 429,
-        headers: {
-          'Content-Type': 'application/json',
-          'Retry-After': String(retryAfter),
-          'X-RateLimit-Limit': String(cfg.max),
-          'X-RateLimit-Remaining': '0',
-        },
-      }
-    );
-  }
-
-  const response = NextResponse.next();
-  response.headers.set('X-RateLimit-Limit', String(cfg.max));
-  response.headers.set('X-RateLimit-Remaining', String(remaining));
-  return response;
-}
-
-export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-  ],
-};
+  export const config = {
+    matcher: [
+      /*
+       * Match all request paths except for the ones starting with:
+       * - _next/static (static files)
+       * - _next/image (image optimization files)
+       * - favicon.ico (favicon file)
+       */
+      '/((?!_next/static|_next/image|favicon.ico).*)',
+    ],
+  };

@@ -1,0 +1,9 @@
+.trigger { position: fixed; z-index: 60; top: env(safe-area-inset-top, 0px); display: flex; gap: 7px; align-items: center; justify-content: center; min-height: 56px; padding: 0 12px; border: 0; background: #171717; color: #eee; font: inherit; font-size: 12px; cursor: pointer; }
+.trigger.left { left: 0; }
+.trigger.right { right: 0; }
+.drawer { position: fixed; inset: 0 auto 0 0; width: min(340px, calc(100vw - 28px)); height: 100dvh; max-width: none; max-height: none; margin: 0; padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); overflow: hidden; border: 0; border-right: 1px solid #3b3b3b; background: #171717; color: #eee; }
+.drawer.right { inset: 0 0 0 auto; border-right: 0; border-left: 1px solid #3b3b3b; }
+.drawer::backdrop { background: #0009; }
+.close { position: absolute; right: 8px; top: calc(8px + env(safe-area-inset-top, 0px)); z-index: 100; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; background: #232323; color: #eee; border: 1px solid #414141; border-radius: 9px; cursor: pointer; }
+.drawer > aside { position: relative; inset: auto; width: 100%; height: 100%; margin: 0; border: 0; box-shadow: none; }
+.trigger:focus-visible, .close:focus-visible { outline: 2px solid #c9b9ed; outline-offset: -3px; }

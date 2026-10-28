@@ -1,0 +1,9 @@
+.section { margin: 76px auto 0; padding-bottom: 68px; }
+.badgeRow { display: flex; justify-content: center; }
+.statement { max-width: 1120px; margin: 27px 0 24px; font-size: clamp(28px, 3.1vw, 42px); font-weight: 750; line-height: 1.24; letter-spacing: -.03em; text-wrap: balance; }
+.word { color: #999b92; transition: color 350ms ease; }
+.word[data-lit="true"] { color: #f1f0e9; }
+.mark { --mark-width: 0%; background-image: linear-gradient(transparent 72%, #7c994c55 72%, #7c994c55 97%, transparent 97%); background-size: var(--mark-width) 100%; background-repeat: no-repeat; transition: background-size 450ms ease; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.intro { max-width: 860px; margin: 0; color: #b2b4aa; font-size: 16px; line-height: 1.75; }
+@media (max-width: 700px) { .section { margin-top: 52px; padding-bottom: 44px; } .statement { font-size: clamp(25px, 5.8vw, 34px); } .intro { font-size: 14px; } }
+@media (prefers-reduced-motion: reduce) { .word, .mark { transition: none; } }

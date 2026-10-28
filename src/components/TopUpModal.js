@@ -1,37 +1,15 @@
 "use client";
 
 import { memo, useState, useCallback, useEffect, useRef } from "react";
-import { X, Shirt, CheckCircle, Package, Tag, Mail, Smartphone, Check, ArrowRight, ImageIcon, History, Clock, CreditCard, AlertTriangle, QrCode } from "lucide-react";
+import { X, Wallet, CheckCircle, Package, Tag, Mail, Smartphone, Check, ArrowRight, ImageIcon, History, Clock, CreditCard, AlertTriangle, QrCode } from "lucide-react";
 import { toast } from "@/components/Toast";
 import { createClient } from "@/utils/supabase/client";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
 import { MANUAL_GCASH_ENABLED } from "@/lib/paymentMethods.mjs";
-import { CREDIT_COST } from "@/lib/pricing";
 import { trackEvent } from "@/lib/analytics.mjs";
-import CurrencyToggle from "@/components/CurrencyToggle";
-
-// Derived from CREDIT_PLANS — single source of truth.
-// To change prices, edit src/lib/paymentPlans.js only.
-const PLANS_META = {
-  tingi:   { desc: 'Small package for quick tests.' },
-  basic:   { desc: 'Great for hobbyists printing occasionally.' },
-  starter: { desc: 'Ideal for small businesses taking their first steps.' },
-  pro:     { desc: 'Perfect for print shops & growing design studios.', best: true },
-  elite:   { desc: 'For high-volume agencies & power users.', elitePromo: true },
-};
-
-const PLANS = Object.values(CREDIT_PLANS).map((plan) => ({
-  key:        plan.key,
-  label:      plan.label,
-  traces:     plan.credits,
-  price:      plan.price,
-  gcashPrice: plan.gcashPrice || plan.price,
-  polarPrice: plan.polarPrice,
-  desc:       PLANS_META[plan.key]?.desc || '',
-  best:       PLANS_META[plan.key]?.best || false,
-  elitePromo: PLANS_META[plan.key]?.elitePromo || false,
-  generations: Math.floor(plan.credits / CREDIT_COST.trace),
-}));
+import PricingSection from "@/app/components/PricingSection";
+import CreditHistory from "./CreditHistory";
+import styles from "./TopUpModal.module.css";
 
 const PLAN_LABELS = Object.fromEntries(
   Object.values(CREDIT_PLANS).map((p) => [p.key, `${p.label} — ${p.credits} Credits`])
@@ -43,7 +21,6 @@ const POLAR_ENABLED_PLANS = new Set(
   Object.values(CREDIT_PLANS).filter((p) => p.polarEnabled).map((p) => p.key)
 );
 const POLAR_CARD_PAYMENTS_AVAILABLE = process.env.NEXT_PUBLIC_POLAR_CARD_PAYMENTS_AVAILABLE === "true";
-const SHOW_ELITE_PROMO_RIBBON = true;
 const PAYMENT_STATUS_STYLE = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -71,7 +48,6 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
   const [fallbackSupabase] = useState(() => createClient());
   const supabase = supabaseProp || fallbackSupabase;
   const [step, setStep] = useState(initialStep);
-  const [displayCurrency, setDisplayCurrency] = useState("PHP");
   const [form, setForm] = useState({ plan: CREDIT_PLANS[initialPlanKey] ? initialPlanKey : "pro", txnRef: "", screenshotName: "", screenshotFile: null });
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -340,66 +316,28 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
 
   return (
     <div className="modal-overlay" onClick={handleClose} style={{ padding: '24px' }}>
-      <div className="modal-content" style={{ maxWidth: (activeTab === 'plans' && step === 1) ? '1250px' : '780px', width: '100%', maxHeight: 'calc(100vh - 48px)', padding: '0', overflow: 'hidden', borderRadius: '16px', border: '1px solid #333', background: '#111', display: 'flex', flexDirection: 'column', transition: 'max-width 0.3s ease', margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content credits-modal" style={{ maxWidth: (activeTab === 'plans' && step === 1) ? '1080px' : '720px', width: '100%', maxHeight: 'min(840px, calc(100dvh - 64px))', padding: '0', overflow: 'hidden', borderRadius: '16px', border: '1px solid #333', background: '#111', display: 'flex', flexDirection: 'column', transition: 'max-width 0.3s ease', margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
 
-        {/* Modal Header */}
-        <div style={{ background: '#18181b', borderBottom: '1px solid #444', padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Shirt size={18} color="#fff" />
-            <span style={{ fontWeight: '600', fontSize: '15px', color: '#fff' }}>Get More Traces</span>
+        <header className={styles.header}>
+          <div className={styles.heading}>
+            <span className={styles.headingIcon}><Wallet size={17} aria-hidden="true" /></span>
+            <div><h2>Credits & top-ups</h2><p>Your balance, your next project.</p></div>
           </div>
-          <button onClick={handleClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px' }}><X size={16} /></button>
-        </div>
-
-        {/* Tab Navigation */}
-        <div style={{ display: 'flex', background: '#18181b', borderBottom: '1px solid #444', padding: '0 24px', flexShrink: 0 }}>
-          <button
-            onClick={() => { setActiveTab('plans'); setStep(1); }}
-            style={{ padding: '16px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'plans' ? '2px solid #d4ff59' : '2px solid transparent', color: activeTab === 'plans' ? '#d4ff59' : '#888', fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <Package size={16} /> Top-Up Plans
-          </button>
-          <button
-            onClick={() => { setActiveTab('history'); setStep(1); }}
-            style={{ padding: '16px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'history' ? '2px solid #d4ff59' : '2px solid transparent', color: activeTab === 'history' ? '#d4ff59' : '#888', fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <History size={16} /> Token Logs
-          </button>
-        </div>
-
-        <div style={{ background: '#111', padding: '24px', overflowY: 'auto', minHeight: 0 }}>
+          <button type="button" className={styles.close} aria-label="Close credits dialog" onClick={handleClose}><X size={16} /></button>
+        </header>
+        <nav className={styles.navigation} aria-label="Credits sections">
+          <div className={styles.tabs}>
+            <button type="button" aria-pressed={activeTab === 'plans'} className={activeTab === 'plans' ? styles.activeTab : ''} onClick={() => { setActiveTab('plans'); setStep(1); }}>
+              <Package size={14} aria-hidden="true" /> Credit packages
+            </button>
+            <button type="button" aria-pressed={activeTab === 'history'} className={activeTab === 'history' ? styles.activeTab : ''} onClick={() => { setActiveTab('history'); setStep(1); }}>
+              <History size={14} aria-hidden="true" /> Credit history
+            </button>
+          </div>
+        </nav>
+        <div style={{ background: '#111', padding: '20px', overflowY: 'auto', minHeight: 0 }}>
           {activeTab === 'history' ? (
-            <div style={{ minHeight: '300px' }}>
-              <div style={{ marginBottom: '24px' }}>
-                <h2 style={{ margin: '0 0 8px', fontSize: '24px', fontWeight: '700', color: '#fff' }}>Token History</h2>
-                <p style={{ margin: 0, color: '#aaa', fontSize: '14px' }}>View your recent credit transactions and usage. Logs are automatically deleted after 3 days.</p>
-              </div>
-
-              {!user ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#888' }}>Please log in to view your token history.</div>
-              ) : isLoadingLogs ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#888' }}>Loading logs...</div>
-              ) : logs.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', background: '#18181b', border: '1px dashed #444', borderRadius: '8px' }}>
-                  <Clock size={32} color="#555" style={{ marginBottom: '12px' }} />
-                  <div style={{ color: '#aaa', fontSize: '14px' }}>No transactions found in the last 3 days.</div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {logs.map((log) => (
-                    <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#18181b', padding: '16px', borderRadius: '8px', border: '1px solid #222' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>{log.action}</span>
-                        <span style={{ color: '#666', fontSize: '12px' }}>{new Date(log.created_at).toLocaleString()}</span>
-                      </div>
-                      <div style={{ fontSize: '16px', fontWeight: '700', color: log.amount > 0 ? '#4ade80' : '#ef4444' }}>
-                        {log.amount > 0 ? '+' : ''}{log.amount}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <CreditHistory logs={logs} loading={isLoadingLogs} signedIn={Boolean(user)} />
           ) : submitted ? (
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
@@ -416,81 +354,18 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
               <button onClick={handleClose} style={{ width: '100%', padding: '12px', background: '#222', color: '#fff', border: '1px solid #444', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>Close</button>
             </div>
           ) : step === 1 ? (
-            <>
-              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                {!user && (
-                  <div style={{ background: 'rgba(212, 255, 89,0.1)', border: '1px solid #d4ff59', color: '#d4ff59', padding: '12px', borderRadius: '8px', marginBottom: '24px', fontSize: '14px', fontWeight: '500' }}>
-                    Welcome. You need credits to trace images. Please select a plan and log in.
-                  </div>
-                )}
-                <div style={{ display: 'inline-block', border: '1px solid #555', padding: '4px 12px', fontSize: '11px', fontWeight: '600', color: '#ccc', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '16px', borderRadius: '4px' }}>Pricing Plan</div>
-                <h2 style={{ margin: '0 0 8px', fontSize: '28px', fontWeight: '700', color: '#fff' }}>Affordable pricing</h2>
-                <p style={{ margin: 0, color: '#aaa', fontSize: '14px', maxWidth: '500px', marginLeft: 'auto', marginRight: 'auto' }}>Choose the credit package that fits your workflow.</p>
-              </div>
-
-              <CurrencyToggle value={displayCurrency} onChange={setDisplayCurrency} />
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-                {PLANS.map(p => (
-                  <div key={p.key} style={{ background: p.best ? '#222' : '#18181b', border: `1px solid ${p.best ? '#d4ff59' : '#444'}`, padding: '32px 24px', display: 'flex', flexDirection: 'column', position: 'relative', borderRadius: '16px' }}>
-                    {SHOW_ELITE_PROMO_RIBBON && p.elitePromo && (
-                      <div
-                        aria-label="Free lifetime DesaynScale image upscaling included with every Elite purchase"
-                        style={{ position: 'absolute', top: '-54px', right: '-18px', transform: 'rotate(-5deg)', transformOrigin: 'center', zIndex: 2, minWidth: '252px', padding: '11px 22px 12px 18px', background: '#fff', clipPath: 'polygon(0 0, 96% 0, 100% 12%, 96% 24%, 100% 36%, 96% 50%, 100% 64%, 96% 76%, 100% 88%, 96% 100%, 0 100%, 4% 88%, 0 76%, 4% 64%, 0 50%, 4% 36%, 0 24%, 4% 12%)', whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'center', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.92)', filter: 'drop-shadow(0 7px 0 #a1a1aa) drop-shadow(0 13px 16px rgba(0,0,0,0.3))' }}
-                      >
-                        <span style={{ display: 'block', color: '#111', fontSize: '10px', fontWeight: '900', letterSpacing: '0.1px' }}>FREE IMAGE UPSCALING</span>
-                        <span style={{ display: 'block', color: '#111', fontSize: '9.5px', fontWeight: '850', marginTop: '3px' }}>DESAYNSCALE · LIFETIME ACCESS</span>
-                        <span style={{ display: 'block', color: '#111', fontSize: '9px', fontWeight: '800', marginTop: '3px' }}>INCLUDED WITH ₱899 ELITE</span>
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
-                      <div style={{ fontSize: '16px', fontWeight: '500', color: '#fff' }}>{p.label}</div>
-                      {p.best && <div style={{ background: '#d4ff59', color: '#000', fontSize: '11px', fontWeight: '800', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '4px', whiteSpace: 'nowrap' }}><CheckCircle size={12} /> Most popular</div>}
-                    </div>
-
-                    <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '32px', fontWeight: '700', color: '#fff', letterSpacing: '-1px' }}>{displayCurrency === 'USD' && p.polarPrice ? p.polarPrice : p.gcashPrice}</span>
-                      </div>
-                      <span style={{ fontSize: '12px', color: '#888' }}>{p.traces} credits</span>
-                      {p.key === 'tingi' && <span style={{ color: '#d4ff59', fontSize: '10px', fontWeight: '700' }}>PHP only · QR Ph payment</span>}
-                    </div>
-
-                    <p style={{ color: '#aaa', fontSize: '13px', lineHeight: '1.5', margin: '0 0 24px', minHeight: '40px' }}>{p.desc}</p>
-
-                    <button
-                      onClick={() => {
-                        if (!user) {
-                          onLoginRequired?.();
-                          return;
-                        }
-                        setForm(f => ({ ...f, plan: p.key }));
-                        setStep(2);
-                      }}
-                      style={{ width: '100%', padding: '12px 8px', background: p.best ? '#d4ff59' : 'transparent', color: p.best ? '#000' : '#d5d5d5', border: p.best ? 'none' : '1px solid #555', fontWeight: '600', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginBottom: '24px', borderRadius: '8px', whiteSpace: 'nowrap' }}
-                      onMouseOver={e => { e.target.style.opacity = '0.9'; if (!p.best) { e.target.style.background = '#3a3a3a'; e.target.style.borderColor = '#777'; } }}
-                      onMouseOut={e => { e.target.style.opacity = '1'; if (!p.best) { e.target.style.background = 'transparent'; e.target.style.borderColor = '#555'; } }}
-                    >
-                      {user ? 'Select Plan' : 'Log in to Purchase'} <ArrowRight size={14} />
-                    </button>
-
-                    <div style={{ borderTop: '1px solid #3b3b3f', margin: '0 -24px 20px' }}></div>
-
-                    <div style={{ marginTop: 'auto', textAlign: 'center', padding: '4px 0 2px' }}>
-                      <div style={{ fontSize: '10px', fontWeight: '800', color: p.best ? '#d4ff59' : '#7f7f86', marginBottom: '8px', letterSpacing: '0.8px', textTransform: 'uppercase' }}>Your allowance</div>
-                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '7px', color: '#fff', lineHeight: 1 }}>
-                        <span style={{ fontSize: '42px', fontWeight: '850', letterSpacing: '-2px' }}>{p.generations}</span>
-                        <span style={{ fontSize: '12px', fontWeight: '700', color: p.best ? '#d4ff59' : '#d5d5d5' }}>AI generations</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ maxWidth: '860px', margin: '0 auto', color: '#777', fontSize: '11px', lineHeight: '1.6', textAlign: 'center' }}>
-                <p style={{ margin: '0 0 5px' }}>The ₱60 Tingi plan is not available for international cards because card-processing costs make this small transaction impractical.</p>
-                <p style={{ margin: 0 }}>USD card prices are separate checkout prices—not direct peso conversions—and may include payment processing, cross-border or currency-conversion costs, and applicable taxes.</p>
-              </div>
-            </>
+            <PricingSection
+              compact
+              isSignedIn={Boolean(user)}
+              onSelectPlan={(planKey) => {
+                if (!user) {
+                  onLoginRequired?.();
+                  return;
+                }
+                setForm((current) => ({ ...current, plan: planKey }));
+                setStep(2);
+              }}
+            />
           ) : step === 2 ? (
             <>
               <div style={{ textAlign: 'center', marginBottom: '28px' }}>

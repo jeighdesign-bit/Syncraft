@@ -51,7 +51,7 @@ export async function createPaymongoCheckoutSession({
         description: `Syncraft Credits - ${plan.label} (${plan.credits} Credits)`,
         line_items: [
           {
-            amount: plan.amount, // in PHP centavos (e.g. 49900 = ₱499.00)
+            amount: plan.amount, // in PHP centavos
             currency: "PHP",
             name: `Syncraft Credits - ${plan.label}`,
             quantity: 1,

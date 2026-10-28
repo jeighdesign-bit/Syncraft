@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import GenerateButton from "@/components/GenerateButton";
+import WorkspaceHeader from "@/components/WorkspaceHeader";
+import GenerationLoading from "@/components/GenerationLoading";
+import TopUpModal from "@/components/TopUpModal";
+import BeforeAfterSlider from "@/app/components/BeforeAfterSlider";
+import styles from "./remover.module.css";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { Scissors, Download, Home, Loader2, ArrowRight, Settings2, Image as ImageIcon, ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { Scissors, Download, Loader2, ZoomIn, ZoomOut, Maximize, Monitor, Image as ImageIcon } from "lucide-react";
 import { CREDIT_COST } from "@/lib/pricing";
 import {
   trackEvent,
@@ -28,14 +34,10 @@ export default function BgRemoverPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [zoom, setZoom] = useState(1);
   
-  const isDraggingCompare = useRef(false);
-  const currentZoom = useRef(1);
-  const scrollContainerRef = useRef(null);
-
-  useEffect(() => {
-    currentZoom.current = zoom;
-  }, [zoom]);
-
+  const [showTopUp, setShowTopUp] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState(1);
+  const [compare, setCompare] = useState(true);
+  const [activity, setActivity] = useState([]);
   useEffect(() => {
     if (!projectId) return;
 
@@ -49,11 +51,14 @@ export default function BgRemoverPage() {
           .from("projects").select("*").eq("id", projectId).single();
 
         if (projError || !projData || projData.trace_type !== "bg_remover") {
-          router.push("/");
+          router.push("/workspace");
           return;
         }
         
-        if (isMounted) setProject(projData);
+        if (isMounted) {
+          setProject(projData);
+          setActivity([{ text: projData.generated_image_url ? "Saved transparent result loaded." : "Image loaded. Ready for background removal.", type: "system" }]);
+        }
 
         if (session?.user) {
           const { data: profile } = await supabase
@@ -75,6 +80,7 @@ export default function BgRemoverPage() {
     trackGenerationStart({ tool: "bg_remover", credits: CREDIT_COST.removeBg });
     setIsProcessing(true);
     setErrorMsg("");
+    setActivity(entries => [...entries, { text: "Removing background and refining subject edges…", type: "system" }]);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -99,6 +105,7 @@ export default function BgRemoverPage() {
       if (res.status === 409 && data.error === "ALREADY_PROCESSED") {
         const { data: freshProj } = await supabase.from("projects").select("*").eq("id", project.id).single();
         if (freshProj) setProject(freshProj);
+        setActivity(entries => [...entries, { text: "Previously completed result restored.", type: "success" }]);
         trackEvent("generation_already_complete", { tool: "bg_remover" });
         return;
       }
@@ -108,10 +115,11 @@ export default function BgRemoverPage() {
       }
 
       setProject(prev => ({ ...prev, generated_image_url: data.transparent_image_url }));
+      setActivity(entries => [...entries, { text: "Background removed. Transparent PNG is ready.", type: "success" }]);
       
       // Update credits locally
       if (userCredits !== null) {
-        setUserCredits(prev => prev - 12);
+        setUserCredits(prev => prev - CREDIT_COST.removeBg);
       }
       trackGenerationSuccess({ tool: "bg_remover", credits: CREDIT_COST.removeBg });
       
@@ -119,6 +127,7 @@ export default function BgRemoverPage() {
       trackGenerationFailure({ tool: "bg_remover", reason: err.message });
       console.error(err);
       setErrorMsg(err.message);
+      setActivity(entries => [...entries, { text: err.message, type: "error" }]);
 
       // Fix #6: Re-fetch actual credit balance after failure
       // Server may have refunded the credit — sync the real value
@@ -167,309 +176,63 @@ export default function BgRemoverPage() {
 
   const isCompleted = !!project?.generated_image_url;
 
-  // Add the smooth animation when background removal finishes
-  useEffect(() => {
-    if (isCompleted) {
-      setTimeout(() => {
-        const overlayImg = document.getElementById("compare-overlay-img");
-        const sliderLine = document.getElementById("compare-slider-line");
-        if (overlayImg) overlayImg.style.clipPath = `inset(0 50% 0 0)`;
-        if (sliderLine) sliderLine.style.left = `50%`;
-      }, 100);
-    }
-  }, [isCompleted]);
+  const noCredits = userCredits !== null && userCredits < CREDIT_COST.removeBg;
+  const checkerboard = "repeating-conic-gradient(#252525 0% 25%, #1b1b1b 0% 50%) 0 0 / 18px 18px";
 
-  // Wheel to zoom logic
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    
-    const handleWheel = (e) => {
-      e.preventDefault();
-      const z = currentZoom.current;
-      const delta = Math.sign(e.deltaY) * 0.15; // slightly smoother zoom
-      const newZ = Math.min(Math.max(0.25, z - delta), 5);
-      if (newZ !== z) {
-        setZoom(newZ);
-      }
-    };
-    
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
-  }, [isCompleted]);
+  if (!project) return <div className={styles.pageLoading}><GenerationLoading label="Loading your project" /></div>;
 
-  if (!project) {
-    return (
-      <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0a0a0a" }}>
-        <Loader2 size={32} className="animate-spin text-white opacity-50" />
+  return <div className="app-container">
+    <WorkspaceHeader title="BACKGROUND REMOVER" eyebrow="ONE-CLICK CUTOUT" accent="#80c5ce" user={user} credits={userCredits} onOpenTopUp={() => setShowTopUp(true)} />
+    <div className={styles.toolbar}>
+      <strong title={project.name}>{project.name || "Untitled image"}</strong>
+      <div className={styles.zoomControls} role="group" aria-label="Canvas zoom">
+        <button type="button" aria-label="Zoom out" disabled={isProcessing || zoom <= .5} onClick={() => setZoom(value => Math.max(.5, value - .25))}><ZoomOut size={14} /></button>
+        <span>{Math.round(zoom * 100)}%</span>
+        <button type="button" aria-label="Zoom in" disabled={isProcessing || zoom >= 3} onClick={() => setZoom(value => Math.min(3, value + .25))}><ZoomIn size={14} /></button>
+        <button type="button" aria-label="Fit image" onClick={() => setZoom(1)}><Maximize size={14} /></button>
       </div>
-    );
-  }
-
-  return (
-    <div className="app-container">
-      {/* Top Menu Bar */}
-      <header style={{ padding: "16px 32px", display: "flex", alignItems: "center", borderBottom: "1px solid #444", background: "#1a1a1a" }}>
-        <button onClick={() => router.push('/')} style={{ display: "flex", alignItems: "center", gap: "7px", background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "color 0.2s", padding: "6px 10px" }} onMouseEnter={e => e.currentTarget.style.color="#d4ff59"} onMouseLeave={e => e.currentTarget.style.color="#555"}>
-          <img src="/logo.svg" alt="Syncraft Home" style={{ height: "18px", width: "auto", opacity: 0.9 }} />
-        </button>
-        <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "10px" }}>
-          <h1 style={{ fontSize: "16px", fontWeight: "700", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>BACKGROUND REMOVER</h1>
-        </div>
-        <div style={{ width: "200px", display: "flex", justifyContent: "flex-end", gap: "16px", alignItems: "center" }}>
-          <div 
-            onClick={() => router.push('/store')} 
-            style={{ display: "flex", alignItems: "center", gap: "8px", background: "#222", padding: "8px 16px", borderRadius: "4px", border: "1px solid #333", cursor: "pointer" }}
-          >
-            {userCredits !== null && userCredits <= 0 ? (
-              <span style={{ color: "#fff", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600" }}>BUY CREDITS</span>
-            ) : (
-              <>
-                <span style={{ color: "#d4ff59", fontWeight: "bold", fontSize: "14px" }}>{userCredits !== null ? userCredits : "-"}</span>
-                <span style={{ color: "#888", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600" }}>CREDITS</span>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="main-workspace" style={{ padding: 0 }}>
-        {/* Canvas Area */}
-        <div 
-          className="canvas-area"
-          style={{ 
-            padding: 0,
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "center", 
-            backgroundColor: "#0a0a0a",
-            backgroundImage: "radial-gradient(rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px)",
-            backgroundSize: "24px 24px",
-            position: "relative",
-            overflow: "hidden"
-          }}
-        >
-          <div 
-            ref={scrollContainerRef}
-            style={{ 
-              width: "100%", height: "100%", 
-              overflow: "auto", 
-              display: "flex", alignItems: "center", justifyContent: "center"
-            }}
-          >
-            <div 
-              style={{
-                zoom: zoom,
-                transition: "zoom 0.1s ease-out",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                position: "relative", minWidth: "100%", minHeight: "100%"
-              }}
-              onMouseMove={(e) => {
-                if (!isDraggingCompare.current || !isCompleted) return;
-                const container = document.getElementById("compare-container");
-                if (!container) return;
-                const rect = container.getBoundingClientRect();
-                let newPos = ((e.clientX - rect.left) / rect.width) * 100;
-                newPos = Math.max(0, Math.min(100, newPos));
-                
-                const overlayImg = document.getElementById("compare-overlay-img");
-                const sliderLine = document.getElementById("compare-slider-line");
-                if (overlayImg) {
-                  overlayImg.style.transition = "none";
-                  overlayImg.style.clipPath = `inset(0 ${100 - newPos}% 0 0)`;
-                }
-                if (sliderLine) {
-                  sliderLine.style.transition = "none";
-                  sliderLine.style.left = `${newPos}%`;
-                }
-              }}
-              onMouseUp={() => { 
-                isDraggingCompare.current = false; 
-                // Re-enable transition for smooth snaps later if needed
-                const overlayImg = document.getElementById("compare-overlay-img");
-                const sliderLine = document.getElementById("compare-slider-line");
-                if (overlayImg) overlayImg.style.transition = "clip-path 1.2s cubic-bezier(0.2, 0.8, 0.2, 1)";
-                if (sliderLine) sliderLine.style.transition = "left 1.2s cubic-bezier(0.2, 0.8, 0.2, 1)";
-              }}
-              onMouseLeave={() => { isDraggingCompare.current = false; }}
-            >
-              {!isCompleted ? (
-                // PRE-PROCESS VIEW
-                <img 
-                  src={project.original_image_url} 
-                  alt="Original" 
-                  draggable={false}
-                  style={{ maxHeight: "80vh", maxWidth: "90%", boxShadow: "0 10px 30px rgba(0,0,0,0.5)", background: "repeating-conic-gradient(#1e1e1e 0% 25%, #141414 0% 50%) 0 0 / 20px 20px" }} 
-                />
-              ) : (
-                // BEFORE/AFTER SLIDER VIEW
-                <div
-                  id="compare-container"
-                  style={{
-                    position: "relative",
-                    overflow: "hidden", cursor: "ew-resize", userSelect: "none",
-                    boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
-                    maxWidth: "90%",
-                    background: "repeating-conic-gradient(#1e1e1e 0% 25%, #141414 0% 50%) 0 0 / 20px 20px"
-                  }}
-                  onMouseDown={(e) => {
-                    isDraggingCompare.current = true;
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const pct = ((e.clientX - rect.left) / rect.width) * 100;
-                    const overlayImg = document.getElementById("compare-overlay-img");
-                    const sliderLine = document.getElementById("compare-slider-line");
-                    if (overlayImg) {
-                      overlayImg.style.transition = "none";
-                      overlayImg.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
-                    }
-                    if (sliderLine) {
-                      sliderLine.style.transition = "none";
-                      sliderLine.style.left = `${pct}%`;
-                    }
-                  }}
-                >
-                  {/* INVISIBLE PLACEHOLDER to dictate the exact aspect ratio */}
-                  <img 
-                    src={project.original_image_url} 
-                    style={{ display: "block", maxHeight: "80vh", maxWidth: "100%", opacity: 0, pointerEvents: "none" }} 
-                    alt="" 
-                  />
-
-                  {/* AFTER layer (Transparent Image) — stretched to fill */}
-                  <img
-                    draggable={false}
-                    src={project.generated_image_url}
-                    alt="Transparent"
-                    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "fill", pointerEvents: "none" }}
-                  />
-
-                  {/* BEFORE layer (Original Image) — stretched to fill, clipped */}
-                  <div
-                    id="compare-overlay-img"
-                    style={{
-                      position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
-                      clipPath: "inset(0 0% 0 0)", // Starts fully covering
-                      willChange: "clip-path",
-                      transform: "translateZ(0)",
-                      transition: "clip-path 1.2s cubic-bezier(0.2, 0.8, 0.2, 1)"
-                    }}
-                  >
-                    <img
-                      draggable={false}
-                      src={project.original_image_url}
-                      alt="Original"
-                      style={{ width: "100%", height: "100%", objectFit: "fill", pointerEvents: "none", background: "#000" }}
-                    />
-                  </div>
-
-                  {/* Slider Line */}
-                  <div
-                    id="compare-slider-line"
-                    style={{
-                      position: "absolute", top: 0, bottom: 0, left: "100%", // Starts at edge
-                      width: "2px", background: "#d4ff59",
-                      transform: "translateX(-50%) translateZ(0)", pointerEvents: "none", willChange: "left",
-                      transition: "left 1.2s cubic-bezier(0.2, 0.8, 0.2, 1)"
-                    }}
-                  >
-                    <div style={{
-                      position: "absolute", top: "50%", left: "50%",
-                      transform: "translate(-50%, -50%)",
-                      width: "36px", height: "36px", background: "#111", borderRadius: "50%",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      boxShadow: "0 0 12px rgba(0,0,0,0.5)", border: "2px solid #d4ff59", gap: "1px",
-                    }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#d4ff59" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#d4ff59" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
-                    </div>
-                  </div>
-
-                  {/* Labels */}
-                  <div style={{ position: "absolute", bottom: "14px", left: "14px", background: "rgba(0,0,0,0.75)", padding: "4px 10px", borderRadius: "4px", color: "#d4ff59", fontSize: "11px", pointerEvents: "none", letterSpacing: "0.5px", fontWeight: "700" }}>ORIGINAL</div>
-                  <div style={{ position: "absolute", bottom: "14px", right: "14px", background: "rgba(0,0,0,0.75)", padding: "4px 10px", borderRadius: "4px", color: "#d4ff59", fontSize: "11px", pointerEvents: "none", letterSpacing: "0.5px", fontWeight: "700" }}>NO BACKGROUND</div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar Properties Panel */}
-        <aside className="properties-panel" style={{ width: "280px", display: "flex", flexDirection: "column", background: "#181818", borderLeft: "1px solid #2a2a2a", zIndex: 10, flexShrink: 0 }}>
-          {/* PROPERTIES SECTION */}
-          <div className="panel-section" style={{ padding: "16px", borderBottom: "1px solid #2a2a2a" }}>
-            <div className="section-header" style={{ fontSize: "10px", color: "#8a8a8a", letterSpacing: "1.2px", textTransform: "uppercase", marginBottom: "12px", display: "flex", justifyContent: "space-between", fontWeight: 700 }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><ImageIcon size={14} color="#8a8a8a"/> Image Properties</span>
-            </div>
-            <div className="section-content" style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "12px", color: "#ccc" }}>
-              <div className="property-row">
-                <span className="property-label">Filename</span>
-                <span className="property-value" title={project.name} style={{ maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {project.name}
-                </span>
-              </div>
-              <div className="property-row">
-                <span className="property-label">Mode</span>
-                <span className="property-value">AI Background Removal</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ACTIONS SECTION */}
-          <div className="panel-section" style={{ padding: "16px" }}>
-            <div className="section-header" style={{ fontSize: "10px", color: "#8a8a8a", letterSpacing: "1.2px", textTransform: "uppercase", marginBottom: "12px", display: "flex", justifyContent: "space-between", fontWeight: 700 }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><Settings2 size={14} color="#8a8a8a"/> Actions</span>
-            </div>
-            <div className="section-content" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {errorMsg && (
-                <div style={{ padding: "12px", background: "rgba(255,50,50,0.1)", border: "1px solid rgba(255,50,50,0.3)", color: "#ff6b6b", borderRadius: "6px", fontSize: "12px", marginBottom: "8px" }}>
-                  {errorMsg}
-                </div>
-              )}
-
-              {!isCompleted ? (
-                <button
-                  onClick={handleRemoveBg}
-                  disabled={isProcessing || (userCredits !== null && userCredits <= 0)}
-                  style={{ 
-                    width: "100%", padding: "12px 16px", 
-                    fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", 
-                    gap: "8px", fontWeight: 700, borderRadius: "4px",
-                    border: isProcessing || (userCredits !== null && userCredits <= 0) ? "1px solid #333" : "1px solid #d4ff59",
-                    background: isProcessing || (userCredits !== null && userCredits <= 0) ? "rgba(212,255,89,0.08)" : "#d4ff59",
-                    color: isProcessing || (userCredits !== null && userCredits <= 0) ? "#555" : "#0a0a0a",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: isProcessing || (userCredits !== null && userCredits <= 0) ? "not-allowed" : "pointer"
-                  }}
-                >
-                  {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <Scissors size={14} />}
-                  {isProcessing ? "Processing..." : "Remove Background (-12 Credits)"}
-                </button>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <button
-                    onClick={handleDownload}
-                    disabled={isDownloading}
-                    style={{ 
-                      width: "100%", padding: "12px 16px", 
-                      fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", 
-                      gap: "8px", fontWeight: 700, borderRadius: "4px",
-                      border: isDownloading ? "1px solid #333" : "1px solid #d4ff59",
-                      background: isDownloading ? "rgba(212,255,89,0.08)" : "#d4ff59",
-                      color: isDownloading ? "#555" : "#0a0a0a",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      cursor: isDownloading ? "not-allowed" : "pointer"
-                    }}
-                  >
-                    {isDownloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                    Download Transparent PNG
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </aside>
-      </main>
     </div>
-  );
+    <main className={styles.workspace}>
+      <div className={styles.canvas} aria-busy={isProcessing}>
+        <div className={styles.imageFrame} style={{ width: `min(90%, ${Math.min(760, 640 * aspectRatio)}px)` }}>
+          <img className={styles.measureImage} src={project.original_image_url} alt="" aria-hidden="true" onLoad={event => setAspectRatio(event.currentTarget.naturalWidth / event.currentTarget.naturalHeight || 1)} />
+          {isCompleted && compare ? <BeforeAfterSlider title={project.name} rasterUrl={project.original_image_url} vectorUrl={project.generated_image_url} height="auto" aspectRatio={aspectRatio} objectFit="contain" zoom={zoom} originalLabel="Original" resultLabel="Background removed" canvasBackground={checkerboard} resultBackground={checkerboard} minimal /> :
+            <div className={styles.sourceFrame} style={{ aspectRatio, background: isCompleted ? checkerboard : undefined }}><img src={isCompleted ? project.generated_image_url : project.original_image_url} alt={isCompleted ? "Background removed" : "Original image"} draggable={false} style={{ transform: `scale(${zoom})` }} /></div>}
+        </div>
+        {isProcessing && <div className={styles.loadingOverlay}>
+            <GenerationLoading label="Removing the background" />
+            <div className={styles.loadingCopy}><strong>Removing the background</strong><span>Refining edges and preparing your transparent PNG.</span></div>
+        </div>}
+      </div>
+      <aside className={styles.panel}>
+        <section className={styles.panelSection}>
+          <h2>Image properties</h2>
+          <dl className={styles.properties}><div><dt>Name</dt><dd title={project.name}>{project.name}</dd></div><div><dt>Output</dt><dd>Transparent PNG</dd></div></dl>
+        </section>
+        <div className={styles.panelTip}>Fine edges can vary with image quality. Review your result before downloading.</div>
+        <section className={`${styles.panelSection} ${styles.activitySection}`}>
+          <h2>Activity log</h2>
+          <div className={styles.activityLog} role="log" aria-live="polite">{activity.map((entry, index) => <div key={index} className={styles.logEntry} data-type={entry.type}><span>{entry.type}</span><p>{entry.text}</p></div>)}</div>
+        </section>
+        <section className={styles.panelSection}>
+          <h2>Actions</h2>
+          {errorMsg && <p className={styles.error} role="alert">{errorMsg}</p>}
+          {!isCompleted ? <GenerateButton onClick={noCredits ? () => setShowTopUp(true) : handleRemoveBg} disabled={isProcessing} detail={!isProcessing && !noCredits ? `${CREDIT_COST.removeBg} credits` : undefined}>
+            {isProcessing ? <Loader2 size={15} className="animate-spin" /> : <Scissors size={15} />}{isProcessing ? "Processing…" : noCredits ? "Buy More Credits" : "Remove Background"}
+          </GenerateButton> : <button type="button" className={styles.compareButton} aria-pressed={compare} onClick={() => setCompare(value => !value)}><Monitor size={14} />{compare ? "View transparent result" : "Before / After Compare"}</button>}
+          <p className={styles.status}>{isProcessing ? "Processing your image…" : isCompleted ? (compare ? "Drag the divider to inspect the edges." : "Checkerboard areas are transparent.") : "Remove the background while keeping your subject."}</p>
+        </section>
+        <section className={styles.panelSection}>
+          <h2>Exportation</h2>
+          <div className={styles.exportActions}>
+            <button type="button" className={styles.exportButton} disabled={!isCompleted || isProcessing || isDownloading} onClick={handleDownload}>{isDownloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} {isDownloading ? "Downloading…" : "Export Transparent PNG"}</button>
+            <button type="button" className={styles.exportButton} disabled={isProcessing} onClick={() => forceDownload(`/api/proxy?url=${encodeURIComponent(project.original_image_url)}`, `Syncraft_${project.name}_Original`)}><ImageIcon size={14} /> Download Original</button>
+          </div>
+          <p className={styles.exportHint}>PNG preserves transparency. Your original image stays available.</p>
+        </section>
+      </aside>
+    </main>
+    <footer className={styles.footer}><span>{isProcessing ? "Processing image" : isCompleted ? "Ready to download" : "Ready to remove background"}</span><span>Transparent PNG output</span></footer>
+    <TopUpModal show={showTopUp} user={user} supabase={supabase} onClose={() => setShowTopUp(false)} />
+  </div>;
 }

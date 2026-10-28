@@ -23,7 +23,7 @@ const RecentProjects = memo(function RecentProjects({
   if (isLoadingProjects) {
     return (
       <div className="recent-projects">
-        <h3>Recent Projects</h3>
+        <h3>Your Workspace</h3>
         <div className="recent-grid">
           {[1, 2, 3, 4].map((n) => (
             <div key={n} className="recent-card skeleton-card">
@@ -43,9 +43,9 @@ const RecentProjects = memo(function RecentProjects({
 
     return (
       <div className="recent-projects">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+        <div className="recent-projects-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <h3 style={{ margin: 0, marginBottom: "4px", borderBottom: "none", paddingBottom: 0, fontSize: "16px", color: "#fff", fontWeight: "700" }}>RECENT PROJECTS</h3>
+            <h3 style={{ margin: 0, marginBottom: "4px", borderBottom: "none", paddingBottom: 0, fontSize: "16px", color: "#fff", fontWeight: "700" }}>YOUR WORKSPACE</h3>
             <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#666", fontSize: "11px", fontWeight: "500", textTransform: "uppercase", letterSpacing: "0.5px" }}>
               <Clock size={11} /> Auto-deleted after 3 days
             </div>
@@ -76,13 +76,13 @@ const RecentProjects = memo(function RecentProjects({
         </div>
 
         {/* Privacy Notice for main projects */}
-        <div style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "14px", padding: "13px 16px", marginBottom: "24px", display: "flex", gap: "12px", alignItems: "center" }}>
-          <span style={{ width: "36px", height: "36px", display: "grid", placeItems: "center", flexShrink: 0, borderRadius: "10px", background: "rgba(212, 255, 89, 0.08)", border: "1px solid rgba(212, 255, 89, 0.2)" }}>
+        <div className="recent-privacy-notice">
+          <span className="recent-privacy-icon">
             <ShieldAlert size={19} strokeWidth={1.8} color="#d4ff59" aria-hidden="true" />
           </span>
           <div style={{ minWidth: 0 }}>
-            <p style={{ margin: "0 0 3px", fontSize: "12.5px", fontWeight: "650", color: "#e8e8e8", lineHeight: 1.25 }}>Your work stays yours</p>
-            <p style={{ margin: 0, fontSize: "11px", color: "#929292", lineHeight: 1.5 }}>Syncraft does not claim or sell your uploaded designs. You keep the rights you hold, and project files are scheduled for deletion within 3 days.</p>
+            <p className="recent-privacy-title">Your designs stay yours</p>
+            <p className="recent-privacy-copy">You keep the rights you hold to your uploads, and Syncraft never sells them. Project files are scheduled for deletion within 3 days.</p>
           </div>
         </div>
 

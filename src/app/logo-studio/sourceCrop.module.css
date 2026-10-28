@@ -1,0 +1,21 @@
+.dialog { margin: auto; width: min(760px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 22px; border: 1px solid #504658; border-radius: 14px; background: #19191c; color: #eeebf3; box-shadow: 0 24px 100px #0009; overflow: auto; }
+.dialog::backdrop { background: #000b; backdrop-filter: blur(4px); }
+.header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.header h2 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 16px; font-weight: 600; }
+.header h2 svg { color: #c5b4e7; }
+.header button { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid #504658; border-radius: 8px; background: #302a36; color: #eeebf3; }
+.hint { color: #b9b0c2; font-size: 12px; line-height: 1.5; margin: 8px 0 18px; }
+.stage { display: flex; justify-content: center; align-items: center; min-height: 120px; padding: 12px; border: 1px solid #ffffff12; border-radius: 9px; background: #0e0e10; overflow: hidden; }
+.stage img { display: block; max-width: 100%; max-height: min(58dvh, 560px); width: auto; height: auto; object-fit: contain; }
+.stage :global(.ReactCrop) { max-width: 100%; --rc-focus-color: #c5b4e7; --rc-border-color: #c5b4e7; }
+.footer { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; }
+.footer button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 14px; border: 1px solid #504658; border-radius: 8px; background: #29252f; color: #e7e2ed; font: inherit; font-size: 12px; }
+.footer button.apply { background: #cbbce4; border-color: #cbbce4; color: #21182b; font-weight: 600; }
+.dialog button { cursor: pointer; }
+.dialog button:disabled { opacity: .5; cursor: default; }
+.dialog button:focus-visible { outline: 2px solid #b8a7ff; outline-offset: 3px; }
+.error { margin: 12px 0 0; color: #f5b4a7; font-size: 12px; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 600px) { .dialog { padding: 16px; } .stage { padding: 8px; } .footer button { flex: 1; } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }

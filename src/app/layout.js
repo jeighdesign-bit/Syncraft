@@ -1,12 +1,15 @@
 import { Outfit } from "next/font/google";
 import { ToastContainer } from "@/components/Toast";
-import MobileWarning from "./components/MobileWarning";
 import CookieConsent from "./components/CookieConsent";
 import GoogleAnalytics from "./components/GoogleAnalytics";
+import NavigationHistory from "@/components/NavigationHistory";
 import "./globals.css";
+import "./responsive.css";
 import { DEFAULT_OG_IMAGE, SITE_URL } from "@/lib/site";
 
 const outfit = Outfit({ subsets: ["latin"], display: "swap" });
+
+export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
@@ -133,7 +136,7 @@ export const metadata = {
 };
 
 import MaintenanceScreen from "./components/MaintenanceScreen";
-import GlobalMobileSync from "@/components/GlobalMobileSync";
+
 
 const isMaintenance = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true'; // Emergency maintenance mode
 
@@ -211,11 +214,10 @@ export default function RootLayout({ children }) {
           <MaintenanceScreen />
         ) : (
           <>
-            <MobileWarning />
-            <GlobalMobileSync />
             {children}
           </>
         )}
+        <NavigationHistory />
         <GoogleAnalytics />
         <CookieConsent />
         <ToastContainer />

@@ -2,7 +2,9 @@
 
 import { memo, useMemo, useState, useRef, useEffect, useLayoutEffect } from "react";
 import { Scissors, ZoomIn, ZoomOut, Maximize, AlertCircle, Eraser, Loader2, ImageMinus, Zap, Expand } from "lucide-react";
+import GenerationLoading from '@/components/GenerationLoading';
 import ExtendCanvas from "./ExtendCanvas";
+import WorkspaceTabs from "@/components/WorkspaceTabs";
 
 /**
  * InlineSVG — Fetches SVG text and injects it directly into the DOM.
@@ -172,6 +174,8 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
     if (e.button !== 0) return;
     if (extendMode) return; // the extend editor owns pointer input
     if (e.target.closest('button')) return;
+    if (e.pointerType === "touch" && zoomLevel <= 1) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
     setIsGrabbing(true);
     lastPos.current = { x: e.clientX, y: e.clientY };
   };
@@ -356,19 +360,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
               />
             )}
           </div>
-          <div
-            className="generation-loading"
-            role="status"
-            aria-live="polite"
-            aria-label="Generating your design"
-          >
-            <div className="generation-loading__dots" aria-hidden="true" />
-            <img 
-              src="/Syncraft Logo-14.svg" 
-              alt=""
-              className="generation-loading__logo"
-            />
-          </div>
+          <GenerationLoading />
         </div>
       );
     }
@@ -403,10 +395,10 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
       ];
 
   return (
-    <div ref={containerRef} style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", backgroundColor: "#1a1a1a", position: "relative" }}>
+    <div ref={containerRef} className="split-canvas" style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", backgroundColor: "#1a1a1a", position: "relative" }}>
 
       {/* ── Sub-toolbar: tool buttons LEFT, Tabs CENTER, zoom controls RIGHT ── */}
-      <div style={{ display: "flex", alignItems: "center", padding: "0 16px", background: "#1a1a1a", borderBottom: "1px solid #2a2a2a", height: "48px", boxSizing: "border-box", flexShrink: 0, gap: "12px", justifyContent: "space-between" }}>
+      <div className="split-canvas-toolbar" style={{ display: "flex", alignItems: "center", padding: "0 16px", background: "#1a1a1a", borderBottom: "1px solid #2a2a2a", height: "48px", boxSizing: "border-box", flexShrink: 0, gap: "12px", justifyContent: "space-between" }}>
 
         {/* Left: tool buttons (only in idle) */}
         <div className="canvas-toolbar-side canvas-toolbar-side--left">
@@ -415,36 +407,8 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
         </div>
 
         {/* Center: right-panel tab label (Segmented Control) */}
-        <div style={{ display: "flex", background: "#0a0a0a", borderRadius: "10px", padding: "4px", gap: "2px", border: "1px solid #222", boxShadow: "inset 0 1px 4px rgba(0,0,0,0.5)" }}>
-          {tabs.map((tab, i) => (
-            <button
-              key={tab.id}
-              disabled={extendMode}
-              onClick={() => { if (extendMode) return; setActiveTab(tab.id); setShowSvgAlert(false); }}
-              style={{
-                padding: "6px 18px",
-                background: activeTab === tab.id ? "rgba(255,255,255,0.08)" : "transparent",
-                border: "1px solid",
-                borderColor: activeTab === tab.id ? "rgba(255,255,255,0.15)" : "transparent",
-                borderRadius: "8px",
-                color: activeTab === tab.id ? "#ffffff" : tab.hasContent ? "#888" : "#444",
-                fontSize: "11px",
-                letterSpacing: "0.5px",
-                textTransform: "uppercase",
-                fontWeight: activeTab === tab.id ? "600" : "500",
-                cursor: "pointer",
-                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                position: "relative",
-                whiteSpace: "nowrap",
-                boxShadow: activeTab === tab.id ? "0 2px 10px rgba(0,0,0,0.2)" : "none"
-              }}
-              onMouseOver={e => { if (activeTab !== tab.id) { e.currentTarget.style.color = "#ccc"; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; } }}
-              onMouseOut={e => { if (activeTab !== tab.id) { e.currentTarget.style.color = tab.hasContent ? "#888" : "#444"; e.currentTarget.style.background = "transparent"; } }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <WorkspaceTabs items={tabs} value={activeTab} disabled={extendMode} label="Output versions"
+          onChange={id => { setActiveTab(id); setShowSvgAlert(false); }} />
 
         {/* Right: zoom controls — replaced by an Extend-mode hint while editing */}
         <div className="canvas-toolbar-side canvas-toolbar-side--right">
@@ -467,13 +431,14 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
       </div>
 
       {/* ── Main canvas area ── */}
-      <div 
+      <div className="split-canvas-panes"
         style={{ 
           display: "flex", 
           flex: 1, 
           overflow: "hidden", 
           cursor: isGrabbing ? "grabbing" : (zoomLevel > 1 ? "grab" : "default"), 
           userSelect: "none",
+          touchAction: zoomLevel > 1 ? "none" : "pan-y pinch-zoom",
           backgroundColor: "#111111",
           backgroundImage: "radial-gradient(rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px)",
           backgroundSize: "24px 24px",
@@ -482,6 +447,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         onPointerLeave={handlePointerUp}
       >
         {/* LEFT PANEL: Original Image */}

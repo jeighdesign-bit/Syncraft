@@ -128,7 +128,7 @@ export function createDesaynscaleDeliveryEmail({
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:${COLORS.panel};border:1px solid ${COLORS.border};border-radius:12px;padding:8px 18px;border-collapse:separate">
                 ${detailRow("Bonus", "DesaynScale image upscaling")}
                 ${detailRow("Access", "Lifetime", { accent: true })}
-                ${detailRow("Included with", "₱899 Elite plan", { last: true })}
+                ${detailRow("Included with", "Elite plan", { last: true })}
               </table>
               <div style="margin-top:24px;text-align:center">
                 <a href="${safeDownloadUrl}" style="display:inline-block;background:${COLORS.accent};color:#090a09;text-decoration:none;padding:14px 26px;border-radius:9px;font-size:14px;font-weight:900;line-height:1">Open DesaynScale files&nbsp;&nbsp;&rarr;</a>
@@ -152,7 +152,7 @@ export function createDesaynscaleDeliveryEmail({
     "Thank you for purchasing the Syncraft Elite plan. Your purchase includes free DesaynScale image upscaling with lifetime access.",
     "Bonus: DesaynScale image upscaling",
     "Access: Lifetime",
-    "Included with: ₱899 Elite plan",
+    "Included with: Elite plan",
     "",
     `Open the DesaynScale files: ${downloadUrl}`,
     "",

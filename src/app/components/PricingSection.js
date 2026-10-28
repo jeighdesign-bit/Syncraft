@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, CheckCircle } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
 import { CREDIT_COST } from "@/lib/pricing";
 import CurrencyToggle from "@/components/CurrencyToggle";
+import SectionBadge from "./SectionBadge";
 import styles from "./PricingSection.module.css";
 
 const PLAN_DETAILS = {
@@ -23,70 +24,58 @@ const PLANS = Object.values(CREDIT_PLANS).map((plan) => ({
   elitePromo: plan.key === "elite",
 }));
 
-export default function PricingSection({ isSignedIn, onSelectPlan }) {
+export default function PricingSection({ isSignedIn, onSelectPlan, compact = false }) {
   const [currency, setCurrency] = useState("PHP");
 
   return (
-    <section id="pricing" className={styles.section} aria-labelledby="pricing-heading">
-      <header className={styles.header}>
-        <p className={styles.eyebrow}>Pricing plan</p>
-        <h2 id="pricing-heading">Affordable pricing</h2>
-        <p className={styles.intro}>Choose the credit package that fits your workflow.</p>
-      </header>
+    <section id={compact ? undefined : "pricing"} className={`${styles.section}${compact ? ` ${styles.compact}` : ""}`} aria-labelledby={compact ? undefined : "pricing-heading"} aria-label={compact ? "Credit packages" : undefined}>
+      {!compact && <header className={styles.header}>
+        <SectionBadge className={styles.eyebrow}>Pricing plan</SectionBadge>
+        <h2 id={compact ? "modal-pricing-heading" : "pricing-heading"}>More room to <span>create.</span></h2>
+        <p className={styles.intro}>Choose your credits. Use them across your creative tools.</p>
+      </header>}
 
       <CurrencyToggle value={currency} onChange={setCurrency} />
 
       <div className={styles.grid}>
         {PLANS.map((plan) => (
-          <article className={`${styles.card}${plan.popular ? ` ${styles.popular}` : ""}`} key={plan.key}>
-            {plan.elitePromo && (
-              <div className={styles.eliteRibbon} aria-label="Free lifetime DesaynScale image upscaling included with every Elite purchase">
-                <span>FREE IMAGE UPSCALING</span>
-                <span>DESAYNSCALE · LIFETIME ACCESS</span>
-                <span>INCLUDED WITH ₱899 ELITE</span>
-              </div>
-            )}
+          <article className={`${styles.card}${plan.popular ? ` ${styles.popular}` : ""}${plan.elitePromo ? ` ${styles.elite}` : ""}`} key={plan.key}>
+            <div className={styles.planBanner}>{plan.popular ? "Recommended" : plan.elitePromo ? "Best value" : "Credit package"}</div>
+            <div className={styles.cardBody}>
             <div className={styles.cardTopline}>
               <h3>{plan.label}</h3>
-              {plan.popular && (
-                <span className={styles.popularBadge}>
-                  <CheckCircle size={12} aria-hidden="true" /> Most popular
-                </span>
-              )}
             </div>
 
             <div className={styles.priceBlock}>
               <p className={styles.price}>
                 {currency === "USD" && plan.polarPrice ? plan.polarPrice : plan.gcashPrice || plan.price}
               </p>
-              <p className={styles.credits}>{plan.credits} credits</p>
-              {plan.key === "tingi" && (
-                <p className={styles.paymentLimit}>PHP only · QR Ph payment</p>
-              )}
+              <span className={styles.purchaseType}>one-time purchase</span>
             </div>
+            <p className={styles.credits}>{plan.credits.toLocaleString()} credits</p>
             <p className={styles.description}>{plan.description}</p>
-
+            <ul className={styles.features}>
+              <li><Check size={13} aria-hidden="true" /><span>Up to <strong>{Math.floor(plan.credits / CREDIT_COST.logoGenerate)} logos</strong> in Logo Studio</span></li>
+              <li><Check size={13} aria-hidden="true" /><span>Or <strong>{plan.generations} standard extractions</strong></span></li>
+              <li><Check size={13} aria-hidden="true" /><span>Use credits across creative tools</span></li>
+              <li><Check size={13} aria-hidden="true" /><span>Export files in supported workflows</span></li>
+              {plan.key === "tingi" && <li><Check size={13} aria-hidden="true" /><span>PHP only · QR Ph payment</span></li>}
+              {plan.elitePromo && <li className={styles.bonus}><Check size={13} aria-hidden="true" /><span>DesaynScale lifetime image upscaling included</span></li>}
+            </ul>
             <button type="button" className={styles.cta} onClick={() => onSelectPlan(plan.key)}>
               {isSignedIn ? "Select Plan" : "Log in to Purchase"}
               <ArrowRight size={14} aria-hidden="true" />
             </button>
 
-            <div className={styles.divider} />
-            <div className={styles.allowance}>
-              <span>Your allowance</span>
-              <div>
-                <strong>{plan.generations}</strong>
-                <small>AI generations</small>
-              </div>
             </div>
           </article>
         ))}
       </div>
 
       <div className={styles.notes}>
-        <p className={styles.note}>One standard generation uses {CREDIT_COST.trace} credits. Some advanced workflows use more.</p>
+        <p className={styles.note}>Allowances are alternatives, not combined totals. Logo Studio uses {CREDIT_COST.logoGenerate} credits per logo; standard extraction uses {CREDIT_COST.trace}. Some workflows use more.</p>
         <p className={styles.note}>
-          The ₱60 Tingi plan is not available for international cards because card-processing costs make this small transaction impractical. USD card prices are separate checkout prices—not direct peso conversions—and may include payment processing, cross-border or currency-conversion costs, and applicable taxes.
+          The {CREDIT_PLANS.tingi.price} Tingi plan is not available for international cards because card-processing costs make this small transaction impractical. USD card prices are separate checkout prices—not direct peso conversions—and may include payment processing, cross-border or currency-conversion costs, and applicable taxes.
         </p>
       </div>
     </section>

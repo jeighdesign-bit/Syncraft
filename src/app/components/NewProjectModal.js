@@ -66,9 +66,11 @@ const NewProjectModal = memo(function NewProjectModal({
   onClose,
   onSelectImage,
   onSelectBgRemover,
+  initialCategory = null,
+  selectedImageName = null,
 }) {
-  const [step, setStep] = useState("category");
-  const [category, setCategory] = useState(null);
+  const [step, setStep] = useState(initialCategory ? "details" : "category");
+  const [category, setCategory] = useState(initialCategory);
 
   if (!show) return null;
 
@@ -183,6 +185,8 @@ const NewProjectModal = memo(function NewProjectModal({
               {category === "logo" ? "Logo / Wordmark Trace" : category === "universal" ? "Universal Extraction" : "Garment Trace"}
             </h2>
 
+            {selectedImageName && <p className={styles.selectedImageName}>Image: {selectedImageName}</p>}
+
             <div className={styles.formGroup}>
               <label className={styles.fieldLabel}>Project Name</label>
               <input
@@ -249,7 +253,7 @@ const NewProjectModal = memo(function NewProjectModal({
             <div className="modal-actions">
               <button className="btn-cancel" onClick={handleClose}>Cancel</button>
               <button className="btn-primary" onClick={onSelectImage} disabled={isUploading}>
-                {isUploading ? "Uploading..." : "Select Image & Create →"}
+                {isUploading ? "Uploading..." : selectedImageName ? "Create Project →" : "Select Image & Create →"}
               </button>
             </div>
           </>

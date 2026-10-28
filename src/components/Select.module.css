@@ -1,4 +1,7 @@
 .root { position: relative; display: inline-block; max-width: 100%; }
+.root.compact .trigger { min-height: 30px; padding: 4px 9px; gap: 7px; border: 0; border-radius: 7px; background: transparent; font-size: 12px; font-weight: 400; }
+.compact .trigger > span { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compact .trigger svg { width: 12px; height: 12px; }
 .root .trigger { display: inline-flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid #444; border-radius: 9px; background: #292929; color: #ededed; font: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }
 .trigger:hover:not(:disabled),.trigger[aria-expanded=true] { background: #303030; border-color: #555; }
 .trigger:focus-visible { outline: 2px solid #bdbdbd; outline-offset: 3px; }

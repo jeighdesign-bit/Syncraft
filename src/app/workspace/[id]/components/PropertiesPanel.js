@@ -237,7 +237,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
   const compareActive = !!project?.svg_url;
 
   return (
-    <aside style={panelStyle}>
+    <aside className="workspace-properties" style={panelStyle}>
 
       {/* ── Header ─────────────────────────────────────────── */}
       <div style={headerStyle}>

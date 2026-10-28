@@ -55,7 +55,7 @@ export async function POST(request) {
         email: user.email,
         plan: plan.key,
         credits: plan.credits,
-        amount: plan.amount, // in PHP centavos (e.g. 49900 for ₱499)
+        amount: plan.amount, // in PHP centavos
         currency: "PHP",
         status: "pending",
       })

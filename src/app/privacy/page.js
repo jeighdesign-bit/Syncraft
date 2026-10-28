@@ -1,24 +1,23 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import BackLink from "@/components/BackLink";
 import { ArrowLeft, Shield, FileText, CheckCircle2 } from "lucide-react";
 import "../globals.css";
 
 export default function PrivacyPolicy() {
-  const router = useRouter();
+
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#111", color: "#eee", padding: "40px 20px" }}>
       {/* Header */}
       <div style={{ maxWidth: "800px", margin: "0 auto", paddingBottom: "20px", borderBottom: "1px solid #333" }}>
-        <button 
-          onClick={() => router.push('/')}
+        <BackLink
           style={{ display: "flex", alignItems: "center", gap: "8px", background: "transparent", color: "#aaa", border: "none", cursor: "pointer", padding: "0", fontSize: "14px", marginBottom: "30px", transition: "color 0.2s" }}
           onMouseEnter={(e) => e.currentTarget.style.color = "#d4ff59"}
           onMouseLeave={(e) => e.currentTarget.style.color = "#aaa"}
         >
-          <ArrowLeft size={16} /> Back to Home
-        </button>
+          <ArrowLeft size={16} /> Back
+        </BackLink>
         <h1 style={{ fontSize: "36px", margin: "0 0 10px 0", color: "#fff", display: "flex", alignItems: "center", gap: "12px" }}>
           <Shield color="#d4ff59" size={36} /> Privacy Policy & FAQ
         </h1>

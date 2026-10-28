@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
+import { logoStudioAssetUrls } from "@/lib/logoStudio.mjs";
 import {
   auditExpiredR2Objects,
   deleteR2Objects,
@@ -39,7 +40,7 @@ async function auditExpiredProjects(cutoffIso, deadline) {
   while (!deadline()) {
     const { data, error } = await adminSupabase
       .from("projects")
-      .select(`id, created_at, ${PROJECT_URL_FIELDS.join(", ")}`)
+      .select(`id, created_at, canvas_data, ${PROJECT_URL_FIELDS.join(", ")}`)
       .lt("created_at", cutoffIso)
       .order("created_at", { ascending: true })
       .range(from, from + PROJECT_PAGE_SIZE - 1);
@@ -58,8 +59,7 @@ async function auditExpiredProjects(cutoffIso, deadline) {
   let externalUrls = 0;
 
   for (const project of rows) {
-    for (const field of PROJECT_URL_FIELDS) {
-      const fileUrl = project[field];
+    for (const fileUrl of [...PROJECT_URL_FIELDS.map(field => project[field]), ...logoStudioAssetUrls(project.canvas_data)]) {
       if (!fileUrl || fileUrl === "REFUNDED") continue;
 
       const supabasePath = parseSupabaseProjectAssetUrl(fileUrl);

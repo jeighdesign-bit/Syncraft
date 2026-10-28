@@ -62,7 +62,9 @@ test("DesaynScale delivery email includes lifetime access and an escaped downloa
 
   assert.match(email.subject, /FREE DesaynScale lifetime access/);
   assert.match(email.html, /Lifetime/);
-  assert.match(email.html, /₱899 Elite plan/);
+  assert.match(email.html, /Elite plan/);
+  assert.match(email.text, /Included with: Elite plan/);
+  assert.doesNotMatch(email.html + email.text, /₱899|₱1,149|\$20\.99/);
   assert.doesNotMatch(email.html, /first 10|slots? left/i);
   assert.match(email.html, /id=1&amp;next=&lt;script&gt;/);
   assert.doesNotMatch(email.html, /next=<script>/);

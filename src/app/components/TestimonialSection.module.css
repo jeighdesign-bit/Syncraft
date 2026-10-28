@@ -3,34 +3,6 @@
   margin: 112px auto 88px;
 }
 
-.proofShell {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  box-sizing: border-box;
-  padding: clamp(28px, 5vw, 64px);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 30px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
-    #242424;
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.24);
-}
-
-.glow {
-  position: absolute;
-  z-index: -1;
-  top: -220px;
-  right: -180px;
-  width: 520px;
-  height: 520px;
-  border-radius: 50%;
-  background: rgba(194, 255, 53, 0.11);
-  filter: blur(95px);
-  pointer-events: none;
-}
-
-.proofHeader,
 .testimonialHeader {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
@@ -38,16 +10,8 @@
   gap: clamp(28px, 5vw, 72px);
 }
 
-.eyebrow {
-  margin: 0 0 12px;
-  color: #ceff48;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
+.eyebrow { margin: 0 0 16px; }
 
-.proofHeader h2,
 .testimonialHeader h2 {
   max-width: 760px;
   margin: 0;
@@ -59,7 +23,6 @@
   text-wrap: balance;
 }
 
-.proofIntro,
 .testimonialHeader > p {
   margin: 0;
   color: #ababab;
@@ -67,99 +30,8 @@
   line-height: 1.7;
 }
 
-.proofGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: clamp(38px, 6vw, 68px);
-}
-
-.proofCard {
-  display: flex;
-  min-height: 282px;
-  flex-direction: column;
-  padding: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.075);
-  border-radius: 20px;
-  background: rgba(8, 8, 8, 0.25);
-  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
-}
-
-.proofCard:hover {
-  transform: translateY(-4px);
-  border-color: rgba(206, 255, 72, 0.25);
-  background: rgba(12, 12, 12, 0.4);
-}
-
-.cardTopline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 34px;
-}
-
-.proofIcon {
-  display: inline-flex;
-  width: 42px;
-  height: 42px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(206, 255, 72, 0.22);
-  border-radius: 12px;
-  color: #ceff48;
-  background: rgba(206, 255, 72, 0.08);
-}
-
-.step {
-  color: rgba(255, 255, 255, 0.28);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-}
-
-.proofCard h3 {
-  max-width: 260px;
-  margin: 0 0 12px;
-  color: #fff;
-  font-size: 19px;
-  line-height: 1.25;
-}
-
-.proofCard p {
-  margin: 0 0 24px;
-  color: #a9a9a9;
-  font-size: 14px;
-  line-height: 1.65;
-}
-
-.proofCard a {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: fit-content;
-  margin-top: auto;
-  color: #ceff48;
-  font-size: 13px;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.proofCard a svg {
-  transition: transform 180ms ease;
-}
-
-.proofCard a:hover svg {
-  transform: translate(2px, -2px);
-}
-
-.proofCard a:focus-visible {
-  outline: 2px solid #ceff48;
-  outline-offset: 5px;
-  border-radius: 2px;
-}
-
 .testimonialSection {
-  margin-top: clamp(72px, 9vw, 112px);
+  margin-top: 0;
 }
 
 .testimonialHeader {
@@ -175,17 +47,7 @@
   font-size: clamp(28px, 3.4vw, 42px);
 }
 
-.testimonialHeader .eyebrow {
-  display: inline-block;
-  margin-bottom: 16px;
-  padding: 4px 9px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 5px;
-  color: #d5d5d8;
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.05em;
-}
+
 
 .testimonialHeader > p {
   max-width: 570px;
@@ -215,9 +77,15 @@
 .outcomeCard,
 .secondaryReview {
   box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #414144;
   border-radius: 20px;
-  background: #1b1b1e;
+  background: linear-gradient(160deg, #252528, #1b1b1e 65%);
+  box-shadow:
+    inset 0 1px 0 #ffffff12,
+    inset 0 -1px 0 #00000026,
+    0 4px 0 #111113,
+    0 5px 0 #37373a,
+    0 14px 22px #00000024;
 }
 
 .featuredReview {
@@ -369,8 +237,9 @@
 }
 
 .exportCard {
-  border-color: rgba(126, 91, 239, 0.24);
-  background: #211e2b;
+  border-color: #494058;
+  background: linear-gradient(155deg, #2e283c, #211e2b 70%);
+  box-shadow: inset 0 1px 0 #ffffff12, inset 0 -1px 0 #00000026, 0 4px 0 #16121e, 0 5px 0 #40364e, 0 14px 22px #00000024;
 }
 
 .exportCard strong b {
@@ -378,8 +247,9 @@
 }
 
 .privacyCard {
-  border-color: rgba(54, 150, 156, 0.25);
-  background: #192629;
+  border-color: #345054;
+  background: linear-gradient(155deg, #23373a, #192629 70%);
+  box-shadow: inset 0 1px 0 #ffffff12, inset 0 -1px 0 #00000026, 0 4px 0 #101c1e, 0 5px 0 #2b4549, 0 14px 22px #00000024;
 }
 
 .privacyCard strong b {
@@ -394,8 +264,8 @@
   flex-direction: column;
   justify-content: flex-start;
   padding: 26px;
-  border-color: rgba(255, 255, 255, 0.1);
-  background: #17171a;
+  border-color: #3c3c40;
+  background: linear-gradient(155deg, #222225, #17171a 70%);
 }
 
 .supportLabel {
@@ -442,7 +312,8 @@
   padding: 11px 12px;
   border: 1px solid rgba(255, 255, 255, 0.085);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.025);
+  background: #1b1b1e;
+  box-shadow: inset 0 1px 3px #00000026, 0 1px 0 #ffffff06;
 }
 
 .supportFacts span,
@@ -568,19 +439,16 @@
 }
 
 @media (max-width: 900px) {
-  .proofHeader,
   .testimonialHeader {
     grid-template-columns: 1fr;
     align-items: start;
     gap: 18px;
   }
 
-  .proofIntro,
   .testimonialHeader > p {
     max-width: 620px;
   }
 
-  .proofGrid,
   .reviewGrid {
     grid-template-columns: 1fr;
   }
@@ -597,10 +465,6 @@
     align-items: flex-start;
   }
 
-  .proofCard {
-    min-height: 248px;
-  }
-
   .reviewCard {
     min-height: 230px;
   }
@@ -612,34 +476,8 @@
     margin-top: 80px;
   }
 
-  .proofShell {
-    padding: 24px 16px 16px;
-    border-radius: 24px;
-  }
-
-  .proofHeader {
-    padding: 4px 4px 0;
-  }
-
-  .proofHeader h2 {
-    font-size: 31px;
-  }
-
-  .proofGrid {
-    margin-top: 34px;
-  }
-
-  .proofCard {
-    min-height: 234px;
-    padding: 22px;
-  }
-
-  .cardTopline {
-    margin-bottom: 26px;
-  }
-
   .testimonialSection {
-    margin-top: 72px;
+    margin-top: 0;
   }
 
   .testimonialBento {
@@ -712,15 +550,4 @@
     scroll-snap-align: start;
   }
 
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .proofCard,
-  .proofCard a svg {
-    transition: none;
-  }
-
-  .proofCard:hover {
-    transform: none;
-  }
 }

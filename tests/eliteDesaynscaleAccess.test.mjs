@@ -2,14 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [modalSource, entitlementSql] = await Promise.all([
-  readFile(new URL("../src/components/TopUpModal.js", import.meta.url), "utf8"),
+const [pricingSource, entitlementSql] = await Promise.all([
+  readFile(new URL("../src/app/components/PricingSection.js", import.meta.url), "utf8"),
   readFile(new URL("../database/setup_elite_desaynscale_automation.sql", import.meta.url), "utf8"),
 ]);
 
 test("Elite pricing advertises lifetime upscaling without a slot limit", () => {
-  assert.match(modalSource, /INCLUDED WITH ₱899 ELITE/);
-  assert.doesNotMatch(modalSource, /FIRST 10 ELITE BUYERS|slots? left/i);
+  assert.match(pricingSource, /DesaynScale lifetime image upscaling included/);
+  assert.doesNotMatch(pricingSource, /FIRST 10 ELITE BUYERS|slots? left/i);
 });
 
 test("Elite entitlement SQL grants access without a ten-buyer cutoff", () => {

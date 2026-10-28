@@ -104,23 +104,24 @@ const CompareModal = memo(function CompareModal({
   return (
     <div
       className="modal-overlay"
-      onMouseMove={(e) => {
+      onPointerMove={(e) => {
         if (!isDraggingCompare.current) return;
         const container = document.getElementById("compare-container");
         if (!container) return;
         const rect = container.getBoundingClientRect();
         let newPos = ((e.clientX - rect.left) / rect.width) * 100;
         newPos = Math.max(0, Math.min(100, newPos));
+        container.setAttribute('aria-valuenow', String(Math.round(newPos)));
         // DIRECT DOM MANIPULATION — prevents massive lag vs setState
         const overlayImg = document.getElementById("compare-overlay-img");
         const sliderLine = document.getElementById("compare-slider-line");
         if (overlayImg) overlayImg.style.clipPath = `inset(0 ${100 - newPos}% 0 0)`;
         if (sliderLine) sliderLine.style.left = `${newPos}%`;
       }}
-      onMouseUp={() => { isDraggingCompare.current = false; }}
-      onMouseLeave={() => { isDraggingCompare.current = false; }}
+      onPointerUp={() => { isDraggingCompare.current = false; }}
+      onPointerCancel={() => { isDraggingCompare.current = false; }}
     >
-      <div className="modal-content" style={{ maxWidth: "1400px", width: "fit-content", padding: "0", overflow: "hidden", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)", background: "#111", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.75)" }}>
+      <div className="modal-content workspace-compare-modal" style={{ maxWidth: "1400px", width: "fit-content", padding: "0", overflow: "hidden", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)", background: "#111", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.75)" }}>
         {/* Header */}
         <div style={{ padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(10,10,10,0.8)", backdropFilter: "blur(10px)", borderBottom: "1px solid rgba(255,255,255,0.05)", zIndex: 20, position: "relative" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -129,7 +130,7 @@ const CompareModal = memo(function CompareModal({
             <span style={{ color: "#666", fontSize: "13px", marginLeft: "8px", fontWeight: "400" }}>Drag slider to compare</span>
             {rotateTallPreview && <span style={{ color: "#9effc8", fontSize: "11px", marginLeft: "6px", fontWeight: "600" }}>PREVIEW ROTATED 90°</span>}
           </div>
-          <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "6px", borderRadius: "50%", transition: "all 0.2s" }} onMouseOver={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }} onMouseOut={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.background = "transparent"; }}>
+          <button aria-label="Close comparison" onClick={onClose} style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "6px", minWidth: "44px", minHeight: "44px", borderRadius: "50%", transition: "all 0.2s" }} onMouseOver={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }} onMouseOut={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.background = "transparent"; }}>
             <X size={18} />
           </button>
         </div>
@@ -144,9 +145,19 @@ const CompareModal = memo(function CompareModal({
         >
           <div
             id="compare-container"
+            role="slider" tabIndex={0} aria-label="Compare original and result" aria-valuemin={0} aria-valuemax={100} aria-valuenow={50}
+            onKeyDown={event => {
+              const current = Number(event.currentTarget.getAttribute('aria-valuenow'));
+              const next = event.key === 'Home' ? 0 : event.key === 'End' ? 100 : ['ArrowLeft', 'ArrowDown'].includes(event.key) ? Math.max(0, current - 5) : ['ArrowRight', 'ArrowUp'].includes(event.key) ? Math.min(100, current + 5) : null;
+              if (next == null) return;
+              event.preventDefault();
+              event.currentTarget.setAttribute('aria-valuenow', String(next));
+              document.getElementById('compare-overlay-img').style.clipPath = `inset(0 ${100 - next}% 0 0)`;
+              document.getElementById('compare-slider-line').style.left = `${next}%`;
+            }}
             style={{
               position: "relative",
-              overflow: "hidden", cursor: "ew-resize", userSelect: "none",
+              overflow: "hidden", cursor: "ew-resize", userSelect: "none", touchAction: "none",
               boxShadow: "0 0 20px rgba(0,0,0,0.5)",
               width: previewAspect ? `min(85vw, calc(80vh * ${previewAspect}))` : "85vw",
               height: previewAspect ? `min(80vh, calc(85vw / ${previewAspect}))` : "80vh",
@@ -154,10 +165,12 @@ const CompareModal = memo(function CompareModal({
               maxWidth: "85vw",
               maxHeight: "80vh",
             }}
-            onMouseDown={(e) => {
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId);
               isDraggingCompare.current = true;
               const rect = e.currentTarget.getBoundingClientRect();
               const pct = ((e.clientX - rect.left) / rect.width) * 100;
+              e.currentTarget.setAttribute('aria-valuenow', String(Math.round(pct)));
               const overlayImg = document.getElementById("compare-overlay-img");
               const sliderLine = document.getElementById("compare-slider-line");
               if (overlayImg) overlayImg.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;

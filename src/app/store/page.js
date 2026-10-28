@@ -1,4 +1,4 @@
-import Link from "next/link";
+import BackLink from "@/components/BackLink";
 import { ArrowLeft } from "lucide-react";
 import styles from "./store.module.css";
 import ProductCarousel from "./ProductCarousel";
@@ -289,9 +289,9 @@ export default function StorePage() {
     <main className={styles.page}>
       <div className={styles.container}>
         <header className={styles.topbar}>
-          <Link href="/" className={styles.backLink} aria-label="Back to Syncraft" title="Back to Syncraft">
+          <BackLink className={styles.backLink} aria-label="Back to previous page" title="Back">
             <ArrowLeft className={styles.backArrow} size={22} strokeWidth={1.8} aria-hidden="true" />
-          </Link>
+          </BackLink>
           <div className={styles.headerBrand} aria-label="Syncraft Store">
             <img src="/logo_full.png" alt="Syncraft Store" />
           </div>

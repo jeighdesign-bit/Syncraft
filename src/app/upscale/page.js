@@ -1,8 +1,9 @@
 "use client";
 
+import GenerateButton from "@/components/GenerateButton";
+import BackToWorkspace from "@/components/BackToWorkspace";
 import { useState, useRef, useEffect } from "react";
-import QRCode from "react-qr-code";
-import { Monitor, ArrowLeft, Loader2, Download, ImageIcon, Sparkles, Wand2, Home, Keyboard, ShieldAlert, Clock, Scan, ZoomIn, ZoomOut, Maximize, Upload } from "lucide-react";
+import { Monitor, ArrowLeft, Loader2, Download, ImageIcon, Sparkles, Wand2, Home, Keyboard, ShieldAlert, Clock, ZoomIn, ZoomOut, Maximize, Upload } from "lucide-react";
 import { toast } from "@/components/Toast";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
@@ -19,7 +20,7 @@ export default function UpscalePage() {
   const fileInputRef = useRef(null);
   const supabase = createClient();
 
-  const [syncSessionId, setSyncSessionId] = useState("");
+  const [activeProjectId, setActiveProjectId] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [upscaledImage, setUpscaledImage] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
@@ -30,7 +31,6 @@ export default function UpscalePage() {
   const [showTopUpModal, setShowTopUpModal] = useState(false);
   const [recentUpscales, setRecentUpscales] = useState([]);
   
-  const [uploadMode, setUploadMode] = useState("file"); // "file" | "qr"
   const scrollContainerRef = useRef(null);
   const [zoom, setZoom] = useState(1);
   const currentZoom = useRef(1);
@@ -91,35 +91,6 @@ export default function UpscalePage() {
       .limit(20);
     if (data) setRecentUpscales(data);
   };
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      let syncId = localStorage.getItem("globalSyncSessionId");
-      if (!syncId) {
-        syncId = crypto.randomUUID();
-        localStorage.setItem("globalSyncSessionId", syncId);
-      }
-      setSyncSessionId(syncId);
-    }
-  }, []);
-
-  useEffect(() => {
-    const checkPendingImage = () => {
-      const pendingUrl = sessionStorage.getItem("pendingMobileImage");
-      if (pendingUrl && user) {
-        sessionStorage.removeItem("pendingMobileImage");
-        setPreviewImage(pendingUrl);
-        setSelectedUrl(pendingUrl);
-        setSelectedFile(null);
-        setUpscaledImage(null);
-        void startUpscaleProject({ url: pendingUrl, name: "Mobile Upscale" });
-      }
-    };
-    checkPendingImage();
-    const handleEvent = () => checkPendingImage();
-    window.addEventListener("mobileImageRouted", handleEvent);
-    return () => window.removeEventListener("mobileImageRouted", handleEvent);
-  }, [user]);
 
   const handleDragOver = (e) => { e.preventDefault(); e.stopPropagation(); };
   const handleDrop = (e) => {
@@ -186,6 +157,7 @@ export default function UpscalePage() {
 
       const data = await res.json();
       if (!res.ok || !data.projectId) throw new Error(data.error || "Failed to create upscale project");
+      setActiveProjectId(data.projectId);
       trackEvent("tool_selected", { tool: "upscale" });
       trackEvent("upload_complete", { tool: "upscale" });
       router.push(`/workspace/${data.projectId}`);
@@ -224,9 +196,7 @@ export default function UpscalePage() {
 
       {/* Top Menu Bar */}
       <header style={{ padding: "16px 32px", display: "flex", alignItems: "center", borderBottom: "1px solid #444", background: "#1a1a1a" }}>
-        <button onClick={() => router.push('/')} style={{ display: "flex", alignItems: "center", gap: "7px", background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600", transition: "color 0.2s", padding: "6px 10px" }} onMouseEnter={e => e.currentTarget.style.color="#d4ff59"} onMouseLeave={e => e.currentTarget.style.color="#555"}>
-          <img src="/logo.svg" alt="Syncraft Home" style={{ height: "18px", width: "auto", opacity: 0.9 }} />
-        </button>
+        <BackToWorkspace />
         <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "10px" }}>
           <h1 style={{ fontSize: "14px", fontWeight: "600", margin: 0, color: "#fff", textTransform: "uppercase", letterSpacing: "2px" }}>UPSCALE STUDIO</h1>
         </div>
@@ -289,82 +259,9 @@ export default function UpscalePage() {
                     alignItems: "center" 
                   }}
                 >
-                  {/* Selector Buttons Row */}
-                  <div style={{ display: "flex", gap: "6px", width: "100%", marginBottom: "24px", flexWrap: "nowrap", background: "rgba(0,0,0,0.4)", padding: "4px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                    <button
-                      onClick={() => setUploadMode("file")}
-                      style={{
-                        flex: 1,
-                        background: uploadMode !== "qr" ? "#2a2a2a" : "transparent",
-                        color: uploadMode !== "qr" ? "#ffffff" : "#888",
-                        border: "none",
-                        borderRadius: "8px",
-                        fontSize: "12px",
-                        padding: "10px 14px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "8px",
-                        fontWeight: "600",
-                        letterSpacing: "0.2px",
-                        transition: "all 0.2s ease",
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                        boxShadow: uploadMode !== "qr" ? "0 2px 8px rgba(0,0,0,0.2)" : "none"
-                      }}
-                      onMouseEnter={(e) => {
-                        if (uploadMode === "qr") e.currentTarget.style.color = "#ccc";
-                      }}
-                      onMouseLeave={(e) => {
-                        if (uploadMode === "qr") e.currentTarget.style.color = "#888";
-                      }}
-                    >
-                      <Monitor size={14} /> Open PC File
-                    </button>
-                    <button
-                      onClick={() => setUploadMode("qr")}
-                      style={{
-                        flex: 1,
-                        background: uploadMode === "qr" ? "#2a2a2a" : "transparent",
-                        color: uploadMode === "qr" ? "#ffffff" : "#888",
-                        border: "none",
-                        borderRadius: "8px",
-                        fontSize: "12px",
-                        padding: "10px 14px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "8px",
-                        fontWeight: "600",
-                        letterSpacing: "0.2px",
-                        transition: "all 0.2s ease",
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                        boxShadow: uploadMode === "qr" ? "0 2px 8px rgba(0,0,0,0.2)" : "none"
-                      }}
-                      onMouseEnter={(e) => {
-                        if (uploadMode !== "qr") e.currentTarget.style.color = "#ccc";
-                      }}
-                      onMouseLeave={(e) => {
-                        if (uploadMode !== "qr") e.currentTarget.style.color = "#888";
-                      }}
-                    >
-                      <Scan size={14} /> Scan Phone
-                    </button>
-                  </div>
-                  
                   <input type="file" ref={fileInputRef} onChange={(e) => handleFileSelected(e.target.files[0])} accept="image/*" style={{ display: "none" }} />
                   
-                  {uploadMode === "qr" ? (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: "12px" }}>
-                      <div style={{ background: "#ffffff", padding: "12px", borderRadius: "14px", border: "1px solid rgba(0,0,0,0.1)" }}>
-                        <QRCode value={`${typeof window !== "undefined" ? window.location.origin : "https://syncraftech.com"}/mobile?sync=${syncSessionId}`} size={120} />
-                      </div>
-                      <p style={{ color: "#888", margin: 0, fontSize: "12px", textAlign: "center", lineHeight: 1.5 }}>
-                        Scan with your mobile camera to upload directly.
-                      </p>
-                    </div>
-                  ) : (
+
                     <div
                       onClick={() => fileInputRef.current.click()}
                       style={{ 
@@ -393,7 +290,7 @@ export default function UpscalePage() {
                       <span style={{ color: "#aaa", fontSize: "13px", fontWeight: "600" }}>Upload Image file</span>
                       <span style={{ color: "#555", fontSize: "11px" }}>or drop file here</span>
                     </div>
-                  )}
+
                 </div>
               </div>
             ) : (
@@ -417,28 +314,17 @@ export default function UpscalePage() {
         </div>
 
         {/* Right Properties Panel */}
-        <div style={{ width: "280px", background: "#181818", borderLeft: "1px solid #2a2a2a", display: "flex", flexDirection: "column", overflowY: "auto", flexShrink: 0 }}>
+        <div className="workspace-properties" style={{ width: "280px", background: "#181818", borderLeft: "1px solid #2a2a2a", display: "flex", flexDirection: "column", overflowY: "auto", flexShrink: 0 }}>
           
           <div style={{ padding: "16px", borderBottom: "1px solid #2a2a2a" }}>
             <div style={{ fontSize: "10px", color: "#8a8a8a", letterSpacing: "1.2px", textTransform: "uppercase", marginBottom: "12px", display: "flex", justifyContent: "space-between", fontWeight: 700 }}>
               <span>Actions</span>
             </div>
             
-            <button 
-              className={isProcessing || (!previewImage && !upscaledImage) ? "btn-primary" : "btn-primary highlight"}
-              onClick={handleUpscale} 
-              disabled={isProcessing || (!previewImage && !upscaledImage)}
-              style={{ 
-                width: "100%", marginBottom: "8px", padding: "12px 16px", 
-                fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", 
-                gap: "8px", fontWeight: 700, borderRadius: "4px",
-                border: isProcessing || (!previewImage && !upscaledImage) ? "1px solid #333" : "1px solid #d4ff59",
-                background: isProcessing || (!previewImage && !upscaledImage) ? "rgba(212,255,89,0.08)" : "#d4ff59",
-                color: isProcessing || (!previewImage && !upscaledImage) ? "#555" : "#0a0a0a",
-              }}
-            >
-              {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />} {isProcessing ? "CREATING WORKSPACE" : "CONTINUE TO WORKSPACE"}
-            </button>
+            <GenerateButton onClick={handleUpscale} disabled={isProcessing || (!previewImage && !upscaledImage)}>
+              {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+              {isProcessing ? "Creating Workspace…" : "Continue to Workspace"}
+            </GenerateButton>
 
             <button 
               onClick={() => {
@@ -462,7 +348,7 @@ export default function UpscalePage() {
 
             {upscaledImage && (
               <FeedbackWidget 
-                projectId={syncSessionId} 
+                projectId={activeProjectId}
               />
             )}
           </div>

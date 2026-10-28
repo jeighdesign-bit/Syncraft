@@ -6,10 +6,6 @@
  * display came to decrement by 1 while the server charged 12. New code should
  * import from here.
  *
- * NOTE: the server-side deduct/refund literals in api/trace, api/remove-bg and
- * api/upscale have not been migrated yet. `safeRefundCredit` accepts an explicit
- * amount so higher-cost operations can refund exactly what they charged.
- *
  * B2B pricing is separate and lives inline in api/v1/generate/route.js.
  */
 export const CREDIT_COST = {
@@ -18,4 +14,11 @@ export const CREDIT_COST = {
   removeBg: 12,
   upscale: 12,
   extend: 12,     // one nano-banana-pro/edit call + a free re-run of stages 2 and 3
+  logoGenerate: 8, // Nano Banana 2, per saved output
+  logoImageGenerate: 8,
+  logoSketchGenerate: 8,
+  logoVariations: 8,
+  logoEdit: 8,
+  logoRemoveBg: 2,
+  logoVectorize: 2,
 };

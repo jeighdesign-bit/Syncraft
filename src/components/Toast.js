@@ -29,6 +29,7 @@ export function ToastContainer() {
       position: 'fixed',
       bottom: '24px',
       right: '24px',
+      maxWidth: 'calc(100vw - 48px)',
       zIndex: 999999,
       display: 'flex',
       flexDirection: 'column',
@@ -47,7 +48,9 @@ export function ToastContainer() {
           boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
           animation: 'toastSlideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
           pointerEvents: 'auto',
-          minWidth: '300px'
+          minWidth: 'min(300px, calc(100vw - 48px))',
+          maxWidth: '100%',
+          overflowWrap: 'anywhere'
         }}>
           {t.type === 'success' && <CheckCircle size={18} color="#4ade80" />}
           {t.type === 'error' && <XCircle size={18} color="#f87171" />}
