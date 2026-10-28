@@ -98,7 +98,7 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
       try {
-        return await fetch(url, {
+        const res = await fetch(url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -107,6 +107,10 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
           body: JSON.stringify(body),
           signal: controller.signal,
         });
+        // Reading a streamed response can fail after headers arrive. Keep the
+        // timeout and stage label active until the complete response is read.
+        const rawText = await res.text();
+        return { res, rawText };
       } catch (error) {
         if (error?.name === "AbortError") {
           const timeoutError = new Error(traceTimeoutMessage(label));
@@ -122,7 +126,7 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       }
     };
 
-    let res = await sendRequest(activeToken);
+    let { res, rawText } = await sendRequest(activeToken);
     if (res.status === 401) {
       const { data, error } = await supabase.auth.refreshSession();
       const refreshedToken = data?.session?.access_token;
@@ -133,7 +137,7 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
         throw authError;
       }
       activeToken = refreshedToken;
-      res = await sendRequest(activeToken);
+      ({ res, rawText } = await sendRequest(activeToken));
     }
 
     if (res.status === 401) {
@@ -143,7 +147,6 @@ export function useTraceExecution({ project, setProject, userCredits, setUserCre
       throw authError;
     }
 
-    const rawText = await res.text();
     let data = {};
     try {
       data = JSON.parse(rawText);
