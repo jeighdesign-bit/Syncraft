@@ -3,7 +3,7 @@ import { uploadToR2 } from '@/lib/cloudflare';
 import { chargeCreditsVerified, refundCreditVerified, markCreditTransaction, recordProviderUsage } from '@/lib/creditLedger';
 import { getProjectAccess, PROJECT_ACCESS } from '@/lib/projectAccess';
 import { fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, DEFAULT_MAX_IMAGE_BYTES, DEFAULT_MAX_SVG_BYTES } from '@/lib/ssrf';
-import { LOGO_ACTIVE, LOGO_COST, logoOperationCost, logoGenerationQuota, buildLogoPrompt, logoJobTimedOut } from '@/lib/logoStudio.mjs';
+import { LOGO_ACTIVE, logoOperationCost, logoGenerationQuota, logoJobTimedOut } from '@/lib/logoStudio.mjs';
 import { generateRecraftLogo, validateLogoSvg } from '@/lib/logoRecraftServer';
 import { nanoLogoPlan } from '@/lib/logoFal.mjs';
 import { fal } from '@fal-ai/client';

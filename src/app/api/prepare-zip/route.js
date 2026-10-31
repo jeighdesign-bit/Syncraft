@@ -4,18 +4,17 @@ import { createHash } from "node:crypto";
 import { adminSupabase } from "@/lib/supabase";
 import { deleteFromR2, uploadToR2 } from "@/lib/cloudflare";
 import { enforceRateLimit } from "@/lib/rateLimit";
+import { fetchStoredAsset } from "@/lib/storageDownload";
 import {
   DEFAULT_MAX_IMAGE_BYTES,
   DEFAULT_MAX_SVG_BYTES,
   DEFAULT_MAX_UPSCALED_IMAGE_BYTES,
-  fetchWithSSRFProtection,
-  getAllowedStorageHosts,
   isOwnedStorageUrl,
 } from "@/lib/ssrf";
 import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 180;
 
 function safeFileName(name) {
   return String(name || "Untitled_Design").replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 120);
@@ -23,8 +22,18 @@ function safeFileName(name) {
 
 function assetSignature(assets) {
   return createHash("sha256")
+    // Invalidate archives made by the old partial-success behavior. A cached
+    // ZIP with this signature is guaranteed to contain every listed asset.
+    .update("complete-archive-v2\0")
     .update(JSON.stringify(assets.map(({ url, name }) => ({ url, name }))))
     .digest("hex");
+}
+
+function assetFailureStatus(errors) {
+  if (errors.some(error => error?.message === "Remote file is too large")) return 413;
+  if (errors.some(error => error?.message === "Remote file has an invalid content type")) return 415;
+  if (errors.some(error => error?.name === "TimeoutError" || error?.name === "AbortError")) return 504;
+  return 503;
 }
 
 export async function POST(request) {
@@ -86,38 +95,57 @@ export async function POST(request) {
     }
 
     const zip = new JSZip();
-    let addedFiles = 0;
-
-    for (const asset of assets) {
-      if (!isOwnedStorageUrl(asset.url, { userId: user.id, projectId }) && !isOwnedStorageUrl(asset.url, { userId: project.user_id, projectId })) {
-        console.warn(`[Prepare ZIP] Skipping unowned asset URL: ${asset.name}`);
-        continue;
-      }
-
-      try {
-        const { response, buffer } = await fetchWithSSRFProtection(asset.url, {
-          allowedHosts: getAllowedStorageHosts(),
-          maxBytes: asset.maxBytes,
-          allowedContentTypes: ["image/", "application/octet-stream"],
-        });
-        if (!response.ok) {
-          console.warn(`[Prepare ZIP] Skipping failed asset ${asset.name}: ${response.status}`);
-          continue;
-        }
-        zip.file(asset.name, buffer);
-        addedFiles++;
-      } catch (error) {
-        console.warn(`[Prepare ZIP] Skipping failed asset ${asset.name}:`, error.message);
-      }
+    const unowned = assets.filter(asset =>
+      !isOwnedStorageUrl(asset.url, { userId: user.id, projectId })
+      && !isOwnedStorageUrl(asset.url, { userId: project.user_id, projectId }),
+    );
+    if (unowned.length) {
+      console.warn(`[Prepare ZIP] Rejected ${unowned.length} unowned asset URL(s)`);
+      return NextResponse.json({ error: "One or more project files are not authorized for export" }, { status: 403 });
     }
 
-    if (addedFiles === 0) {
-      return NextResponse.json({ error: "No files could be added to ZIP" }, { status: 500 });
+    // Four independent reads should not consume four sequential timeout
+    // windows. Fetch in parallel, but publish nothing unless every file is
+    // complete so users never receive a silently incomplete archive.
+    const routeSignal = AbortSignal.any([request.signal, AbortSignal.timeout(150_000)]);
+    const downloads = await Promise.allSettled(assets.map(async asset => {
+      const { response, buffer } = await fetchStoredAsset(asset.url, {
+        maxBytes: asset.maxBytes,
+        allowedContentTypes: ["image/", "application/octet-stream"],
+        timeoutMs: 25_000,
+        maxAttempts: 2,
+        signal: routeSignal,
+      });
+      if (!response.ok) {
+        const error = new Error(`Remote file request failed (${response.status})`);
+        error.status = response.status;
+        throw error;
+      }
+      return { asset, buffer };
+    }));
+
+    const failures = downloads
+      .map((result, index) => result.status === "rejected" ? { asset: assets[index], error: result.reason } : null)
+      .filter(Boolean);
+    if (failures.length) {
+      const status = assetFailureStatus(failures.map(({ error }) => error));
+      console.warn(`[Prepare ZIP] Complete archive deferred; ${failures.length} asset download(s) failed`);
+      return NextResponse.json({
+        error: status === 504
+          ? "A saved project file took too long to download. Please retry Download All."
+          : "One or more saved project files are temporarily unavailable. Please retry Download All.",
+        code: "ZIP_ASSET_UNAVAILABLE",
+        failedFiles: failures.map(({ asset }) => asset.name),
+      }, { status, headers: { "Cache-Control": "no-store", "Retry-After": "3" } });
     }
+
+    for (const result of downloads) zip.file(result.value.asset.name, result.value.buffer);
 
     const zipBuffer = await zip.generateAsync({ type: "nodebuffer", compression: "STORE" });
     const zipKey = `projects/${projectId}/zip_${signature.slice(0, 16)}.zip`;
-    const zipUrl = await uploadToR2(zipBuffer, zipKey, "application/zip");
+    const zipUrl = await uploadToR2(zipBuffer, zipKey, "application/zip", {
+      signal: AbortSignal.any([routeSignal, AbortSignal.timeout(30_000)]),
+    });
 
     const { error: updateError } = await adminSupabase
       .from("projects")
@@ -126,14 +154,19 @@ export async function POST(request) {
         zip_signature: signature,
         zip_generated_at: new Date().toISOString(),
       })
-      .eq("id", projectId);
+      .eq("id", projectId)
+      .abortSignal(routeSignal);
 
     if (updateError) {
       throw updateError;
     }
 
     if (project.zip_url && project.zip_url !== zipUrl) {
-      await deleteFromR2(project.zip_url, { allowedPrefixes: [`projects/${projectId}/`] });
+      try {
+        await deleteFromR2(project.zip_url, { allowedPrefixes: [`projects/${projectId}/`] });
+      } catch (cleanupError) {
+        console.warn("[Prepare ZIP] Previous archive cleanup deferred:", cleanupError.message);
+      }
     }
 
     return NextResponse.json({
@@ -143,7 +176,12 @@ export async function POST(request) {
       fileName: `Syncraft_${baseName}_AllFiles.zip`,
     });
   } catch (error) {
-    console.error("[Prepare ZIP Error]:", error);
-    return NextResponse.json({ error: "Failed to prepare ZIP" }, { status: 500 });
+    console.error("[Prepare ZIP Error]:", { name: error.name, message: error.message });
+    const timedOut = error.name === "TimeoutError" || error.name === "AbortError";
+    return NextResponse.json({
+      error: timedOut
+        ? "ZIP preparation timed out. Your files are safe; please retry Download All."
+        : "Failed to prepare ZIP",
+    }, { status: timedOut ? 504 : 500, headers: { "Cache-Control": "no-store" } });
   }
 }

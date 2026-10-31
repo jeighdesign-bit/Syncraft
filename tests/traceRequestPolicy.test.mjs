@@ -1,9 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { TRACE_REQUEST_TIMEOUT_MS, canResumeTraceUpscale, traceTimeoutMessage } from "../src/lib/traceRequestPolicy.mjs";
+import { TRACE_REQUEST_TIMEOUT_MS, canResumeTraceUpscale, traceTimeoutMessage, traceConnectionMessage } from "../src/lib/traceRequestPolicy.mjs";
 
 test("browser allows the full server run plus response time", () => {
   assert.ok(TRACE_REQUEST_TIMEOUT_MS > 300_000);
+});
+
+test('interrupted transfers explain how to resume the saved stage without paying again', () => {
+  assert.match(traceConnectionMessage('step3'), /upscale is saved.*Retry Vector SVG for free/);
+  for (const label of ['step2', 'save2']) assert.match(traceConnectionMessage(label), /flat artwork is saved.*Resume HD Upscale for free/);
+  assert.doesNotMatch(traceConnectionMessage('step1'), /upscale is saved|flat artwork is saved/);
 });
 
 test("saved flat artwork resumes without another generation, including a zero-credit account", () => {

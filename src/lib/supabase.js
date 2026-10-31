@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { supabaseFetch } from './supabaseFetch.mjs';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -9,22 +10,24 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const globalForSupabase = globalThis;
 
 export const supabase =
-  globalForSupabase._supabaseClient ??
-  (globalForSupabase._supabaseClient = createClient(supabaseUrl, supabaseAnonKey));
+  globalForSupabase._supabaseHttp1Client ??
+  (globalForSupabase._supabaseHttp1Client = createClient(supabaseUrl, supabaseAnonKey, { global: { fetch: supabaseFetch } }));
 
 export const adminSupabase =
-  globalForSupabase._adminSupabaseClient ??
-  (globalForSupabase._adminSupabaseClient = supabaseServiceKey
+  globalForSupabase._adminSupabaseHttp1Client ??
+  (globalForSupabase._adminSupabaseHttp1Client = supabaseServiceKey
     ? createClient(supabaseUrl, supabaseServiceKey, {
         auth: { persistSession: false, autoRefreshToken: false },
+        global: { fetch: supabaseFetch },
       })
     : null);
 
 export const adminStorageSupabase =
-  globalForSupabase._adminStorageSupabaseClient ??
-  (globalForSupabase._adminStorageSupabaseClient = supabaseServiceKey
+  globalForSupabase._adminStorageSupabaseHttp1Client ??
+  (globalForSupabase._adminStorageSupabaseHttp1Client = supabaseServiceKey
     ? createClient(supabaseUrl, supabaseServiceKey, {
         auth: { persistSession: false, autoRefreshToken: false },
+        global: { fetch: supabaseFetch },
         // Bypass legacy API-host request buffering for large asset uploads.
         storage: { useNewHostname: true },
       })

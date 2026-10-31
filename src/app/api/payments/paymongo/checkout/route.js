@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
 import { getCreditPlan } from "@/lib/paymentPlans";
-import { getSiteUrl } from "@/lib/dodo";
 import { createPaymongoQrPhDirectIntent } from "@/lib/paymongo";
 import { enforceRateLimit } from "@/lib/rateLimit";
 

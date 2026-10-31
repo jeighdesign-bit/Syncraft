@@ -8,6 +8,7 @@ import { ANCHORS, BLEED_PERCENTS, RATIO_VALUES, SEED_MODES, evaluateExtend, eval
 import { CREDIT_COST } from "@/lib/pricing";
 import { buildExtendPrompt } from "@/lib/prompts";
 import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
+import { universalUnavailableResponse } from "@/lib/universalAvailability.mjs";
 import { fal } from "@fal-ai/client";
 
 export const runtime = 'nodejs';
@@ -309,6 +310,8 @@ export async function POST(request) {
     if (!project) {
       return NextResponse.json({ error: accessError }, { status: 404 });
     }
+    const unavailable = universalUnavailableResponse(project.trace_type);
+    if (unavailable) return unavailable;
 
     // Extend operates on the Stage 1 flat extract, not the original upload —
     // outpainting a photo of a shirt would mean extending stadium background and

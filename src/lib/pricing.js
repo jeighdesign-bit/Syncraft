@@ -1,3 +1,5 @@
+import { ARTWORK_EDIT_COST } from "./artworkEditPolicy.mjs";
+
 /**
  * Consumer (B2C) credit costs per operation.
  *
@@ -14,6 +16,7 @@ export const CREDIT_COST = {
   removeBg: 12,
   upscale: 12,
   extend: 12,     // one nano-banana-pro/edit call + a free re-run of stages 2 and 3
+  artworkEdit: ARTWORK_EDIT_COST, // preview edit; applying/restoring saved artwork is free
   logoGenerate: 8, // Nano Banana 2, per saved output
   logoImageGenerate: 8,
   logoSketchGenerate: 8,

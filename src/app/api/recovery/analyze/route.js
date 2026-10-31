@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { universalUnavailableResponse } from "@/lib/universalAvailability.mjs";
 import sharp from "sharp";
+import { categoryRecoveryAnalysis } from "@/lib/referenceCategories.mjs";
 import { adminSupabase } from "@/lib/supabase";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { fetchWithSSRFProtection, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF, DEFAULT_MAX_IMAGE_BYTES } from "@/lib/ssrf";
@@ -17,6 +19,8 @@ export async function POST(request) {
     const token = request.headers.get("authorization")?.replace("Bearer ", "").trim();
     const { data: { user } } = await adminSupabase.auth.getUser(token || "");
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const unavailable = universalUnavailableResponse();
+    if (unavailable) return unavailable;
     const limit = await enforceRateLimit({ namespace: "api:recovery:analyze", identifier: user.id, max: 10, window: "60 s", windowMs: 60_000 });
     if (!limit.success) return limit.response;
 
@@ -42,7 +46,6 @@ export async function POST(request) {
     const width = meta.width || 0;
     const height = meta.height || 0;
     const shortSide = Math.min(width, height);
-    const longSide = Math.max(width, height);
     const pixelArea = width * height;
 
     // Keep analysis deterministic and local. The stable garment extractor does
@@ -50,21 +53,22 @@ export async function POST(request) {
     // the same architecture. Fal's edit model performs the visual reasoning in
     // the actual extraction request.
     const cropRatio = width && height ? width / height : 1;
-    const analysis = normalizeRecoveryAnalysis({
+    const analysis = { ...categoryRecoveryAnalysis(normalizeRecoveryAnalysis({
       state: "partial",
       quality: shortSide < 192 || pixelArea < 65_536 ? "poor" : "fair",
-      confidence: 70,
-      visible_coverage: 100,
+      confidence: 0,
+      visible_coverage: 0,
       layout_strategy: cropRatio >= 2.4 || cropRatio <= 0.42 ? "long_strip" : "large_format_rectangle",
       aspect_ratio: snapToAllowedAspectRatio(width, height),
-      perspective: "medium",
-      curvature: "medium",
-      folds: "medium",
-      reflections: "low",
+      perspective: "unknown",
+      curvature: "unknown",
+      folds: "unknown",
+      reflections: "unknown",
       missing_areas: [],
-      reason: "Layout was derived locally from the uploaded crop; the Fal extraction model will perform flattening and recovery.",
+      reason: "Only the selected crop dimensions were read locally. No separate image analysis is performed.",
       expected_result: "Best-effort recovery of the visible artwork in a clean flat layout.",
-    }, snapToAllowedAspectRatio(width, height));
+    }, snapToAllowedAspectRatio(width, height)), project.canvas_data?.reference_category),
+      preparation: "local_crop_dimensions_only", crop_authoritative: true };
     const isLowResolution = shortSide < 192 || pixelArea < 65_536;
     if (analysis.state === "insufficient") {
       analysis.state = "partial";
@@ -106,8 +110,7 @@ export async function POST(request) {
         universal_recovery: recovery,
       },
     }).eq("id", projectId);
-    // The vision call above can take several seconds. Re-check the persisted
-    // JSON status as part of the update so a delayed analysis cannot overwrite
+    // Re-check the persisted JSON status so crop preparation cannot overwrite
     // a generation that acquired the lock while analysis was in flight.
     if (project.canvas_data?.universal_recovery) {
       saveQuery = saveQuery.neq("canvas_data->universal_recovery->>status", "generating");

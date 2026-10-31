@@ -1,68 +1,50 @@
 "use client";
 
 import { memo, useMemo, useState, useRef, useEffect, useLayoutEffect } from "react";
-import { Scissors, ZoomIn, ZoomOut, Maximize, AlertCircle, Eraser, Loader2, ImageMinus, Zap, Expand } from "lucide-react";
+import { Maximize, AlertCircle, Zap, Expand } from "lucide-react";
 import GenerationLoading from '@/components/GenerationLoading';
+import SvgPreview from '@/components/SvgPreview';
 import ExtendCanvas from "./ExtendCanvas";
 import WorkspaceTabs from "@/components/WorkspaceTabs";
+import { canvasImageUrl, canvasZoomLayout, preferredCanvasTab } from '@/lib/workspacePreview.mjs';
 
-/**
- * InlineSVG — Fetches SVG text and injects it directly into the DOM.
- * More reliable than <img> (content-type issues) or <object> (doesn't reload on data change).
- */
-function InlineSVG({ url, style }) {
-  const [svgHtml, setSvgHtml] = useState(null);
-  const [loading, setLoading] = useState(false);
+function PreviewFeedback({ error = false, label, onRetry }) {
+  return (
+    <div role={error ? 'alert' : 'status'} style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20, color: '#c6c6c6', textAlign: 'center', fontSize: 13, background: '#151515' }}>
+      {error ? <AlertCircle size={22} aria-hidden="true" /> : <GenerationLoading label={`Loading ${label.toLowerCase()} preview`} />}
+      {error && <span>Preview couldn't load. Your saved file is safe.</span>}
+      {error && <button onClick={onRetry} aria-label={`Retry ${label.toLowerCase()} preview`} style={{ minHeight: 44, padding: '8px 18px', background: '#d4ff59', color: '#151515', border: 0, borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>Retry preview</button>}
+    </div>
+  );
+}
+
+function RasterPreview({ url, alt, style, onLoad, contentScale = 1 }) {
+  const [attempt, setAttempt] = useState(0);
+  const [readyKey, setReadyKey] = useState(null);
+  const [failedKey, setFailedKey] = useState(null);
+  const key = `${url}:${attempt}`;
+  const loaded = readyKey === key;
+  const failed = failedKey === key && !loaded;
+  const source = attempt ? `${url}&preview_retry=${attempt}` : url;
 
   useEffect(() => {
-    if (!url) { setSvgHtml(null); return; }
-    setLoading(true);
-    setSvgHtml(null);
-    fetch(url)
-      .then(r => r.text())
-      .then(text => {
-        // Sanitize: strip script tags + inline event handlers before injection
-        const safe = text
-          .replace(/<script[\s\S]*?<\/script>/gi, '')
-          .replace(/\son\w+="[^"]*"/gi, '')
-          .replace(/\son\w+='[^']*'/gi, '');
-        if (safe.includes('<svg')) {
-          // Strip fixed width/height so SVG scales to fit container
-          const scaled = safe.replace(/<svg([^>]*?)>/i, (_, attrs) => {
-            let clean = attrs;
-            const wMatch = attrs.match(/\swidth=["']([^"']+)["']/i);
-            const hMatch = attrs.match(/\sheight=["']([^"']+)["']/i);
-            const vMatch = attrs.match(/\sviewBox=["']([^"']+)["']/i);
+    if (!url || loaded || failed) return;
+    const timer = setTimeout(() => setFailedKey(key), 45_000);
+    return () => clearTimeout(timer);
+  }, [url, key, loaded, failed]);
 
-            clean = clean.replace(/\s+width=["'][^"']*["']/gi, '')
-                         .replace(/\s+height=["'][^"']*["']/gi, '')
-                         .replace(/\s+preserveAspectRatio=["'][^"']*["']/gi, '')
-                         .replace(/\s+style=["'][^"']*["']/gi, '');
-
-            if (!vMatch && wMatch && hMatch) {
-              const w = parseFloat(wMatch[1].replace(/px/i, ''));
-              const h = parseFloat(hMatch[1].replace(/px/i, ''));
-              if (!isNaN(w) && !isNaN(h)) {
-                clean += ` viewBox="0 0 ${w} ${h}"`;
-              }
-            }
-            return `<svg${clean} style="width:100%;height:100%;display:block;" preserveAspectRatio="xMidYMid meet">`;
-          });
-          setSvgHtml(scaled);
-        }
-      })
-      .catch(err => console.error('[InlineSVG] fetch failed:', err))
-      .finally(() => setLoading(false));
-  }, [url]);
-
-  if (loading) return <div style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 12 }}>Loading SVG...</div>;
-  if (!svgHtml) return null;
-  return (
-    <div
-      style={{ ...style, overflow: 'hidden' }}
-      dangerouslySetInnerHTML={{ __html: svgHtml }}
-    />
-  );
+  return <div style={{ position: 'relative', width: '100%', height: '100%', minWidth: 0, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-busy={!loaded && !failed}>
+    <img key={key} src={source} alt={alt} draggable={false} decoding="async"
+      onLoad={event => {
+        if (!event.currentTarget.naturalWidth || !event.currentTarget.naturalHeight) { setFailedKey(key); return; }
+        setReadyKey(key);
+        setFailedKey(null);
+        onLoad?.(event);
+      }}
+      onError={() => setFailedKey(key)}
+      style={{ ...style, transform: `${style?.transform || ''} scale(${contentScale})`, transformOrigin: 'center', visibility: loaded ? 'visible' : 'hidden' }} />
+    {!loaded && <PreviewFeedback error={failed} label={alt} onRetry={() => setAttempt(value => value + 1)} />}
+  </div>;
 }
 
 const SplitViewCanvas = memo(function SplitViewCanvas({
@@ -83,7 +65,6 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
   const [activeTab, setActiveTab] = useState("generated");
   const isUpscale = project?.trace_type === "upscale";
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [originalAspect, setOriginalAspect] = useState(null);
   const leftScrollRef = useRef(null);
   const rightScrollRef = useRef(null);
   const isSyncingLeft = useRef(false);
@@ -100,43 +81,44 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
 
   useEffect(() => {
     const handleWheel = (e) => {
-      e.preventDefault();
       if (extendModeRef.current) return; // no zoom while extending
+      const leftScroll = leftScrollRef.current;
+      const rightScroll = rightScrollRef.current;
+      if (!leftScroll || !rightScroll) return;
+
+      const rectL = leftScroll.getBoundingClientRect();
+      const rectR = rightScroll.getBoundingClientRect();
+
+      let active, rect;
+      if (e.clientX >= rectL.left && e.clientX <= rectL.right && e.clientY >= rectL.top && e.clientY <= rectL.bottom) {
+        active = leftScroll;
+        rect = rectL;
+      } else if (e.clientX >= rectR.left && e.clientX <= rectR.right && e.clientY >= rectR.top && e.clientY <= rectR.bottom) {
+        active = rightScroll;
+        rect = rectR;
+      } else {
+        return;
+      }
+
+      // The wheel is the workspace's primary zoom gesture. Restricting it to
+      // the image panes avoids changing zoom while users scroll elsewhere.
+      e.preventDefault();
       const z = currentZoom.current;
       const delta = Math.sign(e.deltaY) * 0.25;
-      const newZ = Math.min(Math.max(0.25, z - delta), 5);
+      const newZ = Math.min(Math.max(1, z - delta), 5);
       if (newZ === z) return;
 
       const scale = newZ / z;
-      const leftScroll = leftScrollRef.current;
-      const rightScroll = rightScrollRef.current;
-      
-      if (leftScroll && rightScroll) {
-        const rectL = leftScroll.getBoundingClientRect();
-        const rectR = rightScroll.getBoundingClientRect();
-        
-        let active, rect;
-        if (e.clientX >= rectL.left && e.clientX <= rectL.right && e.clientY >= rectL.top && e.clientY <= rectL.bottom) {
-          active = leftScroll;
-          rect = rectL;
-        } else if (e.clientX >= rectR.left && e.clientX <= rectR.right && e.clientY >= rectR.top && e.clientY <= rectR.bottom) {
-          active = rightScroll;
-          rect = rectR;
-        }
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
 
-        if (active && rect) {
-          const mouseX = e.clientX - rect.left;
-          const mouseY = e.clientY - rect.top;
-          
-          const pointX = active.scrollLeft + mouseX;
-          const pointY = active.scrollTop + mouseY;
-          
-          pendingScrollRef.current = { 
-            left: pointX * scale - mouseX, 
-            top: pointY * scale - mouseY 
-          };
-        }
-      }
+      const pointX = active.scrollLeft + mouseX;
+      const pointY = active.scrollTop + mouseY;
+
+      pendingScrollRef.current = {
+        left: pointX * scale - mouseX,
+        top: pointY * scale - mouseY
+      };
       setZoomLevel(newZ);
     };
 
@@ -156,12 +138,12 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
       const { left, top } = pendingScrollRef.current;
       isSyncingLeft.current = true;
       isSyncingRight.current = true;
-      
+
       leftScrollRef.current.scrollLeft = left;
       leftScrollRef.current.scrollTop = top;
       rightScrollRef.current.scrollLeft = left;
       rightScrollRef.current.scrollTop = top;
-      
+
       pendingScrollRef.current = null;
     }
   }, [zoomLevel]);
@@ -207,9 +189,6 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
       : null,
   [project?.original_image_url]);
 
-  useEffect(() => {
-    setOriginalAspect(null);
-  }, [proxyOriginal]);
 
   const proxyGenerated = useMemo(() =>
     project?.generated_image_url
@@ -229,30 +208,28 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
       : null,
   [project?.svg_url]);
 
-  const rotateTallPreview = project?.trace_type === "universal"
-    && originalAspect !== null
-    && originalAspect < 0.35;
-  const rasterPreviewStyle = rotateTallPreview
-    ? {
-        maxWidth: "100%",
-        maxHeight: "100%",
-        width: "auto",
-        height: "auto",
-        minWidth: 0,
-        minHeight: 0,
-        objectFit: "contain",
-        transform: "rotate(90deg)",
-        transformOrigin: "center",
-        imageRendering: "auto",
-      }
-    : {
-        width: "100%",
-        height: "100%",
-        minWidth: 0,
-        minHeight: 0,
-        objectFit: "contain",
-        imageRendering: "auto",
-      };
+  const previewOriginal = canvasImageUrl(proxyOriginal);
+  const previewGenerated = canvasImageUrl(proxyGenerated);
+  // The HD tab is the fidelity-inspection surface: render the saved upscale
+  // itself so zooming reveals its real pixels instead of a 1600px derivative.
+  const fullResolutionUpscaled = canvasImageUrl(proxyUpscaled, { fullResolution: true });
+  const zoomLayout = canvasZoomLayout(zoomLevel);
+  const zoomScrollStyle = { position: 'relative', width: `${zoomLayout.scrollPercent}%`, height: `${zoomLayout.scrollPercent}%`, minWidth: '100%', minHeight: '100%' };
+  const fitCanvas = () => {
+    pendingScrollRef.current = null;
+    for (const scroll of [leftScrollRef.current, rightScrollRef.current]) {
+      if (!scroll) continue;
+      scroll.scrollLeft = 0;
+      scroll.scrollTop = 0;
+    }
+    setZoomLevel(1);
+  };
+
+  // Match the uploaded orientation, including tall lanyard artwork.
+  const rasterPreviewStyle = {
+    width: "100%", height: "100%", minWidth: 0, minHeight: 0,
+    objectFit: "contain", imageRendering: "auto",
+  };
 
   // Sync scroll positions proportionally
   const handleLeftScroll = (e) => {
@@ -267,7 +244,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
       const maxLX = l.scrollWidth - l.clientWidth;
       const maxRX = r.scrollWidth - r.clientWidth;
       if (maxLX > 0 && maxRX > 0) r.scrollLeft = (l.scrollLeft / maxLX) * maxRX;
-      
+
       const maxLY = l.scrollHeight - l.clientHeight;
       const maxRY = r.scrollHeight - r.clientHeight;
       if (maxLY > 0 && maxRY > 0) r.scrollTop = (l.scrollTop / maxLY) * maxRY;
@@ -286,7 +263,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
       const maxLX = l.scrollWidth - l.clientWidth;
       const maxRX = r.scrollWidth - r.clientWidth;
       if (maxLX > 0 && maxRX > 0) l.scrollLeft = (r.scrollLeft / maxRX) * maxLX;
-      
+
       const maxLY = l.scrollHeight - l.clientHeight;
       const maxRY = r.scrollHeight - r.clientHeight;
       if (maxLY > 0 && maxRY > 0) l.scrollTop = (r.scrollTop / maxRY) * maxLY;
@@ -295,12 +272,9 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
 
   // Determine active URL
   let activeUrl = null;
-  if (activeTab === "generated") activeUrl = proxyGenerated;
-  else if (activeTab === "upscaled") activeUrl = proxyUpscaled;
+  if (activeTab === "generated") activeUrl = previewGenerated;
+  else if (activeTab === "upscaled") activeUrl = fullResolutionUpscaled;
   else if (activeTab === "svg") activeUrl = proxySvg;
-
-  const hasShownSvgAlert = useRef(false);
-  const [showSvgAlert, setShowSvgAlert] = useState(false);
 
   // Extend operates on the flat extract — force that tab while editing.
   useEffect(() => {
@@ -314,46 +288,36 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
     else if (traceState === "step2") setActiveTab("upscaled");
     else if (traceState === "step3") setActiveTab("svg");
     else if (traceState === "idle") {
-      if (project?.upscaled_image_url) setActiveTab("upscaled");
-      else if (project?.svg_url) setActiveTab("svg");
-      else if (project?.generated_image_url) setActiveTab("generated");
+      setActiveTab(preferredCanvasTab(project));
+      fitCanvas();
     }
   }, [extendMode, traceState, project?.svg_url, project?.upscaled_image_url, project?.generated_image_url]);
-
-  useEffect(() => {
-    if (project?.svg_url && !hasShownSvgAlert.current && activeTab !== "svg") {
-      setShowSvgAlert(true);
-      hasShownSvgAlert.current = true;
-      const t = setTimeout(() => setShowSvgAlert(false), 12000);
-      return () => clearTimeout(t);
-    }
-  }, [project?.svg_url, activeTab]);
 
   const renderStatus = () => {
     if (traceState !== "idle") {
       return (
         <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: '#1a1a1a' }}>
-          <div 
-            style={proxyOriginal ? { 
+          <div
+            style={previewOriginal ? {
               width: '100%',
               height: '100%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              maskImage: `url(${proxyOriginal})`, 
-              maskSize: 'contain', 
-              maskPosition: 'center', 
+              maskImage: `url(${previewOriginal})`,
+              maskSize: 'contain',
+              maskPosition: 'center',
               maskRepeat: 'no-repeat',
-              WebkitMaskImage: `url(${proxyOriginal})`,
+              WebkitMaskImage: `url(${previewOriginal})`,
               WebkitMaskSize: 'contain',
               WebkitMaskPosition: 'center',
               WebkitMaskRepeat: 'no-repeat'
             } : {}}
           >
-            {proxyOriginal && (
-              <img 
-                src={proxyOriginal} 
-                alt="Processing Background" 
+            {previewOriginal && (
+              <img
+                src={previewOriginal}
+                alt="Processing Background"
                 referrerPolicy="no-referrer"
                 decoding="async"
                 style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
@@ -403,12 +367,11 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
         {/* Left: tool buttons (only in idle) */}
         <div className="canvas-toolbar-side canvas-toolbar-side--left">
           {leftControls}
-          {rotateTallPreview && <span style={{ color: "#9effc8", fontSize: "9px", fontWeight: 700 }}>ROTATED PREVIEW</span>}
         </div>
 
         {/* Center: right-panel tab label (Segmented Control) */}
         <WorkspaceTabs items={tabs} value={activeTab} disabled={extendMode} label="Output versions"
-          onChange={id => { setActiveTab(id); setShowSvgAlert(false); }} />
+          onChange={setActiveTab} />
 
         {/* Right: zoom controls — replaced by an Extend-mode hint while editing */}
         <div className="canvas-toolbar-side canvas-toolbar-side--right">
@@ -417,26 +380,26 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
               <Expand size={13} /> EXTEND MODE
             </div>
           ) : (
-            <>
-              <button onClick={() => setZoomLevel(z => Math.max(0.25, z - 0.25))} style={{ ...zoomBtnStyle, borderRadius: "6px" }} onMouseOver={e => { e.currentTarget.style.borderColor="#666"; e.currentTarget.style.color="#fff"; }} onMouseOut={e => { e.currentTarget.style.borderColor="#333"; e.currentTarget.style.color="#ccc"; }}>−</button>
-              <span style={{ color: "#fff", fontSize: "11px", minWidth: "42px", textAlign: "center", fontWeight: "600", fontFamily: "monospace" }}>{Math.round(zoomLevel * 100)}%</span>
-              <button onClick={() => setZoomLevel(z => Math.min(5, z + 0.25))} style={{ ...zoomBtnStyle, borderRadius: "6px" }} onMouseOver={e => { e.currentTarget.style.borderColor="#666"; e.currentTarget.style.color="#fff"; }} onMouseOut={e => { e.currentTarget.style.borderColor="#333"; e.currentTarget.style.color="#ccc"; }}>+</button>
-              <div style={{ width: "1px", height: "14px", background: "#333", margin: "0 4px" }} />
-              <button onClick={() => setZoomLevel(1)} style={{ ...zoomBtnStyle, border: "none", color: "#888", padding: "4px 8px", borderRadius: "6px" }} onMouseOver={e => { e.currentTarget.style.color="#fff"; e.currentTarget.style.background="rgba(255,255,255,0.08)"; }} onMouseOut={e => { e.currentTarget.style.color="#888"; e.currentTarget.style.background="transparent"; }}>
-                <Maximize size={14} style={{ display: "inline", marginRight: "4px", verticalAlign: "middle" }} />Fit
+            <div className="canvas-zoom" role="group" aria-label="Canvas zoom">
+              <button type="button" aria-label="Zoom out" disabled={zoomLevel <= 1} onClick={() => setZoomLevel(z => Math.max(1, z - 0.25))}>−</button>
+              <span className="canvas-zoom__value">{Math.round(zoomLevel * 100)}%</span>
+              <button type="button" aria-label="Zoom in" disabled={zoomLevel >= 5} onClick={() => setZoomLevel(z => Math.min(5, z + 0.25))}>+</button>
+              <span className="canvas-zoom__divider" aria-hidden="true" />
+              <button type="button" className="canvas-zoom__fit" aria-label="Fit images to canvas" onClick={fitCanvas}>
+                <Maximize size={14} /> Fit
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
 
       {/* ── Main canvas area ── */}
       <div className="split-canvas-panes"
-        style={{ 
-          display: "flex", 
-          flex: 1, 
-          overflow: "hidden", 
-          cursor: isGrabbing ? "grabbing" : (zoomLevel > 1 ? "grab" : "default"), 
+        style={{
+          display: "flex",
+          flex: 1,
+          overflow: "hidden",
+          cursor: isGrabbing ? "grabbing" : (zoomLevel > 1 ? "grab" : "default"),
           userSelect: "none",
           touchAction: zoomLevel > 1 ? "none" : "pan-y pinch-zoom",
           backgroundColor: "#111111",
@@ -453,19 +416,13 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
         {/* LEFT PANEL: Original Image */}
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", borderRight: "1px solid #2a2a2a" }}>
           <div ref={leftScrollRef} onScroll={handleLeftScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "transparent", position: "relative" }}>
-            {proxyOriginal ? (
-              <div style={{ position: "relative", width: `${Math.max(100, zoomLevel * 100)}%`, height: `${Math.max(100, zoomLevel * 100)}%`, minWidth: "100%", minHeight: "100%" }}>
-                <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", padding: "24px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
-                  <img
-                    src={proxyOriginal}
-                    draggable={false}
+            {previewOriginal ? (
+              <div style={zoomScrollStyle}>
+                <div className="split-canvas-preview-frame" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", padding: "24px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
+                  <RasterPreview
+                    url={previewOriginal}
                     alt="Original"
-                    onLoad={(event) => {
-                      const image = event.currentTarget;
-                      if (image.naturalWidth && image.naturalHeight) {
-                        setOriginalAspect(image.naturalWidth / image.naturalHeight);
-                      }
-                    }}
+                    contentScale={zoomLayout.contentScale}
                     style={rasterPreviewStyle}
                   />
                 </div>
@@ -489,24 +446,18 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
                 busy={extendProcessing}
               />
             ) : activeUrl && traceState === "idle" ? (
-              <div style={{ position: "relative", width: `${Math.max(100, zoomLevel * 100)}%`, height: `${Math.max(100, zoomLevel * 100)}%`, minWidth: "100%", minHeight: "100%" }}>
-                <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", padding: "24px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
+              <div style={zoomScrollStyle}>
+                <div className="split-canvas-preview-frame" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", padding: "24px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
                   {activeTab === "svg" ? (
-                    <InlineSVG
+                    <SvgPreview
                       url={activeUrl}
+                      contentScale={zoomLayout.contentScale}
                       style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
                     />
                   ) : (
-                    <img
-                      src={activeUrl}
-                      data-fallback-src={isUpscale ? project?.generated_image_url || "" : ""}
-                      onError={(event) => {
-                        const fallback = event.currentTarget.dataset.fallbackSrc;
-                        if (fallback && event.currentTarget.src !== fallback) {
-                          event.currentTarget.removeAttribute("data-fallback-src");
-                          event.currentTarget.src = fallback;
-                        }
-                      }}
+                    <RasterPreview
+                      url={activeUrl}
+                      contentScale={zoomLayout.contentScale}
                       onLoad={(event) => {
                         if (!isUpscale || !onUpscaleOutputInvalid) return;
                         try {
@@ -527,7 +478,6 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
                           // client-side sampling is only an early UI signal.
                         }
                       }}
-                      draggable={false}
                       alt="Output"
                       style={rasterPreviewStyle}
                     />
@@ -548,32 +498,5 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
   );
 });
 
-// ── Shared micro-styles ──────────────────────────────────────────────────────
-const toolBtnStyle = {
-  background: "rgba(255, 255, 255, 0.03)",
-  border: "1px solid rgba(255, 255, 255, 0.1)",
-  color: "#ccc",
-  padding: "6px 12px",
-  cursor: "pointer",
-  fontSize: "11px",
-  textTransform: "capitalize",
-  display: "flex",
-  alignItems: "center",
-  gap: "6px",
-  transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-  fontWeight: "500",
-};
-
-const zoomBtnStyle = {
-  background: "transparent",
-  border: "1px solid #333",
-  color: "#ccc",
-  padding: "4px 10px",
-  cursor: "pointer",
-  fontSize: "14px",
-  fontWeight: "500",
-  transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-  lineHeight: 1,
-};
 
 export default SplitViewCanvas;

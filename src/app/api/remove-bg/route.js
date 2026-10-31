@@ -6,6 +6,7 @@ import { uploadToR2 } from "@/lib/cloudflare";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 import { fal } from "@fal-ai/client";
 import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
+import { universalUnavailableResponse } from "@/lib/universalAvailability.mjs";
 
 export const runtime = 'nodejs';
 export const maxDuration = 120; // Enough time for BG removal + R2 upload
@@ -45,6 +46,8 @@ export async function POST(request) {
     if (!project) {
       return NextResponse.json({ error: accessError }, { status: 404 });
     }
+    const unavailable = universalUnavailableResponse(project.trace_type);
+    if (unavailable) return unavailable;
 
     if (!project.original_image_url) {
       return NextResponse.json({ error: "No image found to process" }, { status: 400 });

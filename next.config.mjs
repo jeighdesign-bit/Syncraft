@@ -24,11 +24,19 @@ const nextConfig = {
         ],
       },
       {
-        // API routes: prevent caching of auth-sensitive responses
+        // Keep API framing protection, including public image responses.
         source: '/api/(.*)',
         headers: [
-          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
           { key: 'X-Frame-Options', value: 'DENY' },
+        ],
+      },
+      {
+        // The public storage proxy sets its own cache policy. Overriding it
+        // here forces every tab switch to download and render large files again.
+        // All other APIs still prevent caching of user-specific responses.
+        source: '/api/((?!proxy(?:/|$)).*)',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
         ],
       },
     ];

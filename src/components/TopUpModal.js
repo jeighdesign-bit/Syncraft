@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useState, useCallback, useEffect, useRef } from "react";
-import { X, Wallet, CheckCircle, Package, Tag, Mail, Smartphone, Check, ArrowRight, ImageIcon, History, Clock, CreditCard, AlertTriangle, QrCode } from "lucide-react";
+import { X, Wallet, CheckCircle, Package, Tag, Mail, Smartphone, ArrowRight, ImageIcon, History, CreditCard, AlertTriangle, QrCode } from "lucide-react";
 import { toast } from "@/components/Toast";
 import { createClient } from "@/utils/supabase/client";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";

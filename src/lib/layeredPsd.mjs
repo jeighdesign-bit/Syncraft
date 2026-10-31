@@ -1,7 +1,10 @@
 import sharp from "sharp";
+import { assertSafeSvg, decodeXmlAttribute } from "./svgSafety.mjs";
 import { writePsdBuffer } from "ag-psd";
 import { svgPathBbox } from "svg-path-bbox";
 import svgpath from "svgpath";
+
+export { assertSafeSvg } from "./svgSafety.mjs";
 
 const DEFAULT_LONG_EDGE = 4096;
 const MAX_CANVAS_PIXELS = 20_000_000;
@@ -29,15 +32,6 @@ const LAYER_NAMES = {
   artwork: "Artwork",
 };
 
-function decodeXmlAttribute(value) {
-  return String(value || "")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
-}
-
 function readAttribute(tag, name) {
   const escapedName = name.replace(":", "\\:");
   const match = tag.match(new RegExp(`\\b${escapedName}\\s*=\\s*(["'])(.*?)\\1`, "i"));
@@ -50,32 +44,6 @@ function semanticLabelFromTag(tag) {
   const raw = dataLayer || (id?.toLowerCase().startsWith("layer-") ? id.slice(6) : null);
   if (!raw) return null;
   return raw.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-").slice(0, 64) || "other";
-}
-
-export function assertSafeSvg(svgText) {
-  const svg = String(svgText || "");
-  if (!/<svg\b/i.test(svg) || !/<\/svg\s*>/i.test(svg)) {
-    throw new Error("The vector file is not a valid SVG document.");
-  }
-
-  if (/<(?:script|foreignObject|iframe|object|embed)\b/i.test(svg) || /<!DOCTYPE|<!ENTITY/i.test(svg)) {
-    throw new Error("The vector file contains unsupported active content.");
-  }
-
-  const hrefPattern = /\b(?:href|xlink:href)\s*=\s*(["'])(.*?)\1/gi;
-  let hrefMatch;
-  while ((hrefMatch = hrefPattern.exec(svg)) !== null) {
-    const href = decodeXmlAttribute(hrefMatch[2]).trim();
-    if (href && !href.startsWith("#")) {
-      throw new Error("The vector file contains an external asset reference.");
-    }
-  }
-
-  if (/url\(\s*["']?\s*(?:https?:|file:|\/\/)/i.test(svg)) {
-    throw new Error("The vector file contains an external style reference.");
-  }
-
-  return svg;
 }
 
 function svgRoot(svgText) {

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  assessRecoveryContent,
   backgroundOnlyFailureMessage,
   isRecoveryInProgress,
   isOutsideRecoveryProviderRatio,
@@ -12,6 +13,20 @@ import {
   shouldRejectBackgroundOnly,
   sourceFallbackCorrection,
 } from "../src/lib/recoveryPolicy.mjs";
+
+test("rectification differences do not turn a photo into the extracted result", () => {
+  const result = assessRecoveryContent({ collapsed: false, similarity: 0.1, ratioDrift: 1.2 });
+  assert.equal(result.pass, false);
+  assert.equal(result.usable_partial, true);
+  assert.deepEqual(result.failures, []);
+  assert.match(result.correction, /review/i);
+});
+
+test("severe content collapse fails instead of returning a source photo", () => {
+  const result = assessRecoveryContent({ collapsed: true, similarity: 0.8, ratioDrift: 0 });
+  assert.equal(result.usable_partial, false);
+  assert.deepEqual(result.failures, ["content_collapse"]);
+});
 
 test("destructive detail loss falls back to the exact source", () => {
   assert.equal(shouldFallbackToSource(["missing_visible_artwork"]), true);

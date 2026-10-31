@@ -1,14 +1,21 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { supabaseFetch } from './supabaseFetch.mjs';
 
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID;
 const accessKeyId = process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.CF_R2_ACCESS_KEY_ID;
-const secretAccessKey = process.env.CLOUDFLARE_SECRET_ACCESS_KEY || process.env.CF_R2_SECRET_ACCESS_KEY;
+const secretAccessKey =
+  process.env.CLOUDFLARE_SECRET_ACCESS_KEY || process.env.CF_R2_SECRET_ACCESS_KEY;
 export const bucketName = process.env.CLOUDFLARE_BUCKET_NAME || process.env.CF_R2_BUCKET_NAME;
 export const publicUrl = process.env.CLOUDFLARE_PUBLIC_URL || process.env.CF_R2_PUBLIC_URL;
 
 export const s3Client = new S3Client({
-  region: "auto",
+  region: 'auto',
   endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
   // Keep the bucket in the URL path. R2's TLS certificate covers the account
   // endpoint, not <bucket>.<account>.r2.cloudflarestorage.com.
@@ -28,7 +35,7 @@ export async function getUploadUrl(fileName, contentType) {
 
   // URL valid for 5 minutes
   const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 });
-  
+
   return {
     uploadUrl: signedUrl,
     publicUrl: `${publicUrl}/${fileName}`,
@@ -37,26 +44,61 @@ export async function getUploadUrl(fileName, contentType) {
 
 export async function uploadToR2(buffer, fileName, contentType, options = {}) {
   try {
+    // Large lossless HD PNGs need more than the small-asset 10s allowance.
+    // Keep the caller's overall deadline and never change the image bytes.
+    const uploadTimeoutMs = Math.min(
+      90_000,
+      Math.max(10_000, Math.ceil(buffer.length / (1024 * 1024)) * 2000),
+    );
+    const signal = options.signal
+      ? AbortSignal.any([options.signal, AbortSignal.timeout(uploadTimeoutMs)])
+      : AbortSignal.timeout(uploadTimeoutMs);
     const command = new PutObjectCommand({
       Bucket: bucketName,
       Key: fileName,
       Body: buffer,
       ContentType: contentType,
     });
+    await s3Client.send(command, { abortSignal: signal });
 
-    await s3Client.send(command);
-    
     return `${publicUrl}/${fileName}`;
   } catch (s3Error) {
+    options.signal?.throwIfAborted();
     // Fallback to Supabase Storage when R2 S3 endpoint is unreachable (e.g. local TLS issues)
-    console.warn('[uploadToR2] S3 failed, falling back to Supabase Storage:', s3Error.code || s3Error.message);
-    
+    console.warn(
+      '[uploadToR2] S3 failed, falling back to Supabase Storage:',
+      s3Error.code || s3Error.message,
+    );
+
     const { adminStorageSupabase, adminSupabase, supabase } = await import('@/lib/supabase');
     const storageBucket = 'project-assets';
     const fallbackContentType = options.fallbackContentType || contentType;
+    let directClient = adminStorageSupabase;
+    let standardClient = adminSupabase;
+    if (options.signal) {
+      // Storage upload() does not accept a signal. Use request-scoped clients
+      // rather than changing the shared singleton used by concurrent requests.
+      const { createClient } = await import('@supabase/supabase-js');
+      const clientOptions = {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: { fetch: (url, init) => supabaseFetch(url, { ...init, signal: options.signal }) },
+      };
+      standardClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        clientOptions,
+      );
+      directClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          ...clientOptions,
+          storage: { useNewHostname: true },
+        },
+      );
+    }
 
-    let { data: storageData, error: storageError } = await adminStorageSupabase
-      .storage
+    let { data: storageData, error: storageError } = await directClient.storage
       .from(storageBucket)
       .upload(fileName, buffer, {
         contentType: fallbackContentType,
@@ -68,35 +110,36 @@ export async function uploadToR2(buffer, fileName, contentType, options = {}) {
     // through Supabase's standard API hostname is safe and avoids that direct
     // hostname entirely. `upsert` makes a lost-response retry idempotent.
     if (storageError) {
-      console.warn('[uploadToR2] Direct Supabase Storage failed, retrying standard API host:', storageError.message);
+      options.signal?.throwIfAborted();
+      console.warn(
+        '[uploadToR2] Direct Supabase Storage failed, retrying standard API host:',
+        storageError.message,
+      );
       let standardError = storageError;
       for (let attempt = 1; attempt <= 3; attempt++) {
-        const result = await adminSupabase
-          .storage
-          .from(storageBucket)
-          .upload(fileName, buffer, {
-            contentType: fallbackContentType,
-            upsert: true,
-          });
+        options.signal?.throwIfAborted();
+        const result = await standardClient.storage.from(storageBucket).upload(fileName, buffer, {
+          contentType: fallbackContentType,
+          upsert: true,
+        });
         storageData = result.data;
         standardError = result.error;
         if (!standardError && storageData) break;
-        if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 350));
+        if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 350));
       }
       storageError = standardError;
     }
 
     if (storageError) {
-      throw new Error(`Supabase Storage upload also failed: ${storageError.message} (original R2 error: ${s3Error.message})`);
+      throw new Error(
+        `Supabase Storage upload also failed: ${storageError.message} (original R2 error: ${s3Error.message})`,
+      );
     }
 
     // Keep emitting the established public URL shape. The admin client uses
     // Supabase's direct Storage hostname for large uploads, while the public
     // client preserves URLs already accepted by our SSRF allowlists.
-    const { data: urlData } = supabase
-      .storage
-      .from(storageBucket)
-      .getPublicUrl(storageData.path);
+    const { data: urlData } = supabase.storage.from(storageBucket).getPublicUrl(storageData.path);
 
     return urlData.publicUrl;
   }
@@ -121,14 +164,29 @@ export function getR2KeyFromUrl(fileUrl) {
   }
 }
 
+// Sign only objects belonging to our configured bucket. Server reads can use
+// the authenticated S3 endpoint instead of the rate-limited public r2.dev host.
+export async function getR2DownloadUrl(fileUrl, { expiresIn = 300 } = {}) {
+  const key = getR2KeyFromUrl(fileUrl);
+  if (!key || !accountId || !accessKeyId || !secretAccessKey || !bucketName) return null;
+  return getSignedUrl(s3Client, new GetObjectCommand({ Bucket: bucketName, Key: key }), {
+    expiresIn,
+  });
+}
+
 export async function deleteFromR2(fileUrl, options = {}) {
   const fileKey = getR2KeyFromUrl(fileUrl);
   if (!fileKey) {
-    console.error(`[R2 Delete] Refusing to delete URL outside configured R2 public URL: ${fileUrl}`);
+    console.error(
+      `[R2 Delete] Refusing to delete URL outside configured R2 public URL: ${fileUrl}`,
+    );
     return;
   }
 
-  if (options.allowedPrefixes?.length && !options.allowedPrefixes.some((prefix) => fileKey.startsWith(prefix))) {
+  if (
+    options.allowedPrefixes?.length &&
+    !options.allowedPrefixes.some((prefix) => fileKey.startsWith(prefix))
+  ) {
     console.error(`[R2 Delete] Refusing to delete key outside allowed prefixes: ${fileKey}`);
     return;
   }

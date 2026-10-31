@@ -196,6 +196,14 @@ html, body {
   flex: 1;
 }
 
+.canvas-zoom { display:flex; align-items:center; gap:2px; padding:3px; border:1px solid #353535; border-radius:9px; background:#202020; box-shadow:0 2px 0 #0c0c0c; }
+.canvas-zoom button { display:flex; align-items:center; justify-content:center; min-width:32px; height:30px; padding:0 8px; border:0; border-radius:6px; background:transparent; color:#e4e4e4; font:600 15px inherit; cursor:pointer; }
+.canvas-zoom button:hover:not(:disabled) { background:#353535; }
+.canvas-zoom button:focus-visible { outline:2px solid #c9b9ed; outline-offset:1px; }
+.canvas-zoom button:disabled { opacity:.38; cursor:default; }
+.canvas-zoom__value { min-width:43px; text-align:center; color:#eee; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums; }
+.canvas-zoom__divider { width:1px; height:18px; margin:0 3px; background:#444; }
+.canvas-zoom .canvas-zoom__fit { gap:6px; font-size:11px; }
 .canvas-toolbar-side--right {
   justify-content: flex-end;
 }
@@ -438,6 +446,11 @@ html, body {
   backdrop-filter: blur(8px);
 }
 
+/* Let preview loaders cover the whole canvas; keep the image inset once ready. */
+.split-canvas-preview-frame:has(.generation-loading) {
+  padding: 0 !important;
+}
+
 .generation-loading__dots {
   position: absolute;
   inset: 0;
@@ -639,6 +652,45 @@ html, body {
 }
 
 /* RIGHT PROPERTIES PANEL */
+.workspace-tool-new {
+  margin-left: auto;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: #303a24;
+  color: #c7dca8;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  line-height: 1;
+}
+
+.workspace-tool-list button:not(.workspace-tool-primary) {
+  min-height: 44px;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  padding: 0 10px !important;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  color: #d0d0d0 !important;
+  text-align: left;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.workspace-tool-list button:not(.workspace-tool-primary):not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #fff !important;
+}
+
+.workspace-tool-list button:not(.workspace-tool-primary):focus-visible {
+  outline: 2px solid #d4ff59;
+  outline-offset: -2px;
+}
+
+.workspace-tool-list button:not(.workspace-tool-primary):disabled {
+  color: #777 !important;
+}
+
 .properties-panel {
   width: 280px;
   background-color: var(--bg-panel);

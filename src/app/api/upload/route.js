@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { universalUnavailableResponse } from "@/lib/universalAvailability.mjs";
 import { adminSupabase } from "@/lib/supabase";
 import { isAllowedStorageUrl, normalizeUserImageUrl } from "@/lib/ssrf";
 
@@ -21,6 +22,8 @@ export async function POST(request) {
     // ─────────────────────────────────────────────────────────────────────────
 
     const { imageUrl, traceType, projectName } = await request.json();
+    const unavailable = universalUnavailableResponse(traceType);
+    if (unavailable) return unavailable;
 
     if (!imageUrl) {
       return NextResponse.json({ error: "No image URL provided" }, { status: 400 });

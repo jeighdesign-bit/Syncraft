@@ -15,3 +15,13 @@ export function traceTimeoutMessage(label) {
   }
   return "The request took too long. Please try again. Your saved project is still available.";
 }
+
+export function traceConnectionMessage(label) {
+  if (label === 'step3') {
+    return 'The SVG connection was interrupted. Your upscale is saved. Retry Vector SVG for free.';
+  }
+  if (label === 'step2' || label === 'save2') {
+    return 'The upscale connection was interrupted. Your flat artwork is saved. Resume HD Upscale for free.';
+  }
+  return 'The server connection was interrupted. Your saved project is still available. Please try again.';
+}

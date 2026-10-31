@@ -403,6 +403,29 @@
   transform: translate(1px, -1px);
 }
 
+.categoryCard:disabled,
+.categoryCard:disabled:hover {
+  cursor: not-allowed;
+  transform: none;
+  border-color: #373a34;
+  background: #191b18;
+}
+.categoryCard:disabled::after { display: none; }
+.categoryCard:disabled .featureVisual { color: #9ca793; }
+.categoryCard:disabled .featureTitle { color: #c0c5ba; }
+.categoryCard:disabled .featureAction { transform: none; }
+.unavailableBadge {
+  padding: 4px 7px;
+  border: 1px solid #4b5144;
+  border-radius: 6px;
+  background: #2a3025;
+  color: #c5cebb;
+  font-size: 10px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.unavailableMessage { color: #bac2b1; font-size: 12px; line-height: 1.5; }
+
 .creditBadge {
   padding: 4px 7px;
   white-space: nowrap;

@@ -36,6 +36,7 @@
     "standardwebhooks": "^1.0.0",
     "svg-path-bbox": "^2.1.0",
     "svgpath": "^2.6.0",
+    "undici": "^8.12.3",
     "ws": "^8.21.1"
   },
   "devDependencies": {

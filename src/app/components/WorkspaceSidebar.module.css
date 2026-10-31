@@ -189,6 +189,25 @@
   cursor: not-allowed;
 }
 
+.featureButton.unavailableButton:disabled {
+  align-items: center;
+  opacity: 1;
+  color: #a3a89c;
+  background: transparent;
+}
+.unavailableBadge {
+  margin-left: auto;
+  width: fit-content;
+  padding: 3px 5px;
+  border: 1px solid #474a40;
+  border-radius: 4px;
+  background: #2c2f28;
+  color: #c0c5b6;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1;
+}
+
 @media (max-width: 1100px) {
   .sidebar {
     position: relative;

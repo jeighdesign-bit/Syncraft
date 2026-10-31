@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/trace-upscale",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/logo-studio",
       "schedule": "*/10 * * * *"
     },

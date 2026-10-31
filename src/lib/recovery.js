@@ -1,34 +1,5 @@
 import { ALLOWED_ASPECT_RATIOS } from "@/lib/aspectRatio";
-
-export const RECOVERY_LAYOUTS = [
-  "flat_rectangle", "long_strip", "parallel_strips", "cylindrical_label",
-  "sticker_decal", "packaging_panels", "large_format_rectangle", "unknown",
-];
-
-export const RECOVERY_STATES = ["safe", "partial", "insufficient"];
-
-const severity = (value) => ["none", "low", "medium", "high"].includes(value) ? value : "unknown";
-
-export function normalizeRecoveryAnalysis(raw = {}, fallbackAspectRatio = "1:1") {
-  const state = RECOVERY_STATES.includes(raw.state) ? raw.state : "insufficient";
-  const layout = RECOVERY_LAYOUTS.includes(raw.layout_strategy) ? raw.layout_strategy : "unknown";
-  const ratio = ALLOWED_ASPECT_RATIOS.includes(raw.aspect_ratio) ? raw.aspect_ratio : fallbackAspectRatio;
-  return {
-    state,
-    quality: ["good", "fair", "poor"].includes(raw.quality) ? raw.quality : "poor",
-    confidence: Math.max(0, Math.min(100, Number(raw.confidence) || 0)),
-    visible_coverage: Math.max(0, Math.min(100, Number(raw.visible_coverage) || 0)),
-    layout_strategy: layout,
-    aspect_ratio: ratio,
-    perspective: severity(raw.perspective),
-    curvature: severity(raw.curvature),
-    folds: severity(raw.folds),
-    reflections: severity(raw.reflections),
-    missing_areas: Array.isArray(raw.missing_areas) ? raw.missing_areas.slice(0, 8).map(String) : [],
-    expected_result: String(raw.expected_result || "Recovered visible artwork in a clean flat layout.").slice(0, 300),
-    reason: String(raw.reason || "").slice(0, 300),
-  };
-}
+export { normalizeRecoveryAnalysis, RECOVERY_LAYOUTS, RECOVERY_STATES } from './recoveryAnalysis.mjs';
 
 export function recoveryAnalysisPrompt() {
   return `Analyze this single cropped reference for exact-visible print recovery. Do not design or reconstruct it.

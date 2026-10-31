@@ -5,6 +5,7 @@ import { validateApiKey } from "@/services/b2b/authService";
 import { checkBalance, deductAndLog } from "@/services/b2b/billingService";
 import { fetchWithRetry } from "@/lib/fetchWithRetry";
 import { fetchWithSSRFProtection, getAllowedProviderHosts, DEFAULT_MAX_UPSCALED_IMAGE_BYTES } from "@/lib/ssrf";
+import { universalUnavailableResponse } from "@/lib/universalAvailability.mjs";
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -49,6 +50,8 @@ export async function POST(request) {
     const body = await request.json();
     const { image_url } = body;
     mode = body.mode || 'keep_artwork'; // Default mode
+    const unavailable = universalUnavailableResponse(mode);
+    if (unavailable) return unavailable;
 
     if (!image_url) {
       return NextResponse.json({ error: "Missing required field: image_url" }, { status: 400 });

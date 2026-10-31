@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, Pencil, RotateCcw, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, RotateCcw, X } from 'lucide-react';
 import Select from '@/components/Select';
 import { logoDesignFields } from '@/lib/logoDesignSettings.mjs';
 import styles from './designControls.module.css';

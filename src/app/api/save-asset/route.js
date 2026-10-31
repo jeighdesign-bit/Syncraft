@@ -81,6 +81,8 @@ export async function POST(request) {
         allowedHosts: ALLOWED_REMOTE_HOSTS,
         maxBytes,
         allowedContentTypes: ['image/', 'application/octet-stream'],
+        timeoutMs: 30_000,
+        maxAttempts: 2,
       });
       if (!response.ok) throw new Error("Failed to fetch fileUrl");
       buffer = remoteBuffer;
@@ -95,7 +97,7 @@ export async function POST(request) {
     if (step === 1) {
       const fileName = `projects/${projectId}/generated_flat_${Date.now()}.${ext}`;
       const finalUrl = await uploadToR2(buffer, fileName, finalMimeType);
-      const { error: saveError } = await adminSupabase.from('projects').update({ generated_image_url: finalUrl, ai_prompt: null, zip_url: null, zip_signature: null, zip_generated_at: null }).eq('id', projectId);
+      const { error: saveError } = await adminSupabase.from('projects').update({ generated_image_url: finalUrl, upscaled_image_url: null, svg_url: null, ai_prompt: null, zip_url: null, zip_signature: null, zip_generated_at: null }).eq('id', projectId);
       if (saveError) throw new Error(`Could not save flat extract: ${saveError.message}`);
       return NextResponse.json({ success: true, url: finalUrl });
     }

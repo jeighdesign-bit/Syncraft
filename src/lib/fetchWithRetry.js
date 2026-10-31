@@ -3,10 +3,13 @@
  * using exponential backoff.
  */
 export async function fetchWithRetry(url, options = {}, maxRetries = 3) {
-  let attempt = 0;
   const baseDelayMs = 1500; // Start with 1.5s delay
 
-  while (attempt < maxRetries) {
+  if (!Number.isInteger(maxRetries) || maxRetries < 1) {
+    throw new TypeError("maxRetries must be a positive integer");
+  }
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const response = await fetch(url, options);
 
@@ -22,8 +25,11 @@ export async function fetchWithRetry(url, options = {}, maxRetries = 3) {
 
       return response; // Return the successful response (or 400/401 which shouldn't be retried)
     } catch (error) {
-      attempt++;
-      if (attempt >= maxRetries) {
+      // Cancellation is intentional. Retrying with the same aborted signal only
+      // delays the caller and can never succeed.
+      if (error?.name === "AbortError" || options.signal?.aborted) throw error;
+
+      if (attempt === maxRetries) {
         console.error(`[fetchWithRetry] Max retries (${maxRetries}) reached for ${url}`);
         throw error;
       }

@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
+import { universalUnavailableResponse } from "@/lib/universalAvailability.mjs";
 import { adminSupabase } from "@/lib/supabase";
 import { chargeCreditsVerified, findLatestProjectCharge, markCreditTransaction, recordProviderUsage, refundCreditVerified } from "@/lib/creditLedger";
-import { fetchWithRetry } from "@/lib/fetchWithRetry";
 import { CREDIT_COST } from "@/lib/pricing";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 import { snapToAllowedAspectRatio } from "@/lib/aspectRatio";
 import { buildGarmentExtractionInput, garmentExtractionMode, shouldSaveGarmentExtractionServerSide } from "@/lib/garmentExtractionConfig.mjs";
+import { ARTWORK_GENERATION_MODEL, buildArtworkGenerationInput } from "@/lib/falArtworkGeneration.mjs";
 import { buildGarmentExtractionPrompt, buildGarmentExtractionSystemPrompt, resolveGarmentPromptMode } from "@/lib/garmentPromptRules.mjs";
 import { uploadToR2 } from "@/lib/cloudflare";
-import { usesNativeTraceUpscale, resizeTraceForUpscale } from "@/lib/traceUpscale.mjs";
+import { fetchStoredAsset } from "@/lib/storageDownload";
+import { startTraceUpscale, saveTraceUpscale } from "@/lib/traceUpscaleJobs";
 import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
 // Allow queued provider jobs and image transfers to finish before Vercel stops the run.
@@ -81,6 +83,12 @@ export async function POST(request) {
       return NextResponse.json({ error: "Project has no owner. Please re-upload your image." }, { status: 403 });
     }
 
+    // Step 3 only saves an already-started upscale; do not strand paid work.
+    if (step !== 3) {
+      const unavailable = universalUnavailableResponse(project.trace_type);
+      if (unavailable) return unavailable;
+    }
+
     let sourceUrl;
     let rawSourceBuffer;
     if (step === 1) {
@@ -92,14 +100,30 @@ export async function POST(request) {
       }
       let sourceFetch;
       try {
-        sourceFetch = await fetchWithSSRFProtection(sourceUrl, {
-          allowedHosts: getAllowedStorageHosts(),
+        sourceFetch = await fetchStoredAsset(sourceUrl, {
           maxBytes: DEFAULT_MAX_IMAGE_BYTES,
           allowedContentTypes: ['image/'],
+          timeoutMs: 25_000,
+          maxAttempts: 2,
+          signal: AbortSignal.timeout(80_000),
         });
       } catch (sourceErr) {
-        console.warn(`[Trace] Blocked or failed source image fetch for project ${projectId}:`, sourceErr.message);
-        return NextResponse.json({ error: "Invalid or unauthorized image URL" }, { status: 400 });
+        console.warn('[Trace source download]', { projectId, name: sourceErr.name, message: sourceErr.message, cause: sourceErr.cause?.code });
+        if (sourceErr.message === 'Invalid or unauthorized URL') {
+          return NextResponse.json({ error: 'Invalid or unauthorized image URL', code: 'TRACE_SOURCE_FORBIDDEN' }, { status: 403 });
+        }
+        if (sourceErr.message === 'Remote file is too large') {
+          return NextResponse.json({ error: 'The image exceeds the upload size limit. No credits were deducted.', code: 'TRACE_SOURCE_TOO_LARGE' }, { status: 413 });
+        }
+        if (sourceErr.message === 'Remote file has an invalid content type') {
+          return NextResponse.json({ error: 'The stored file is not a supported image. No credits were deducted.', code: 'TRACE_SOURCE_INVALID_TYPE' }, { status: 415 });
+        }
+        const timedOut = ['TimeoutError', 'AbortError'].includes(sourceErr.name) || /timed?\s*out|timeout/i.test(sourceErr.message || '');
+        return NextResponse.json({
+          error: timedOut ? 'The image download timed out. Your upload is saved. No credits were deducted; please try again.'
+            : 'Could not download your saved image. No credits were deducted; please try again.',
+          code: timedOut ? 'TRACE_SOURCE_TIMEOUT' : 'TRACE_SOURCE_UNAVAILABLE',
+        }, { status: timedOut ? 504 : 503 });
       }
       if (!sourceFetch.response.ok) throw new Error("Failed to fetch source image");
       rawSourceBuffer = sourceFetch.buffer;
@@ -256,12 +280,15 @@ If any difference is detected, continue refining until the reconstruction is vis
 
         let finalImageUrl = sourceUrl;
 
-        console.log("[fal.ai Input URL]:", finalImageUrl);
+        // Authenticated storage reads can return a signed URL. Keep signatures
+        // and temporary credentials out of request logs.
+        const inputUrlForLog = new URL(finalImageUrl);
+        console.log("[fal.ai Input URL]:", `${inputUrlForLog.origin}${inputUrlForLog.pathname}`);
 
-        // ── Step 1: Extract flat design directly using nano-banana-pro/edit ──
+        // ── Step 1: Extract flat design using base Pro with reference context ──
         // Feed original source image directly — no pre-upscale step.
         // Flow: Extract → Upscale (step 2) → Vectorize (step 3)
-        console.log("[API Step 1] Extracting flat design with fal.ai (nano-banana-pro/edit)...");
+        console.log("[API Step 1] Extracting flat design with fal.ai (nano-banana-pro)...");
 
         extractionMode = garmentExtractionMode();
         const extractionInput = buildGarmentExtractionInput({
@@ -279,8 +306,8 @@ If any difference is detected, continue refining until the reconstruction is vis
           promptMode,
         });
 
-        const result = await fal.subscribe("fal-ai/nano-banana-pro/edit", {
-          input: extractionInput,
+        const result = await fal.subscribe(ARTWORK_GENERATION_MODEL, {
+          input: buildArtworkGenerationInput(extractionInput),
           logs: true,
           onQueueUpdate: (update) => {
             if (update.status === "IN_PROGRESS") {
@@ -294,7 +321,7 @@ If any difference is detected, continue refining until the reconstruction is vis
           projectId,
           userId,
           provider: "fal",
-          endpoint: "fal-ai/nano-banana-pro/edit",
+          endpoint: ARTWORK_GENERATION_MODEL,
           providerRequestId: result?.requestId || null,
           estimatedCostUsd: 0.15,
           isOwnerTest,
@@ -330,11 +357,11 @@ If any difference is detected, continue refining until the reconstruction is vis
 
         generatedImageBuffer = generatedBuffer;
         generatedMimeType = result.data.images[0].content_type || "image/jpeg";
-        geminiThinking = "Generated via fal.ai Nano Banana Pro Edit";
+        geminiThinking = "Generated via fal.ai Nano Banana Pro";
         await markCreditTransaction({
           transactionId: chargeTransactionId,
           status: "provider_succeeded",
-          metadata: { provider: "fal", endpoint: "fal-ai/nano-banana-pro/edit" },
+          metadata: { provider: "fal", endpoint: ARTWORK_GENERATION_MODEL },
         });
 
       } catch (err) {
@@ -389,6 +416,8 @@ If any difference is detected, continue refining until the reconstruction is vis
           .from("projects")
           .update({
             generated_image_url: fileUrl,
+            upscaled_image_url: null,
+            svg_url: null,
             ai_prompt: null,
             zip_url: null,
             zip_signature: null,
@@ -434,59 +463,14 @@ If any difference is detected, continue refining until the reconstruction is vis
         return NextResponse.json({ error: "Invalid or unauthorized generated image URL" }, { status: 400 });
       }
 
-      if (usesNativeTraceUpscale(project)) {
-        console.log("[API Step 2] Creating fidelity-safe, palette-preserving 4x PNG...");
-        const { response, buffer: inputBuffer } = await fetchWithSSRFProtection(upscaleInputUrl, {
-          allowedHosts: getAllowedStorageHosts(),
-          maxBytes: DEFAULT_MAX_IMAGE_BYTES,
-          allowedContentTypes: ['image/'],
-        });
-        if (!response.ok) throw new Error("Failed to fetch generated image for lossless upscale");
-
-        const upscaledBuffer = await resizeTraceForUpscale(inputBuffer);
-
-        const fileName = `projects/${projectId}/upscaled_${Date.now()}.png`;
-        const finalUrl = await uploadToR2(upscaledBuffer, fileName, "image/png");
-        const { error: saveError } = await adminSupabase.from('projects')
-          .update({ upscaled_image_url: finalUrl, zip_url: null, zip_signature: null, zip_generated_at: null })
-          .eq('id', projectId);
-        if (saveError) throw new Error(`Could not save palette-preserving upscale: ${saveError.message}`);
-
-        return NextResponse.json({ success: true, step: 2, fileUrl: finalUrl, mimeType: "image/png", alreadySaved: true, palettePreserved: true, fidelitySafe: true });
+      // Older open workspaces can reconnect without starting an untracked job.
+      let result = await startTraceUpscale(project, user.id);
+      if (['ready', 'saving'].includes(result.status)) result = await saveTraceUpscale(project);
+      if (result.status !== 'succeeded') {
+        return NextResponse.json({ error: 'UPSCALE_JOB_PENDING', message:
+          'Your upscale job is saved and processing. Refresh this project to reconnect and continue for free.' }, { status: 409 });
       }
-
-      if (!process.env.FAL_KEY) throw new Error("FAL_KEY is missing in environment variables.");
-      const { fal } = await import("@fal-ai/client");
-      console.log("[API Step 2] Upscaling with fal-ai/esrgan...");
-      const upscalerResult = await fal.subscribe("fal-ai/esrgan", {
-        input: { image_url: upscaleInputUrl, scale: 4 },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (update.status === "IN_PROGRESS") update.logs?.map((log) => log.message).forEach(console.log);
-        },
-      });
-
-      const traceCharge = await findLatestProjectCharge(projectId);
-      await recordProviderUsage({
-        creditTransactionId: traceCharge?.transactionId || null,
-        projectId,
-        userId,
-        provider: "fal",
-        endpoint: "fal-ai/esrgan",
-        providerRequestId: upscalerResult?.requestId || null,
-        isOwnerTest: traceCharge?.isOwnerTest === true,
-      });
-
-      console.log("[ESRGAN RAW Response]:", JSON.stringify(upscalerResult?.data, null, 2));
-      const upscaledUrl = upscalerResult?.data?.image?.url || upscalerResult?.data?.image_url;
-      if (!upscaledUrl) {
-        throw new Error("fal-ai/esrgan did not return a valid image URL. Response: " + JSON.stringify(upscalerResult));
-      }
-
-      const upscaledMimeType = upscalerResult?.data?.image?.content_type || "image/jpeg";
-
-      return NextResponse.json({ success: true, step: 2, fileUrl: upscaledUrl, mimeType: upscaledMimeType });
-
+      return NextResponse.json({ ...result, step: 2 });
     }
 
     return NextResponse.json({ error: "Invalid step parameter" }, { status: 400 });

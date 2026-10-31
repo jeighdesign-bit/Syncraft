@@ -2,16 +2,18 @@
 
 import { memo, useState } from "react";
 import { ArrowUpRight, PenTool, ScanLine, Scissors, Shirt, Sparkles, X } from "lucide-react";
+import { UNIVERSAL_AVAILABLE, UNIVERSAL_UNAVAILABLE_MESSAGE, isUniversalTraceType } from "@/lib/universalAvailability.mjs";
 import styles from "./NewProjectModal.module.css";
 
-function CategoryCard({ icon: Icon, eyebrow, title, description, tags, credits, accent, featured = false, onClick }) {
+function CategoryCard({ icon: Icon, eyebrow, title, description, tags, credits, accent, featured = false, disabled = false, onClick }) {
   return (
     <button
       type="button"
       className={`${styles.categoryCard} ${featured ? styles.featuredCard : ""}`}
       style={{ "--feature-accent": accent }}
-      onClick={onClick}
-      aria-label={`${title}, ${credits} credits`}
+      onClick={() => { if (!disabled) onClick?.(); }}
+      disabled={disabled}
+      aria-label={`${title}, ${disabled ? 'Unavailable' : `${credits} credits`}`}
     >
       <span className={styles.featureVisual} aria-hidden="true">
         <span className={styles.featureGrid} />
@@ -21,7 +23,7 @@ function CategoryCard({ icon: Icon, eyebrow, title, description, tags, credits, 
       <span className={styles.featureCopy}>
         <span className={styles.featureTopline}>
           <span className={styles.eyebrow}>{eyebrow}</span>
-          {featured && <span className={styles.recommended}><Sparkles size={10} /> Most versatile</span>}
+          {featured && !disabled && <span className={styles.recommended}><Sparkles size={10} /> Most versatile</span>}
         </span>
         <span className={styles.featureTitle}>{title}</span>
         <span className={styles.featureDescription}>{description}</span>
@@ -31,8 +33,8 @@ function CategoryCard({ icon: Icon, eyebrow, title, description, tags, credits, 
       </span>
 
       <span className={styles.featureAction}>
-        <span className={styles.creditBadge}>{credits} credits</span>
-        <ArrowUpRight size={17} strokeWidth={1.8} />
+        <span className={disabled ? styles.unavailableBadge : styles.creditBadge}>{disabled ? 'Unavailable' : `${credits} credits`}</span>
+        {!disabled && <ArrowUpRight size={17} strokeWidth={1.8} />}
       </span>
     </button>
   );
@@ -69,12 +71,17 @@ const NewProjectModal = memo(function NewProjectModal({
   initialCategory = null,
   selectedImageName = null,
 }) {
-  const [step, setStep] = useState(initialCategory ? "details" : "category");
-  const [category, setCategory] = useState(initialCategory);
+  const initialUnavailable = !UNIVERSAL_AVAILABLE && isUniversalTraceType(initialCategory);
+  const [step, setStep] = useState(initialCategory && !initialUnavailable ? "details" : "category");
+  const [category, setCategory] = useState(initialUnavailable ? null : initialCategory);
+  const categoryUnavailable = !UNIVERSAL_AVAILABLE && isUniversalTraceType(category);
+  const visibleStep = categoryUnavailable ? "category" : step;
+  const createUnavailable = !UNIVERSAL_AVAILABLE && (categoryUnavailable || isUniversalTraceType(traceType));
 
   if (!show) return null;
 
   const handleCategorySelect = (cat) => {
+    if (!UNIVERSAL_AVAILABLE && isUniversalTraceType(cat)) return;
     setCategory(cat);
     if (cat === "bg_remover") {
       // Skip details step — trigger file upload immediately
@@ -105,10 +112,15 @@ const NewProjectModal = memo(function NewProjectModal({
     onClose();
   };
 
+  const handleSelectImage = () => {
+    if (isUploading || createUnavailable) return;
+    onSelectImage?.();
+  };
+
   return (
     <div className="modal-overlay" onClick={handleClose}>
       <div
-        className={`modal-content ${styles.projectModal} ${step === "category" ? styles.categoryModal : styles.detailsModal}`}
+        className={`modal-content ${styles.projectModal} ${visibleStep === "category" ? styles.categoryModal : styles.detailsModal}`}
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: 610,
@@ -127,7 +139,7 @@ const NewProjectModal = memo(function NewProjectModal({
           <X size={18} />
         </button>
 
-        {step === "category" && (
+        {visibleStep === "category" && (
           <>
             <div className={styles.featureList}>
               <CategoryCard
@@ -144,11 +156,12 @@ const NewProjectModal = memo(function NewProjectModal({
                 icon={ScanLine}
                 eyebrow="Forensic AI recovery"
                 title="Syncraft Extraction (Universal)"
-                description="Unwarp and recover visible print from banners, labels, packaging, decals, and complex surfaces."
+                description={UNIVERSAL_AVAILABLE ? "Unwarp and recover visible print from banners, labels, packaging, decals, and complex surfaces." : UNIVERSAL_UNAVAILABLE_MESSAGE}
                 tags={["Perspective fix", "Any surface"]}
                 credits={24}
                 accent="#9effc8"
                 featured
+                disabled={!UNIVERSAL_AVAILABLE}
                 onClick={() => handleCategorySelect("universal")}
               />
               <CategoryCard
@@ -175,7 +188,7 @@ const NewProjectModal = memo(function NewProjectModal({
           </>
         )}
 
-        {step === "details" && (
+        {visibleStep === "details" && (
           <>
             <button type="button" className={styles.backButton} onClick={handleBack}>
               ← Back
@@ -252,10 +265,11 @@ const NewProjectModal = memo(function NewProjectModal({
 
             <div className="modal-actions">
               <button className="btn-cancel" onClick={handleClose}>Cancel</button>
-              <button className="btn-primary" onClick={onSelectImage} disabled={isUploading}>
+              <button className="btn-primary" onClick={handleSelectImage} disabled={isUploading || createUnavailable}>
                 {isUploading ? "Uploading..." : selectedImageName ? "Create Project →" : "Select Image & Create →"}
               </button>
             </div>
+            {createUnavailable && <p role="status" className={styles.unavailableMessage}>{UNIVERSAL_UNAVAILABLE_MESSAGE}</p>}
           </>
         )}
       </div>

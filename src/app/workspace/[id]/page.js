@@ -1,8 +1,10 @@
 "use client";
+import { normalizeReferenceCategory } from '@/lib/referenceCategories.mjs';
+import { UNIVERSAL_AVAILABLE, UNIVERSAL_UNAVAILABLE_MESSAGE, isUniversalTraceType } from '@/lib/universalAvailability.mjs';
 
 // ─── React & Routing ──────────────────────────────────────────────────────────
 import BackToWorkspace from "@/components/BackToWorkspace";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 // ─── Data & Auth ──────────────────────────────────────────────────────────────
@@ -20,6 +22,7 @@ import PropertiesPanel from "./components/PropertiesPanel";
 import UpscalePropertiesPanel from "./components/UpscalePropertiesPanel";
 import CropModal from "./components/CropModal";
 import EraseModal from "./components/EraseModal";
+import ArtworkEditModal from "./components/ArtworkEditModal";
 import RemoveBgModal from "./components/RemoveBgModal";
 import CompareModal from "./components/CompareModal";
 import NoCreditsModal from "./components/NoCreditsModal";
@@ -90,14 +93,16 @@ export default function Workspace() {
   const [project, setProject] = useState(null);
   const [user, setUser] = useState(null);
   const [userCredits, setUserCredits] = useState(null);
-  const [activeTool, setActiveTool] = useState("pointer");
   // Lifted out of PropertiesPanel: Extend Design re-runs the vectorize stage from
   // here, so it needs the colour setting too.
   const [vectorColors, setVectorColors] = useState("auto");
+  const [isSavingReferenceCategory, setIsSavingReferenceCategory] = useState(false);
 
   // ─── Modal State ──────────────────────────────────────────────────────────
   const [showCropModal, setShowCropModal] = useState(false);
   const [showEraseModal, setShowEraseModal] = useState(false);
+  const [showAiEdit, setShowAiEdit] = useState(false);
+  const appliedEditRef = useRef(null);
   const [showRemoveBgModal, setShowRemoveBgModal] = useState(false);
 
   // ─── Extend Design (in-canvas) State ──────────────────────────────────────
@@ -118,13 +123,15 @@ export default function Workspace() {
   const [projectExpiresAt, setProjectExpiresAt] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const canEditProject = projectAccess === "owner" || projectAccess === "edit";
+  const universalUnavailable = !UNIVERSAL_AVAILABLE && isUniversalTraceType(project?.trace_type);
+  const canModifyProject = canEditProject && !universalUnavailable;
   const isProjectOwner = projectAccess === "owner";
 
   // ─── Hooks ────────────────────────────────────────────────────────────────
   const {
 
     traceState, nodeErrors, consoleRef,
-    logToConsole, clearConsole, handleExecuteTrace, analyzeRecovery, handleResumeFromStep2, handleRetryVector,
+    logToConsole, handleExecuteTrace, analyzeRecovery, handleResumeFromStep2, handleRetryVector,
   } = useTraceExecution({
     project,
     setProject,
@@ -132,7 +139,14 @@ export default function Workspace() {
     setUserCredits,
     supabase,
     onNoCredits: () => setShowNoCreditsModal(true),
+    canEditProject: canModifyProject,
   });
+
+  useEffect(() => {
+    if (!canModifyProject || !appliedEditRef.current || appliedEditRef.current !== project?.generated_image_url || traceState !== "idle") return;
+    appliedEditRef.current = null;
+    void handleResumeFromStep2(vectorColors);
+  }, [canModifyProject, project?.generated_image_url, traceState, handleResumeFromStep2, vectorColors]);
 
   // ─── Data Fetching ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -170,7 +184,8 @@ export default function Workspace() {
             && !projData.generated_image_url.includes("/projects/")
             && !projData.generated_image_url.includes("/storage/v1/object/");
           setUpscaleStatus(isLegacyResult ? "legacy" : "idle");
-        } else if (!projData.generated_image_url && projectPayload.access !== "view") {
+        } else if (!projData.generated_image_url && projectPayload.access !== "view"
+          && (UNIVERSAL_AVAILABLE || !isUniversalTraceType(projData.trace_type))) {
           setShowCropModal(true);
         }
 
@@ -236,14 +251,7 @@ export default function Workspace() {
     trackExport({ tool: project.trace_type, format: "svg" });
   }, [project, forceDownload]);
 
-  const handleDownloadRaster = useCallback(async () => {
-    if (!project?.generated_image_url) return;
-    const proxyUrl = `/api/proxy?url=${encodeURIComponent(project.generated_image_url)}`;
-    await forceDownload(proxyUrl, `Syncraft_${project.name}_Raster.png`);
-    trackExport({ tool: project.trace_type, format: "png" });
-  }, [project, forceDownload]);
-
-  // Dedicated HD download — uses the Step 2 Recraft Crisp output, not the flat extract.
+  // HD downloads use the complete saved Step 2 output.
   const handleDownloadUpscaled = useCallback(async () => {
     if (!project?.upscaled_image_url) return;
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(project.upscaled_image_url)}`;
@@ -399,11 +407,38 @@ export default function Workspace() {
     }
   }, [project, logToConsole, forceDownload]);
 
+  const handleReferenceCategoryChange = useCallback(async (value) => {
+    if (!canModifyProject || project?.trace_type !== 'universal' || traceState !== 'idle' || isSavingReferenceCategory) return;
+    const category = normalizeReferenceCategory(value);
+    const previous = normalizeReferenceCategory(project.canvas_data?.reference_category);
+    if (category === previous) return;
+    const savingProjectId = project.id;
+    setIsSavingReferenceCategory(true);
+    setProject(prev => prev?.id === savingProjectId ? { ...prev, canvas_data: { ...(prev.canvas_data || {}), reference_category: category } } : prev);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Please sign in again to save the category.');
+      const response = await fetch('/api/recovery/category', {
+        method: 'PATCH', headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: savingProjectId, referenceCategory: category }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Could not save the category.');
+    } catch (error) {
+      setProject(prev => prev?.id === savingProjectId ? { ...prev, canvas_data: { ...(prev.canvas_data || {}), reference_category: previous } } : prev);
+      logToConsole('[Error] ' + error.message, 'error');
+    } finally { setIsSavingReferenceCategory(false); }
+  }, [canModifyProject, project, traceState, isSavingReferenceCategory, logToConsole]);
+
   // ─── Trace Execution Wrapper ──────────────────────────────────────────────
   const onExecuteTrace = useCallback(async (vectorColors) => {
+    if (!canModifyProject) {
+      if (universalUnavailable) logToConsole(`[Unavailable] ${UNIVERSAL_UNAVAILABLE_MESSAGE}`);
+      return { success: false };
+    }
     if (project?.trace_type === "universal") {
       try {
-        logToConsole("[Universal] Detecting the best flat layout strategy...");
+        logToConsole("[Universal] Preparing your image for extraction...");
         await analyzeRecovery();
       } catch (error) {
         logToConsole(`[Error] ${error.message || "Reference analysis failed."}`, "error");
@@ -414,10 +449,11 @@ export default function Workspace() {
     if (result?.success) {
       setShowCompare(true);
     }
-  }, [project, analyzeRecovery, handleExecuteTrace, logToConsole]);
+  }, [canModifyProject, universalUnavailable, project, analyzeRecovery, handleExecuteTrace, logToConsole]);
 
   // ─── Crop Handlers ────────────────────────────────────────────────────────
   const handleCropApplied = useCallback((publicUrl, errorMsg) => {
+    if (!canModifyProject) return;
     if (errorMsg) {
       logToConsole(`[Error] Failed to save crop: ${errorMsg}`, "error");
     } else {
@@ -435,9 +471,10 @@ export default function Workspace() {
       logToConsole("[Success] Crop applied and saved! You can now re-trace.", "success");
     }
     setIsSavingCrop(false);
-  }, [logToConsole]);
+  }, [canModifyProject, logToConsole]);
 
   const handleEraseApplied = useCallback((publicUrl, errorMsg) => {
+    if (!canModifyProject) return;
     if (errorMsg) {
       logToConsole(`[Error] Failed to save erased image: ${errorMsg}`, "error");
     } else {
@@ -453,9 +490,10 @@ export default function Workspace() {
       }));
       logToConsole("[Success] Erased noise saved! You can now re-trace.", "success");
     }
-  }, [logToConsole]);
+  }, [canModifyProject, logToConsole]);
 
   const handleRemoveBgApplied = useCallback((publicUrl, errorMsg) => {
+    if (!canModifyProject) return;
     if (errorMsg) {
       logToConsole(`[Error] Failed to remove background: ${errorMsg}`, "error");
     } else if (publicUrl) {
@@ -474,7 +512,7 @@ export default function Workspace() {
       setUserCredits(prev => (prev !== null ? Math.max(0, prev - CREDIT_COST.removeBg) : prev));
       logToConsole("[Success] Background removed! You can now re-trace.", "success");
     }
-  }, [logToConsole]);
+  }, [canModifyProject, logToConsole]);
 
   // Live validity of the current drag — drives the Proceed button's enabled
   // state. Same helper the canvas and the server use, so all three agree.
@@ -483,11 +521,11 @@ export default function Workspace() {
   ), [extendSource, extendPads]);
 
   const handleEnterExtend = useCallback(() => {
-    if (!project?.generated_image_url || project.generated_image_url === "REFUNDED") return;
+    if (!canModifyProject || !project?.generated_image_url || project.generated_image_url === "REFUNDED") return;
     setExtendPads({ top: 0, right: 0, bottom: 0, left: 0 });
     setExtendSource(null);
     setExtendMode(true);
-  }, [project?.generated_image_url]);
+  }, [canModifyProject, project?.generated_image_url]);
 
   const handleCancelExtend = useCallback(() => {
     setExtendMode(false);
@@ -498,7 +536,7 @@ export default function Workspace() {
   // the flat extract, invalidating only stages 2 and 3 (the original upload stays
   // put), then chains straight into re-running them since they are free.
   const handleProceedExtend = useCallback(async () => {
-    if (!project?.id || !extendPlan?.ok || extendProcessing) return;
+    if (!canModifyProject || !project?.id || !extendPlan?.ok || extendProcessing) return;
     setExtendProcessing(true);
     // Log the whole extend run so the activity log isn't silent during the ~30–60s
     // generation (the normal trace logs each step; extend should too).
@@ -566,7 +604,7 @@ export default function Workspace() {
     } finally {
       setExtendProcessing(false);
     }
-  }, [project?.id, extendPlan, extendProcessing, extendPads, supabase, logToConsole, handleResumeFromStep2, vectorColors]);
+  }, [canModifyProject, project?.id, extendPlan, extendProcessing, extendPads, supabase, logToConsole, handleResumeFromStep2, vectorColors]);
 
   const handleLogin = useCallback(async () => {
     await supabase.auth.signInWithOAuth({
@@ -646,7 +684,7 @@ export default function Workspace() {
               project={project}
               traceState={project.trace_type === "upscale" ? (upscaleStatus === "processing" ? "processing" : "idle") : traceState}
               nodeErrors={project.trace_type === "upscale" ? null : nodeErrors}
-              extendMode={project.trace_type === "upscale" ? false : extendMode}
+              extendMode={canModifyProject && project.trace_type !== "upscale" ? extendMode : false}
               extendPads={extendPads}
               extendSource={extendSource}
               extendProcessing={extendProcessing}
@@ -658,13 +696,14 @@ export default function Workspace() {
               }}
               leftControls={
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  {isEditingTitle && canEditProject ? (
+                  {isEditingTitle && canModifyProject ? (
                     <input
                       autoFocus
                       value={editTitleValue}
                       onChange={(e) => setEditTitleValue(e.target.value)}
                       onBlur={async () => {
                         setIsEditingTitle(false);
+                        if (!canModifyProject) return;
                         if (editTitleValue.trim() !== project.name) {
                           const { data: { session } } = await supabase.auth.getSession();
                           const response = await fetch('/api/project', {
@@ -696,21 +735,21 @@ export default function Workspace() {
                   ) : (
                     <button
                       type="button"
-                      disabled={!canEditProject}
-                      aria-label={canEditProject ? "Rename project" : "Project title"}
+                      disabled={!canModifyProject}
+                      aria-label={canModifyProject ? "Rename project" : "Project title"}
                       className="workspace-project-title"
-                      title={canEditProject ? "Rename project" : "View-only access"}
+                      title={canModifyProject ? "Rename project" : universalUnavailable ? UNIVERSAL_UNAVAILABLE_MESSAGE : "View-only access"}
                       onClick={() => {
-                        if (!canEditProject) return;
+                        if (!canModifyProject) return;
                         setEditTitleValue(project.name || "Untitled Project");
                         setIsEditingTitle(true);
                       }}
-                      style={{ display: "flex", alignItems: "center", gap: "6px", cursor: canEditProject ? "pointer" : "default", padding: "4px 8px", borderRadius: "6px", transition: "all 0.2s", border: 0, background: "transparent", color: "#ccc" }}
+                      style={{ display: "flex", alignItems: "center", gap: "6px", cursor: canModifyProject ? "pointer" : "default", padding: "4px 8px", borderRadius: "6px", transition: "all 0.2s", border: 0, background: "transparent", color: "#ccc" }}
                     >
                       <span style={{ fontSize: "13px", fontWeight: "500", color: "inherit", letterSpacing: "0.5px" }}>
                         {project.name || "Untitled Project"}
                       </span>
-                      {canEditProject && <Pencil size={11} color="inherit" />}
+                      {canModifyProject && <Pencil size={11} color="inherit" />}
                     </button>
                   )}
                   {savedAgo && (
@@ -743,20 +782,23 @@ export default function Workspace() {
           userCredits={userCredits}
           consoleRef={consoleRef}
           onExecuteTrace={onExecuteTrace}
-          onRetryVector={handleRetryVector}
-          onResumeUpscale={handleResumeFromStep2}
+          onRetryVector={canModifyProject ? handleRetryVector : undefined}
+          onResumeUpscale={canModifyProject ? handleResumeFromStep2 : undefined}
           onDownloadSvg={handleDownloadSvg}
           onDownloadPsd={handleDownloadPsd}
           onDownloadRaster={handleDownloadUpscaled}
           onDownloadAll={handleDownloadAll}
           onOpenCompare={() => setShowCompare(true)}
-          onOpenCrop={() => setShowCropModal(true)}
-          onOpenRemoveBg={() => setShowRemoveBgModal(true)}
-          onOpenErase={() => setShowEraseModal(true)}
+          onOpenCrop={() => { if (canModifyProject) setShowCropModal(true); }}
+          onOpenRemoveBg={() => { if (canModifyProject) setShowRemoveBgModal(true); }}
+          onOpenErase={() => { if (canModifyProject) setShowEraseModal(true); }}
+          onOpenAiEdit={() => { if (canModifyProject) setShowAiEdit(true); }}
           onOpenTopUp={() => setShowTopUpModal(true)}
-          vectorColors={vectorColors}
+          vectorColors={project?.trace_type === "universal" ? "auto" : vectorColors}
+          onReferenceCategoryChange={handleReferenceCategoryChange}
+          isSavingReferenceCategory={isSavingReferenceCategory}
           onVectorColorsChange={setVectorColors}
-          extendMode={extendMode}
+          extendMode={canModifyProject && extendMode}
           extendProcessing={extendProcessing}
           extendCanProceed={!!extendPlan?.ok}
           onEnterExtend={handleEnterExtend}
@@ -798,8 +840,24 @@ export default function Workspace() {
       </div>
 
       {/* ─── Modals ─────────────────────────────────────────────────────────── */}
+      {showAiEdit && canModifyProject && (
+        <ArtworkEditModal
+          project={project}
+          supabase={supabase}
+          userCredits={userCredits}
+          onClose={() => setShowAiEdit(false)}
+          onProjectUpdated={(updated) => {
+            if (!canModifyProject) return;
+            appliedEditRef.current = updated.generated_image_url;
+            setProject(updated);
+            logToConsole("[AI Edit] Edit applied. Preparing HD artwork and vector exports…", "success");
+          }}
+          onCreditsUpdated={() => window.dispatchEvent(new Event("syncraft:credits-updated"))}
+          onOpenTopUp={() => setShowTopUpModal(true)}
+        />
+      )}
       <CropModal
-        show={showCropModal && canEditProject}
+        show={showCropModal && canModifyProject}
         project={project}
         supabase={supabase}
         onClose={() => setShowCropModal(false)}
@@ -808,7 +866,7 @@ export default function Workspace() {
       />
 
       <EraseModal
-        show={showEraseModal && canEditProject}
+        show={showEraseModal && canModifyProject}
         project={project}
         supabase={supabase}
         onClose={() => setShowEraseModal(false)}
@@ -817,7 +875,7 @@ export default function Workspace() {
       />
 
       <RemoveBgModal
-        show={showRemoveBgModal && canEditProject}
+        show={showRemoveBgModal && canModifyProject}
         project={project}
         supabase={supabase}
         onClose={() => setShowRemoveBgModal(false)}
@@ -828,8 +886,6 @@ export default function Workspace() {
         show={showCompare}
         project={project}
         onClose={() => setShowCompare(false)}
-        onDownloadAll={canEditProject ? handleDownloadAll : undefined}
-        onDownloadSvg={canEditProject ? handleDownloadSvg : undefined}
       />
 
       <NoCreditsModal

@@ -9,7 +9,8 @@ export const DEFAULT_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 // bounded ceiling while allowing the exact asset to pass through without JPEG
 // recompression.
 export const DEFAULT_MAX_UPSCALED_IMAGE_BYTES = 96 * 1024 * 1024;
-export const DEFAULT_MAX_SVG_BYTES = 8 * 1024 * 1024;
+// Fine-pattern garment SVGs legitimately contain tens of thousands of paths.
+export const DEFAULT_MAX_SVG_BYTES = 32 * 1024 * 1024;
 export const DEFAULT_MAX_ZIP_BYTES = 120 * 1024 * 1024;
 export const DEFAULT_MAX_PSD_BYTES = 256 * 1024 * 1024;
 
@@ -208,49 +209,110 @@ export async function fetchWithSSRFProtection(urlString, options = {}) {
     maxRedirects = 3,
     allowedContentTypes,
     fetchOptions = {},
+    maxAttempts = 1,
+    retryDelayMs = 400,
+    signal = fetchOptions.signal,
   } = options;
 
-  let currentUrl = urlString;
-  for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount++) {
-    if (!(await validateUrlForSSRF(currentUrl, { allowedHosts }))) {
-      throw new Error('Invalid or unauthorized URL');
-    }
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    let response;
+  // Only repeat reads. Retrying a provider POST can charge for the same job twice.
+  const attempts = ['GET', 'HEAD'].includes((fetchOptions.method || 'GET').toUpperCase())
+    ? Math.max(1, Math.min(3, maxAttempts))
+    : 1;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      response = await fetch(currentUrl, {
-        ...fetchOptions,
-        redirect: 'manual',
-        signal: controller.signal,
+      return await fetchRemoteAsset();
+    } catch (error) {
+      signal?.throwIfAborted();
+      if (attempt === attempts || !isTransientFetchError(error)) throw error;
+      await new Promise((resolve, reject) => {
+        const onAbort = () => {
+          clearTimeout(timer);
+          reject(signal.reason);
+        };
+        const timer = setTimeout(() => {
+          signal?.removeEventListener('abort', onAbort);
+          resolve();
+        }, retryDelayMs * attempt);
+        signal?.addEventListener('abort', onAbort, { once: true });
+        if (signal?.aborted) onAbort();
       });
-    } finally {
-      clearTimeout(timeout);
     }
-
-    if ([301, 302, 303, 307, 308].includes(response.status)) {
-      const location = response.headers.get('location');
-      if (!location) throw new Error('Redirect missing Location header');
-      currentUrl = new URL(location, currentUrl).href;
-      continue;
-    }
-
-    const contentLength = Number(response.headers.get('content-length') || '0');
-    if (contentLength && contentLength > maxBytes) {
-      throw new Error('Remote file is too large');
-    }
-
-    const contentType = response.headers.get('content-type') || '';
-    if (allowedContentTypes?.length && !allowedContentTypes.some((type) => contentType.toLowerCase().startsWith(type))) {
-      throw new Error('Remote file has an invalid content type');
-    }
-
-    const buffer = await responseToLimitedBuffer(response, maxBytes);
-    return { response, buffer, finalUrl: currentUrl };
   }
 
-  throw new Error('Too many redirects');
+  async function fetchRemoteAsset() {
+    let currentUrl = urlString;
+    for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount++) {
+      signal?.throwIfAborted();
+      if (!(await validateUrlForSSRF(currentUrl, { allowedHosts }))) {
+        throw new Error('Invalid or unauthorized URL');
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      let response;
+      try {
+        response = await fetch(currentUrl, {
+          ...fetchOptions,
+          redirect: 'manual',
+          signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
+        });
+
+        if ([301, 302, 303, 307, 308].includes(response.status)) {
+          const location = response.headers.get('location');
+          await response.body?.cancel();
+          if (!location) throw new Error('Redirect missing Location header');
+          currentUrl = new URL(location, currentUrl).href;
+          continue;
+        }
+
+        if (!response.ok) {
+          const error = new Error(`Remote file request failed (${response.status})`);
+          error.status = response.status;
+          throw error;
+        }
+
+        const contentLength = Number(response.headers.get('content-length') || '0');
+        if (contentLength && contentLength > maxBytes) {
+          throw new Error('Remote file is too large');
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        if (
+          allowedContentTypes?.length &&
+          !allowedContentTypes.some((type) => contentType.toLowerCase().startsWith(type))
+        ) {
+          throw new Error('Remote file has an invalid content type');
+        }
+
+        const buffer = await responseToLimitedBuffer(response, maxBytes);
+        return { response, buffer, finalUrl: currentUrl };
+      } catch (error) {
+        signal?.throwIfAborted();
+        if (controller.signal.aborted) {
+          const timeoutError = new Error('Remote file download timed out', { cause: error });
+          timeoutError.name = 'TimeoutError';
+          throw timeoutError;
+        }
+        throw error;
+      } finally {
+        // Keep the timer running through the complete body, not just headers.
+        clearTimeout(timeout);
+        if (response?.body && !response.body.locked) await response.body.cancel().catch(() => {});
+      }
+    }
+
+    throw new Error('Too many redirects');
+  }
+}
+
+export function isTransientFetchError(error) {
+  return (
+    [429, 500, 502, 503, 504].includes(error?.status) ||
+    ['AbortError', 'TimeoutError'].includes(error?.name) ||
+    /fetch failed|terminated|network|socket|econn|etimedout|und_err|aborted|timed?\s*out|timeout/i.test(
+      `${error?.message || ''} ${error?.cause?.code || ''}`,
+    )
+  );
 }
 
 export async function responseToLimitedBuffer(response, maxBytes = DEFAULT_MAX_IMAGE_BYTES) {
@@ -264,18 +326,25 @@ export async function responseToLimitedBuffer(response, maxBytes = DEFAULT_MAX_I
   const chunks = [];
   let total = 0;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > maxBytes) {
-      try {
-        await reader.cancel();
-      } catch {}
-      throw new Error('Remote file is too large');
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        try {
+          await reader.cancel();
+        } catch {}
+        throw new Error('Remote file is too large');
+      }
+      chunks.push(value);
     }
-    chunks.push(value);
-  }
 
-  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), total);
+    return Buffer.concat(
+      chunks.map((chunk) => Buffer.from(chunk)),
+      total,
+    );
+  } finally {
+    reader.releaseLock();
+  }
 }

@@ -1,14 +1,21 @@
 import { NextResponse } from "next/server";
+import { universalUnavailableResponse } from "@/lib/universalAvailability.mjs";
 import { adminSupabase } from "@/lib/supabase";
 import { chargeCreditsVerified, markCreditTransaction, recordProviderUsage, refundCreditVerified } from "@/lib/creditLedger";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
-import { buildRecoveryPrompt, normalizeRecoveryAnalysis } from "@/lib/recovery";
-import { backgroundOnlyFailureMessage, normalizedCorrelation, recoveryAspectRatioDrift, shouldFallbackToSource, shouldPreserveExactRecoverySource, shouldRejectBackgroundOnly, sourceFallbackCorrection } from "@/lib/recoveryPolicy.mjs";
+import { normalizeRecoveryAnalysis } from "@/lib/recovery";
+import { normalizedCorrelation, recoveryAspectRatioDrift } from "@/lib/recoveryPolicy.mjs";
 import { CREDIT_COST } from "@/lib/pricing";
 import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 import { uploadToR2 } from "@/lib/cloudflare";
 import sharp from "sharp";
+import { createHash } from "node:crypto";
+import { snapToAllowedAspectRatio } from "@/lib/aspectRatio";
+import { categoryRecoveryAnalysis, normalizeReferenceCategory } from "@/lib/referenceCategories.mjs";
+import { matchRecoveryStripProportions } from "@/lib/recoveryStrip.mjs";
+import { inspectStripExterior } from "@/lib/recoveryStripBounds.mjs";
+import { buildRecoveryImageInput, RECOVERY_IMAGE_ENDPOINT } from "@/lib/recoveryVision.mjs";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -50,33 +57,19 @@ async function fetchRecoveryAsset(url, options, stage) {
   throw wrapped;
 }
 
-async function runEdit(imageUrls, prompt, aspectRatio = "auto", backgroundOnly = false, stage = "generation") {
+async function runGeneration(imageUrls, analysis, mode, sourceBuffer, stage = "generation") {
   const { fal } = await import("@fal-ai/client");
   let requestId = "";
   try {
-    const result = await fal.subscribe("fal-ai/nano-banana-pro/edit", {
-      input: {
-        image_urls: imageUrls,
-        prompt,
-        aspect_ratio: aspectRatio,
-        system_prompt: backgroundOnly
-          ? "This is a benign graphic-design clean-plate edit of a user-supplied printed surface. Return only its non-typographic background layer. Omit overlaid typography, badges, mascots, emblems, and other focal foreground graphics, then naturally continue the adjacent abstract pattern through those areas. Preserve the source palette, stripes, gradients, halftones, textures, and asymmetric layout. Correct camera tilt, perspective, folds, sag, and curvature, and return a straight, front-facing, full-bleed production canvas."
-          : "You are a forensic print-artwork recovery engine. Extract only ink printed on the target surface, not the photograph of the surface. Preserve printed people, cars, text, and graphics; remove real people, hands, scenery, grommets, ropes, hems, folds, shadows, and all other physical-banner details. The reference image is authoritative for design content, but photographed geometry is not authoritative. Remove camera tilt, keystone perspective, fabric sag, folds, and curvature. Render one straight, front-facing, axis-aligned, full-bleed production canvas with no photographed border or triangular corner gaps. Preserve supported visual evidence exactly, perform only the requested edit, and never replace detailed artwork with a flat color or generic design.",
-        num_images: 1,
-        output_format: "png",
-        resolution: "2K",
-        // Background clean-plate requests commonly contain sports mascots and
-        // team marks. Fal supports level 6 for benign edits that are otherwise
-        // prone to false-positive moderation blocks.
-        safety_tolerance: backgroundOnly ? "6" : "4",
-        limit_generations: true,
-      },
+    const input = buildRecoveryImageInput({ imageUrls, analysis, mode, directCrop: true });
+    const result = await fal.subscribe(RECOVERY_IMAGE_ENDPOINT, {
+      input,
       logs: true,
       onEnqueue: id => { requestId = id; },
     });
     const image = result?.data?.images?.[0];
     if (!image?.url) throw new Error("Recovery model did not return an image.");
-    return { ...image, requestId: result?.requestId || requestId || null };
+    return { ...image, requestId: result?.requestId || requestId || null, input };
   } catch (error) {
     const wrapped = new Error(`Fal ${stage} failed: ${providerErrorMessage(error)}`);
     wrapped.code = "FAL_RECOVERY_FAILED";
@@ -166,134 +159,6 @@ function normalizeValidation(raw) {
   };
 }
 
-async function saturatedColorStats(buffer, width, height) {
-  const { data, info } = await sharp(buffer)
-    .resize(width, height, { fit: "fill" })
-    .removeAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-  const sums = [0, 0, 0];
-  const squares = [0, 0, 0];
-  let count = 0;
-  for (let i = 0; i < data.length; i += info.channels) {
-    const rgb = [data[i], data[i + 1], data[i + 2]];
-    const hi = Math.max(...rgb);
-    const lo = Math.min(...rgb);
-    const light = (hi + lo) / 2;
-    // Ignore white/black scene pixels and neutral text. The remaining pixels
-    // represent the printable design palette more reliably.
-    if (light < 20 || light > 238 || hi - lo < 12) continue;
-    for (let c = 0; c < 3; c++) {
-      sums[c] += rgb[c];
-      squares[c] += rgb[c] * rgb[c];
-    }
-    count++;
-  }
-  if (count < 100) return null;
-  const mean = sums.map(value => value / count);
-  const stdev = squares.map((value, c) => Math.sqrt(Math.max(1, value / count - mean[c] * mean[c])));
-  return { mean, stdev };
-}
-
-async function dominantSourcePalette(sourceBuffer, maxColors = 18) {
-  const { data, info } = await sharp(sourceBuffer)
-    .rotate()
-    .resize(192, 192, { fit: "fill" })
-    .removeAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-  const bins = new Map();
-  for (let i = 0; i < data.length; i += info.channels) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-    const key = ((r >> 5) << 10) | ((g >> 5) << 5) | (b >> 5);
-    const bin = bins.get(key) || { count: 0, r: 0, g: 0, b: 0 };
-    bin.count++;
-    bin.r += r;
-    bin.g += g;
-    bin.b += b;
-    bins.set(key, bin);
-  }
-  return [...bins.values()]
-    .sort((a, b) => b.count - a.count)
-    .slice(0, maxColors)
-    .map(bin => [bin.r / bin.count, bin.g / bin.count, bin.b / bin.count]);
-}
-
-function colorDistance(rgb, candidate) {
-  const [r, g, b] = rgb;
-  const [cr, cg, cb] = candidate;
-  const y = 0.299 * r + 0.587 * g + 0.114 * b;
-  const cy = 0.299 * cr + 0.587 * cg + 0.114 * cb;
-  const blue = b - y;
-  const candidateBlue = cb - cy;
-  const red = r - y;
-  const candidateRed = cr - cy;
-  return (y - cy) ** 2 * 0.7
-    + (blue - candidateBlue) ** 2 * 1.35
-    + (red - candidateRed) ** 2 * 1.35;
-}
-
-async function remapToSourcePalette(buffer, sourceBuffer, width, height) {
-  const palette = await dominantSourcePalette(sourceBuffer);
-  if (!palette.length) return buffer;
-  const { data, info } = await sharp(buffer)
-    .rotate()
-    .resize(width, height, { fit: "cover", position: "centre", kernel: sharp.kernel.lanczos3 })
-    .removeAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-
-  // Precompute a compact 5-bit RGB lookup table. Each output pixel keeps its
-  // luminance variation but inherits hue/chroma from a dominant source color.
-  const lookup = new Uint8Array(32 * 32 * 32 * 3);
-  for (let r5 = 0; r5 < 32; r5++) {
-    for (let g5 = 0; g5 < 32; g5++) {
-      for (let b5 = 0; b5 < 32; b5++) {
-        const rgb = [r5 * 8 + 4, g5 * 8 + 4, b5 * 8 + 4];
-        let best = palette[0];
-        let bestDistance = Infinity;
-        for (const candidate of palette) {
-          const distance = colorDistance(rgb, candidate);
-          if (distance < bestDistance) {
-            best = candidate;
-            bestDistance = distance;
-          }
-        }
-        const index = (((r5 << 10) | (g5 << 5) | b5) * 3);
-        lookup[index] = Math.round(best[0]);
-        lookup[index + 1] = Math.round(best[1]);
-        lookup[index + 2] = Math.round(best[2]);
-      }
-    }
-  }
-
-  for (let i = 0; i < data.length; i += info.channels) {
-    const key = (((data[i] >> 3) << 10) | ((data[i + 1] >> 3) << 5) | (data[i + 2] >> 3)) * 3;
-    const sourceLuma = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-    const paletteLuma = 0.299 * lookup[key] + 0.587 * lookup[key + 1] + 0.114 * lookup[key + 2];
-    const luminanceScale = Math.max(0.72, Math.min(1.28, sourceLuma / Math.max(8, paletteLuma)));
-    data[i] = Math.min(255, Math.round(lookup[key] * luminanceScale));
-    data[i + 1] = Math.min(255, Math.round(lookup[key + 1] * luminanceScale));
-    data[i + 2] = Math.min(255, Math.round(lookup[key + 2] * luminanceScale));
-  }
-  return sharp(data, { raw: info }).png({ compressionLevel: 9 }).toBuffer();
-}
-
-async function lockOutputToSource(buffer, sourceBuffer, width, height, matchPalette) {
-  // Preserve geometry. Provider outputs use a finite set of aspect ratios, so
-  // `fill` can squash long labels and lanyards into a solid-looking strip.
-  if (matchPalette) {
-    return remapToSourcePalette(buffer, sourceBuffer, width, height);
-  }
-  return sharp(buffer)
-    .rotate()
-    .resize(width, height, { fit: "cover", position: "centre", kernel: sharp.kernel.lanczos3 })
-    .png({ compressionLevel: 9 })
-    .toBuffer();
-}
-
 async function refund(userId, projectId, chargeTransactionId, reason, validation = null) {
   let ok = false;
   try {
@@ -335,6 +200,8 @@ export async function POST(request) {
     const token = request.headers.get("authorization")?.replace("Bearer ", "").trim();
     const { data: { user } } = await adminSupabase.auth.getUser(token || "");
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const unavailable = universalUnavailableResponse();
+    if (unavailable) return unavailable;
     userId = user.id;
     const limit = await enforceRateLimit({ namespace: "api:recovery:generate", identifier: user.id, max: 3, window: "60 s", windowMs: 60_000 });
     if (!limit.success) return limit.response;
@@ -369,7 +236,7 @@ export async function POST(request) {
         feature: "universal_design_recovery",
         action: "Universal Design Recovery",
         amount: CREDIT_COST.universal,
-        metadata: { route: "api/recovery/generate", mode: recovery.mode || project.ai_prompt || null },
+        metadata: { route: "api/recovery/generate", mode: recovery.mode || project.ai_prompt || null, reference_category: normalizeReferenceCategory(project.canvas_data?.reference_category) },
       });
       chargeTransactionId = charge.transactionId;
       isOwnerTest = charge.isOwnerTest;
@@ -390,211 +257,66 @@ export async function POST(request) {
       maxBytes: DEFAULT_MAX_IMAGE_BYTES,
       allowedContentTypes: ["image/"],
     }, "Source image");
+    const sourceReferenceHash = createHash("sha256").update(source.buffer).digest("hex");
+    // Read local crop dimensions without changing the reference sent to the model.
+    source.buffer = await sharp(source.buffer).rotate().png().toBuffer();
     const sourceMeta = await sharp(source.buffer).metadata();
     const sourceWidth = sourceMeta.width;
     const sourceHeight = sourceMeta.height;
     if (!sourceWidth || !sourceHeight) throw new Error("Could not read cropped reference dimensions.");
-    const analysis = normalizeRecoveryAnalysis(recovery.analysis);
-    const recoveryMode = recovery.mode || project.ai_prompt;
-    const prompt = buildRecoveryPrompt({ analysis, mode: recoveryMode, sourceWidth, sourceHeight });
-    const backgroundOnly = recoveryMode === "UNIVERSAL_BACKGROUND_ONLY";
+    const recoveryMode = recovery.mode || project.ai_prompt || 'UNIVERSAL_KEEP_ARTWORK';
+    const backgroundOnly = recoveryMode === 'UNIVERSAL_BACKGROUND_ONLY';
     const keepArtwork = !backgroundOnly;
-    const needsStructuralReconstruction = ["parallel_strips", "cylindrical_label", "packaging_panels"].includes(analysis.layout_strategy)
-      || [analysis.perspective, analysis.curvature, analysis.folds].includes("high");
-    const hasNoDetectedDistortion = [analysis.perspective, analysis.curvature, analysis.folds, analysis.reflections]
-      .every(value => value === "none");
-    const directSourceLayouts = ["flat_rectangle", "long_strip", "sticker_decal", "large_format_rectangle", "unknown"];
-    const preserveExactSource = shouldPreserveExactRecoverySource({
-      mode: recoveryMode,
-      sourceWidth,
-      sourceHeight,
+    const cropRatio = sourceWidth / sourceHeight;
+    // This is arithmetic on the user's crop, never remote target detection.
+    const aspectRatio = cropRatio >= 9 / 16 && cropRatio <= 21 / 9
+      ? snapToAllowedAspectRatio(sourceWidth, sourceHeight) : 'auto';
+    // Discard every prior semantic analysis, transcription and proposed quad.
+    // The only extraction reference is the exact crop saved by the user.
+    const analysis = categoryRecoveryAnalysis({ ...normalizeRecoveryAnalysis({
+      state: 'partial', quality: Math.min(sourceWidth, sourceHeight) < 192 ? 'poor' : 'fair',
+      confidence: 0, aspect_ratio: aspectRatio, layout_strategy: 'unknown',
+      surface_description: 'All visible printed artwork inside the exact user-selected crop.',
+      reason: 'Direct extraction from the selected crop; no separate image analysis was requested.',
+    }, 'auto'), source_width: sourceWidth, source_height: sourceHeight,
+      crop_authoritative: true, preparation: 'local_crop_dimensions_only' }, project.canvas_data?.reference_category);
+    const finalImage = await runGeneration([source.finalUrl], analysis, recoveryMode, source.buffer);
+    let downloaded = await fetchRecoveryAsset(finalImage.url, {
+      allowedHosts: getAllowedProviderHosts(), maxBytes: DEFAULT_MAX_IMAGE_BYTES,
+      allowedContentTypes: ['image/'],
+    }, 'Generated image');
+    await recordProviderUsage({ creditTransactionId: chargeTransactionId, projectId, userId,
+      provider: 'fal', endpoint: RECOVERY_IMAGE_ENDPOINT, providerRequestId: finalImage.requestId || null,
+      estimatedCostUsd: 0.15, isOwnerTest,
+      metadata: { operation: 'universal_design_recovery', extraction_flow: 'direct_crop',
+        mode: recoveryMode, reference_category: analysis.reference_category,
+        input_reference_sha256: sourceReferenceHash, provider_input: finalImage.input,
+        source_width: sourceWidth, source_height: sourceHeight },
     });
-    const canPreserveSourceDirectly = keepArtwork
-      && (preserveExactSource || (
-        hasNoDetectedDistortion
-        && !needsStructuralReconstruction
-        && directSourceLayouts.includes(analysis.layout_strategy)
-        && analysis.visible_coverage >= 85
-      ));
-    // The crop ratio describes the photographed view; the analyzed ratio
-    // describes the intended flat printable plane. Keep the latter through
-    // generation and post-processing so perspective correction is not undone.
-    const generationAspectRatio = analysis.aspect_ratio || "auto";
-
-    let finalImage = null;
-    let downloaded = source;
-    let generationPasses = 0;
-    let validationCalls = 0;
-    let foregroundDetectionCalls = 0;
-    let successfulForegroundDetectionCalls = 0;
-    let maskedRegionCount = 0;
-    let validation;
-
-    if (canPreserveSourceDirectly) {
-      // A clean, already-flat crop is more exact than any generative redraw.
-      // Passing it through keeps narrow labels, small text, logos, and patterns
-      // pixel-faithful; Step 2 still performs the normal production upscale.
-      validation = {
-        pass: true,
-        usable_partial: false,
-        failures: [],
-        source_passthrough: true,
-        exact_geometry_preserved: preserveExactSource,
-        correction: "",
-      };
-    } else {
-      if (backgroundOnly) {
-        // Match the stable garment-pattern extractor: one Fal edit performs
-        // flattening and foreground removal without blocking vision stages.
-        finalImage = await runEdit(
-          [source.finalUrl],
-          `${prompt}\nCLEAN-PLATE BACKGROUND EXTRACTION:\nCreate one flat rectangle filled edge-to-edge with the source's abstract background design. Omit the photographed carrier and surrounding scene, along with overlaid typography, numerals, badges, mascots, emblems, and focal foreground illustrations. Continue the immediately adjacent background colors, stripes, camouflage shapes, gradients, halftones, textures, and pattern geometry naturally through the cleared areas. Preserve the original palette, asymmetric layout, stripe count, shape placement, and pattern density. Correct photographed tilt, perspective, sag, curvature, and folds. Return only the straight, front-facing, print-ready background layer without blank patches or newly invented focal artwork.`,
-          generationAspectRatio,
-          true,
-          "background-pattern extraction",
-        );
-        generationPasses = 1;
-      } else {
-        finalImage = await runEdit(
-          [source.finalUrl],
-          `${prompt}\nONE-PASS RECOVERY: complete the requested flattening and extraction directly from this reference. First isolate the printable plane; ignore everything outside it, including real people holding or standing behind a banner. Preserve every supported printed line, texture, pattern, color boundary, visible text, and printed illustration, including printed runners or cars. Geometrically rectify the printable plane before rendering: it must face the viewer squarely, fill the canvas edge-to-edge, and have perfectly horizontal top/bottom axes and perfectly vertical left/right axes. Remove grommets, ropes, hems, hardware, shadows, source tilt, rotation, keystone, folds, fabric sag, and curvature. Do not leave white, black, transparent, or blank triangular wedges at any corner, and do not keep a photographed slanted outer edge. Do not return the banner mockup or a blank, generic, simplified, or near-solid replacement.`,
-          generationAspectRatio,
-          false,
-          "artwork-recovery stage",
-        );
-        generationPasses = 1;
-      }
-      downloaded = await fetchRecoveryAsset(finalImage.url, {
-        allowedHosts: getAllowedProviderHosts(),
-        maxBytes: DEFAULT_MAX_IMAGE_BYTES,
-        allowedContentTypes: ["image/"],
-      }, "Generated image");
-      await recordProviderUsage({
-        creditTransactionId: chargeTransactionId,
-        projectId,
-        userId,
-        provider: "fal",
-        endpoint: "fal-ai/nano-banana-pro/edit",
-        providerRequestId: finalImage.requestId || null,
-        estimatedCostUsd: 0.15,
-        isOwnerTest,
-        metadata: { operation: "universal_design_recovery", mode: recoveryMode },
-      });
-      const [retention, outputMeta, similarity] = await Promise.all([
-        contentRetentionCheck(source.buffer, downloaded.buffer),
-        sharp(downloaded.buffer).metadata(),
-        keepArtwork ? structuralSimilarity(source.buffer, downloaded.buffer) : Promise.resolve(null),
-      ]);
-      const ratioDrift = recoveryAspectRatioDrift(
-        sourceWidth,
-        sourceHeight,
-        outputMeta.width,
-        outputMeta.height,
-      );
-      if (keepArtwork && ratioDrift > 0.04) {
-        validation = {
-          pass: false,
-          usable_partial: false,
-          failures: ["wrong_layout"],
-          aspect_ratio_drift: ratioDrift,
-          correction: "The generated canvas changed the crop proportions, so the exact source crop must be preserved.",
-        };
-      } else if (keepArtwork && similarity < 0.28) {
-        validation = {
-          pass: false,
-          usable_partial: false,
-          failures: ["missing_visible_artwork"],
-          structural_similarity: similarity,
-          correction: "The generated artwork changed too much from the visible crop, so the exact source crop must be preserved.",
-        };
-      } else if (retention.collapsed) {
-        validation = {
-          pass: false,
-          usable_partial: false,
-          failures: ["content_collapse"],
-          correction: "The generated flatten collapsed detailed artwork into a flat color.",
-        };
-      } else {
-        validation = {
-          pass: true,
-          usable_partial: false,
-          failures: [],
-          local_validation: true,
-          structural_similarity: similarity,
-          exact_geometry_preserved: false,
-          correction: "",
-        };
-      }
-    }
-
+    const preserveStripProportions = cropRatio < 0.35 || cropRatio > 3;
+    if (preserveStripProportions) downloaded = { ...downloaded,
+      buffer: await matchRecoveryStripProportions(downloaded.buffer, sourceWidth, sourceHeight),
+      response: new Response(null, { headers: { 'content-type': 'image/png' } }) };
+    const [retention, outputMeta, similarity] = await Promise.all([
+      contentRetentionCheck(source.buffer, downloaded.buffer), sharp(downloaded.buffer).metadata(),
+      keepArtwork ? structuralSimilarity(source.buffer, downloaded.buffer) : Promise.resolve(null),
+    ]);
+    let validation = { pass: false, usable_partial: true, advisory_only: true, failures: [],
+      review_status: 'not_requested', extraction_method: 'direct_crop_image_edit',
+      correction: 'Extraction is ready. Compare the artwork with your selected crop before use.',
+      input_reference_sha256: sourceReferenceHash, crop_authoritative: true,
+      diagnostics: { collapsed: retention.collapsed, similarity,
+        ratioDrift: recoveryAspectRatioDrift(sourceWidth, sourceHeight, outputMeta.width, outputMeta.height) },
+      source_proportions_preserved: preserveStripProportions };
+    // This local warning cannot change the crop, call a model, or reject output.
+    const stripExterior = await inspectStripExterior(downloaded.buffer, { category: analysis.reference_category,
+      mode: recoveryMode, analysis, method: 'image_edit' });
+    if (stripExterior?.suspected_exterior) validation = { ...validation, failures: ['wrong_layout'],
+      correction: 'The extracted ribbon may still contain large plain side bands. Compare it with your crop before use.',
+      advisory_diagnostics: { strip_exterior: stripExterior } };
     validation = normalizeValidation(validation);
-    if (backgroundOnly) {
-      validation = {
-        ...validation,
-        foreground_detection_calls: foregroundDetectionCalls,
-        successful_foreground_detection_calls: successfulForegroundDetectionCalls,
-        masked_regions: maskedRegionCount,
-        image_generation_calls: generationPasses,
-      };
-    }
-    const hasHardFailure = keepArtwork
-      ? shouldFallbackToSource(validation.failures)
-      : shouldRejectBackgroundOnly(validation.failures);
-    if (!validation.pass && hasHardFailure) {
-      if (keepArtwork) {
-        // A failed flatten never replaces customer artwork. Preserve the exact
-        // source crop and continue through the normal free upscale/vector steps.
-        downloaded = source;
-        validation = {
-          ...validation,
-          pass: false,
-          usable_partial: true,
-          source_fallback: true,
-          released_best_effort: true,
-          correction: sourceFallbackCorrection(validation.failures),
-        };
-      } else {
-        const validationError = new Error(`${backgroundOnlyFailureMessage(validation.failures)} ${CREDIT_COST.universal} Syncraft credits will be refunded; no additional retry was launched.`);
-        validationError.code = "BACKGROUND_ONLY_VALIDATION_FAILED";
-        validationError.status = 422;
-        validationError.validation = validation;
-        throw validationError;
-      }
-    }
-
-    // Non-destructive imperfections may still be released as partial.
-    // Validation never triggers another paid generation.
-    if (!validation.pass) {
-      validation = {
-        ...validation,
-        pass: false,
-        usable_partial: true,
-        released_best_effort: true,
-      };
-    }
-    // Preserve the exact provider bytes, just like the garment extraction
-    // pipeline. The fal output is the Flat Extract source of truth; resizing,
-    // cropping, palette locking, or PNG re-encoding here makes the workspace
-    // preview differ from the successful image shown in the fal request log.
-    let exactOutput = downloaded.buffer;
-    if (keepArtwork) {
-      const finalRetention = await contentRetentionCheck(source.buffer, exactOutput);
-      if (finalRetention.collapsed) {
-        exactOutput = source.buffer;
-        validation = {
-          ...validation,
-          pass: false,
-          usable_partial: true,
-          source_fallback: true,
-          released_best_effort: true,
-          failures: [...new Set([...(validation.failures || []), "content_collapse"])],
-          correction: "The resized flatten lost detail, so Syncraft preserved the exact source crop instead.",
-        };
-      }
-    }
-    const exactOutputMimeType = validation.source_fallback
-      ? source.response?.headers.get("content-type")?.split(";")[0] || "image/png"
-      : downloaded.response?.headers.get("content-type")?.split(";")[0] || "image/png";
+    const exactOutput = downloaded.buffer;
+    const exactOutputMimeType = downloaded.response?.headers.get('content-type')?.split(';')[0] || 'image/png';
     const outputExtension = ({
       "image/jpeg": "jpg",
       "image/png": "png",
@@ -607,6 +329,8 @@ export async function POST(request) {
 
     const { error: saveError } = await adminSupabase.from("projects").update({
       generated_image_url: fileUrl,
+      upscaled_image_url: null,
+      svg_url: null,
       ai_prompt: null,
       zip_url: null,
       zip_signature: null,
@@ -615,15 +339,18 @@ export async function POST(request) {
         ...(project.canvas_data || {}),
         universal_recovery: {
           ...recovery,
+          analysis,
           status: validation.pass ? "validated" : "partial",
           validation,
           retry_count: 0,
           costs: {
-            analysis_calls: 1,
-            image_generation_calls: generationPasses,
-            validation_calls: validationCalls,
-            foreground_detection_calls: foregroundDetectionCalls,
-            masked_regions: maskedRegionCount,
+            analysis_calls: 0,
+            image_generation_calls: 1,
+            validation_calls: 0,
+            source_verification_calls: 0,
+            output_plane_verification_calls: 0,
+            foreground_detection_calls: 0,
+            masked_regions: 0,
             charged_credits: CREDIT_COST.universal,
           },
         },
@@ -658,6 +385,8 @@ export async function POST(request) {
       ? await refund(userId, projectId, chargeTransactionId, errorMessage, error.validation)
       : false;
     const expectedQualityRejection = error.code === "BACKGROUND_ONLY_VALIDATION_FAILED"
+      || error.code === "RECOVERY_VALIDATION_FAILED"
+      || error.code === "RECOVERY_VISUAL_CHECK_FAILED"
       || error.code === "FOREGROUND_MASK_NOT_FOUND"
       || error.code === "FOREGROUND_DETECTION_UNAVAILABLE"
       || error.code === "RECOVERY_NETWORK_FAILED";

@@ -3,7 +3,7 @@
 import GenerateButton from "@/components/GenerateButton";
 import BackToWorkspace from "@/components/BackToWorkspace";
 import { useState, useRef, useEffect } from "react";
-import { Monitor, ArrowLeft, Loader2, Download, ImageIcon, Sparkles, Wand2, Home, Keyboard, ShieldAlert, Clock, ZoomIn, ZoomOut, Maximize, Upload } from "lucide-react";
+import { Loader2, Download, Wand2, ShieldAlert, Clock, Upload } from "lucide-react";
 import { toast } from "@/components/Toast";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";

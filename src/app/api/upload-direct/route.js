@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server';
 import { uploadToR2 } from '@/lib/cloudflare';
 import { adminSupabase } from '@/lib/supabase';
+import {
+  getBearerToken,
+  isAllowedImageContentType,
+  MAX_DIRECT_UPLOAD_BYTES,
+  sanitizeUploadFileName,
+} from '@/lib/uploadPolicy.mjs';
 
 export async function POST(request) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
+    const token = getBearerToken(request);
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized - Missing auth header' }, { status: 401 });
-    }
-    const token = authHeader.replace('Bearer ', '').trim();
-    if (token === 'undefined') {
-      return NextResponse.json({ error: 'Unauthorized - Invalid token format' }, { status: 401 });
     }
     
     const { data: { user }, error } = await adminSupabase.auth.getUser(token);
@@ -26,20 +28,24 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing file in request' }, { status: 400 });
     }
 
-    const ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/bmp', 'image/tiff'];
-    if (!ALLOWED_CONTENT_TYPES.includes(file.type)) {
+    if (!isAllowedImageContentType(file.type)) {
       return NextResponse.json({ error: 'Invalid file type. Only images are allowed.' }, { status: 400 });
+    }
+
+    if (file.size > MAX_DIRECT_UPLOAD_BYTES) {
+      return NextResponse.json({ error: 'File size exceeds 4.5MB limit.' }, { status: 413 });
     }
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Limit to 4.5MB to stay within standard serverless limits
-    if (buffer.length > 4.5 * 1024 * 1024) {
+    // Keep a second check in case a nonstandard FormData implementation reports
+    // an inaccurate File.size value.
+    if (buffer.length > MAX_DIRECT_UPLOAD_BYTES) {
       return NextResponse.json({ error: 'File size exceeds 4.5MB limit.' }, { status: 413 });
     }
 
-    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const safeName = sanitizeUploadFileName(file.name);
     const fullFileName = `users/${user.id}/${Date.now()}_${safeName}`;
 
     // uploadToR2 has built-in Supabase Storage fallback for when R2 is unreachable

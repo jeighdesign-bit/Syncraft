@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { SITE_URL } from '@/lib/site';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { updateSession } from '@/utils/supabase/proxy';
 
 // ─── Rate Limit Config ────────────────────────────────────────────────────────
 // Single source of truth for all route limits.
@@ -9,6 +10,8 @@ import { Redis } from '@upstash/redis';
 // windowMs: same window in ms (used by in-memory fallback)
 // max: max requests per window per IP
 const RATE_LIMIT_CONFIG = {
+  // Status polling must not inherit the generation endpoint's 10/min IP limit.
+  '/api/trace-upscale': { window: '60 s', windowMs: 60_000, max: 180 },
   '/api/trace-step3':   { window: '60 s', windowMs: 60_000, max: 6   },
   '/api/prepare-zip':   { window: '60 s', windowMs: 60_000, max: 10  },
   '/api/save-asset':    { window: '60 s', windowMs: 60_000, max: 30  },
@@ -128,7 +131,7 @@ export async function proxy(request) {
 
   const routePrefix = getRoutePrefix(pathname);
 
-  if (!routePrefix) return NextResponse.next(); // Route not rate-limited
+  if (!routePrefix) return updateSession(request);
 
   const ip = getClientIP(request);
   const cfg = RATE_LIMIT_CONFIG[routePrefix];

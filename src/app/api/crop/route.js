@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminSupabase } from "@/lib/supabase";
 import { isAllowedStorageUrl } from "@/lib/ssrf";
 import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
+import { universalUnavailableResponse } from "@/lib/universalAvailability.mjs";
 
 export const maxDuration = 30;
 
@@ -38,6 +39,8 @@ export async function POST(request) {
       select: 'id,user_id,created_at,trace_type,canvas_data',
     });
     if (!ownedProject) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    const unavailable = universalUnavailableResponse(ownedProject.trace_type);
+    if (unavailable) return unavailable;
 
     const baseReset = {
       original_image_url: croppedImageUrl,

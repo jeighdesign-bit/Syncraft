@@ -5,6 +5,7 @@ import { FileText, FolderOpen, Image, LayoutDashboard, Menu, PenTool, ScanLine, 
 import ResponsivePanel from "@/components/ResponsivePanel";
 import AccountCreditMenu from "@/components/AccountCreditMenu";
 import FloatingPromoVideo from "./FloatingPromoVideo";
+import { UNIVERSAL_AVAILABLE, isUniversalTraceType } from "@/lib/universalAvailability.mjs";
 import styles from "./WorkspaceSidebar.module.css";
 
 const features = [
@@ -30,19 +31,23 @@ export default function WorkspaceSidebar({ onOpenFeature, user, credits, onOpenT
           <span>Workspace</span>
         </div>
         <div className={styles.featureList}>
-          {features.map(({ label, icon: Icon, action }) => (
+          {features.map(({ label, icon: Icon, action }) => {
+            const unavailable = !UNIVERSAL_AVAILABLE && isUniversalTraceType(action);
+            return (
             <button
               type="button"
               key={label}
-              className={styles.featureButton}
-              onClick={() => { close(); onOpenFeature(action); }}
-              disabled={disabled}
+              className={`${styles.featureButton}${unavailable ? ` ${styles.unavailableButton}` : ""}`}
+              onClick={() => { if (disabled || unavailable) return; close(); onOpenFeature(action); }}
+              disabled={disabled || unavailable}
             >
               <Icon size={17} strokeWidth={1.65} aria-hidden="true" />
               <span>{label}</span>
+              {unavailable && <span className={styles.unavailableBadge}>Unavailable</span>}
               {action === "logo" && <span className={styles.newBadge}>NEW</span>}
             </button>
-          ))}
+            );
+          })}
         </div>
         <div className={styles.accountLinks} aria-label="More workspace links">
           <Link href="/store" className={styles.accountLink}><ShoppingBag size={17} aria-hidden="true" />Store</Link>

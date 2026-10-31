@@ -18,7 +18,7 @@ export async function GET(request) {
     }
 
     // 2. Fetch their B2B Company Profile
-    let { data: company, error: companyError } = await adminSupabase
+    let { data: company } = await adminSupabase
       .from('b2b_companies')
       .select('*')
       .eq('user_id', user.id)

@@ -1,10 +1,11 @@
 "use client";
 
 import { memo, useState } from "react";
-import { Download, Monitor, ChevronDown, FolderDown, Loader2, X, ImageMinus, Eraser, Scissors, Expand } from "lucide-react";
+import { Download, Monitor, ChevronDown, FolderDown, Loader2, X, ImageMinus, Eraser, Scissors, Expand, WandSparkles } from "lucide-react";
 import { CREDIT_COST } from "@/lib/pricing";
 import { canResumeTraceUpscale } from "@/lib/traceRequestPolicy.mjs";
-import FeedbackWidget from "./FeedbackWidget";
+import { REFERENCE_CATEGORIES, normalizeReferenceCategory } from "@/lib/referenceCategories.mjs";
+import { UNIVERSAL_AVAILABLE, UNIVERSAL_UNAVAILABLE_MESSAGE, isUniversalTraceType } from "@/lib/universalAvailability.mjs";
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
 // Shared spacing/type/color scale so every section in this panel reads as
@@ -174,11 +175,14 @@ const PropertiesPanel = memo(function PropertiesPanel({
   onOpenCrop,
   onOpenRemoveBg,
   onOpenErase,
+  onOpenAiEdit,
   onOpenTopUp,
   // Lifted to page.js: Extend Design re-runs the vectorize stage from there, so
   // the colour setting can no longer live only in this component.
   vectorColors,
   onVectorColorsChange,
+  onReferenceCategoryChange,
+  isSavingReferenceCategory = false,
   // Extend Design (in-canvas). The "Extend Design" action button becomes the
   // Proceed button while extendMode is on — same spot, per the requested flow.
   extendMode = false,
@@ -197,7 +201,14 @@ const PropertiesPanel = memo(function PropertiesPanel({
     : CREDIT_COST.trace;
   const noCredits = !isUnauthenticated && userCredits < executionCost;
   const isCropped = project?.original_image_url?.includes("crop") || project?.generated_image_url;
-  const isBusy = traceState !== "idle" || isSavingCrop || extendMode;
+  const isBusy = traceState !== "idle" || isSavingCrop || extendMode || isSavingReferenceCategory;
+  const isUniversal = project?.trace_type === "universal";
+  const universalUnavailable = !UNIVERSAL_AVAILABLE && isUniversalTraceType(project?.trace_type);
+  // Availability blocks creation/editing only. Real sharing permissions still
+  // control exports, so owners can download their existing saved work.
+  const editsLocked = readOnly || universalUnavailable;
+  const editingAction = handler => (...args) => { if (!editsLocked) return handler?.(...args); };
+  const referenceCategory = normalizeReferenceCategory(project?.canvas_data?.reference_category);
   const hasSvg = !!project?.svg_url;
   const canRetryVector = !!project?.upscaled_image_url && !hasSvg;
   const canResumeUpscale = canResumeTraceUpscale(project);
@@ -214,7 +225,9 @@ const PropertiesPanel = memo(function PropertiesPanel({
     }
   };
 
-  const traceButtonLabel = isSavingCrop
+  const traceButtonLabel = universalUnavailable
+    ? "Temporarily Unavailable"
+    : isSavingCrop
     ? "Saving Crop..."
     : traceState !== "idle"
     ? "Processing..."
@@ -256,28 +269,46 @@ const PropertiesPanel = memo(function PropertiesPanel({
         </div>
       )}
 
-      {/* ── Vector Engine ───────────────────────────────────── */}
+      {universalUnavailable && (
+        <div role="status" style={{ ...noticeStyle, margin: `${SPACE.md}px ${SPACE.lg}px 0`, borderColor: "rgba(212,255,89,0.22)" }}>
+          <span style={{ ...noticeIconStyle, color: COLOR.accent }}>i</span>
+          <div>
+            <strong style={{ display: "block", color: COLOR.text, marginBottom: 4 }}>Temporarily Unavailable</strong>
+            <span>{UNIVERSAL_UNAVAILABLE_MESSAGE} {readOnly ? 'Saved files remain available to view.' : 'You can still view and download saved files.'}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reference category / vector settings ─────────────── */}
       <div style={sectionStyle}>
-        <label style={fieldLabelStyle}>Vector Engine (Beta)</label>
+        <label htmlFor="workspace-reference-setting" style={fieldLabelStyle}>{isUniversal ? 'Reference Category' : 'Vector Engine (Beta)'}</label>
         <div style={{ position: "relative" }}>
           <select
-            disabled={readOnly}
-            value={vectorColors}
-            onChange={(e) => onVectorColorsChange(e.target.value)}
-            style={selectStyle}
+            id="workspace-reference-setting"
+            aria-describedby="workspace-reference-help"
+            disabled={editsLocked || (isUniversal && isBusy)}
+            value={isUniversal ? referenceCategory : vectorColors}
+            onChange={(e) => { if (!editsLocked) return isUniversal ? onReferenceCategoryChange?.(e.target.value) : onVectorColorsChange(e.target.value); }}
+            style={{ ...selectStyle, minHeight: '44px', opacity: isUniversal && isBusy ? 0.6 : 1 }}
             onFocus={e => e.target.style.borderColor = COLOR.accent}
             onBlur={e => e.target.style.borderColor = COLOR.inputBorder}
           >
+            {isUniversal ? REFERENCE_CATEGORIES.map(category => (
+              <option key={category.value} value={category.value}>{category.label}</option>
+            )) : <>
             <option value="auto">Auto (Precision Balance)</option>
             <option value="16">16 Colors (High Detail)</option>
             <option value="8">8 Colors (Medium Detail)</option>
             <option value="4">4 Colors (Merges Shadows)</option>
             <option value="2">2 Colors (Solid / Line Art)</option>
+            </>}
           </select>
           <ChevronDown size={13} style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: COLOR.textMuted, pointerEvents: "none" }} />
         </div>
-        <p style={helpTextStyle}>
-          Automatically balances detail and performance for the best vector output.
+        <p id="workspace-reference-help" role={isSavingReferenceCategory ? 'status' : undefined} style={helpTextStyle}>
+          {isUniversal
+            ? isSavingReferenceCategory ? 'Saving category...' : REFERENCE_CATEGORIES.find(category => category.value === referenceCategory).description
+            : 'Automatically balances detail and performance for the best vector output.'}
         </p>
       </div>
 
@@ -285,14 +316,14 @@ const PropertiesPanel = memo(function PropertiesPanel({
       {/* Single always-visible notice — previously duplicated between an
           "Advanced Settings" accordion and the Actions section, toggling
           on the same collapse state and showing near-identical text. */}
-      <div style={{ padding: `${SPACE.md}px ${SPACE.lg}px`, borderBottom: `1px solid ${COLOR.border}` }}>
+      {!universalUnavailable && <div style={{ padding: `${SPACE.md}px ${SPACE.lg}px`, borderBottom: `1px solid ${COLOR.border}` }}>
         <div style={noticeStyle}>
           <span style={noticeIconStyle}>!</span>
           <span>{project?.trace_type === "universal"
             ? "Crop around the complete visible printed design. Hidden, cropped, or wrapped-back areas will not be claimed as exact."
             : "Not satisfied with the result? Run it again—AI can make mistakes or generate random details."}</span>
         </div>
-      </div>
+      </div>}
 
       {/* ── Activity Log ─────────────────────────────────────── */}
       <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: "160px", borderBottom: `1px solid ${COLOR.border}` }}>
@@ -303,31 +334,40 @@ const PropertiesPanel = memo(function PropertiesPanel({
       {/* ── Actions ────────────────────────────────────────── */}
       <div style={{ ...sectionStyle, flexShrink: 0 }}>
         <span style={{ ...eyebrowStyle, display: "block", marginBottom: SPACE.md }}>Actions</span>
-        <div style={{ display: "flex", flexDirection: "column", gap: SPACE.sm }}>
+        <div className="workspace-tool-list" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
           <button
-            onClick={onOpenRemoveBg}
-            disabled={readOnly || isBusy}
-            style={secondaryBtnStyle(!readOnly && !isBusy)}
-            onMouseOver={e => { if (!readOnly && !isBusy) e.currentTarget.style.borderColor = "#484848"; }}
-            onMouseOut={e => { if (!readOnly && !isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
+            type="button"
+            onClick={editingAction(onOpenAiEdit)}
+            disabled={editsLocked || isBusy || !canExtend}
+            style={secondaryBtnStyle(!editsLocked && !isBusy && canExtend)}
+            title={canExtend ? "Describe a change to your generated artwork" : "Generate artwork first to unlock AI Edit"}
+          >
+            <WandSparkles size={14} aria-hidden="true" /> AI Edit <span className="workspace-tool-new">NEW</span>
+          </button>
+          <button
+            onClick={editingAction(onOpenRemoveBg)}
+            disabled={editsLocked || isBusy}
+            style={secondaryBtnStyle(!editsLocked && !isBusy)}
+            onMouseOver={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = "#484848"; }}
+            onMouseOut={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
           >
             <ImageMinus size={14} /> Remove BG
           </button>
           <button
-            onClick={onOpenErase}
-            disabled={readOnly || isBusy}
-            style={secondaryBtnStyle(!readOnly && !isBusy)}
-            onMouseOver={e => { if (!readOnly && !isBusy) e.currentTarget.style.borderColor = "#484848"; }}
-            onMouseOut={e => { if (!readOnly && !isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
+            onClick={editingAction(onOpenErase)}
+            disabled={editsLocked || isBusy}
+            style={secondaryBtnStyle(!editsLocked && !isBusy)}
+            onMouseOver={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = "#484848"; }}
+            onMouseOut={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
           >
             <Eraser size={14} /> Erase Noise
           </button>
           <button
-            onClick={onOpenCrop}
-            disabled={readOnly || isBusy}
-            style={secondaryBtnStyle(!readOnly && !isBusy)}
-            onMouseOver={e => { if (!readOnly && !isBusy) e.currentTarget.style.borderColor = "#484848"; }}
-            onMouseOut={e => { if (!readOnly && !isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
+            onClick={editingAction(onOpenCrop)}
+            disabled={editsLocked || isBusy}
+            style={secondaryBtnStyle(!editsLocked && !isBusy)}
+            onMouseOver={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = "#484848"; }}
+            onMouseOut={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
           >
             <Scissors size={14} /> Crop Region
           </button>
@@ -337,11 +377,11 @@ const PropertiesPanel = memo(function PropertiesPanel({
               flow), with a Cancel beneath it. */}
           {!extendMode ? (
             <button
-              onClick={onEnterExtend}
-              disabled={readOnly || isBusy || !canExtend}
-              style={secondaryBtnStyle(!readOnly && !isBusy && canExtend)}
-              onMouseOver={e => { if (!readOnly && !isBusy && canExtend) e.currentTarget.style.borderColor = "#484848"; }}
-              onMouseOut={e => { if (!readOnly && !isBusy && canExtend) e.currentTarget.style.borderColor = COLOR.border; }}
+              onClick={editingAction(onEnterExtend)}
+              disabled={editsLocked || isBusy || !canExtend}
+              style={secondaryBtnStyle(!editsLocked && !isBusy && canExtend)}
+              onMouseOver={e => { if (!editsLocked && !isBusy && canExtend) e.currentTarget.style.borderColor = "#484848"; }}
+              onMouseOut={e => { if (!editsLocked && !isBusy && canExtend) e.currentTarget.style.borderColor = COLOR.border; }}
               title={canExtend ? "Drag the canvas edges to add space, then generate" : "Run Syncraft first — Extend works on the flat extract"}
             >
               <Expand size={14} /> Extend Design
@@ -349,9 +389,10 @@ const PropertiesPanel = memo(function PropertiesPanel({
           ) : (
             <>
               <button
-                onClick={onProceedExtend}
-                disabled={!extendCanProceed || extendProcessing}
-                style={primaryExtendBtnStyle(extendCanProceed && !extendProcessing)}
+                className="workspace-tool-primary"
+                onClick={editingAction(onProceedExtend)}
+                disabled={editsLocked || !extendCanProceed || extendProcessing}
+                style={primaryExtendBtnStyle(!editsLocked && extendCanProceed && !extendProcessing)}
               >
                 {extendProcessing ? (
                   <><Loader2 size={14} className="animate-spin" /> Extending…</>
@@ -379,37 +420,37 @@ const PropertiesPanel = memo(function PropertiesPanel({
         {!hasSvg ? (
           <button
             onClick={() => {
-              if (isBusy) return;
+              if (editsLocked || isBusy) return;
               if (canRetryVector) { onRetryVector?.(vectorColors); return; }
               if (canResumeUpscale) { onResumeUpscale?.(vectorColors); return; }
               if (isUnauthenticated || noCredits) { onOpenTopUp?.(); return; }
               if (isCropped) onExecuteTrace(vectorColors);
             }}
-            disabled={readOnly || isBusy || (!isCropped && !noCredits)}
+            disabled={editsLocked || isBusy || (!isCropped && !noCredits)}
             style={{
               width: "100%",
-              background: (readOnly || isBusy) ? "rgba(255,255,255,0.02)" : traceUnlocked ? "#ffffff" : "rgba(255,255,255,0.05)",
-              border: (readOnly || isBusy) ? "1px solid rgba(255,255,255,0.05)" : traceUnlocked ? "1px solid #ffffff" : "1px solid rgba(255,255,255,0.1)",
+              background: (editsLocked || isBusy) ? "rgba(255,255,255,0.02)" : traceUnlocked ? "#ffffff" : "rgba(255,255,255,0.05)",
+              border: (editsLocked || isBusy) ? "1px solid rgba(255,255,255,0.05)" : traceUnlocked ? "1px solid #ffffff" : "1px solid rgba(255,255,255,0.1)",
               borderRadius: "8px",
-              color: (readOnly || isBusy) ? "#555" : traceUnlocked ? "#000000" : "#666",
+              color: (editsLocked || isBusy) ? "#555" : traceUnlocked ? "#000000" : "#666",
               minHeight: "56px",
               padding: "9px 16px",
               fontSize: "11px",
               fontWeight: 600,
               letterSpacing: "0.5px",
               whiteSpace: "nowrap",
-              cursor: (!readOnly && !isBusy && traceUnlocked) ? "pointer" : "not-allowed",
+              cursor: (!editsLocked && !isBusy && traceUnlocked) ? "pointer" : "not-allowed",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
               gap: "3px",
-              opacity: (readOnly || isBusy) ? 0.6 : 1,
+              opacity: (editsLocked || isBusy) ? 0.6 : 1,
               transition: "all 0.2s",
-              boxShadow: (!readOnly && !isBusy && traceUnlocked) ? "0 4px 12px rgba(255,255,255,0.15)" : "none",
+              boxShadow: (!editsLocked && !isBusy && traceUnlocked) ? "0 4px 12px rgba(255,255,255,0.15)" : "none",
             }}
-            onMouseOver={e => { if (!isBusy && traceUnlocked) e.currentTarget.style.background = "#e5e5e5"; }}
-            onMouseOut={e => { if (!isBusy && traceUnlocked) e.currentTarget.style.background = "#ffffff"; }}
+            onMouseOver={e => { if (!editsLocked && !isBusy && traceUnlocked) e.currentTarget.style.background = "#e5e5e5"; }}
+            onMouseOut={e => { if (!editsLocked && !isBusy && traceUnlocked) e.currentTarget.style.background = "#ffffff"; }}
           >
             {traceButtonLabel === "Generate Now" ? (
               <>
@@ -442,7 +483,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
       <div style={{ ...sectionStyle, flexShrink: 0, borderBottom: "none" }}>
         <span style={{ ...eyebrowStyle, display: "block", marginBottom: SPACE.md }}>Exportation</span>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: SPACE.sm }}>
+        <div className="workspace-tool-list" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
           <button
             onClick={() => handleDownloadClick('svg', onDownloadSvg)}
             disabled={!svgActive}

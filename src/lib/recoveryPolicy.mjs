@@ -43,6 +43,18 @@ export function recoveryAspectRatioDrift(sourceWidth, sourceHeight, outputWidth,
   return Math.abs(outputRatio - sourceRatio) / sourceRatio;
 }
 
+// A photo and its extracted plane need not have similar geometry or pixels.
+// These statistics can detect severe collapse, but cannot verify extraction.
+export function assessRecoveryContent({ collapsed, similarity, ratioDrift }) {
+  if (collapsed) return { pass: false, usable_partial: false, failures: ["content_collapse"], correction: "The generated flatten collapsed detailed artwork into a flat color." };
+  return {
+    pass: false, usable_partial: true, failures: [], local_validation: true,
+    structural_similarity: similarity, aspect_ratio_drift: ratioDrift,
+    exact_geometry_preserved: false,
+    correction: "Review the extracted artwork against your reference, including text, proportions, and any remaining mockup details.",
+  };
+}
+
 export function normalizedCorrelation(sourceValues, outputValues) {
   if (!sourceValues?.length || sourceValues.length !== outputValues?.length) return -1;
   let sourceMean = 0;

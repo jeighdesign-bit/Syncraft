@@ -14,8 +14,9 @@ import { fetchWithAuthRetry, uploadImageToStorage } from "@/utils/uploadClient";
 import { trackEvent } from "@/lib/analytics.mjs";
 import { readApiResponse } from "@/lib/apiResponse.mjs";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
+import { UNIVERSAL_AVAILABLE, UNIVERSAL_UNAVAILABLE_MESSAGE, isUniversalTraceType } from "@/lib/universalAvailability.mjs";
 
-import { ImageIcon, Trash2, X, Loader2, Scissors, Upload, ArrowRight } from "lucide-react";
+import { ImageIcon, Trash2, Loader2, Scissors, Upload, ArrowRight } from "lucide-react";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 import "../globals.css";
@@ -32,8 +33,6 @@ import OnboardingModal from "./OnboardingModal";
 import RecentProjects from "./RecentProjects";
 import EduSection from "./EduSection";
 import SamplesSection from "./SamplesSection";
-import PromoModal from "./PromoModal";
-import AIDisclaimerModal from "./AIDisclaimerModal";
 import TestimonialSection from "./TestimonialSection";
 import PricingSection from "./PricingSection";
 import FAQSection from "./FAQSection";
@@ -42,7 +41,6 @@ import FloatingPromoVideo from "./FloatingPromoVideo";
 import SectionBadge from "./SectionBadge";
 import WhySyncraft from "./WhySyncraft";
 import LogoStudioAnnouncement from "./LogoStudioAnnouncement";
-import FeedbackWidget from "@/app/workspace/[id]/components/FeedbackWidget";
 
 const landingNavItems = [
   { id: "how-it-works", label: "How It Works" },
@@ -218,10 +216,17 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
 
   useEffect(() => {
     let cancelled = false;
+    if (!workspaceRoute && new URLSearchParams(window.location.search).get("error") === "auth-unavailable") {
+      toast.error("Could not connect to the login service. Your account is still saved. Please try again shortly.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
     const fetchSession = async () => {
       try {
         const signedInUser = workspaceRoute ? initialUser : (await supabase.auth.getUser()).data.user;
-        if (!cancelled) setUser(signedInUser || null);
+        if (!cancelled) {
+          setUser(signedInUser || null);
+          if (!signedInUser && new URLSearchParams(window.location.search).get("login") === "required") setShowLoginModal(true);
+        }
       } finally {
         if (!cancelled) setIsCheckingSession(false);
       }
@@ -230,6 +235,8 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled) return;
+      // INITIAL_SESSION comes from cached storage; getUser above verifies it.
+      if (event === "INITIAL_SESSION") return;
       setUser(session?.user || null);
       if (session?.user) setShowLoginModal(false);
       else if (workspaceRoute && event === "SIGNED_OUT") router.replace("/");
@@ -372,6 +379,21 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
     setShowLoginModal(true);
   };
 
+  const handleOpenWorkspace = async () => {
+    try {
+      const { data: { user: verifiedUser }, error } = await supabase.auth.getUser();
+      if (error && (error.status >= 500 || error.name === "AuthRetryableFetchError")) {
+        toast.error("Could not check your login. Please try again shortly.");
+        return;
+      }
+      if (!verifiedUser) { setUser(null); setShowLoginModal(true); return; }
+      // A full request avoids reusing a prefetched signed-out redirect.
+      window.location.assign("/workspace");
+    } catch {
+      toast.error("Could not check your login. Please try again shortly.");
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -446,6 +468,10 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
     if (!file || !file.type.startsWith("image/")) return;
 
     const finalTraceType = isBgRemover ? "bg_remover" : (mobileTraceType || modalTraceType);
+    if (!UNIVERSAL_AVAILABLE && isUniversalTraceType(finalTraceType)) {
+      toast.error(UNIVERSAL_UNAVAILABLE_MESSAGE);
+      return;
+    }
 
     const maxSizeInMB = MAX_SOURCE_IMAGE_MB;
     if (file.size > maxSizeInMB * 1024 * 1024) {
@@ -543,6 +569,10 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
   const openExtractionWithFile = (file) => {
     const category = extractionCategoryRef.current;
     if (!category || !file) return;
+    if (!UNIVERSAL_AVAILABLE && isUniversalTraceType(category)) {
+      toast.error(UNIVERSAL_UNAVAILABLE_MESSAGE);
+      return;
+    }
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image.");
       return;
@@ -619,7 +649,7 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
 
           <div className="syncraft-header-controls">
             {user ? (
-              <Link href="/workspace" className="header-sign-in">Go to Workspace</Link>
+              <button type="button" onClick={handleOpenWorkspace} className="header-sign-in">Go to Workspace</button>
             ) : (
               <button type="button" onClick={handleLogin} className="header-sign-in">Sign in</button>
             )}
@@ -640,6 +670,10 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
           }}
           onSignOut={handleLogout}
           onOpenFeature={(action) => {
+            if (!UNIVERSAL_AVAILABLE && isUniversalTraceType(action)) {
+              toast.error(UNIVERSAL_UNAVAILABLE_MESSAGE);
+              return;
+            }
             if (action === "logo") router.push("/logo-studio");
             else if (action === "upscale") upscaleInputRef.current?.click();
             else if (action === "background") bgRemoveInputRef.current?.click();
@@ -737,7 +771,7 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
                   <HeroWorkflowTagline className="guest-hero-tagline" />
 
                   <div className="guest-hero-cta">
-                    <button type="button" className="guest-hero-cta__button" onClick={() => user ? router.push("/workspace") : handleLogin()}>
+                    <button type="button" className="guest-hero-cta__button" onClick={() => user ? handleOpenWorkspace() : handleLogin()}>
                       <span>Go to Workspace</span>
                       <ArrowRight size={15} strokeWidth={2.2} aria-hidden="true" />
                     </button>
@@ -841,6 +875,10 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
           isUploading={isUploading}
           onClose={() => { setShowModal(false); setPendingFile(null); setSidebarModalCategory(null); }}
           onSelectImage={() => {
+            if (!UNIVERSAL_AVAILABLE && isUniversalTraceType(modalTraceType)) {
+              toast.error(UNIVERSAL_UNAVAILABLE_MESSAGE);
+              return;
+            }
             if (pendingFile) {
               handleFileUpload(pendingFile);
             } else {
@@ -952,12 +990,6 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
 
 
       {!workspaceRoute && user && <FloatingPromoVideo src="/videos/workspace-tour-v3.mp4" label="Go to Workspace" />}
-      {/* Promo Popup (Removed) */}
-      {/* <PromoModal onBuyClick={() => window.open('https://m.me/105884602605306', '_blank')} /> */}
-
-      {/* AI Guidelines Popup (Removed) */}
-      {/* <AIDisclaimerModal /> */}
-
       {/* ─── SEO: FAQ Structured Data (JSON-LD) ─────────────────────────────── */}
       <script
         type="application/ld+json"
