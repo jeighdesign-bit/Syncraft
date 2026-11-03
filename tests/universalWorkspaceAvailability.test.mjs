@@ -6,6 +6,7 @@ import ts from 'typescript';
 import * as availability from '../src/lib/universalAvailability.mjs';
 import { REFERENCE_CATEGORIES, normalizeReferenceCategory } from '../src/lib/referenceCategories.mjs';
 import { canResumeTraceUpscale } from '../src/lib/traceRequestPolicy.mjs';
+import { finalArtworkRaster, artworkExportName } from '../src/lib/artworkExport.mjs';
 
 const react={createElement:(type,props,...children)=>({type,props:{...props,children}})};
 const nodes=tree=>!tree || typeof tree!=='object'?[]:[tree,...(tree.props?.children||[]).flat(Infinity).flatMap(nodes)];
@@ -23,7 +24,7 @@ async function panel(props={}) {
     'onOpenAiEdit','onOpenRemoveBg','onOpenErase','onOpenCrop','onEnterExtend','onProceedExtend','onCancelExtend',
     'onDownloadSvg','onDownloadPsd','onDownloadRaster','onDownloadAll','onOpenCompare','onOpenTopUp'].map(name=>[name,()=>{events.push(name);} ]));
   const context=vm.createContext({...availability,React:react,memo:fn=>fn,useState:value=>[value,()=>{}],CREDIT_COST:{universal:24,trace:12,extend:3},
-    REFERENCE_CATEGORIES,normalizeReferenceCategory,canResumeTraceUpscale,
+    REFERENCE_CATEGORIES,normalizeReferenceCategory,canResumeTraceUpscale,finalArtworkRaster,
     ...Object.fromEntries(['Download','Monitor','ChevronDown','FolderDown','Loader2','X','ImageMinus','Eraser','Scissors','Expand','WandSparkles'].map(name=>[name,name])),
   });
   const component=vm.runInContext(code,context);
@@ -45,11 +46,11 @@ test('disabled Universal buttons and category handlers cannot start generation o
 });
 test('availability does not change owner exports or saved before/after comparison',async()=>{
   const h=await panel({project:{...project,upscaled_image_url:'saved-hd',svg_url:'saved-svg'}});
-  for(const label of ['Export as SVG','Export as PSD','Export as PNG','Download All (ZIP)','Before / After Compare']) {
+  for(const label of ['Export as SVG','Export as PSD','Export as PNG','Export as JPEG','Download all files (ZIP)','Before / After Compare']) {
     const button=nodes(h.tree).find(node=>node.type==='button' && text(node).includes(label));
     assert.equal(button.props.disabled,false,label);await button.props.onClick();
   }
-  assert.deepEqual(h.events,['onDownloadSvg','onDownloadPsd','onDownloadRaster','onDownloadAll','onOpenCompare']);
+  assert.deepEqual(h.events,['onDownloadSvg','onDownloadPsd','onDownloadRaster','onDownloadRaster','onDownloadAll','onOpenCompare']);
   const viewOnly=await panel({readOnly:true,project:{...project,svg_url:'saved-svg'}});
   assert.equal(nodes(viewOnly.tree).find(node=>node.type==='button' && text(node).includes('Export as SVG')).props.disabled,true);
 });
@@ -60,7 +61,7 @@ async function workspace(traceType='universal') {
   let stateIndex=0,hookProps;
   const componentNames=['BackToWorkspace','Eye','Pencil','CheckCircle2','Share2','SplitViewCanvas','PropertiesPanel','UpscalePropertiesPanel',
     'CropModal','EraseModal','ArtworkEditModal','RemoveBgModal','CompareModal','NoCreditsModal','TopUpModal','AccountCreditMenu','ShortcutsModal','ShareProjectModal'];
-  const context=vm.createContext({...availability,normalizeReferenceCategory,React:react,
+  const context=vm.createContext({...availability,normalizeReferenceCategory,artworkExportName,React:react,
     useState:initial=>{const name=stateNames[stateIndex++];states[name]=name in seed?seed[name]:initial;return [states[name],value=>{states[name]=typeof value==='function'?value(states[name]):value;}];},
     useCallback:fn=>fn,useEffect(){},useMemo:fn=>fn(),useRef:initial=>({current:initial}),
     useParams:()=>({id:'p'}),useRouter:()=>({push(){}}),createClient:()=>({}),

@@ -127,7 +127,7 @@ export default function WorkspaceRightPanel() {
           {expanded ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
         </button>}
       </div>
-      <div id={panelId} className={styles.content} hidden={!expanded && !compact}>
+      <div id={panelId} className={styles.content} hidden={!expanded && !compact} role="region" aria-label="Featured designs" tabIndex={0}>
         <div className={styles.tabs} role="tablist" aria-label="Featured design categories" onKeyDown={navigateTabs}>
           {[{ id: "logos", label: "Logo Studio" }, { id: "garment", label: "Garment" }].map((item, index) => (
             <button key={item.id} ref={element => { tabs.current[index] = element; }} id={`${panelId}-${item.id}-tab`} type="button" role="tab" aria-selected={tab === item.id} aria-controls={`${panelId}-${item.id}`} tabIndex={tab === item.id ? 0 : -1} onClick={() => changeTab(item.id)}>{item.label}</button>

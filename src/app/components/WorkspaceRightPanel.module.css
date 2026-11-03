@@ -57,7 +57,7 @@
   color: #fff;
 }
 
-.content { display: flex; flex: 1; min-height: 0; flex-direction: column; }
+.content { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #454545 transparent; }
 .content[hidden], .body[hidden] { display: none; }
 
 .tabs {
@@ -88,7 +88,7 @@
 .tabs button:hover { color: #f2f2f2; }
 .tabs button:focus-visible, .logoCard:focus-visible, .garmentCaption:focus-visible, .usePrompt:focus-visible { outline: 2px solid #c9b9ed; outline-offset: 2px; }
 
-.body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 14px 24px; scrollbar-width: thin; scrollbar-color: #454545 transparent; }
+.body { padding: 14px 14px 24px; }
 .hint { margin: 0 0 14px; color: #a2a2a2; font-size: 11px; line-height: 1.6; }
 .logoGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .logoCard { position: relative; display: block; min-width: 0; padding: 0; border: 1px solid #363636; border-radius: 9px; background: #242424; overflow: hidden; cursor: pointer; }

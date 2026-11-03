@@ -137,3 +137,17 @@ test('a stalled preview times out into retry feedback and its timer can be cance
   cleanup();
   assert.equal(h.timers.size, 0);
 });
+
+test('zoom keeps the HD request and viewport feedback host until the image loads', async () => {
+  const h = await rasterHarness();
+  const props = { url: '/api/proxy?url=hd', feedbackHost: {} };
+  const before = h.render(props);
+  const zoomed = h.render({ ...props, contentScale: 3 });
+  assert.equal(zoomed.image.props.key, before.image.props.key);
+  assert.equal(zoomed.image.props.src, before.image.props.src);
+  assert.equal(zoomed.feedback.props.host, props.feedbackHost);
+  zoomed.image.props.onLoad({ currentTarget: { naturalWidth: 2400, naturalHeight: 4800 } });
+  const ready = h.render(props);
+  assert.equal(ready.feedback, false);
+  assert.equal(ready.image.props.style.visibility, 'visible');
+});

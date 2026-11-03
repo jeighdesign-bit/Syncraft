@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import * as categories from '../src/lib/referenceCategories.mjs';
 import { buildRecoveryImageInput } from '../src/lib/recoveryVision.mjs';
+import { finalArtworkRaster } from '../src/lib/artworkExport.mjs';
 
 test('category selection changes the image instructions without changing removal mode', () => {
   const input = category => buildRecoveryImageInput({ imageUrls: ['source'], mode: 'UNIVERSAL_KEEP_ARTWORK',
@@ -25,7 +26,7 @@ async function panel(props = {}) {
   const code = ts.transpileModule(source, { fileName: 'panel.jsx', compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.CommonJS } }).outputText;
   const module = { exports: {} };
   const icons = Object.fromEntries(['Download','Monitor','ChevronDown','FolderDown','Loader2','X','ImageMinus','Eraser','Scissors','Expand','WandSparkles'].map(name => [name, name]));
-  const context = vm.createContext({ ...categories, ...icons, module, exports: module.exports,
+  const context = vm.createContext({ ...categories, ...icons, finalArtworkRaster, module, exports: module.exports,
     UNIVERSAL_AVAILABLE: true, UNIVERSAL_UNAVAILABLE_MESSAGE: '', isUniversalTraceType: value => typeof value === 'string' && value.startsWith('universal'),
     memo: fn => fn, useState: initial => [initial, () => {}], CREDIT_COST: { universal: 24, trace: 12 }, canResumeTraceUpscale: () => false,
     React: { createElement: (type, p, ...children) => ({ type, props: { ...p, children } }) },
@@ -37,12 +38,22 @@ async function panel(props = {}) {
   function visit(n){ if (!n || typeof n !== 'object') return; nodes.push(n); (n.props?.children || []).flat(Infinity).forEach(visit); }
   visit(tree); return nodes;
 }
+function selectValues(select) {
+  const values = [];
+  const visit = node => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'option') values.push(node.props.value);
+    (node.props?.children || []).flat(Infinity).forEach(visit);
+  };
+  visit(select); return values;
+}
+
 test('Universal replaces the vector selector with category options and calls the category handler', async () => {
   let selected;
   const nodes = await panel({ onReferenceCategoryChange: value => { selected = value; } });
   const select = nodes.find(n => n.type === 'select');
   assert.equal(select.props.value, 'lanyard'); assert.equal(select.props.disabled, false);
-  assert.deepEqual(nodes.filter(n => n.type === 'option').map(n => n.props.value), categories.REFERENCE_CATEGORIES.map(c => c.value));
+  assert.deepEqual(selectValues(select), categories.REFERENCE_CATEGORIES.map(c => c.value));
   select.props.onChange({ target: { value: 'poster' } }); assert.equal(selected, 'poster');
   assert.equal(nodes.find(n => n.type === 'label').props.htmlFor, select.props.id);
 });
@@ -53,7 +64,7 @@ test('category is locked while generating, saving, or viewing a shared project r
 });
 test('garment projects retain Vector Engine options', async () => {
   const nodes = await panel({ project: { trace_type: 'mockup' } });
-  assert.deepEqual(nodes.filter(n => n.type === 'option').map(n => n.props.value), ['auto', '16', '8', '4', '2']);
+  assert.deepEqual(selectValues(nodes.find(n => n.type === 'select')), ['auto', '16', '8', '4', '2']);
 });
 
 async function saveCategory({ user = { id: 'owner' }, project, category = 'lanyard', conflict = false } = {}) {

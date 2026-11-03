@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { buildLayeredPsd } from "@/lib/layeredPsd.mjs";
 import JSZip from "jszip";
 import { createHash } from "node:crypto";
 import { adminSupabase } from "@/lib/supabase";
@@ -6,25 +7,26 @@ import { deleteFromR2, uploadToR2 } from "@/lib/cloudflare";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { fetchStoredAsset } from "@/lib/storageDownload";
 import {
-  DEFAULT_MAX_IMAGE_BYTES,
+  DEFAULT_MAX_ZIP_BYTES,
   DEFAULT_MAX_SVG_BYTES,
   DEFAULT_MAX_UPSCALED_IMAGE_BYTES,
   isOwnedStorageUrl,
 } from "@/lib/ssrf";
 import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
+import { artworkExportAssets, artworkExportName, artworkImageFormat } from "@/lib/artworkExport.mjs";
+import { encodeArtworkImage } from "@/lib/artworkExportServer";
 
 export const runtime = "nodejs";
-export const maxDuration = 180;
+export const maxDuration = 300;
 
 function safeFileName(name) {
-  return String(name || "Untitled_Design").replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 120);
+  return artworkExportName(name);
 }
 
-function assetSignature(assets) {
+function assetSignature(assets, allFormats = false) {
   return createHash("sha256")
-    // Invalidate archives made by the old partial-success behavior. A cached
-    // ZIP with this signature is guaranteed to contain every listed asset.
-    .update("complete-archive-v2\0")
+    // Invalidate older reference/duplicate archives and conversion versions.
+    .update(allFormats ? "all-formats-v1\0" : "final-files-v3\0")
     .update(JSON.stringify(assets.map(({ url, name }) => ({ url, name }))))
     .digest("hex");
 }
@@ -58,7 +60,10 @@ export async function POST(request) {
     });
     if (!rateLimit.success) return rateLimit.response;
 
-    const { projectId } = await request.json();
+    const { projectId, format: requestedFormat } = await request.json();
+    const allFormats = requestedFormat === "all";
+    let format;
+    try { format = artworkImageFormat(allFormats ? "png" : requestedFormat); } catch (error) { return NextResponse.json({ error: error.message }, { status: 400 }); }
     if (!projectId) {
       return NextResponse.json({ error: "Missing projectId" }, { status: 400 });
     }
@@ -73,25 +78,11 @@ export async function POST(request) {
     }
 
     const baseName = safeFileName(project.name);
-    const assets = [
-      project.original_image_url && { url: project.original_image_url, name: `Syncraft_${baseName}_Reference.png`, maxBytes: DEFAULT_MAX_IMAGE_BYTES },
-      project.generated_image_url && project.generated_image_url !== "REFUNDED" && { url: project.generated_image_url, name: `Syncraft_${baseName}_SyncraftVision.png`, maxBytes: DEFAULT_MAX_IMAGE_BYTES },
-      project.upscaled_image_url && { url: project.upscaled_image_url, name: `Syncraft_${baseName}_Upscaled.png`, maxBytes: DEFAULT_MAX_UPSCALED_IMAGE_BYTES },
-      project.svg_url && { url: project.svg_url, name: `Syncraft_${baseName}_Vector.svg`, maxBytes: DEFAULT_MAX_SVG_BYTES },
-    ].filter(Boolean);
+    const assets = artworkExportAssets(project, format).map(asset => ({ ...asset,
+      maxBytes: asset.raster ? DEFAULT_MAX_UPSCALED_IMAGE_BYTES : DEFAULT_MAX_SVG_BYTES }));
 
     if (assets.length === 0) {
       return NextResponse.json({ error: "No files available to zip" }, { status: 400 });
-    }
-
-    const signature = assetSignature(assets);
-    if (project.zip_url && project.zip_signature === signature) {
-      return NextResponse.json({
-        success: true,
-        cached: true,
-        zipUrl: project.zip_url,
-        fileName: `Syncraft_${baseName}_AllFiles.zip`,
-      });
     }
 
     const zip = new JSZip();
@@ -103,11 +94,17 @@ export async function POST(request) {
       console.warn(`[Prepare ZIP] Rejected ${unowned.length} unowned asset URL(s)`);
       return NextResponse.json({ error: "One or more project files are not authorized for export" }, { status: 403 });
     }
+    if (!allFormats && assets.length === 1) return NextResponse.json({ success: true, singleFile: true,
+      format: assets[0].raster ? format : 'svg', downloadUrl: assets[0].raster ? undefined : assets[0].url, fileName: assets[0].name });
+    const signature = assetSignature(assets, allFormats);
+    if (project.zip_url && project.zip_signature === signature && isOwnedStorageUrl(project.zip_url, { userId: project.user_id, projectId })) {
+      return NextResponse.json({ success: true, cached: true, zipUrl: project.zip_url, fileName: `${baseName}.zip` });
+    }
 
-    // Four independent reads should not consume four sequential timeout
+    // Independent reads should not consume sequential timeout
     // windows. Fetch in parallel, but publish nothing unless every file is
     // complete so users never receive a silently incomplete archive.
-    const routeSignal = AbortSignal.any([request.signal, AbortSignal.timeout(150_000)]);
+    const routeSignal = AbortSignal.any([request.signal, AbortSignal.timeout(260_000)]);
     const downloads = await Promise.allSettled(assets.map(async asset => {
       const { response, buffer } = await fetchStoredAsset(asset.url, {
         maxBytes: asset.maxBytes,
@@ -139,11 +136,26 @@ export async function POST(request) {
       }, { status, headers: { "Cache-Control": "no-store", "Retry-After": "3" } });
     }
 
-    for (const result of downloads) zip.file(result.value.asset.name, result.value.buffer);
+    for (const { value: { asset, buffer } } of downloads) {
+      if (asset.raster) {
+        zip.file(asset.name, await encodeArtworkImage(buffer, format));
+        if (allFormats) zip.file(`${baseName}.jpg`, await encodeArtworkImage(buffer, "jpg"));
+      } else {
+        zip.file(asset.name, buffer);
+        if (allFormats) {
+          const layered = await buildLayeredPsd(buffer.toString("utf8"), { longEdge: 2048 });
+          zip.file(`${baseName}.psd`, layered.buffer, { compression: "DEFLATE", compressionOptions: { level: 1 } });
+        }
+      }
+    }
 
     const zipBuffer = await zip.generateAsync({ type: "nodebuffer", compression: "STORE" });
+    if (zipBuffer.length > DEFAULT_MAX_ZIP_BYTES) {
+      return NextResponse.json({ error: "This ZIP is too large. Download the formats individually." }, { status: 413 });
+    }
     const zipKey = `projects/${projectId}/zip_${signature.slice(0, 16)}.zip`;
     const zipUrl = await uploadToR2(zipBuffer, zipKey, "application/zip", {
+      fallbackContentType: "image/png",
       signal: AbortSignal.any([routeSignal, AbortSignal.timeout(30_000)]),
     });
 
@@ -173,7 +185,7 @@ export async function POST(request) {
       success: true,
       cached: false,
       zipUrl,
-      fileName: `Syncraft_${baseName}_AllFiles.zip`,
+      fileName: `${baseName}.zip`,
     });
   } catch (error) {
     console.error("[Prepare ZIP Error]:", { name: error.name, message: error.message });

@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useMemo, useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { Maximize, AlertCircle, Zap, Expand } from "lucide-react";
 import GenerationLoading from '@/components/GenerationLoading';
 import SvgPreview from '@/components/SvgPreview';
@@ -8,17 +9,18 @@ import ExtendCanvas from "./ExtendCanvas";
 import WorkspaceTabs from "@/components/WorkspaceTabs";
 import { canvasImageUrl, canvasZoomLayout, preferredCanvasTab } from '@/lib/workspacePreview.mjs';
 
-function PreviewFeedback({ error = false, label, onRetry }) {
-  return (
-    <div role={error ? 'alert' : 'status'} style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20, color: '#c6c6c6', textAlign: 'center', fontSize: 13, background: '#151515' }}>
+function PreviewFeedback({ error = false, label, onRetry, host }) {
+  const feedback = (
+    <div role={error ? 'alert' : 'status'} style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20, color: '#c6c6c6', textAlign: 'center', fontSize: 13, background: '#151515', zIndex: 10, pointerEvents: error ? 'auto' : 'none' }}>
       {error ? <AlertCircle size={22} aria-hidden="true" /> : <GenerationLoading label={`Loading ${label.toLowerCase()} preview`} />}
       {error && <span>Preview couldn't load. Your saved file is safe.</span>}
       {error && <button onClick={onRetry} aria-label={`Retry ${label.toLowerCase()} preview`} style={{ minHeight: 44, padding: '8px 18px', background: '#d4ff59', color: '#151515', border: 0, borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>Retry preview</button>}
     </div>
   );
+  return host ? createPortal(feedback, host) : feedback;
 }
 
-function RasterPreview({ url, alt, style, onLoad, contentScale = 1 }) {
+function RasterPreview({ url, alt, style, onLoad, feedbackHost, contentScale = 1 }) {
   const [attempt, setAttempt] = useState(0);
   const [readyKey, setReadyKey] = useState(null);
   const [failedKey, setFailedKey] = useState(null);
@@ -43,7 +45,7 @@ function RasterPreview({ url, alt, style, onLoad, contentScale = 1 }) {
       }}
       onError={() => setFailedKey(key)}
       style={{ ...style, transform: `${style?.transform || ''} scale(${contentScale})`, transformOrigin: 'center', visibility: loaded ? 'visible' : 'hidden' }} />
-    {!loaded && <PreviewFeedback error={failed} label={alt} onRetry={() => setAttempt(value => value + 1)} />}
+    {!loaded && <PreviewFeedback error={failed} label={alt} host={feedbackHost} onRetry={() => setAttempt(value => value + 1)} />}
   </div>;
 }
 
@@ -73,6 +75,8 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
 
   const currentZoom = useRef(zoomLevel);
   currentZoom.current = zoomLevel;
+  const [leftPane, setLeftPane] = useState(null);
+  const [rightPane, setRightPane] = useState(null);
   const pendingScrollRef = useRef(null);
 
   // Scroll to zoom to pointer
@@ -414,13 +418,14 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
         onPointerLeave={handlePointerUp}
       >
         {/* LEFT PANEL: Original Image */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", borderRight: "1px solid #2a2a2a" }}>
+        <div ref={setLeftPane} style={{ position: "relative", flex: 1, minWidth: 0, display: "flex", flexDirection: "column", borderRight: "1px solid #2a2a2a" }}>
           <div ref={leftScrollRef} onScroll={handleLeftScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "transparent", position: "relative" }}>
             {previewOriginal ? (
               <div style={zoomScrollStyle}>
                 <div className="split-canvas-preview-frame" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", padding: "24px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
                   <RasterPreview
                     url={previewOriginal}
+                    feedbackHost={leftPane}
                     alt="Original"
                     contentScale={zoomLayout.contentScale}
                     style={rasterPreviewStyle}
@@ -434,7 +439,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
         </div>
 
         {/* RIGHT PANEL: Outputs */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <div ref={setRightPane} style={{ position: "relative", flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
           <div ref={rightScrollRef} onScroll={handleRightScroll} className="no-scrollbar" style={{ flex: 1, overflow: "auto", backgroundColor: "rgba(255,255,255,0.02)", position: "relative" }}>
             {extendMode ? (
               <ExtendCanvas
@@ -457,6 +462,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
                   ) : (
                     <RasterPreview
                       url={activeUrl}
+                      feedbackHost={rightPane}
                       contentScale={zoomLayout.contentScale}
                       onLoad={(event) => {
                         if (!isUpscale || !onUpscaleOutputInvalid) return;
@@ -478,7 +484,7 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
                           // client-side sampling is only an early UI signal.
                         }
                       }}
-                      alt="Output"
+                      alt={activeTab === "upscaled" ? "HD" : "Output"}
                       style={rasterPreviewStyle}
                     />
                   )}

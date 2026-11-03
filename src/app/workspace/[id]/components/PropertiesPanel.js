@@ -6,6 +6,7 @@ import { CREDIT_COST } from "@/lib/pricing";
 import { canResumeTraceUpscale } from "@/lib/traceRequestPolicy.mjs";
 import { REFERENCE_CATEGORIES, normalizeReferenceCategory } from "@/lib/referenceCategories.mjs";
 import { UNIVERSAL_AVAILABLE, UNIVERSAL_UNAVAILABLE_MESSAGE, isUniversalTraceType } from "@/lib/universalAvailability.mjs";
+import { finalArtworkRaster } from '@/lib/artworkExport.mjs';
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
 // Shared spacing/type/color scale so every section in this panel reads as
@@ -194,6 +195,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
   readOnly = false,
 }) {
   const [downloading, setDownloading] = useState(null);
+  const [exportError, setExportError] = useState('');
 
   const isUnauthenticated = userCredits === null;
   const executionCost = project?.trace_type === "universal"
@@ -216,10 +218,13 @@ const PropertiesPanel = memo(function PropertiesPanel({
   const canExtend = !!project?.generated_image_url && project.generated_image_url !== "REFUNDED";
 
   const handleDownloadClick = async (type, handler) => {
-    if (downloading) return;
+    if (downloading || readOnly) return;
+    setExportError('');
     setDownloading(type);
     try {
       await handler();
+    } catch (error) {
+      setExportError(error.message || 'Download failed. Please try again.');
     } finally {
       setDownloading(null);
     }
@@ -250,8 +255,8 @@ const PropertiesPanel = memo(function PropertiesPanel({
 
   const svgActive = !readOnly && !!project?.svg_url && !downloading;
   const psdActive = !readOnly && !!project?.svg_url && !downloading && !isBusy;
-  const zipActive = !readOnly && !!project?.original_image_url && !downloading;
-  const pngActive = !readOnly && !!project?.upscaled_image_url && !downloading;
+  const pngActive = !readOnly && !!finalArtworkRaster(project) && !downloading && !isBusy;
+  const zipActive = !readOnly && (!!finalArtworkRaster(project) || hasSvg) && !downloading && !isBusy;
   const compareActive = !!project?.svg_url;
 
   return (
@@ -484,52 +489,23 @@ const PropertiesPanel = memo(function PropertiesPanel({
         <span style={{ ...eyebrowStyle, display: "block", marginBottom: SPACE.md }}>Exportation</span>
 
         <div className="workspace-tool-list" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          <button
-            onClick={() => handleDownloadClick('svg', onDownloadSvg)}
-            disabled={!svgActive}
-            style={secondaryBtnStyle(svgActive)}
-            onMouseOver={e => { if (svgActive) e.currentTarget.style.borderColor = "#484848"; }}
-            onMouseOut={e => { if (svgActive) e.currentTarget.style.borderColor = COLOR.border; }}
-            title={hasSvg ? "Download the editable Illustrator-compatible SVG" : "Generate the Vector SVG first"}
-          >
-            {downloading === 'svg' ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <AdobeAppIcon app="ai" active={svgActive} />}
-            Export as SVG
+          <button disabled={!svgActive} style={secondaryBtnStyle(svgActive)} onClick={() => handleDownloadClick('svg', onDownloadSvg)} title={hasSvg ? 'Download the saved vector' : 'Generate the Vector SVG first'}>
+            {downloading === 'svg' ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <AdobeAppIcon app="ai" active={svgActive} />} Export as SVG
           </button>
-
-          <button
-            onClick={() => handleDownloadClick('psd', onDownloadPsd)}
-            disabled={!psdActive}
-            style={secondaryBtnStyle(psdActive)}
-            onMouseOver={e => { if (psdActive) e.currentTarget.style.borderColor = COLOR.accent; }}
-            onMouseOut={e => { if (psdActive) e.currentTarget.style.borderColor = COLOR.border; }}
-            title={hasSvg ? "Create and download a PSD with rasterized SVG layers" : "Generate the Vector SVG first"}
-            aria-label={downloading === 'psd' ? "Preparing PSD" : "Export as PSD"}
-          >
-            {downloading === 'psd' ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <AdobeAppIcon app="ps" active={psdActive} />}
-            {downloading === 'psd' ? "Preparing PSD…" : "Export as PSD"}
+          <button disabled={!psdActive} style={secondaryBtnStyle(psdActive)} onClick={() => handleDownloadClick('psd', onDownloadPsd)} title={hasSvg ? 'Create a PSD with rasterized SVG layers' : 'Generate the Vector SVG first'}>
+            {downloading === 'psd' ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <AdobeAppIcon app="ps" active={psdActive} />} {downloading === 'psd' ? 'Preparing PSD…' : 'Export as PSD'}
           </button>
-
-          <button
-            onClick={() => handleDownloadClick('raster', onDownloadRaster)}
-            disabled={!pngActive}
-            style={secondaryBtnStyle(pngActive)}
-            onMouseOver={e => { if (pngActive) e.currentTarget.style.borderColor = "#484848"; }}
-            onMouseOut={e => { if (pngActive) e.currentTarget.style.borderColor = COLOR.border; }}
-          >
+          <button onClick={() => handleDownloadClick('raster', () => onDownloadRaster('png'))} disabled={!pngActive} style={secondaryBtnStyle(pngActive)}>
             {downloading === 'raster' ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Download size={14} aria-hidden="true" />}
-            Export as PNG
+            {downloading === 'raster' ? 'Preparing PNG…' : 'Export as PNG'}
           </button>
-
-          <button
-            onClick={() => handleDownloadClick('all', onDownloadAll)}
-            disabled={!zipActive}
-            style={secondaryBtnStyle(zipActive)}
-            onMouseOver={e => { if (zipActive) e.currentTarget.style.borderColor = "#484848"; }}
-            onMouseOut={e => { if (zipActive) e.currentTarget.style.borderColor = COLOR.border; }}
-          >
-            {downloading === 'all' ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <FolderDown size={14} aria-hidden="true" />}
-            Download All (ZIP)
+          <button disabled={!pngActive} style={secondaryBtnStyle(pngActive)} onClick={() => handleDownloadClick('jpg', () => onDownloadRaster('jpg'))} title="JPEG uses a white background for transparent areas">
+            {downloading === 'jpg' ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Download size={14} aria-hidden="true" />} {downloading === 'jpg' ? 'Preparing JPEG…' : 'Export as JPEG'}
           </button>
+          <button type="button" disabled={!zipActive} onClick={() => handleDownloadClick('all', onDownloadAll)} style={secondaryBtnStyle(zipActive)}>
+            {downloading === 'all' ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <FolderDown size={14} aria-hidden="true" />} {downloading === 'all' ? 'Preparing ZIP…' : 'Download all files (ZIP)'}
+          </button>
+          {exportError && <p role="alert" style={{ color: COLOR.dangerText, fontSize: 12, margin: '8px 0 0' }}>{exportError}</p>}
         </div>
       </div>
     </aside>

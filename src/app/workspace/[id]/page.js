@@ -1,6 +1,7 @@
 "use client";
 import { normalizeReferenceCategory } from '@/lib/referenceCategories.mjs';
 import { UNIVERSAL_AVAILABLE, UNIVERSAL_UNAVAILABLE_MESSAGE, isUniversalTraceType } from '@/lib/universalAvailability.mjs';
+import { artworkExportName } from '@/lib/artworkExport.mjs';
 
 // ─── React & Routing ──────────────────────────────────────────────────────────
 import BackToWorkspace from "@/components/BackToWorkspace";
@@ -247,17 +248,26 @@ export default function Workspace() {
   const handleDownloadSvg = useCallback(async () => {
     if (!project?.svg_url) return;
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(project.svg_url)}`;
-    await forceDownload(proxyUrl, `Syncraft_${project.name}_Vector.svg`);
+    await forceDownload(proxyUrl, `${artworkExportName(project.name)}.svg`);
     trackExport({ tool: project.trace_type, format: "svg" });
   }, [project, forceDownload]);
 
-  // HD downloads use the complete saved Step 2 output.
-  const handleDownloadUpscaled = useCallback(async () => {
-    if (!project?.upscaled_image_url) return;
-    const proxyUrl = `/api/proxy?url=${encodeURIComponent(project.upscaled_image_url)}`;
-    await forceDownload(proxyUrl, `Syncraft_${project.name}_4K.png`);
-    trackExport({ tool: project.trace_type, format: "4k_png" });
-    await new Promise(resolve => setTimeout(resolve, 1500));
+  // Resolve the final saved image on the server; JPEG is a real conversion.
+  const handleDownloadUpscaled = useCallback(async (format = 'png') => {
+    if (!project?.id) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error('Your login session expired. Please log in again.');
+    const response = await fetch('/api/export-image', { method: 'POST', headers: {
+      'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`,
+    }, body: JSON.stringify({ projectId: project.id, format }) });
+    if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Image export failed.'); }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = `${artworkExportName(project.name)}.${format}`;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    trackExport({ tool: project.trace_type, format });
   }, [project, forceDownload]);
 
   const handleDownloadUpscaleProject = useCallback(async () => {
@@ -338,20 +348,20 @@ export default function Workspace() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ projectId: project.id }),
+        body: JSON.stringify({ projectId: project.id, format: "all" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to prepare ZIP");
 
       await forceDownload(
         `/api/proxy?url=${encodeURIComponent(data.zipUrl)}`,
-        data.fileName || `Syncraft_${project.name}_AllFiles.zip`
+        data.fileName || `${artworkExportName(project.name)}.zip`
       );
       trackExport({ tool: project.trace_type, format: "zip" });
-      await new Promise(resolve => setTimeout(resolve, 1500));
       logToConsole(data.cached ? "[Success] Cached ZIP download started!" : "[Success] ZIP prepared and download started!", "success");
     } catch (err) {
       logToConsole(`[Error] Failed to zip: ${err.message}`, "error");
+      throw err;
     }
   }, [project, logToConsole, forceDownload]);
 
@@ -391,7 +401,7 @@ export default function Workspace() {
 
       await forceDownload(
         `/api/proxy?url=${encodeURIComponent(data.psdUrl)}`,
-        data.fileName || `Syncraft_${project.name}_Layered.psd`,
+        `${artworkExportName(project.name)}.psd`,
       );
       trackExport({ tool: project.trace_type, format: "psd" });
       const shapeCount = data.shapeLayerCount || 0;
@@ -404,6 +414,7 @@ export default function Workspace() {
       );
     } catch (error) {
       logToConsole(`[Error] PSD export failed: ${error.message}`, "error");
+      throw error;
     }
   }, [project, logToConsole, forceDownload]);
 

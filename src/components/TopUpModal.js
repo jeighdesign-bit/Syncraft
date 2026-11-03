@@ -21,27 +21,6 @@ const POLAR_ENABLED_PLANS = new Set(
   Object.values(CREDIT_PLANS).filter((p) => p.polarEnabled).map((p) => p.key)
 );
 const POLAR_CARD_PAYMENTS_AVAILABLE = process.env.NEXT_PUBLIC_POLAR_CARD_PAYMENTS_AVAILABLE === "true";
-const PAYMENT_STATUS_STYLE = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  minHeight: '24px',
-  padding: '3px 8px',
-  border: '1px solid rgba(255,255,255,0.13)',
-  borderRadius: '999px',
-  color: '#c4c4c9',
-  background: 'rgba(255,255,255,0.045)',
-  fontSize: '11px',
-  fontWeight: '650',
-  lineHeight: 1.3,
-  letterSpacing: '0.05px',
-  whiteSpace: 'nowrap',
-};
-const PAYMENT_SUCCESS_STATUS_STYLE = {
-  ...PAYMENT_STATUS_STYLE,
-  borderColor: 'rgba(212,255,89,0.25)',
-  color: '#d4ff59',
-  background: 'rgba(212,255,89,0.08)',
-};
 
 
 const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supabaseProp, initialPlanKey = "pro", initialStep = 1, onClose, onLoginRequired, onCreditUpdated }) {
@@ -367,128 +346,97 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
               }}
             />
           ) : step === 2 ? (
-            <>
-              <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-                <div style={{ display: 'inline-block', border: '1px solid #555', padding: '4px 12px', fontSize: '11px', fontWeight: '600', color: '#ccc', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '16px', borderRadius: '4px' }}>Payment Method</div>
-                <h2 style={{ margin: '0 0 8px', fontSize: '28px', fontWeight: '700', color: '#fff' }}>Choose how to pay</h2>
-                <p style={{ margin: 0, color: '#aaa', fontSize: '14px' }}>
-                  Selected: <strong style={{ color: '#d4ff59' }}>{PLAN_LABELS[form.plan]}</strong> · <strong style={{ color: '#fff' }}>{PLAN_PRICES[form.plan]}</strong>
+            <section className={styles.paymentStep} aria-labelledby="payment-method-heading">
+              <div className={styles.paymentIntro}>
+                <span className={styles.paymentEyebrow}>Payment Method</span>
+                <h2 id="payment-method-heading">Choose how to pay</h2>
+                <p className={styles.paymentSelection}>
+                  Selected: <strong>{PLAN_LABELS[form.plan]}</strong> · <strong>{PLAN_PRICES[form.plan]}</strong>
                 </p>
                 {form.plan === 'tingi' && (
-                  <p style={{ margin: '10px 0 0', color: '#d4ff59', fontSize: '13px', fontWeight: '600' }}>
+                  <p className={styles.paymentPlanNote}>
                     Mini is available through QR Ph using GCash, Maya, or a supported banking app.
                   </p>
                 )}
               </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', margin: '0 auto 24px' }}>
-                {/* 1. QR Ph */}
+              <div className={styles.paymentMethods}>
                 <button
                   type="button"
+                  className={styles.paymentMethod}
                   onClick={handleStartPaymongoCheckout}
                   disabled={isStartingPaymongo || isStartingPolar}
-                  style={{ position: 'relative', background: '#18181b', border: '1px solid #333', color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: (isStartingPaymongo || isStartingPolar) ? 'not-allowed' : 'pointer', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: (isStartingPaymongo || isStartingPolar) ? 0.6 : 1, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
-                  onMouseOver={(e) => { if (!isStartingPaymongo && !isStartingPolar) { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; } }}
-                  onMouseOut={(e) => { if (!isStartingPaymongo && !isStartingPolar) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#18181b'; } }}
                 >
-                  <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(212, 255, 89, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <QrCode size={24} color="#d4ff59" />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                      <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>QR Ph (GCash & Maya)</span>
-                      <span style={PAYMENT_SUCCESS_STATUS_STYLE}>
-                        {isStartingPaymongo ? 'Loading…' : 'Instant credit'}
-                      </span>
-                    </div>
-                    <span style={{ color: '#888', fontSize: '13px', lineHeight: '1.4' }}>
-                      Scan dynamic QR with GCash, Maya, ShopeePay, or PH banking apps ({PLAN_PRICES[form.plan]}).
+                  <span className={styles.headingIcon}><QrCode size={20} aria-hidden="true" /></span>
+                  <span className={styles.paymentCopy}>
+                    <span className={styles.paymentTitle}>
+                      <strong>QR Ph (GCash & Maya)</strong>
+                      <span className={styles.paymentStatusActive}>{isStartingPaymongo ? 'Loading…' : 'Instant credit'}</span>
                     </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingLeft: '16px', borderLeft: '1px solid #2a2a2e', flexShrink: 0, height: '32px' }}>
-                    <img src="/logos/qrph.png?v=2" alt="QR Ph" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
-                    <img src="/logos/gcash.svg" alt="GCash" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
-                    <img src="/logos/maya.png?v=2" alt="Maya" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
-                    <ArrowRight size={18} color="#666" style={{ marginLeft: '4px' }} />
-                  </div>
+                    <span className={styles.paymentDescription}>Scan dynamic QR with GCash, Maya, ShopeePay, or PH banking apps ({PLAN_PRICES[form.plan]}).</span>
+                    <span className={styles.paymentBrands}>
+                      <img src="/logos/qrph.png?v=2" alt="QR Ph" />
+                      <img src="/logos/gcash.svg" alt="GCash" />
+                      <img src="/logos/maya.png?v=2" alt="Maya" />
+                    </span>
+                  </span>
+                  <ArrowRight size={18} className={styles.paymentArrow} aria-hidden="true" />
                 </button>
 
-                {/* 2. Card */}
                 <button
                   type="button"
+                  className={styles.paymentMethod}
                   onClick={handleStartPolarCheckout}
                   disabled={!POLAR_CARD_PAYMENTS_AVAILABLE || isStartingPolar || isStartingPaymongo || form.plan === 'tingi'}
                   aria-label={POLAR_CARD_PAYMENTS_AVAILABLE ? "Pay by Visa or Mastercard" : "Card payments are being prepared"}
                   aria-describedby="card-payment-status"
-                  style={{ background: '#141416', border: `1px solid ${POLAR_CARD_PAYMENTS_AVAILABLE ? '#3f3f46' : '#3d3728'}`, color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: POLAR_CARD_PAYMENTS_AVAILABLE && form.plan !== 'tingi' && !isStartingPolar && !isStartingPaymongo ? 'pointer' : 'not-allowed', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: POLAR_CARD_PAYMENTS_AVAILABLE ? 1 : 0.68, boxShadow: '0 4px 12px rgba(0,0,0,0.16)', transition: 'border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease' }}
-                  onMouseOver={(e) => { if (POLAR_CARD_PAYMENTS_AVAILABLE && form.plan !== 'tingi' && !isStartingPolar && !isStartingPaymongo) { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(212,255,89,0.08)'; } }}
-                  onMouseOut={(e) => { if (POLAR_CARD_PAYMENTS_AVAILABLE) { e.currentTarget.style.borderColor = '#3f3f46'; e.currentTarget.style.background = '#141416'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.16)'; } }}
-                  onFocus={(e) => { if (POLAR_CARD_PAYMENTS_AVAILABLE && form.plan !== 'tingi') { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(212,255,89,0.22)'; } }}
-                  onBlur={(e) => { if (POLAR_CARD_PAYMENTS_AVAILABLE) { e.currentTarget.style.borderColor = '#3f3f46'; e.currentTarget.style.background = '#141416'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.16)'; } }}
                 >
-                  <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(251, 191, 36, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <CreditCard size={24} color="#fbbf24" aria-hidden="true" />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                      <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>Card / International</span>
-                      <span style={PAYMENT_STATUS_STYLE}>
-                        {isStartingPolar ? 'Opening checkout…' : POLAR_CARD_PAYMENTS_AVAILABLE ? 'Secure checkout' : 'Setup in progress'}
-                      </span>
-                    </div>
-                    <span id="card-payment-status" style={{ color: '#a1a1aa', fontSize: '13px', lineHeight: '1.4' }}>
+                  <span className={styles.headingIcon}><CreditCard size={20} aria-hidden="true" /></span>
+                  <span className={styles.paymentCopy}>
+                    <span className={styles.paymentTitle}>
+                      <strong>Card / International</strong>
+                      <span className={styles.paymentStatus}>{isStartingPolar ? 'Opening checkout…' : POLAR_CARD_PAYMENTS_AVAILABLE ? 'Secure checkout' : 'Setup in progress'}</span>
+                    </span>
+                    <span id="card-payment-status" className={styles.paymentDescription}>
                       {POLAR_CARD_PAYMENTS_AVAILABLE
                         ? `Pay securely with Visa or Mastercard (${CREDIT_PLANS[form.plan]?.polarPrice || ''}).`
                         : 'Card payments are being prepared. Please use QR Ph for now.'}
                     </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingLeft: '16px', borderLeft: '1px solid #2a2a2e', flexShrink: 0, height: '32px', opacity: 0.45 }} aria-hidden="true">
-                    <img src="/logos/visa.svg" alt="" style={{ height: '16px', width: 'auto', objectFit: 'contain' }} />
-                    <img src="/logos/mastercard.svg" alt="" style={{ height: '18px', width: 'auto', objectFit: 'contain' }} />
-                  </div>
+                    <span className={styles.paymentBrands} aria-hidden="true">
+                      <img src="/logos/visa.svg" alt="" />
+                      <img src="/logos/mastercard.svg" alt="" />
+                    </span>
+                  </span>
                 </button>
 
-                {/* Manual GCash can be restored from one shared feature switch if needed. */}
                 {MANUAL_GCASH_ENABLED && <button
                   type="button"
+                  className={styles.paymentMethod}
                   onClick={() => setStep(3)}
                   disabled={isStartingPaymongo || isStartingPolar}
-                  style={{ background: '#18181b', border: '1px solid #333', color: '#fff', padding: '16px 20px', minHeight: '96px', boxSizing: 'border-box', textAlign: 'left', cursor: (isStartingPaymongo || isStartingPolar) ? 'not-allowed' : 'pointer', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', opacity: (isStartingPaymongo || isStartingPolar) ? 0.6 : 1, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
-                  onMouseOver={(e) => { if (!isStartingPaymongo && !isStartingPolar) { e.currentTarget.style.borderColor = '#d4ff59'; e.currentTarget.style.background = '#222226'; } }}
-                  onMouseOut={(e) => { if (!isStartingPaymongo && !isStartingPolar) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#18181b'; } }}
                 >
-                  <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Smartphone size={24} color="#aaa" />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                      <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>GCash Manual (Backup)</span>
-                      <span style={PAYMENT_STATUS_STYLE}>Manual approval</span>
-                    </div>
-                    <span style={{ color: '#888', fontSize: '13px', lineHeight: '1.4' }}>
-                      Scan static QR code, upload payment receipt, and receive credits in 10-30 mins.
+                  <span className={styles.headingIcon}><Smartphone size={20} aria-hidden="true" /></span>
+                  <span className={styles.paymentCopy}>
+                    <span className={styles.paymentTitle}>
+                      <strong>GCash Manual (Backup)</strong>
+                      <span className={styles.paymentStatus}>Manual approval</span>
                     </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingLeft: '16px', borderLeft: '1px solid #2a2a2e', flexShrink: 0, height: '32px' }}>
-                    <img src="/logos/gcash.svg" alt="GCash" style={{ height: '18px', width: 'auto', opacity: 0.7, objectFit: 'contain' }} />
-                    <ArrowRight size={18} color="#666" style={{ marginLeft: '4px' }} />
-                  </div>
-                </button>}
-
-                <div role="status" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.2)', borderRadius: '10px', padding: '14px 18px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <CheckCircle size={16} color="#4ade80" style={{ flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
-                  <span style={{ color: '#d4d4d8', fontSize: '13px', lineHeight: '1.5' }}>
-                    Both payment options add credits automatically after successful payment. No receipt upload or manual approval needed.
+                    <span className={styles.paymentDescription}>Scan static QR code, upload payment receipt, and receive credits in 10-30 mins.</span>
+                    <span className={styles.paymentBrands}><img src="/logos/gcash.svg" alt="GCash" /></span>
                   </span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '12px' }}>
-                  <button onClick={() => setStep(1)} disabled={isStartingPolar || isStartingPaymongo} style={{ padding: '10px 20px', background: 'transparent', color: '#aaa', border: '1px solid #444', borderRadius: '8px', cursor: (isStartingPolar || isStartingPaymongo) ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '500', transition: 'all 0.2s' }}>← Back to Plans</button>
-                </div>
+                  <ArrowRight size={18} className={styles.paymentArrow} aria-hidden="true" />
+                </button>}
               </div>
 
+              <div role="status" className={styles.paymentNotice}>
+                <CheckCircle size={16} aria-hidden="true" />
+                <span>Both payment options add credits automatically after successful payment. No receipt upload or manual approval needed.</span>
+              </div>
 
-            </>
+              <div className={styles.paymentFooter}>
+                <button type="button" className={`${styles.close} ${styles.paymentBack}`} onClick={() => setStep(1)} disabled={isStartingPolar || isStartingPaymongo}>← Back to Plans</button>
+              </div>
+            </section>
           ) : step === 'success' ? (
             <div style={{ padding: '40px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'rgba(74, 222, 128, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', border: '1px solid #4ade80' }}>
@@ -508,67 +456,47 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
               </button>
             </div>
           ) : step === 'qr_display' && qrPhData ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-                <div style={{ color: '#a1a1aa', fontSize: '12px', fontWeight: '500', marginBottom: '12px', lineHeight: '1.5' }}>
-                  Scan to pay with QR Ph
-                </div>
-                <h2 style={{ margin: '0 0 6px', fontSize: '24px', fontWeight: '700', color: '#fff' }}>
-                  {PLAN_LABELS[form.plan]} · {PLAN_PRICES[form.plan]}
-                </h2>
-                <p style={{ margin: 0, color: '#888', fontSize: '13px' }}>
-                  Scan with GCash, Maya, ShopeePay, or any banking app
-                </p>
+            <section className={styles.paymentStep} aria-labelledby="qr-payment-heading">
+              <div className={styles.paymentIntro}>
+                <span className={styles.paymentEyebrow}>Scan to pay with QR Ph</span>
+                <h2 id="qr-payment-heading">{PLAN_LABELS[form.plan]} · {PLAN_PRICES[form.plan]}</h2>
+                <p className={styles.qrSubtitle}>Scan with GCash, Maya, ShopeePay, or any banking app</p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', alignItems: 'stretch' }}>
-                {/* Left Card: QR Code */}
-                <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-                  <img
-                    src={qrPhData.qrBase64}
-                    alt="QR Ph Payment Code"
-                    style={{ width: '100%', maxWidth: '260px', height: 'auto', aspectRatio: '1/1', objectFit: 'contain', display: 'block' }}
-                  />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #eee', width: '100%', justifyContent: 'center' }}>
-                    <img src="/logos/qrph.png?v=2" alt="QR Ph" style={{ height: '16px', width: 'auto' }} />
-                    <img src="/logos/gcash.svg" alt="GCash" style={{ height: '16px', width: 'auto' }} />
-                    <img src="/logos/maya.png?v=2" alt="Maya" style={{ height: '16px', width: 'auto' }} />
+              <div className={styles.qrLayout}>
+                <div className={styles.qrCodeCard}>
+                  <img className={styles.qrCode} src={qrPhData.qrBase64} alt="QR Ph Payment Code" />
+                  <div className={`${styles.paymentBrands} ${styles.qrBrands}`}>
+                    <img src="/logos/qrph.png?v=2" alt="QR Ph" />
+                    <img src="/logos/gcash.svg" alt="GCash" />
+                    <img src="/logos/maya.png?v=2" alt="Maya" />
                   </div>
                 </div>
 
-                {/* Right Card: Status & Instructions */}
-                <div style={{ background: '#18181b', borderRadius: '16px', border: '1px solid #2a2a2e', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #27272a' }}>
-                      <span style={{ color: '#888', fontSize: '11px', fontWeight: '700', letterSpacing: '0.8px', textTransform: 'uppercase' }}>PAYMONGO QRPH</span>
-                      <span role="status" style={{ color: '#b4b4bc', fontSize: '12px', fontWeight: '500', lineHeight: '1.5' }}>Waiting for payment</span>
-                    </div>
-
-                    <div style={{ color: '#888', fontSize: '12px', marginBottom: '4px' }}>Amount Due</div>
-                    <div style={{ fontSize: '32px', fontWeight: '800', color: '#fff', marginBottom: '20px', display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                      {PLAN_PRICES[form.plan]}
-                      <span style={{ fontSize: '13px', color: '#888', fontWeight: '500' }}>({CREDIT_PLANS[form.plan]?.credits || 0} credits)</span>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px' }}>
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#27272a', color: '#d4ff59', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>1</div>
-                        <span style={{ color: '#ccc', fontSize: '13px', lineHeight: '1.4' }}>Open <strong>GCash</strong>, <strong>Maya</strong>, or any banking app and tap <strong>Scan QR</strong>.</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#27272a', color: '#d4ff59', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>2</div>
-                        <span style={{ color: '#ccc', fontSize: '13px', lineHeight: '1.4' }}>Keep this window open while PayMongo confirms the payment.</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#27272a', color: '#d4ff59', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>3</div>
-                        <span style={{ color: '#ccc', fontSize: '13px', lineHeight: '1.4' }}>Credits will be <strong>added automatically</strong> to your account.</span>
-                      </div>
+                <div className={styles.qrDetails}>
+                  <div className={styles.qrStatusRow}>
+                    <span className={styles.qrProvider}>PAYMONGO QRPH</span>
+                    <span role="status" className={styles.paymentStatus}>Waiting for payment</span>
+                  </div>
+                  <div className={styles.qrAmount}>
+                    <span>Amount Due</span>
+                    <div>
+                      <strong>{PLAN_PRICES[form.plan]}</strong>
+                      <span>({CREDIT_PLANS[form.plan]?.credits || 0} credits)</span>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
+                  <ol className={styles.qrInstructions}>
+                    <li><span>Open <strong>GCash</strong>, <strong>Maya</strong>, or any banking app and tap <strong>Scan QR</strong>.</span></li>
+                    <li><span>Keep this window open while PayMongo confirms the payment.</span></li>
+                    <li><span>Credits will be <strong>added automatically</strong> to your account.</span></li>
+                  </ol>
+
+                  <div className={styles.qrFooter}>
+                    <button
+                      type="button"
+                      className={`${styles.close} ${styles.paymentBack} ${styles.qrBack}`}
+                      onClick={() => {
                       setStep(2);
                       setQrPhData(null);
                       if (qrPollIntervalId) {
@@ -576,15 +504,13 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                         setQrPollIntervalId(null);
                       }
                     }}
-                    style={{ width: '100%', padding: '12px', background: '#27272a', color: '#aaa', border: '1px solid #3f3f46', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.2s' }}
-                    onMouseOver={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#666'; }}
-                    onMouseOut={(e) => { e.currentTarget.style.color = '#aaa'; e.currentTarget.style.borderColor = '#3f3f46'; }}
-                  >
-                    ← Back to Payment Methods
-                  </button>
+                    >
+                      ← Back to Payment Methods
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            </section>
           ) : (
             <>
               <div style={{ background: '#18181b', border: '1px solid #444', borderRadius: '8px', padding: '12px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

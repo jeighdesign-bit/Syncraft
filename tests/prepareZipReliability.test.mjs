@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import { buildLayeredPsd } from '../src/lib/layeredPsd.mjs';
 import JSZip from 'jszip';
+import sharp from 'sharp';
+import { artworkExportAssets, artworkExportName, artworkImageFormat } from '../src/lib/artworkExport.mjs';
+import { encodeArtworkImage } from '../src/lib/artworkExportServer.js';
 
 const project = {
   id: 'project',
@@ -26,6 +30,8 @@ async function harness(options = {}) {
     .replace(/^import[\s\S]*?;\r?\n/gm, '').replace(/export /g, '');
   const context = vm.createContext({
     Buffer, URL, Request, Response, Headers, AbortSignal, Date, Promise, JSZip, createHash,
+    buildLayeredPsd, DEFAULT_MAX_ZIP_BYTES: 120 * 1024 * 1024,
+    artworkExportAssets, artworkExportName, artworkImageFormat, encodeArtworkImage,
     NextResponse: Response,
     console: { warn() {}, error() {} },
     PROJECT_ACCESS: { EDIT: 'edit' },
@@ -55,7 +61,8 @@ async function harness(options = {}) {
         error.name = 'TimeoutError';
         throw error;
       }
-      const buffer = Buffer.from(`complete:${url}`);
+      const buffer = url.endsWith('.svg') ? Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="40"><path d="M0 0h1v1z"/></svg>')
+        : await sharp({ create: { width: 2, height: 2, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png().toBuffer();
       return { response: new Response(buffer, { headers: { 'content-type': url.endsWith('.svg') ? 'image/svg+xml' : 'image/png' } }), buffer };
     },
     uploadToR2: async (buffer, _key, _mime, settings) => {
@@ -72,24 +79,24 @@ async function harness(options = {}) {
     assetSignature,
     maxDuration,
     get uploadedBuffer() { return uploadedBuffer; },
-    async run() {
+    async run(format) {
       const response = await POST(new Request('https://app.test/api/prepare-zip', {
         method: 'POST',
         headers: { authorization: 'Bearer session', 'content-type': 'application/json' },
-        body: JSON.stringify({ projectId: 'project' }),
+        body: JSON.stringify({ projectId: 'project', format }),
       }));
       return { response, body: await response.clone().json() };
     },
   };
 }
 
-test('complete ZIP downloads every authorized asset concurrently and stores all files', async () => {
+test('final ZIP downloads the HD image and SVG concurrently, with no references or duplicate PNGs', async () => {
   const h = await harness();
   const { response, body } = await h.run();
   assert.equal(response.status, 200);
   assert.equal(body.success, true);
-  assert.equal(h.maxDuration, 180);
-  assert.equal(h.calls.downloads.length, 4);
+  assert.equal(h.maxDuration, 300);
+  assert.equal(h.calls.downloads.length, 2);
   assert.ok(h.calls.maxInFlight > 1);
   assert.equal(h.calls.upload, 1);
   assert.equal(h.calls.update, 1);
@@ -100,20 +107,18 @@ test('complete ZIP downloads every authorized asset concurrently and stores all 
   }
   const zip = await JSZip.loadAsync(h.uploadedBuffer);
   assert.deepEqual(Object.keys(zip.files).sort(), [
-    'Syncraft_Complete_Design_Reference.png',
-    'Syncraft_Complete_Design_SyncraftVision.png',
-    'Syncraft_Complete_Design_Upscaled.png',
-    'Syncraft_Complete_Design_Vector.svg',
+    'Complete_Design.png',
+    'Complete_Design.svg',
   ].sort());
 });
 
 test('one timed-out asset fails atomically instead of publishing an incomplete ZIP', async () => {
-  const h = await harness({ failureUrl: project.generated_image_url });
+  const h = await harness({ failureUrl: project.upscaled_image_url });
   const { response, body } = await h.run();
   assert.equal(response.status, 504);
   assert.equal(response.headers.get('retry-after'), '3');
   assert.equal(body.code, 'ZIP_ASSET_UNAVAILABLE');
-  assert.deepEqual(body.failedFiles, ['Syncraft_Complete_Design_SyncraftVision.png']);
+  assert.deepEqual(body.failedFiles, ['Complete_Design.png']);
   assert.equal(h.calls.upload, 0);
   assert.equal(h.calls.update, 0);
 });
@@ -134,4 +139,57 @@ test('the complete-archive signature invalidates ZIPs cached by the old partial-
   ];
   const oldSignature = createHash('sha256').update(JSON.stringify(assets)).digest('hex');
   assert.notEqual(h.assetSignature(assets), oldSignature);
+});
+
+test('JPEG ZIP contains a genuine white-backed JPEG plus SVG, never both image formats', async () => {
+  const h = await harness();
+  const { response, body } = await h.run('jpg');
+  assert.equal(response.status, 200); assert.equal(body.fileName, 'Complete_Design.zip');
+  const zip = await JSZip.loadAsync(h.uploadedBuffer);
+  assert.deepEqual(Object.keys(zip.files).sort(), ['Complete_Design.jpg', 'Complete_Design.svg']);
+  const jpg = await zip.file('Complete_Design.jpg').async('nodebuffer');
+  assert.equal((await sharp(jpg).metadata()).format, 'jpeg');
+  const pixels = await sharp(jpg).raw().toBuffer();
+  assert.ok([...pixels].every(channel => channel >= 250));
+});
+
+test('single images bypass archive creation and unknown formats are rejected', async () => {
+  const h = await harness({ project: { svg_url: null } });
+  const { body } = await h.run('jpg');
+  assert.equal(body.singleFile, true); assert.equal(body.format, 'jpg');
+  assert.equal(h.calls.upload, 0); assert.equal(h.calls.downloads.length, 0);
+  const invalid = await harness();
+  assert.equal((await invalid.run('psd')).response.status, 400);
+  assert.equal(invalid.calls.downloads.length, 0);
+  const unfinished = await harness({ project: { upscaled_image_url: null, generated_image_url: 'REFUNDED', svg_url: null } });
+  assert.equal((await unfinished.run()).response.status, 400);
+});
+
+test('cached packages are reused only for the exact source and image format', async () => {
+  const first = await harness();
+  const assets = artworkExportAssets(project, 'png');
+  const signature = first.assetSignature(assets);
+  const cached = await harness({ project: { zip_url: 'https://storage.test/projects/project/saved.zip', zip_signature: signature } });
+  assert.equal((await cached.run('png')).body.cached, true);
+  assert.equal(cached.calls.downloads.length, 0);
+  assert.equal((await cached.run('jpg')).body.cached, false);
+  assert.equal(cached.calls.upload, 1);
+});
+
+test('Download All packages each available export as a real file', async () => {
+  for (const [changes, extensions] of [
+    [{}, ['jpg', 'png', 'psd', 'svg']],
+    [{ svg_url: null }, ['jpg', 'png']],
+    [{ upscaled_image_url: null, generated_image_url: null }, ['psd', 'svg']],
+  ]) {
+    const h = await harness({ project: changes });
+    assert.equal((await h.run('all')).response.status, 200);
+    const zip = await JSZip.loadAsync(h.uploadedBuffer);
+    assert.deepEqual(Object.keys(zip.files).sort(), extensions.map(ext => 'Complete_Design.' + ext));
+    for (const ext of extensions) {
+      const bytes = await zip.file('Complete_Design.' + ext).async('nodebuffer');
+      if (ext === 'psd') assert.equal(bytes.toString('ascii', 0, 4), '8BPS');
+      if (ext === 'jpg' || ext === 'png') assert.equal((await sharp(bytes).metadata()).format, ext === 'jpg' ? 'jpeg' : 'png');
+    }
+  }
 });
