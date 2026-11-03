@@ -1,5 +1,6 @@
 import { CREDIT_COST } from './pricing.js';
 import { normalizeLogoDesignSettings, logoDesignInstructions } from './logoDesignSettings.mjs';
+import { compileLogoVariation } from './logoVariations.mjs';
 
 export const LOGO_STYLES = [
   { id: 'minimalist', name: 'Minimalist', mark: '◒', prompt: 'minimal geometric symbol, simple silhouette, balanced negative space' },
@@ -76,6 +77,8 @@ export function validateLogoOperation(input) {
   if (!['smart', 'precise'].includes(sketchMode)) throw new Error('Choose Smart or Precise for your sketch.');
   const style = input.style || 'minimalist';
   if (!LOGO_STYLES.some(item => item.id === style)) throw new Error('Choose a supported logo style.');
+  const variationStyle = operation === 'variations' ? input.variationStyle ?? 'auto' : undefined;
+  if (variationStyle !== undefined && variationStyle !== 'auto' && !LOGO_STYLES.some(item => item.id === variationStyle)) throw new Error('Choose Auto or a supported variation style.');
   const prompt = String(input.prompt || '').trim();
   const brand = String(input.brand || '').trim();
   const tagline = String(input.tagline || '').trim();
@@ -97,11 +100,13 @@ export function validateLogoOperation(input) {
   const palette = input.palette || [];
   if (!Array.isArray(palette) || palette.length > 3 || palette.some(color => !/^#[0-9a-f]{6}$/i.test(color))) throw new Error('Choose up to three valid colors.');
   const normalized = { requestId: input.requestId, operation, mode, sketchMode, style, prompt, brand, tagline, palette, designSettings,
+    ...(operation === 'variations' ? { variationStyle } : {}),
     editArea, sourceId: input.sourceId || null, sourceUrl: typeof input.sourceUrl === 'string' ? input.sourceUrl : null };
   return normalized;
 }
 
 export function buildLogoPrompt(job) {
+  if (job.operation === 'variations') return compileLogoVariation(job, job.variationPlan);
   const base = buildBaseLogoPrompt(job);
   const settings = job.operation === 'generate' ? logoDesignInstructions(job.designSettings, job.style) : [];
   const artboardFraming = job.operation === 'generate' && job.mode === 'image'
@@ -138,7 +143,6 @@ function buildBaseLogoPrompt(job) {
       'Treat objects and characters mentioned in the brief as optional subtle details integrated into the lettering. They must never replace the wordmark. Even a decorated letter must remain readable.',
       job.mode === 'image' ? 'Image-to-wordmark construction: draw the complete name as one cohesive, custom lettering system with deliberate letter proportions, consistent stroke weight and spacing. Borrow at most one recognizable contour or negative-space motif from the uploaded subject for one letter. Never replace, cover, merge, or remove a letter stroke for decoration; if a motif would make any letter ambiguous, omit the motif and keep the spelling plain. Simplify the image colors into solid fills. Ignore scenery, image captions, and unrelated text. The photo itself must not appear behind or beside the lettering.' : '',
       job.mode === 'sketch' ? 'Use the supplied sketch for lettering details, colors and visual character. Translate its motifs into the brand lettering rather than making its subject the dominant illustration. Ignore reference captions and unrelated text.' : '',
-      job.operation === 'variations' ? 'Explore a fresh lettering treatment of the supplied logo while retaining the exact brand spelling.' : '',
       job.prompt ? `Additional preferences: ${job.prompt}` : '',
       job.tagline ? `Secondary tagline below: ${JSON.stringify(job.tagline)}.` : 'No additional text or invented tagline.',
       job.palette.length ? `Use this brand palette: ${job.palette.join(', ')}.` : 'Choose a restrained, cohesive palette.',
@@ -184,12 +188,11 @@ function buildBaseLogoPrompt(job) {
     job.mode === 'sketch'
       ? `Refinement style: ${style.name}: ${style.prompt}. ${job.sketchMode === 'precise' ? 'Respect the sketch composition while finishing its linework.' : 'Interpret the sketch into an original designer-quality mark with intentional shape language.'}`
       : `Visual direction: ${style.name}: ${style.prompt}.`,
-    job.operation === 'variations' ? 'Use the supplied logo as the starting point. Explore a fresh variation while retaining its subject and recognizable identity.' : '',
     job.mode === 'sketch' ? job.sketchMode === 'precise'
       ? 'Refine the supplied rough sketch into polished artwork. Keep its important parts and proportions, but correct wobbly lines, accidental overlaps and unclear details. Preserve recognizable subject details. Omit paper, drawing artifacts and sketch background.'
       : 'Read the supplied rough sketch for its subject and key visual idea. Redraw with confident contours, coherent anatomy and a memorable silhouette. Simplify accidental marks, use deliberate negative space, and preserve identifying details. The finished logo must be immediately recognizable as the subject named in the brief, even at small size; do not simplify it into disconnected geometry or an ambiguous symbol. Omit paper, drawing artifacts and sketch background.' : '',
     job.mode === 'image' ? 'Use the supplied image as the subject reference. Translate its essential identity into a simplified logo, not a photograph.' : '',
-    job.prompt ? `Brief: ${job.prompt}` : job.operation === 'variations' ? 'Create a refined alternative of this logo.' : 'Refine the supplied subject using the selected style and brand settings.',
+    job.prompt ? `Brief: ${job.prompt}` : 'Refine the supplied subject using the selected style and brand settings.',
     job.mode === 'text' && job.operation === 'generate' && job.style === 'monogram'
       ? `Create a monogram of the requested initials. ${job.brand ? `Brand context: ${JSON.stringify(job.brand)}; do not substitute the full name for the initials.` : 'Do not invent extra letters.'}`
       : job.brand ? `The exact brand name is ${JSON.stringify(job.brand)}. Spell it exactly.` : 'Use a symbol only; do not add letters or text.',

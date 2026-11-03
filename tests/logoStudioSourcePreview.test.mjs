@@ -15,6 +15,8 @@ const original = await readFile(new URL('../src/app/logo-studio/LogoStudio.js', 
 const seeded = original
   .replace('const [project, setProject] = useState(null);', 'const [project, setProject] = useState(__previewTest.project);')
   .replace('const [selectedId, setSelectedId] = useState(null);', 'const [selectedId, setSelectedId] = useState(__previewTest.project?.jobs?.[0]?.id || null);')
+  .replace('const [variationChoice, setVariationChoice] = useState(null);', 'const [variationChoice, setVariationChoice] = useState(__previewTest.variationChoice);')
+  .replace('const [variationPanelSource, setVariationPanelSource] = useState(null);', 'const [variationPanelSource, setVariationPanelSource] = useState(__previewTest.variationPanelSource);')
   .replace("const [mode, setMode] = useState('text');", "const [mode, setMode] = useState(__previewTest.mode);")
   .replace('const [source, setSource] = useState(null);', 'const [source, setSource] = useState(__previewTest.source);')
   .replace('const [sourcePreview, setSourcePreview] = useState(null);', 'const [sourcePreview, setSourcePreview] = useState(__previewTest.preview);');
@@ -23,7 +25,7 @@ const compiled = ts.transpileModule(seeded, { fileName: 'LogoStudio.jsx', compil
   jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true,
 } }).outputText;
 
-function renderPreview(source, preview, project = null, mode = 'image') {
+function renderPreview(source, preview, project = null, mode = 'image', variationChoice = null, variationPanelSource = null) {
   const module = { exports: {} };
   const emptyComponent = { __esModule: true, default: () => null };
   const dependencies = {
@@ -49,7 +51,7 @@ function renderPreview(source, preview, project = null, mode = 'image') {
     './studio.module.css': { __esModule: true, default: new Proxy({}, { get: (_target, key) => String(key) }) },
   };
   vm.runInNewContext(compiled, {
-    module, exports: module.exports, __previewTest: { source, preview, project, mode },
+    module, exports: module.exports, __previewTest: { source, preview, project, mode, variationChoice, variationPanelSource },
     require: name => Object.hasOwn(dependencies, name) ? dependencies[name] : require(name),
   });
   return renderToStaticMarkup(React.createElement(module.exports.default));
@@ -117,4 +119,28 @@ test('an image result is previewed and marked selected only in Image to Logo', (
     assert.match(html, /aria-label="Logo canvas"/);
     assert.match(html, /aria-pressed="false"[^>]*aria-label="Version 1, Original, succeeded"/);
   }
+});
+
+test('variation options stay hidden until opened and retain Auto and explicit styles in the popover', () => {
+  const project = { id: 'project', name: 'Owl', access: 'owner', jobs: [
+    { id: 'owl', mode: 'image', style: 'minimalist', status: 'succeeded', operation: 'generate', format: 'png', url: 'https://storage.test/owl.png' },
+  ] };
+  const closed = renderPreview(null, null, project);
+  assert.doesNotMatch(closed, /Create logo variations|Variation style<select/);
+  assert.match(closed, /aria-haspopup="dialog" aria-expanded="false"/);
+  const auto = renderPreview(null, null, project, 'image', null, 'owl');
+  assert.match(auto, /role="dialog" aria-label="Create logo variations"/);
+  assert.match(auto, /value="auto"[^>]*selected=""/);
+  assert.match(auto, /Create variation/);
+  assert.doesNotMatch(auto, /<label>New style/);
+  const changed = renderPreview(null, null, project, 'image', { sourceId: 'owl', value: 'line' }, 'owl');
+  assert.equal((changed.match(/<select\b/g) || []).length, 1);
+  assert.match(changed, /optgroup label="Change style"/);
+  assert.match(changed, /value="line" selected=""/);
+  assert.match(changed, /value="wordmark" disabled=""/);
+  assert.match(changed, /value="monogram" disabled=""/);
+  const otherSource = renderPreview(null, null, project, 'image', { sourceId: 'other-logo', value: 'line' }, 'owl');
+  assert.match(otherSource, /value="auto"[^>]*selected=""/);
+  const viewer = renderPreview(null, null, { ...project, access: 'view' }, 'image', null, 'owl');
+  assert.doesNotMatch(viewer, /role="dialog" aria-label="Create logo variations"/);
 });

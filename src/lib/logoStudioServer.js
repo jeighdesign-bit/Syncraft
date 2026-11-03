@@ -13,6 +13,7 @@ import { randomUUID } from 'node:crypto';
 import { planLogoDirections } from './logoArtDirectorServer';
 import { compileLogoDirection, LOGO_COMPILER_VERSION } from './logoPromptCompiler.mjs';
 import { fitImageLogoToArtboard } from './logoArtboard.mjs';
+import { logoVariationSource, applyLogoVariationStyle, planLogoVariation, compileLogoVariation } from './logoVariations.mjs';
 
 export function createLogoState(userId, projectId) {
   const state = { tool: 'logo_studio', revision: 0, activity: 'idle', jobs: [] };
@@ -123,6 +124,7 @@ export async function startLogoOperation(userId, project, input, prepared = fals
   project = (await accessibleLogoProject(userId, projectId, PROJECT_ACCESS.EDIT)).project;
   const previous = project.canvas_data.jobs.find(item => item.id === input.requestId);
   if (previous && !prepared) return project; // A replay can never submit or charge again.
+  if (input.operation === 'variations' && !input.sourceId) throw new Error('Select a saved logo to create variations.');
   let sourceUrl = input.sourceUrl;
   let sourceBuffer;
   let sourceFormat;
@@ -166,7 +168,19 @@ export async function startLogoOperation(userId, project, input, prepared = fals
     }
     if (state.jobs.length >= 120) throw new Error('This project has reached 120 versions. Start a new project.');
     if (state.jobs.filter(item => LOGO_ACTIVE.includes(item.status)).length >= 4) throw new Error('Wait for your current logos to finish first.');
-    state.jobs.push({ ...input, billedUserId: userId, creditCost: logoOperationCost(input.operation, input.mode), id: input.requestId, sourceUrl, status: 'starting', createdAt: now, updatedAt: now });
+    let reservedInput = input;
+    if (input.operation === 'variations') {
+      const source = state.jobs.find(item => item.id === input.sourceId && item.status === 'succeeded');
+      if (!source || source.url !== sourceUrl) throw new Error('Select a saved logo as your source.');
+      const context = applyLogoVariationStyle(logoVariationSource(source, state.jobs), input.variationStyle);
+      // Allocate inside the revision transaction so simultaneous options cannot
+      // receive the same direction. Failed attempts also advance exploration.
+      const index = state.jobs.filter(item => item.operation === 'variations' && item.sourceId === source.id).length;
+      const variationPlan = planLogoVariation(context, index);
+      reservedInput = { ...input, ...context, variationPlan,
+        compiledPrompt: compileLogoVariation(context, variationPlan), seed: parseInt(input.requestId.slice(0, 8), 16) };
+    }
+    state.jobs.push({ ...reservedInput, billedUserId: userId, creditCost: logoOperationCost(input.operation, reservedInput.mode), id: input.requestId, sourceUrl, status: 'starting', createdAt: now, updatedAt: now });
     claimed = true;
     return state;
   });
@@ -191,7 +205,7 @@ export async function startLogoOperation(userId, project, input, prepared = fals
         const png = await sharp(sourceBuffer, { limitInputPixels: 25_000_000 }).resize({ width: 1024, height: 1024, fit: 'inside' }).png().toBuffer();
         image = `data:image/png;base64,${png.toString('base64')}`;
       }
-      const plan = nanoLogoPlan(input, image, job.compiledPrompt, job.seed);
+      const plan = nanoLogoPlan(job, image, job.compiledPrompt, job.seed);
       await patchJob(userId, projectId, job.id, { provider: 'fal', endpoint: plan.endpoint, model: plan.model, estimatedCostUsd: plan.cost }, ['starting']);
       const result = await fal.queue.submit(plan.endpoint, { input: plan.input });
       if (!result.request_id) throw new Error('The image model did not accept this request.');

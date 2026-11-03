@@ -23,15 +23,6 @@ const examples = [
     source: "/samples/logo-studio/green-monster-sketch.png", result: "/samples/logo-studio/green-monster-vector.svg",
     title: "Green monster", sourceLabel: "Your sketch", resultLabel: "Mascot · SVG",
   },
-  ...["howrah-hawks", "ashok-royals"].map(id => {
-    const example = GARMENT_EXAMPLES.find(item => item.id === id);
-    return {
-      id, group: "Extraction", heading: "Garment Extraction", label: `${example.title} → Flat art`,
-      source: example.original, result: example.result, title: example.title,
-      sourceLabel: "Original garment", resultLabel: "Flat artwork",
-      crop: true, focus: example.focus,
-    };
-  }),
 ];
 
 const CYCLE_MS = 7200;
@@ -72,12 +63,14 @@ export default function HeroShowcase() {
   const root = useRef(null);
   const range = useRef(null);
   const elapsed = useRef(0);
-  const [active, setActive] = useState(0);
+  const [selectedIndex, setActive] = useState(0);
   const [restart, setRestart] = useState(0);
   const [paused, setPaused] = useState(false);
   const [focused, setFocused] = useState(false);
   const [visible, setVisible] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(true);
+  // Fast Refresh can preserve a slide index after examples are removed.
+  const active = selectedIndex % examples.length;
   const example = examples[active];
 
   useEffect(() => {

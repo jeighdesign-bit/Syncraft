@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { LOGO_STYLES, LOGO_COST, LOGO_ACTIVE, logoOperationCost, logoGenerationQuota, validateLogoOperation, buildLogoPrompt, publicLogoProject, logoJobTimedOut, logoStudioAssetUrls } from '../src/lib/logoStudio.mjs';
 import { nanoLogoPlan } from '../src/lib/logoFal.mjs';
+import { logoVariationSource, applyLogoVariationStyle, planLogoVariation, compileLogoVariation } from '../src/lib/logoVariations.mjs';
 import { compileLogoDirection, LOGO_COMPILER_VERSION } from '../src/lib/logoPromptCompiler.mjs';
 import { planLogoDirections } from '../src/lib/logoArtDirectorServer.js';
 import { signLogoState, verifyLogoState } from '../src/lib/logoStudioIntegrity.mjs';
@@ -294,6 +295,103 @@ test('only stale active jobs expire and every saved logo asset is included in re
   assert.deepEqual(logoStudioAssetUrls({ jobs: [{ url: 'https://s/1' }] }), []);
 });
 
+test('variation service freezes distinct directions against the signed source in concurrent requests', async () => {
+  const h = await serviceHarness();
+  const source = { id: id(), operation: 'generate', status: 'succeeded', format: 'png', url: 'https://storage.test/pug.png',
+    mode: 'image', style: 'retro', prompt: 'Halloween pug aviator, pumpkin charm, ghost pin, violet goggles',
+    brand: 'Night Flight', tagline: 'Fly spooky', palette: ['#ff8800'], designSettings: { primaryColor: '#ff8800', backgroundColor: '#fefefe' } };
+  h.change(project => project.canvas_data.jobs.push(source));
+  const requests = Array.from({ length: 3 }, () => input({ operation: 'variations', sourceId: source.id,
+    mode: 'sketch', style: 'abstract', brand: 'Forged brand', prompt: 'Remove the pumpkin' }));
+  const snapshot = h.snapshot();
+  await Promise.all(requests.map(request => h.service.startLogoOperation('owner', snapshot, request)));
+  const jobs = h.snapshot().canvas_data.jobs.slice(1);
+  assert.equal(new Set(jobs.map(job => job.variationPlan.directionId)).size, 3);
+  assert.equal(new Set(h.submissions.map(item => item.request.input.prompt)).size, 3);
+  for (const job of jobs) {
+    assert.equal(job.mode, 'image'); assert.equal(job.style, 'retro'); assert.equal(job.brand, source.brand);
+    assert.equal(job.designSettings.primaryColor, '#FF8800');
+    const submitted = h.submissions.find(item => item.request.input.prompt === job.compiledPrompt);
+    assert.ok(submitted);
+    assert.equal(submitted.endpoint, 'fal-ai/nano-banana-2/edit');
+    assert.deepEqual(submitted.request.input.image_urls, [source.url]);
+    assert.equal(submitted.request.input.seed, job.seed);
+    assert.match(job.compiledPrompt, /pumpkin charm, ghost pin, violet goggles/);
+    assert.match(job.compiledPrompt, /#FEFEFE/);
+    assert.doesNotMatch(job.compiledPrompt, /Forged brand|Remove the pumpkin|Sketch fidelity/);
+  }
+  assert.equal(h.charges.size, 3); assert.equal(h.submissions.length, 3);
+  assert.equal([...h.charges.values()].reduce((sum, charge) => sum + charge.amount, 0), 24);
+  assert.equal(verifyLogoState(h.snapshot().canvas_data, 'owner', snapshot.id, 'test-signing-secret'), true);
+  await h.service.startLogoOperation('owner', h.snapshot(), requests[0]);
+  assert.equal(h.submissions.length, 3); assert.equal(h.charges.size, 3);
+  assert.doesNotMatch(JSON.stringify(publicLogoProject(h.snapshot())), /compiledPrompt|variationPlan|seed/);
+});
+
+test('explicit variation style reaches the provider and is retained as the new saved style', async () => {
+  for (const variationStyle of ['auto', 'line', 'wordmark', 'monogram']) {
+    const h = await serviceHarness();
+    const source = { id: id(), operation: 'generate', status: 'succeeded', format: 'png', url: 'https://storage.test/pug.png',
+      mode: 'image', style: 'retro', brand: 'Night Flight', prompt: 'Halloween pug, goggles, pumpkin charm', designSettings: {} };
+    h.change(project => project.canvas_data.jobs.push(source));
+    await h.service.startLogoOperation('owner', h.snapshot(), input({ operation: 'variations', sourceId: source.id, variationStyle }));
+    const job = h.snapshot().canvas_data.jobs.at(-1);
+    assert.equal(job.variationStyle, variationStyle);
+    assert.equal(job.sourceStyle, 'retro');
+    assert.equal(job.style, variationStyle === 'auto' ? 'retro' : variationStyle);
+    const submitted = h.submissions[0].request.input;
+    assert.deepEqual(submitted.image_urls, [source.url]);
+    assert.match(submitted.prompt, variationStyle === 'auto' ? /AUTO STYLE:/ : /CHANGE STYLE:/);
+    if (variationStyle === 'line') assert.match(submitted.prompt, /consistent stroke rhythm/);
+    if (variationStyle === 'monogram') assert.match(submitted.prompt, /exact main letters are "NF"/);
+    await h.service.refreshLogoJob('owner', h.snapshot(), job.id);
+    assert.equal(publicLogoProject(h.snapshot()).jobs.at(-1).style, job.style);
+    assert.equal(h.charges.size, 1); assert.equal(h.submissions.length, 1);
+  }
+});
+
+test('missing saved lettering text and forged target styles fail before reservation or charge', async () => {
+  const h = await serviceHarness();
+  const source = { id: id(), operation: 'generate', status: 'succeeded', format: 'png', url: 'https://storage.test/pug.png', style: 'retro' };
+  h.change(project => project.canvas_data.jobs.push(source));
+  for (const variationStyle of ['wordmark', 'monogram', 'unknown']) {
+    await assert.rejects(h.service.startLogoOperation('owner', h.snapshot(), { ...input({ operation: 'variations', sourceId: source.id, brand: 'Forged' }), variationStyle }), /saved brand text|supported variation style/);
+  }
+  assert.equal(h.snapshot().canvas_data.jobs.length, 1);
+  assert.equal(h.charges.size, 0); assert.equal(h.submissions.length, 0);
+});
+
+test('variation pipeline rejects missing saved sources before billing and refunds provider failures', async () => {
+  const h = await serviceHarness({ providerFailure: true });
+  await assert.rejects(h.service.startLogoOperation('owner', h.snapshot(), input({ operation: 'variations', sourceUrl: 'https://storage.test/upload.png' })), /saved logo/);
+  await assert.rejects(h.service.startLogoOperation('owner', h.snapshot(), input({ operation: 'variations', sourceId: id() })), /saved logo/);
+  assert.equal(h.charges.size, 0); assert.equal(h.submissions.length, 0);
+  const source = { id: id(), operation: 'generate', status: 'succeeded', format: 'png', url: 'https://storage.test/pug.png', style: 'retro' };
+  h.change(project => project.canvas_data.jobs.push(source));
+  await h.service.startLogoOperation('owner', h.snapshot(), input({ operation: 'variations', sourceId: source.id }));
+  const failed = h.snapshot().canvas_data.jobs.at(-1);
+  assert.equal(failed.status, 'failed'); assert.equal(h.refunded.size, 1);
+  assert.equal(logoGenerationQuota(h.snapshot().canvas_data.jobs).remaining, 3);
+  await h.service.startLogoOperation('owner', h.snapshot(), input({ operation: 'variations', sourceId: source.id }));
+  assert.notEqual(h.snapshot().canvas_data.jobs.at(-1).variationPlan.directionId, failed.variationPlan.directionId);
+  assert.equal(h.refunded.size, 2);
+});
+
+test('variation of an edited monogram keeps selected pixels and inherits exact initials from its ancestor', async () => {
+  const h = await serviceHarness();
+  const original = { id: id(), operation: 'generate', mode: 'image', style: 'monogram', status: 'succeeded',
+    format: 'png', url: 'https://storage.test/initials.png', brand: 'Wild Brew', prompt: 'WB with owl motif', designSettings: { monogramLetters: 'WB' } };
+  const edited = { ...original, id: id(), operation: 'edit', sourceId: original.id, url: 'https://storage.test/edited.png', prompt: 'Remove the star', designSettings: {} };
+  h.change(project => project.canvas_data.jobs.push(original, edited));
+  await h.service.startLogoOperation('owner', h.snapshot(), input({ operation: 'variations', sourceId: edited.id }));
+  const { input: submitted } = h.submissions[0].request;
+  assert.deepEqual(submitted.image_urls, [edited.url]);
+  assert.match(submitted.prompt, /exact main letters are "WB"/);
+  assert.match(submitted.prompt, /do not replace them with the full brand name/);
+  assert.doesNotMatch(submitted.prompt, /Remove the star/);
+  assert.equal(h.charges.size, 1);
+});
+
 // Run the actual service with isolated I/O, not a second implementation of its rules.
 async function serviceHarness(options = {}) {
   let project = { id: id(), user_id: 'owner', created_at: new Date().toISOString(), original_image_url: null, canvas_data: { tool: 'logo_studio', revision: 0, jobs: [] } };
@@ -323,7 +421,7 @@ async function serviceHarness(options = {}) {
         endpoint: request.operation === 'generate' ? 'images/generations' : 'images/imageToImage', model: 'recraftv4_1_vector', providerRequestId: id(), cost: 0.08 };
     },
     randomUUID: id, planLogoDirections: async (...args) => { if (options.plannerFailure) throw new Error('Planner failed'); const result = await planLogoDirections(args[0], args[1], { env: {} }); if (options.plannerMetadata) result.metadata = options.plannerMetadata; return result; }, compileLogoDirection, LOGO_COMPILER_VERSION,
-    adminSupabase, nanoLogoPlan, LOGO_ACTIVE, LOGO_COST, logoOperationCost, logoGenerationQuota, buildLogoPrompt, logoJobTimedOut, signLogoState, verifyLogoState,
+    adminSupabase, nanoLogoPlan, logoVariationSource, applyLogoVariationStyle, planLogoVariation, compileLogoVariation, LOGO_ACTIVE, LOGO_COST, logoOperationCost, logoGenerationQuota, buildLogoPrompt, logoJobTimedOut, signLogoState, verifyLogoState,
     fitImageLogoToArtboard: async buffer => buffer,
     PROJECT_ACCESS: { OWNER: 'owner', EDIT: 'edit', VIEW: 'view' },
     getProjectAccess: async (userId, projectId, { required = 'view' } = {}) => {

@@ -90,6 +90,10 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
   const [showSourceCrop, setShowSourceCrop] = useState(false);
   const [sketch, setSketch] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [variationChoice, setVariationChoice] = useState(null);
+  const [variationPanelSource, setVariationPanelSource] = useState(null);
+  const variationRoot = useRef(null);
+  const variationTrigger = useRef(null);
   const promptRef = useRef(null);
   const [background, setBackground] = useState('white');
   const [compare, setCompare] = useState(false);
@@ -214,6 +218,9 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
   const generationUnitCost = logoOperationCost('generate', mode);
   const generationCount = Math.min(count, quota.remaining);
   const selected = jobs.find(job => job.id === selectedId && job.status === 'succeeded' && (job.mode || 'text') === mode);
+  const variationStyle = selected && variationChoice?.sourceId === selected.id ? variationChoice.value : 'auto';
+  const variationNeedsText = target => target === 'wordmark' ? !selected?.brand
+    : target === 'monogram' && !selected?.brand && !selected?.designSettings?.monogramLetters && selected?.style !== 'monogram';
   const parent = jobs.find(job => job.id === selected?.sourceId && job.status === 'succeeded');
   const hasActive = jobs.some(job => LOGO_ACTIVE.includes(job.status));
   const locked = busy || hasActive || projectLoading;
@@ -221,6 +228,21 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
   const canEditProject = ['owner', 'edit'].includes(projectAccess);
   const isProjectOwner = projectAccess === 'owner';
   const inputLocked = locked || !canEditProject;
+  const variationOpen = Boolean(selected && variationPanelSource === selected.id && !inputLocked && quota.remaining);
+  useEffect(() => { setVariationPanelSource(null); }, [selected?.id, mode]);
+  useEffect(() => {
+    if (!variationOpen) return;
+    variationRoot.current?.querySelector('select')?.focus();
+    const dismiss = event => {
+      if (!variationRoot.current?.contains(event.target)) setVariationPanelSource(null);
+    };
+    const escape = event => {
+      if (event.key === 'Escape') { setVariationPanelSource(null); variationTrigger.current?.focus(); }
+    };
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('pointerdown', dismiss); document.removeEventListener('keydown', escape); };
+  }, [variationOpen]);
   const completed = jobs.filter(job => job.status === 'succeeded');
   const hasVectorExport = selected?.format === 'svg' || jobs.some(job => job.operation === 'vectorize' && job.sourceId === selected?.id && job.status === 'succeeded' && job.format === 'svg' && job.url);
   const needsWordmarkName = style === 'wordmark' && !brand.trim();
@@ -284,6 +306,7 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
             tagline: operation === 'generate' ? tagline : selected.tagline,
             palette: operation === 'generate' ? palette : selected.palette,
             designSettings: operation === 'generate' ? designSettings : {},
+            ...(operation === 'variations' ? { variationStyle } : {}),
             ...(operation === 'generate' ? { sourceUrl } : { sourceId: selected.id }),
           }) });
           acceptProject(result.project);
@@ -416,7 +439,32 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
             </div>
             <div className={styles.actions}>
               <button disabled={inputLocked} onClick={() => { setEditing(!editing); setCompare(false); }}><WandSparkles size={15} /> AI edit <small>{LOGO_COST.edit} cr</small></button>
-              <button disabled={inputLocked || !quota.remaining} onClick={() => run('variations')}><Layers3 size={15} /> Variations <small>{LOGO_COST.variations * generationCount} cr</small></button>
+              <div className={styles.variationAction} ref={variationRoot} onBlur={event => {
+                if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setVariationPanelSource(null);
+              }}>
+              <button type="button" ref={variationTrigger} disabled={inputLocked || !quota.remaining} aria-haspopup="dialog" aria-expanded={variationOpen}
+                aria-controls={variationOpen ? 'logo-variation-options' : undefined} onClick={() => setVariationPanelSource(variationOpen ? null : selected.id)}>
+                <Layers3 size={15} /> Variations <small>{LOGO_COST.variations * generationCount} cr</small>
+              </button>
+              {variationOpen && <div id="logo-variation-options" className={styles.variationPopover} role="dialog" aria-label="Create logo variations">
+              <div className={styles.variationHeading}><label htmlFor="variation-style">Variation style</label><button type="button" aria-label="Close variation options" onClick={() => { setVariationPanelSource(null); variationTrigger.current?.focus(); }}><X size={14} aria-hidden="true" /></button></div>
+              <div className={styles.variationControls}>
+              <select id="variation-style" disabled={inputLocked || !quota.remaining} value={variationStyle}
+                onChange={event => setVariationChoice({ sourceId: selected.id, value: event.target.value })}>
+                <option value="auto" title="Match the original logo’s style">Auto</option>
+                <optgroup label="Change style">
+                {LOGO_STYLES.map(item => <option key={item.id} value={item.id}
+                  disabled={variationNeedsText(item.id)}>
+                  {item.name}{variationNeedsText(item.id) ? ' — needs saved brand text' : ''}
+                </option>)}
+                </optgroup>
+              </select>
+              <button type="button" className={styles.variationProceed} aria-label={`Create ${generationCount === 1 ? 'variation' : `${generationCount} variations`} for ${LOGO_COST.variations * generationCount} credits`} disabled={inputLocked || !quota.remaining} onClick={() => { setVariationPanelSource(null); variationTrigger.current?.focus(); run('variations'); }}>
+                Create{generationCount > 1 ? ` ${generationCount}` : ''} <small>{LOGO_COST.variations * generationCount} cr</small>
+              </button>
+              </div>
+              </div>}
+              </div>
               <button disabled={inputLocked || selected.operation === 'removeBg'} onClick={() => run('removeBg')}><Scissors size={15} /> Remove BG <small>{LOGO_COST.removeBg} cr</small></button>
               <button disabled={inputLocked || hasVectorExport} onClick={() => run('vectorize')}><Spline size={15} /> Vectorize <small>{LOGO_COST.vectorize} cr</small></button>
               <DownloadMenu downloading={downloading} hasVector={hasVectorExport} onDownload={download} />
