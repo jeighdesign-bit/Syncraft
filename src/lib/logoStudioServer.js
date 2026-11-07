@@ -3,7 +3,7 @@ import { uploadToR2 } from '@/lib/cloudflare';
 import { chargeCreditsVerified, refundCreditVerified, markCreditTransaction, recordProviderUsage } from '@/lib/creditLedger';
 import { getProjectAccess, PROJECT_ACCESS } from '@/lib/projectAccess';
 import { fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, DEFAULT_MAX_IMAGE_BYTES, DEFAULT_MAX_SVG_BYTES } from '@/lib/ssrf';
-import { LOGO_ACTIVE, logoOperationCost, logoGenerationQuota, logoJobTimedOut } from '@/lib/logoStudio.mjs';
+import { LOGO_ACTIVE, logoOperationCost, logoGenerationQuota, logoJobTimedOut, validateLogoOperation, logoReplacementText, buildLogoPrompt } from '@/lib/logoStudio.mjs';
 import { generateRecraftLogo, validateLogoSvg } from '@/lib/logoRecraftServer';
 import { nanoLogoPlan } from '@/lib/logoFal.mjs';
 import { fal } from '@fal-ai/client';
@@ -11,9 +11,10 @@ import sharp from 'sharp';
 import { signLogoState, verifyLogoState } from '@/lib/logoStudioIntegrity.mjs';
 import { randomUUID } from 'node:crypto';
 import { planLogoDirections } from './logoArtDirectorServer';
-import { compileLogoDirection, LOGO_COMPILER_VERSION } from './logoPromptCompiler.mjs';
+import { compileLogoDirection, logoCompilerVersion } from './logoPromptCompiler.mjs';
 import { fitImageLogoToArtboard } from './logoArtboard.mjs';
 import { logoVariationSource, applyLogoVariationStyle, planLogoVariation, compileLogoVariation } from './logoVariations.mjs';
+import { logoVisualDirection } from './logoVisualDirection.mjs';
 
 export function createLogoState(userId, projectId) {
   const state = { tool: 'logo_studio', revision: 0, activity: 'idle', jobs: [] };
@@ -120,6 +121,9 @@ async function saveOutput(userId, projectId, job, url, format) {
 }
 
 export async function startLogoOperation(userId, project, input, prepared = false) {
+  // Direct service callers must obey creation rules before any reservation or billing.
+  // Refinement identity is resolved separately from the trusted saved source below.
+  if ((input.operation || 'generate') === 'generate') input = validateLogoOperation(input);
   const projectId = project.id;
   project = (await accessibleLogoProject(userId, projectId, PROJECT_ACCESS.EDIT)).project;
   const previous = project.canvas_data.jobs.find(item => item.id === input.requestId);
@@ -134,6 +138,13 @@ export async function startLogoOperation(userId, project, input, prepared = fals
     if (input.operation === 'vectorize' && source.format === 'svg') throw new Error('This logo is already a vector. Download SVG directly.');
     sourceFormat = source.format;
     sourceUrl = source.url;
+    // Preserve creation mode through utility versions for history and variation
+    // routing. AI Edit selects its editing provider independently below.
+    if (input.operation !== 'generate') {
+      const sourceContext = logoVariationSource(source, project.canvas_data.jobs);
+      input = { ...input, mode: sourceContext.mode,
+        ...(input.operation === 'edit' ? { style: sourceContext.style, brand: sourceContext.brand, tagline: sourceContext.tagline } : {}) };
+    }
   }
   if (sourceUrl) {
     if (!isOwnedStorageUrl(sourceUrl, { userId, projectId })) throw new Error('Upload an image to your own storage first.');
@@ -146,9 +157,13 @@ export async function startLogoOperation(userId, project, input, prepared = fals
     const metadata = await sharp(buffer, { limitInputPixels: 25_000_000 }).metadata();
     if (!['png', 'jpeg', 'webp', ...(sourceFormat === 'svg' ? ['svg'] : [])].includes(metadata.format)) throw new Error('Use a PNG, JPG or WebP source image.');
   }
-  const useRecraft = ['removeBg', 'vectorize'].includes(input.operation);
-  if (useRecraft && !(process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY)) throw new Error('Recraft tools are not configured on this server.');
-  if (!useRecraft && !process.env.FAL_KEY) throw new Error('Logo generation is not configured on this server.');
+  // Editing capability is independent of the source creation mode. Keep mode
+  // for history/lineage, but always edit the accepted image with Nano Banana 2.
+  const useNano = input.operation === 'edit'
+    || (['generate', 'variations'].includes(input.operation) && ['image', 'sketch'].includes(input.mode));
+  if (useNano) {
+    if (!process.env.FAL_KEY) throw new Error(input.operation === 'edit' ? 'AI Edit is not configured on this server.' : 'Image and Sketch to Logo are not configured on this server.');
+  } else if (!(process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY)) throw new Error('Recraft is not configured on this server.');
   let claimed = false;
   const now = new Date().toISOString();
   project = await mutateLogoProject(userId, projectId, state => {
@@ -168,7 +183,17 @@ export async function startLogoOperation(userId, project, input, prepared = fals
     }
     if (state.jobs.length >= 120) throw new Error('This project has reached 120 versions. Start a new project.');
     if (state.jobs.filter(item => LOGO_ACTIVE.includes(item.status)).length >= 4) throw new Error('Wait for your current logos to finish first.');
-    let reservedInput = input;
+    const visualGuidance = logoVisualDirection(input, process.env.LOGO_TEXT_VISUAL_STYLES);
+    let reservedInput = visualGuidance ? { ...input, visualGuidance } : input;
+    if (input.operation === 'edit') {
+      const replacement = logoReplacementText(input.prompt);
+      reservedInput = { ...input, editPromptVersion: 'logo-edit-2',
+        editIntent: replacement ? { type: 'replace-main-text', sourceText: input.brand, targetText: replacement } : { type: 'visual' },
+        ...(replacement ? { brand: replacement } : {}) };
+      // Freeze only the edit contract, never the source's creation prompt or
+      // style guides. Queued recovery uses this same signed request.
+      reservedInput.compiledPrompt = buildLogoPrompt(reservedInput);
+    }
     if (input.operation === 'variations') {
       const source = state.jobs.find(item => item.id === input.sourceId && item.status === 'succeeded');
       if (!source || source.url !== sourceUrl) throw new Error('Select a saved logo as your source.');
@@ -199,13 +224,13 @@ export async function startLogoOperation(userId, project, input, prepared = fals
     }
     project = await patchJob(userId, projectId, job.id, { chargeId: charge.transactionId, isOwnerTest: charge.isOwnerTest }, ['starting']);
     job = project.canvas_data.jobs.find(item => item.id === job.id);
-    if (!useRecraft) {
+    if (useNano) {
       let image = sourceUrl;
       if (sourceFormat === 'svg') {
         const png = await sharp(sourceBuffer, { limitInputPixels: 25_000_000 }).resize({ width: 1024, height: 1024, fit: 'inside' }).png().toBuffer();
         image = `data:image/png;base64,${png.toString('base64')}`;
       }
-      const plan = nanoLogoPlan(job, image, job.compiledPrompt, job.seed);
+      const plan = nanoLogoPlan(job, image);
       await patchJob(userId, projectId, job.id, { provider: 'fal', endpoint: plan.endpoint, model: plan.model, estimatedCostUsd: plan.cost }, ['starting']);
       const result = await fal.queue.submit(plan.endpoint, { input: plan.input });
       if (!result.request_id) throw new Error('The image model did not accept this request.');
@@ -213,15 +238,18 @@ export async function startLogoOperation(userId, project, input, prepared = fals
     }
     project = await patchJob(userId, projectId, job.id, { status: 'running', provider: 'recraft' }, ['starting']);
     job = project.canvas_data.jobs.find(item => item.id === job.id);
-    const result = await generateRecraftLogo(input, sourceBuffer, sourceFormat);
+    const result = await generateRecraftLogo(job, sourceBuffer, sourceFormat);
     // Persist the remote output before saving so a refresh can finish a crashed save.
     project = await patchJob(userId, projectId, job.id, {
       status: 'saving', endpoint: result.endpoint, model: result.model, providerRequestId: result.providerRequestId,
-      providerOutputUrl: result.url, outputFormat: result.format,
+      providerOutputUrl: result.url, outputFormat: result.format, estimatedCostUsd: result.cost,
+      ...(result.visualGuideResult ? { visualGuideResult: result.visualGuideResult } : {}),
     }, ['running']);
     job = project.canvas_data.jobs.find(item => item.id === job.id);
     await recordProviderUsage({ userId, projectId, creditTransactionId: job.chargeId, provider: 'recraft', endpoint: result.endpoint,
-      providerRequestId: result.providerRequestId, estimatedCostUsd: result.cost, isOwnerTest: job.isOwnerTest });
+      providerRequestId: result.providerRequestId, estimatedCostUsd: result.cost, isOwnerTest: job.isOwnerTest,
+      ...(result.visualGuideResult ? { metadata: { visualGuidance: result.visualGuideResult } } : {}),
+    });
     return await saveOutput(userId, projectId, job, result.url, result.format);
   } catch (error) {
     const message = error.code === 'INSUFFICIENT_CREDITS' ? 'Not enough credits for this operation.'
@@ -235,8 +263,10 @@ export async function startLogoOperation(userId, project, input, prepared = fals
 // One durable reservation and one planner call per text-generation batch.
 // Replay/status reads never initiate paid work; stale reservations use normal timeout recovery.
 export async function startLogoTextBatch(userId, project, input, count) {
+  if ((input.operation || 'generate') === 'generate') input = validateLogoOperation(input);
   if (input.operation !== 'generate' || input.mode !== 'text' || input.sourceId || input.sourceUrl
     || !Number.isInteger(count) || count < 1 || count > 4) throw new Error('Choose one to four Text to Logo options.');
+  if (!(process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY)) throw new Error('Recraft is not configured on this server.');
   const id = project.id;
   project = (await accessibleLogoProject(userId, id, PROJECT_ACCESS.EDIT)).project;
   if (project.canvas_data.batches?.some(batch => batch.id === input.requestId)) return project;
@@ -244,6 +274,7 @@ export async function startLogoTextBatch(userId, project, input, count) {
   if (profileError || !profile) throw new Error('Your account is not ready for billing. Please sign in again.');
   if (Number(profile.credits) < count * logoOperationCost('generate', 'text')) throw new Error('Not enough credits for these logo options.');
   const ids = Array.from({ length: count }, () => randomUUID());
+  const visualGuidance = logoVisualDirection(input, process.env.LOGO_TEXT_VISUAL_STYLES);
   let claimed = false;
   project = await mutateLogoProject(userId, id, state => {
     claimed = false;
@@ -253,7 +284,7 @@ export async function startLogoTextBatch(userId, project, input, count) {
     if (state.jobs.some(job => LOGO_ACTIVE.includes(job.status))) throw new Error('Wait for your current logos to finish first.');
     const now = new Date().toISOString();
     state.batches = [...(state.batches || []), { id: input.requestId, jobIds: ids, createdAt: now, billedUserId: userId }];
-    for (const jobId of ids) state.jobs.push({ ...input, id: jobId, requestId: jobId, batchId: input.requestId, seed: parseInt(jobId.slice(0, 8), 16),
+    for (const jobId of ids) state.jobs.push({ ...input, ...(visualGuidance ? { visualGuidance } : {}), id: jobId, requestId: jobId, batchId: input.requestId, seed: parseInt(jobId.slice(0, 8), 16),
       billedUserId: userId, creditCost: logoOperationCost('generate', 'text'), status: 'starting', createdAt: now, updatedAt: now });
     claimed = true;
     return state;
@@ -268,21 +299,23 @@ export async function startLogoTextBatch(userId, project, input, count) {
         metadata: { ...plan.metadata, batchId: input.requestId, imageCalls: 0 } });
       project = await mutateLogoProject(userId, id, state => {
         const batch = state.batches.find(b => b.id === input.requestId);
-        batch.planner = { ...plan.metadata, usageRecorded: logged }; batch.compilerVersion = LOGO_COMPILER_VERSION;
+        batch.planner = { ...plan.metadata, usageRecorded: logged }; batch.compilerVersion = logoCompilerVersion(input.style);
         ids.forEach((jobId, i) => {
           const job = state.jobs.find(j => j.id === jobId);
           if (job.status !== 'starting' || job.submissionClaimed) return;
           job.artDirection = plan.directions[i]; job.designBrief = plan.brief;
-          job.compilerVersion = LOGO_COMPILER_VERSION;
+          job.compilerVersion = logoCompilerVersion(input.style);
           job.compiledPrompt = compileLogoDirection(plan.brief, plan.directions[i]);
         });
         return state;
       });
     }
-    for (const jobId of ids) {
-      project = await startLogoOperation(userId, project, { ...input, requestId: jobId }, true);
-    }
-    return project;
+    // Recraft returns images synchronously. Keep reserved outputs concurrent
+    // within the route duration, each with an independent claim and charge.
+    const results = await Promise.allSettled(ids.map(jobId => startLogoOperation(userId, project, { ...input, requestId: jobId }, true)));
+    const failure = results.find(result => result.status === 'rejected');
+    if (failure) throw failure.reason;
+    return (await accessibleLogoProject(userId, id, PROJECT_ACCESS.EDIT)).project;
   } catch (error) {
     for (const jobId of ids) {
       const job = project.canvas_data.jobs.find(j => j.id === jobId);
@@ -312,7 +345,7 @@ export async function refreshLogoJob(userId, project, id) {
     try { return await saveOutput(userId, project.id, job, job.providerOutputUrl, job.outputFormat); }
     catch { return failJob(userId, project.id, job, 'The logo could not be saved.'); }
   }
-  // Nano Banana creation and legacy fal jobs share the durable queue flow.
+  // AI edits, Image/Sketch Nano jobs and legacy fal jobs share queue recovery.
   if (!job.providerRequestId || !['queued', 'running', 'saving'].includes(job.status)) {
     return logoJobTimedOut(job) ? failJob(userId, project.id, job, 'The operation timed out.') : project;
   }

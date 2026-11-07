@@ -4,27 +4,29 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Pencil, RotateCcw, X } from 'lucide-react';
 import Select from '@/components/Select';
 import { logoDesignFields } from '@/lib/logoDesignSettings.mjs';
+import { requiresLogoBrand } from '@/lib/logoStyleCapabilities.mjs';
 import styles from './designControls.module.css';
 
 const compactLabels = {
   letterType: 'Letters', detail: 'Detail', rendering: 'Treatment', fontFamily: 'Font', lettering: 'Lettering', composition: 'Alignment',
-  characterComposition: 'Framing', capitalization: 'Case', monogramTreatment: 'Treatment', monogramWeight: 'Weight', monogramFont: 'Font',
+  characterComposition: 'Framing', outlineThickness: 'Outline', capitalization: 'Case', monogramTreatment: 'Treatment', monogramWeight: 'Weight', monogramFont: 'Font',
   structure: 'Structure', symbolConstruction: 'Mark', lineThickness: 'Thickness', lineStructure: 'Structure', badgeType: 'Type',
   badgeShape: 'Shape', badgeDetail: 'Detail', viewpoint: 'View', engravingStyle: 'Treatment', engravingTechnique: 'Technique',
   lineQuality: 'Line quality', mood: 'Mood', personality: 'Personality', industry: 'Industry',
+  streetwearLetters: 'Letters', streetwearLayout: 'Layout', streetwearOutline: 'Outline', streetwearDepth: 'Depth',
 };
 
-export default function DesignControls({ style, settings, onChange, brand, onBrandChange, tagline, onTaglineChange, disabled = false }) {
+export default function DesignControls({ mode, style, settings, onChange, brand, onBrandChange, tagline, onTaglineChange, disabled = false }) {
   const [textField, setTextField] = useState(null);
   const root = useRef(null);
   const track = useRef(null);
   const input = useRef(null);
   const trigger = useRef(null);
   const id = useId();
-  const fields = logoDesignFields(style);
+  const fields = logoDesignFields(style, { mode });
   const [scroll, setScroll] = useState({ left: false, right: false });
   const activeCount = fields.filter(([key]) => settings[key]).length;
-  const hasTextChips = ['wordmark', 'badge'].includes(style);
+  const hasTextChips = requiresLogoBrand(style) || style === 'badge';
 
   useEffect(() => {
     const element = track.current;
@@ -34,7 +36,7 @@ export default function DesignControls({ style, settings, onChange, brand, onBra
     const observer = new ResizeObserver(update);
     observer.observe(element);
     return () => { element.removeEventListener('scroll', update); observer.disconnect(); };
-  }, [style, brand, tagline, settings]);
+  }, [mode, style, brand, tagline, settings]);
   useEffect(() => { if (textField) input.current?.focus(); }, [textField]);
   useEffect(() => {
     if (!textField) return;

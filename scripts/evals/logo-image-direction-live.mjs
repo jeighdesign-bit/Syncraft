@@ -3,9 +3,9 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { config } from 'dotenv';
-import { fal } from '@fal-ai/client';
 import { validateLogoOperation } from '../../src/lib/logoStudio.mjs';
 import { nanoLogoPlan } from '../../src/lib/logoFal.mjs';
+import { fal } from '@fal-ai/client';
 
 const [sourcePath, style, outputPath, brand = '', monogramLetters = ''] = process.argv.slice(2);
 if (!sourcePath || !style || !outputPath) throw new Error('Provide a source image, style, and output PNG path. This call incurs a provider charge.');

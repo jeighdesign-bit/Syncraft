@@ -1,6 +1,6 @@
 // Shared by the UI and server so Universal cannot be enabled only on one side.
-// Keep disabled until the extraction-quality work is ready for users again.
-export const UNIVERSAL_AVAILABLE = false;
+// Opt in locally for extraction testing; production remains disabled by default.
+export const UNIVERSAL_AVAILABLE = process.env.NEXT_PUBLIC_UNIVERSAL_TEST_ENABLED === 'true';
 export const UNIVERSAL_UNAVAILABLE_CODE = 'UNIVERSAL_UNAVAILABLE';
 export const UNIVERSAL_UNAVAILABLE_MESSAGE = 'Temporarily unavailable while we improve extraction.';
 

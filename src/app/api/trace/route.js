@@ -165,14 +165,14 @@ export async function POST(request) {
 
     if (step === 1) {
       // ==========================================
-      // STAGE 1: Extract with Nano Banana Pro
+      // STAGE 1: Extract with Nano Banana 2.1
       // ==========================================
 
       // Read image metadata to calculate the closest allowed aspect ratio for fal.ai
       const sharp = (await import('sharp')).default;
       const metadata = await sharp(rawSourceBuffer).metadata();
 
-      // Calculate closest aspect ratio for fal.ai Nano Banana Pro
+      // Calculate closest aspect ratio for fal.ai Nano Banana 2.1
       const targetAspectRatio = snapToAllowedAspectRatio(metadata?.width, metadata?.height);
 
       let prompt = "";
@@ -285,10 +285,10 @@ If any difference is detected, continue refining until the reconstruction is vis
         const inputUrlForLog = new URL(finalImageUrl);
         console.log("[fal.ai Input URL]:", `${inputUrlForLog.origin}${inputUrlForLog.pathname}`);
 
-        // ── Step 1: Extract flat design using base Pro with reference context ──
+        // ── Step 1: Extract flat design using Nano Banana 2.1 with image references ──
         // Feed original source image directly — no pre-upscale step.
         // Flow: Extract → Upscale (step 2) → Vectorize (step 3)
-        console.log("[API Step 1] Extracting flat design with fal.ai (nano-banana-pro)...");
+        console.log("[API Step 1] Extracting flat design with fal.ai (nano-banana-2.1)...");
 
         extractionMode = garmentExtractionMode();
         const extractionInput = buildGarmentExtractionInput({
@@ -357,7 +357,7 @@ If any difference is detected, continue refining until the reconstruction is vis
 
         generatedImageBuffer = generatedBuffer;
         generatedMimeType = result.data.images[0].content_type || "image/jpeg";
-        geminiThinking = "Generated via fal.ai Nano Banana Pro";
+        geminiThinking = "Generated via fal.ai Nano Banana 2.1";
         await markCreditTransaction({
           transactionId: chargeTransactionId,
           status: "provider_succeeded",

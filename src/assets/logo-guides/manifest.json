@@ -1,0 +1,149 @@
+{
+  "version": "logo-visual-guides-1",
+  "sources": [
+    {
+      "style": "minimalist",
+      "source": "public/images/logo-examples/studio-original-notchfold.webp",
+      "cropTopFraction": 0.65,
+      "sourceSha256": "30fa3494d83b960bc7c8f2bcf7b98c25419334ed75d3c95474904af4cd27d348",
+      "guideSha256": "e7b55b012a556ceb2501b1e8e893fdbbd04a194892d6a3fbc34bea7834b79a12",
+      "ownership": "Syncraft original, user-approved artwork"
+    },
+    {
+      "style": "mascot",
+      "source": "public/images/logo-examples/studio-original-mintwheel.webp",
+      "cropTopFraction": 0.61,
+      "sourceSha256": "5f8833ae81ce0d61d963441965a66a4da3fb5b01d7aa6363e29dffc10886e162",
+      "guideSha256": "6f858a3e8b14cf6b7821ddda98e9919d23cadaaab5e9cee6e1df150001863d1d",
+      "ownership": "Syncraft original, user-approved artwork"
+    },
+    {
+      "style": "retro",
+      "source": "public/images/logo-examples/studio-original-zippear.webp",
+      "cropTopFraction": 0.72,
+      "sourceSha256": "7ca0670b4550bcdb2f5c58ecd21a6ed01eb72119083de614e400b128b393e2d0",
+      "guideSha256": "c93fa27c8b1784668a1deaa0ebea808a01242ce3c7a67ded0513fc31a33b669c",
+      "ownership": "Syncraft original, user-approved artwork"
+    },
+    {
+      "style": "pictorial",
+      "source": "public/images/logo-examples/studio-original-lumipod.webp",
+      "cropTopFraction": 0.72,
+      "sourceSha256": "f8ce25c0eb0af2f9b3700f60d741c41294449d4184adf4e03831a672aa122040",
+      "guideSha256": "68f637bd8e667b91c24b0cd18acbec741112b43ee2a3d9effa87f654bdc84b6e",
+      "ownership": "Syncraft original, user-approved artwork"
+    },
+    {
+      "style": "cartoon",
+      "source": "public/images/logo-examples/studio-original-sunday-spore.webp",
+      "cropTopFraction": 0.63,
+      "sourceSha256": "36148189dab7ecde721d54e4fb662e7781d6fb23337a1ffcabe7978c402a7f72",
+      "guideSha256": "56d44512cdd9683850741fe396135dc93861a8216de929a3f6dee62ddba9ed95",
+      "ownership": "Syncraft original, user-approved artwork"
+    },
+    {
+      "style": "line",
+      "source": "public/images/logo-examples/studio-original-fernthread.webp",
+      "cropTopFraction": 0.68,
+      "sourceSha256": "3817cff605de8ac04aa66f0e8bb7adda3f8543b1a6ee740b0d01c0845c9de154",
+      "guideSha256": "72cc6549afd4938160481a01da3c78c595d012102868cbf992aafcd9506c7ad1",
+      "ownership": "Syncraft original, user-approved artwork"
+    },
+    {
+      "style": "abstract",
+      "source": "public/images/logo-examples/studio-original-prismfold.webp",
+      "cropTopFraction": 0.7,
+      "sourceSha256": "50d262e6081b352b4250cd601d88d7abdb3ebd5724fb1ab379ab56a2902db6ad",
+      "guideSha256": "039c1a8ca9ef57055fbcc151b81cc300215d99962e73241e5a1a5ea8736322fb",
+      "ownership": "Syncraft original, user-approved artwork"
+    },
+    {
+      "style": "engraved",
+      "source": "public/images/logo-examples/studio-original-cindermoth.webp",
+      "cropTopFraction": 0.82,
+      "sourceSha256": "45790a1d895104987d230ab4231d6f82f0707cc97fb83e1ddf80f55ee9cbe352",
+      "guideSha256": "1d283cabd425608827368e846edbf533c9a2e4f412e3bead3727d0d69efa4881",
+      "ownership": "Syncraft original, user-approved artwork"
+    },
+    {
+      "style": "icon",
+      "source": "public/images/logo-examples/studio-original-brimbop.webp",
+      "cropTopFraction": 0.64,
+      "sourceSha256": "ee1f5138228930ebc71d46aa7da17a8daffcbbd4ff7386bdf4ffbdaa1732aed4",
+      "guideSha256": "229679f6db084d78781275f825771995c1b67f48585044d449b3f93acc8002d9",
+      "ownership": "Syncraft original, user-approved artwork"
+    },
+    {
+      "style": "badge",
+      "source": "public/images/logo-styles/badge-signature.svg",
+      "sourceSha256": "a254d3811b49e1a83390b20ce4f434c9748736ead7be19df4ad1f262979fc431",
+      "ownership": "Syncraft original code-native artwork"
+    }
+  ],
+  "fonts": [
+    {
+      "file": "anton.woff2",
+      "name": "Anton Regular",
+      "version": "Version 2.116; ttfautohint (v1.8.3)",
+      "source": "https://fontsource.org/fonts/anton",
+      "sha256": "d0fa07ff63dd60cbc0e2f58e29c802dca2a5ae0276c999f59c6111ab7bbaec3b",
+      "licenseFile": "anton-LICENSE.txt"
+    },
+    {
+      "file": "inter.woff2",
+      "name": "Inter Bold",
+      "version": "Version 4.001;git-66647c0bb",
+      "source": "https://fontsource.org/fonts/inter",
+      "sha256": "6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491",
+      "licenseFile": "inter-LICENSE.txt"
+    },
+    {
+      "file": "lilita-one.woff2",
+      "name": "Lilita One",
+      "version": "Version 1.002",
+      "source": "https://fontsource.org/fonts/lilita-one",
+      "sha256": "d2575d4fa3632580aafcbcdf6978b3b57e144b90cf5bd9c2c98194f28b869704",
+      "licenseFile": "lilita-one-LICENSE.txt"
+    },
+    {
+      "file": "lobster.woff2",
+      "name": "Lobster Regular",
+      "version": "Version 2.100",
+      "source": "https://fontsource.org/fonts/lobster",
+      "sha256": "aed68c73817364906ff95d97be87246d106bd38d5e4397e4866ec831ee22f7ba",
+      "licenseFile": "lobster-LICENSE.txt"
+    },
+    {
+      "file": "merriweather.woff2",
+      "name": "Merriweather Light 18pt Bold",
+      "version": "Version 2.100",
+      "source": "https://fontsource.org/fonts/merriweather",
+      "sha256": "4e1ab49396c02be0d9a2a25eed7bc73781c047d85fcb5dfc2889873eaf992b09",
+      "licenseFile": "merriweather-LICENSE.txt"
+    },
+    {
+      "file": "nunito.woff2",
+      "name": "Nunito ExtraLight Black",
+      "version": "Version 3.602",
+      "source": "https://fontsource.org/fonts/nunito",
+      "sha256": "9ca32f5d8334579387361096944286df451272a557bb09bd906254a623aba99e",
+      "licenseFile": "nunito-LICENSE.txt"
+    },
+    {
+      "file": "outfit.woff2",
+      "name": "Outfit Thin Bold",
+      "version": "Version 1.100;gftools[0.9.27]",
+      "source": "https://fontsource.org/fonts/outfit",
+      "sha256": "5d5e3734089a74707292ce8a3e186def34cd63e33879f9ac3689a8d8da9d0706",
+      "licenseFile": "outfit-LICENSE.txt"
+    },
+    {
+      "file": "unifrakturcook.woff2",
+      "name": "UnifrakturCook",
+      "version": "Version 2011-09-01 ",
+      "source": "https://fontsource.org/fonts/unifrakturcook",
+      "sha256": "3304757748716ececd1b87999cb92d61ff5332aefbe8331d5155bbb68218e588",
+      "licenseFile": "unifrakturcook-LICENSE.txt"
+    }
+  ]
+}

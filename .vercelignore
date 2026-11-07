@@ -7,6 +7,10 @@ assets
 .git
 .next
 node_modules
+.next-local-dev.log
+localhost*.log
+.codex-dev*.log
+.codex-localhost*.log
 public/Store/**/*.psd
 public/Store/DESIGN PACKS/*.jpg
 public/Store/MOCKUPS/*.jpg

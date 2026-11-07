@@ -5,6 +5,13 @@ import { validateLogoOperation, logoOperationCost } from '../src/lib/logoStudio.
 import { CREDIT_COST } from '../src/lib/pricing.js';
 
 const input = changes => validateLogoOperation({ requestId: crypto.randomUUID(), prompt: 'A robot logo', ...changes });
+
+test('the Nano adapter preserves the saved compiled prompt and seed', () => {
+  const request = { ...input({ mode: 'sketch', sourceId: crypto.randomUUID() }), compiledPrompt: 'Keep this exact prepared direction', seed: 42 };
+  const plan = nanoLogoPlan(request, 'reference');
+  assert.equal(plan.input.prompt, request.compiledPrompt);
+  assert.equal(plan.input.seed, 42);
+});
 test('text creation uses Nano Banana 2 at fixed 1K and one output', () => {
   const plan = nanoLogoPlan(input());
   assert.equal(plan.endpoint, 'fal-ai/nano-banana-2'); assert.equal(plan.cost, 0.08);
@@ -23,14 +30,14 @@ test('image, sketch, edit and variations pass their exact reference to the Nano 
     assert.throws(() => nanoLogoPlan(request), /source image/);
   }
 });
-test('Nano Banana Pro remains available as an explicit server setting', () => {
+test('active Image/Sketch route pins Nano Banana 2 despite a historical Pro override', () => {
   const previous = process.env.LOGO_STUDIO_NANO_MODEL;
+  process.env.LOGO_STUDIO_NANO_MODEL = 'pro';
   try {
-    process.env.LOGO_STUDIO_NANO_MODEL = 'pro';
-    const plan = nanoLogoPlan(input());
-    assert.equal(plan.endpoint, 'fal-ai/nano-banana-pro');
-    assert.equal(plan.model, 'nano-banana-pro');
-    assert.equal(plan.cost, 0.15);
+    for (const mode of ['image', 'sketch']) {
+      const plan = nanoLogoPlan(input({mode, sourceId: crypto.randomUUID()}), 'reference');
+      assert.equal(plan.endpoint, 'fal-ai/nano-banana-2/edit'); assert.equal(plan.cost, .08);
+    }
   } finally {
     if (previous === undefined) delete process.env.LOGO_STUDIO_NANO_MODEL;
     else process.env.LOGO_STUDIO_NANO_MODEL = previous;
@@ -52,4 +59,15 @@ test('support tools cannot accidentally submit to Nano; pricing stays isolated f
   assert.equal(logoOperationCost('variations'), 8); assert.equal(logoOperationCost('edit'), 8);
   assert.equal(logoOperationCost('removeBg'), 2); assert.equal(logoOperationCost('vectorize'), 2);
   assert.equal(CREDIT_COST.removeBg, 12); assert.equal(CREDIT_COST.trace, 12); assert.equal(CREDIT_COST.upscale, 12);
+});
+
+test('Streetwear uses the existing text provider and one raster output without changing price', () => {
+  const request = input({ style: 'streetwear-lettering', brand: 'Night Shift', prompt: '' });
+  const plan = nanoLogoPlan(request);
+  assert.equal(plan.endpoint, 'fal-ai/nano-banana-2');
+  assert.equal(plan.input.num_images, 1);
+  assert.equal(plan.input.output_format, 'png');
+  assert.equal(plan.input.image_urls, undefined);
+  assert.equal(logoOperationCost('generate', request.mode), 8);
+  assert.match(plan.input.prompt, /"Night Shift"/);
 });

@@ -1,3 +1,4 @@
+// RETIRED: not approved for public examples or marketing; preserved as historical provenance only.
 // Adapted after inspecting the robot and horse presets in Logo Diffusion.
 // Generate through Logo Studio before publishing these entries in the gallery.
 export const LOGO_EXAMPLE_ADDITIONS = [

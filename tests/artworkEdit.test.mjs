@@ -36,7 +36,7 @@ test("preview is charged once, survives reconnect, and leaves all current output
   assert.equal(preview.project.svg_url, "vector");
   await f.service.generate(f.input);
   assert.equal(f.calls.charge, 1); assert.equal(f.calls.submit, 1);
-  assert.equal(ARTWORK_EDIT_COST, 8); assert.equal(ARTWORK_EDIT_MODEL, "fal-ai/nano-banana-pro/edit");
+  assert.equal(ARTWORK_EDIT_COST, 8); assert.equal(ARTWORK_EDIT_MODEL, "google/nano-banana-2.1/edit");
 });
 
 test("comment-only edits send artwork-relative locations to the provider and preserve comments for review", async () => {

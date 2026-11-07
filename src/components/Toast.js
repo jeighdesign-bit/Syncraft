@@ -37,7 +37,7 @@ export function ToastContainer() {
       pointerEvents: 'none'
     }}>
       {toasts.map(t => (
-        <div key={t.id} style={{
+        <div key={t.id} role={t.type === 'error' ? 'alert' : 'status'} aria-atomic="true" style={{
           display: 'flex',
           alignItems: 'center',
           gap: '12px',

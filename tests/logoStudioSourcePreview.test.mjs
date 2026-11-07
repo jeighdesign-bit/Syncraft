@@ -7,12 +7,19 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ts from 'typescript';
 import * as logoStudio from '../src/lib/logoStudio.mjs';
+import * as logoStyleCapabilities from '../src/lib/logoStyleCapabilities.mjs';
+import * as logoVariations from '../src/lib/logoVariations.mjs';
+import * as styleSelection from '../src/app/logo-studio/styleSelection.mjs';
+import * as logoStylePreviews from '../src/lib/logoStylePreviews.mjs';
 
 const require = createRequire(import.meta.url);
 const original = await readFile(new URL('../src/app/logo-studio/LogoStudio.js', import.meta.url), 'utf8');
 // Seed the real component's initial state to exercise the render that happens
 // before its preview effect catches up with a changed/cleared source file.
 const seeded = original
+  .replace("const [style, setStyle] = useState('minimalist');", "const [style, setStyle] = useState(__previewTest.form.style || 'minimalist');")
+  .replace("const [brand, setBrand] = useState('');", "const [brand, setBrand] = useState(__previewTest.form.brand || '');")
+  .replace('const [authReady, setAuthReady] = useState(false);', 'const [authReady, setAuthReady] = useState(true);')
   .replace('const [project, setProject] = useState(null);', 'const [project, setProject] = useState(__previewTest.project);')
   .replace('const [selectedId, setSelectedId] = useState(null);', 'const [selectedId, setSelectedId] = useState(__previewTest.project?.jobs?.[0]?.id || null);')
   .replace('const [variationChoice, setVariationChoice] = useState(null);', 'const [variationChoice, setVariationChoice] = useState(__previewTest.variationChoice);')
@@ -25,7 +32,7 @@ const compiled = ts.transpileModule(seeded, { fileName: 'LogoStudio.jsx', compil
   jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true,
 } }).outputText;
 
-function renderPreview(source, preview, project = null, mode = 'image', variationChoice = null, variationPanelSource = null) {
+function renderPreview(source, preview, project = null, mode = 'image', variationChoice = null, variationPanelSource = null, form = {}) {
   const module = { exports: {} };
   const emptyComponent = { __esModule: true, default: () => null };
   const dependencies = {
@@ -34,12 +41,18 @@ function renderPreview(source, preview, project = null, mode = 'image', variatio
     '@/components/WorkspaceHeader': { __esModule: true, default: ({ actions }) => React.createElement('header', null, actions) },
     '@/components/GenerationLoading': emptyComponent,
     '@/components/WorkspaceTabs': emptyComponent,
+    '@/components/Toast': { toast: { success() {}, info() {} } },
     '@/components/TopUpModal': emptyComponent,
     '@/utils/supabase/client': { createClient: () => ({}) },
     '@/utils/uploadClient': {},
     '@/lib/logoStudio.mjs': logoStudio,
+    '@/lib/logoStylePreviews.mjs': logoStylePreviews,
+    '@/lib/logoStyleCapabilities.mjs': logoStyleCapabilities,
+    '@/lib/logoVariations.mjs': logoVariations,
+    './styleSelection.mjs': styleSelection,
     '@/lib/logoDesignSettings.mjs': { normalizeLogoDesignSettings: value => value || {} },
     '@/app/components/LoginModal': emptyComponent,
+    '@/app/components/SectionBadge': { __esModule: true, default: ({ children, className }) => React.createElement('span', { className }, children) },
     './SketchCanvas': emptyComponent,
     './DownloadMenu': emptyComponent,
     './DesignControls': { __esModule: true, default: () => React.createElement('div', { 'data-testid': 'design-controls' }) },
@@ -51,7 +64,7 @@ function renderPreview(source, preview, project = null, mode = 'image', variatio
     './studio.module.css': { __esModule: true, default: new Proxy({}, { get: (_target, key) => String(key) }) },
   };
   vm.runInNewContext(compiled, {
-    module, exports: module.exports, __previewTest: { source, preview, project, mode, variationChoice, variationPanelSource },
+    module, exports: module.exports, __previewTest: { source, preview, project, mode, variationChoice, variationPanelSource, form },
     require: name => Object.hasOwn(dependencies, name) ? dependencies[name] : require(name),
   });
   return renderToStaticMarkup(React.createElement(module.exports.default));
@@ -70,6 +83,55 @@ test('all three creation modes expose the shared design and optional color contr
     const html = renderPreview(null, null, null, mode);
     assert.match(html, /data-testid="design-controls"/);
     assert.match(html, /data-testid="color-controls"/);
+  }
+});
+
+test('Streetwear appears in Text to Logo only and requires exact text instead of an extra description', () => {
+  const style = logoStyleCapabilities.STREETWEAR_STYLE;
+  for (const mode of ['text', 'image', 'sketch']) {
+    const html = renderPreview(null, null, null, mode);
+    assert.equal(html.includes("/images/logo-styles/streetwear-sonder-transparent.png"), mode === 'text');
+    const expectedCount = logoStudio.LOGO_STYLES.filter(item => logoStyleCapabilities.isLogoStyleAvailable(item.id, mode)).length;
+    assert.ok(html.includes(`${expectedCount} styles`));
+  }
+  for (const brand of ['', '   ', 'NORTHSIDE']) {
+    const html = renderPreview(null, null, null, 'text', null, null, { style, brand });
+    assert.match(html, /Required for Streetwear Lettering/);
+    assert.match(html, /required="" placeholder="Exact words for your logo"/);
+    assert.match(html, /Optional lettering direction/);
+    const button = html.match(/<button class="generate"[^>]*>/)?.[0];
+    assert.ok(button);
+    assert.equal(button.includes('disabled=""'), !brand.trim());
+  }
+});
+
+test('Streetwear variation targets require a text source and saved brand text', () => {
+  for (const mode of ['text', 'image', 'sketch']) {
+    for (const brand of ['', 'NORTHSIDE']) {
+      const project = { id: 'project', name: 'Lettering', access: 'owner', jobs: [
+        { id: 'logo', mode, style: 'wordmark', brand, status: 'succeeded', operation: 'generate', format: 'png', url: 'https://storage.test/logo.png' },
+      ] };
+      const html = renderPreview(null, null, project, mode, null, 'logo');
+      const option = html.match(/<option value="streetwear-lettering"[^>]*>/)?.[0];
+      assert.equal(Boolean(option), mode === 'text');
+      if (option) assert.equal(option.includes('disabled=""'), !brand);
+    }
+  }
+});
+
+test('variation eligibility follows original mode and saved text through edited and utility versions', () => {
+  for (const originMode of ['text', 'image']) {
+    const savedMode = originMode === 'text' ? 'image' : 'text';
+    const project = { id: 'project', name: 'Lettering', access: 'owner', jobs: [
+      { id: 'transparent', sourceId: 'edit', mode: savedMode, style: 'wordmark', status: 'succeeded', operation: 'removeBg', format: 'png', url: 'https://storage.test/transparent.png' },
+      { id: 'edit', sourceId: 'original', mode: savedMode, style: 'wordmark', status: 'succeeded', operation: 'edit', format: 'png', url: 'https://storage.test/edit.png' },
+      { id: 'original', mode: originMode, style: 'wordmark', brand: 'NORTHSIDE', status: 'succeeded', operation: 'generate', format: 'png', url: 'https://storage.test/original.png' },
+    ] };
+    const html = renderPreview(null, null, project, savedMode, null, 'transparent');
+    const streetwearOption = html.match(/<option value="streetwear-lettering"[^>]*>/)?.[0];
+    assert.equal(Boolean(streetwearOption), originMode === 'text');
+    if (streetwearOption) assert.equal(streetwearOption.includes('disabled=""'), false);
+    assert.match(html, /<option value="wordmark">/);
   }
 });
 

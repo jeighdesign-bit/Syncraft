@@ -22,7 +22,7 @@ export function buildGarmentExtractionInput({ imageUrl, prompt, aspectRatio, mod
     };
   }
 
-  // Nano Banana Pro does not expose diffusion guidance, steps or image strength.
+  // Nano Banana 2.1 does not expose diffusion guidance, steps or image strength.
   // Sending those fields cannot enforce reference fidelity. Legacy retains the
   // provider's default resolution and the existing browser save flow.
   return baseInput;

@@ -1,6 +1,10 @@
 import { CREDIT_COST } from './pricing.js';
 import { normalizeLogoDesignSettings, logoDesignInstructions } from './logoDesignSettings.mjs';
 import { compileLogoVariation } from './logoVariations.mjs';
+import { STREETWEAR_STYLE, requiresLogoBrand, isLogoStyleAvailable } from './logoStyleCapabilities.mjs';
+import { LOGO_STYLE_PROFILES } from './logoStyleProfiles.mjs';
+import { streetwearBackground, streetwearPaletteDirection } from './logoStreetwear.mjs';
+import { compileLogoDirection } from './logoPromptCompiler.mjs';
 
 export const LOGO_STYLES = [
   { id: 'minimalist', name: 'Minimalist', mark: '◒', prompt: 'minimal geometric symbol, simple silhouette, balanced negative space' },
@@ -9,6 +13,7 @@ export const LOGO_STYLES = [
   { id: 'badge', name: 'Badge', mark: '◈', prompt: 'balanced badge emblem, clear hierarchy, enclosed composition' },
   { id: 'monogram', name: 'Monogram', mark: 'Aa', prompt: 'interlocking brand initials, elegant custom monogram, legible letter shapes' },
   { id: 'wordmark', name: 'Wordmark', mark: 'ab', prompt: 'distinctive custom lettering, precise spelling, balanced kerning, typography as the primary mark' },
+  { id: STREETWEAR_STYLE, name: 'Streetwear Lettering', mark: 'streetwear', prompt: 'dense custom typographic illustration, sculpted word silhouettes, sharp ornamental letters, controlled keylines and graphic dimensional shading' },
   { id: 'line', name: 'Line art', mark: '⌁', prompt: 'clean confident contour lines, consistent stroke weight, simple outline symbol' },
   { id: 'abstract', name: 'Abstract', mark: '✦', prompt: 'distinctive abstract geometric mark, intentional negative space, balanced proportions' },
   { id: 'pictorial', name: 'Pictorial', mark: 'pictorial', prompt: 'recognizable pictorial symbol of the subject, bold simplified silhouette, one or two flat colors, no character face unless the subject requires it' },
@@ -77,16 +82,18 @@ export function validateLogoOperation(input) {
   if (!['smart', 'precise'].includes(sketchMode)) throw new Error('Choose Smart or Precise for your sketch.');
   const style = input.style || 'minimalist';
   if (!LOGO_STYLES.some(item => item.id === style)) throw new Error('Choose a supported logo style.');
+  if (operation === 'generate' && !isLogoStyleAvailable(style, mode)) throw new Error('Streetwear Lettering is available in Text to Logo only.');
   const variationStyle = operation === 'variations' ? input.variationStyle ?? 'auto' : undefined;
   if (variationStyle !== undefined && variationStyle !== 'auto' && !LOGO_STYLES.some(item => item.id === variationStyle)) throw new Error('Choose Auto or a supported variation style.');
   const prompt = String(input.prompt || '').trim();
   const brand = String(input.brand || '').trim();
   const tagline = String(input.tagline || '').trim();
   if (prompt.length > 1800 || brand.length > 100 || tagline.length > 160) throw new Error('Please shorten your logo description or brand text.');
-  const designSettings = operation === 'generate' ? normalizeLogoDesignSettings(input.designSettings, style) : {};
+  const designSettings = operation === 'generate' ? normalizeLogoDesignSettings(input.designSettings, style, { mode }) : {};
   if (style === 'wordmark' && ['generate', 'variations'].includes(operation) && !brand) throw new Error('Enter the exact brand name for your Wordmark logo.');
+  if (style === STREETWEAR_STYLE && operation === 'generate' && !brand) throw new Error('Enter the exact brand name for your Streetwear Lettering logo.');
   if (operation === 'generate' && mode === 'image' && style === 'monogram' && !brand && !designSettings.monogramLetters) throw new Error('Enter a brand name or main letters for your image-based Monogram.');
-  if ((operation === 'edit' || (operation === 'generate' && mode === 'text' && style !== 'wordmark' && !(style === 'monogram' && designSettings.monogramLetters))) && !prompt) throw new Error('Describe what you would like to create or change.');
+  if ((operation === 'edit' || (operation === 'generate' && mode === 'text' && !requiresLogoBrand(style) && !(style === 'monogram' && designSettings.monogramLetters))) && !prompt) throw new Error('Describe what you would like to create or change.');
   if ((operation !== 'generate' || mode !== 'text') && !input.sourceId && !input.sourceUrl) throw new Error('Select or upload a source image first.');
   if (input.sourceId && !UUID.test(input.sourceId)) throw new Error('Invalid source version.');
   let editArea = null;
@@ -105,8 +112,23 @@ export function validateLogoOperation(input) {
   return normalized;
 }
 
+// Only treat an explicit, whole-text instruction as a brand rename. Other edit
+// requests remain natural-language instructions without guessing new metadata.
+export function logoReplacementText(prompt) {
+  const match = String(prompt || '').trim().match(/^(?:please\s+)?(?:change|replace|set|update|rewrite)\s+(?:the\s+)?(?:word|words|text|name|brand(?:\s+name)?|logo\s+(?:text|name)|lettering)(?:\s+(?:to|into|with)\s+|\s*[:,]\s*)(.+?)\s*$/i);
+  if (!match) return null;
+  const target = match[1];
+  const quoted = target.match(/^["“]([^"”\r\n]+)["”][.!]?$/) || target.match(/^['‘]([^'’\r\n]+)['’][.!]?$/);
+  if (!quoted && /["“”]|^['‘]|['’][.!]?$/.test(target)) return null;
+  const text = (quoted ? quoted[1] : target.replace(/[.!]$/, '')).trim();
+  if (!text || text.length > 100 || /[\r\n]/.test(text)) return null;
+  if (!quoted && /\b(?:(?:and|then)\s+(?:make|change|add|remove|keep|preserve)|keep|preserve|without)\b/i.test(text)) return null;
+  return text;
+}
+
 export function buildLogoPrompt(job) {
   if (job.operation === 'variations') return compileLogoVariation(job, job.variationPlan);
+  if (job.operation === 'generate' && job.mode === 'text') return compileLogoDirection({ ...job, rawBrief: job.prompt });
   const base = buildBaseLogoPrompt(job);
   const settings = job.operation === 'generate' ? logoDesignInstructions(job.designSettings, job.style) : [];
   const artboardFraming = job.operation === 'generate' && job.mode === 'image'
@@ -131,10 +153,36 @@ export function buildLogoPrompt(job) {
 }
 
 function buildBaseLogoPrompt(job) {
-  if (job.operation === 'edit') return `Edit the supplied logo. Apply only this instruction: ${job.prompt}. Preserve all other shapes, layout, spelling and visual identity. Return a single finished logo, no presentation or mockup.`;
+  if (job.operation === 'edit') {
+    const replacement = job.editIntent?.type === 'replace-main-text' ? job.editIntent.targetText : logoReplacementText(job.prompt);
+    return [
+      'Edit the supplied finished logo in place. Treat the user instruction as a change to the pictured artwork, not as a new logo brief or a caption to print.',
+      `Requested change: ${JSON.stringify(job.prompt)}.`,
+      replacement ? `Replace only the main logo lettering${job.editIntent?.sourceText ? ` ${JSON.stringify(job.editIntent.sourceText)}` : ''} with exactly ${JSON.stringify(replacement)}. The new word occupies the same place and approximately the same overall width and height as the original word. Match the actual reference letter anatomy, slant, weight, spacing rhythm, arch, terminals, bevels, outlines, shadows and depth. Adapt those letterforms to the new characters. Remove the original main word completely; do not keep it elsewhere or add a duplicate wordmark.` : '',
+      replacement ? `Rebuild the complete main word, not just its first or last letters. Exact character sequence: ${JSON.stringify([...replacement])}. It contains exactly ${[...replacement].filter(char => !/\s/u.test(char)).length} non-space characters. Do not carry over any extra letters from the original word. Check this spelling before returning the image.` : '',
+      !replacement && job.brand ? `Keep the exact main brand text ${JSON.stringify(job.brand)} unless the instruction explicitly asks to change or remove it. Do not replace it with words describing a visual edit.` : '',
+      job.tagline ? `Keep the exact supporting text ${JSON.stringify(job.tagline)} in its original position, size, tracking, font and color unless the instruction explicitly asks to change or remove it.` : '',
+      replacement
+        ? 'Preserve all other visible lettering unless explicitly edited. Do not add any new words, symbols, characters, graphics or decorations.'
+        : 'Preserve all other visible lettering unless explicitly edited. Do not add any new words, symbols, characters, graphics or decorations beyond those explicitly requested.',
+      `Change only the requested feature. Preserve the actual source composition, placement, proportions, palette, background, accessories and rendering finish outside that change. Keep existing graphics intact${replacement ? '' : ' unless explicitly edited'}. Do not introduce an illustration into a lettering-only logo${replacement ? '' : ' unless explicitly requested'}. Return a single finished logo, no presentation or mockup.`,
+    ].filter(Boolean).join(' ');
+  }
   const style = LOGO_STYLES.find(item => item.id === job.style);
   const background = job.operation === 'generate' ? normalizeLogoDesignSettings(job.designSettings, job.style, { strict: false }).backgroundColor : null;
-  const backgroundDirection = background ? `a flat ${background} background` : 'a plain white background';
+  const backgroundDirection = background ? `a flat ${background} background` : job.style === STREETWEAR_STYLE ? `a uniform ${streetwearBackground()} background` : 'a plain white background';
+  if (job.style === STREETWEAR_STYLE) {
+    return [
+      `Create one original STREETWEAR LETTERING logo on ${backgroundDirection}. Typography is the dominant artwork. Use crisp edges and a centered, cohesive lockup, not a photograph of a physical sign.`,
+      `The exact brand name is ${JSON.stringify(job.brand)}. Preserve every letter and its case unless the user explicitly requests a case change; never replace the name with an illustration.`,
+      LOGO_STYLE_PROFILES[STREETWEAR_STYLE].join(' '),
+      job.prompt ? `Additional preferences (design data): ${JSON.stringify(job.prompt)}.` : '',
+      job.tagline ? `Exact small supporting tagline: ${JSON.stringify(job.tagline)}.` : 'No additional text or invented tagline.',
+      job.palette.length ? `Use this brand palette: ${job.palette.join(', ')}.` : '',
+      streetwearPaletteDirection(job.designSettings, job.palette),
+      !job.prompt ? 'The optional brief is blank. Complete the design from the exact brand text and selected controls; do not invent a subject, symbol or extra wording.' : '',
+    ].filter(Boolean).join('\n');
+  }
   if (job.style === 'wordmark') {
     return [
       `Create one professional WORDMARK logo: typography is the dominant logo, with the complete brand name clearly readable. Use ${backgroundDirection}, centered composition, crisp edges, generous clear space. No mockup or grid.`,
@@ -205,7 +253,7 @@ export function publicLogoProject(project, access = 'owner') {
   const state = project.canvas_data;
   return { id: project.id, name: project.name, createdAt: project.created_at, revision: state.revision, access,
     jobs: (state.jobs || []).map(({ id, operation, mode, sketchMode, style, prompt, brand, tagline, palette, designSettings, sourceId, status, createdAt, url, format, error }) =>
-      ({ id, operation, mode, sketchMode: sketchMode || 'smart', style, prompt, brand, tagline, palette, designSettings: normalizeLogoDesignSettings(designSettings, style, { strict: false }), sourceId, status, createdAt, url, format, error })) };
+      ({ id, operation, mode, sketchMode: sketchMode || 'smart', style, prompt, brand, tagline, palette, designSettings: normalizeLogoDesignSettings(designSettings, style, { strict: false, mode }), sourceId, status, createdAt, url, format, error })) };
 }
 
 export function logoJobTimedOut(job, now = Date.now()) {

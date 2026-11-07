@@ -67,3 +67,7 @@ next-env.d.ts
 .vercel
 
 .codex-dev*.log
+
+# Local development server logs.
+/.next-local-dev.log
+/localhost*.log

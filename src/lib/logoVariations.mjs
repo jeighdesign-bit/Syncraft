@@ -1,7 +1,8 @@
-import { normalizeLogoDesignSettings } from './logoDesignSettings.mjs';
+import { normalizeLogoDesignSettings, logoDesignInstructions } from './logoDesignSettings.mjs';
 import { LOGO_STYLE_PROFILES } from './logoStyleProfiles.mjs';
+import { STREETWEAR_STYLE, isLetteringStyle, isLogoStyleAvailable } from './logoStyleCapabilities.mjs';
 
-export const LOGO_VARIATION_VERSION = 'logo-variation-2';
+export const LOGO_VARIATION_VERSION = 'logo-variation-5';
 
 // A reserved option has a concrete structural assignment, not another roll of
 // the same edit prompt. No remote planner or extra image candidates are needed.
@@ -27,7 +28,7 @@ const DIRECTIONS = {
 };
 
 export function planLogoVariation(source, index = 0) {
-  const family = ['wordmark', 'monogram'].includes(source.style) ? 'lettering'
+  const family = isLetteringStyle(source.style) ? 'lettering'
     : ['mascot', 'retro', 'cartoon'].includes(source.style) ? 'character' : 'symbol';
   const slot = Math.max(0, Math.trunc(index) || 0) % DIRECTIONS[family].length;
   const [summary, pose, composition] = DIRECTIONS[family][slot];
@@ -44,9 +45,10 @@ export function logoVariationSource(source, jobs = []) {
     seen.add(current.id); lineage.push(current);
   }
   const original = lineage.find(job => ['generate', 'variations'].includes(job.operation)) || source;
+  const creation = lineage.findLast(job => job.operation === 'generate') || original;
   const settings = lineage.find(job => Object.keys(job.designSettings || {}).length)?.designSettings || {};
   return {
-    mode: source.mode || original.mode || 'text', style: source.style || original.style || 'minimalist',
+    mode: creation.mode || original.mode || source.mode || 'text', style: source.style || original.style || 'minimalist',
     prompt: original.prompt || '', brand: source.brand ?? original.brand ?? '',
     tagline: source.tagline ?? original.tagline ?? '', palette: source.palette ?? original.palette ?? [],
     designSettings: normalizeLogoDesignSettings(settings, source.style || original.style || 'minimalist', { strict: false }),
@@ -57,6 +59,10 @@ export function applyLogoVariationStyle(context, variationStyle = 'auto') {
   if (variationStyle !== 'auto' && !Object.hasOwn(LOGO_STYLE_PROFILES, variationStyle)) throw new Error('Choose Auto or a supported variation style.');
   const style = variationStyle === 'auto' ? context.style : variationStyle;
   const designSettings = normalizeLogoDesignSettings(context.designSettings, style, { strict: false });
+  if (variationStyle === STREETWEAR_STYLE) {
+    if (!isLogoStyleAvailable(style, context.mode)) throw new Error('Streetwear Lettering variations require a saved Text to Logo source. Choose Auto or another style.');
+    if (!context.brand?.trim()) throw new Error('Streetwear Lettering variations need saved brand text. Choose Auto or another style.');
+  }
   if (variationStyle !== 'auto' && style === 'wordmark' && !context.brand) throw new Error('Wordmark variations need saved brand text. Choose Auto or another style.');
   if (variationStyle !== 'auto' && style === 'monogram' && !designSettings.monogramLetters) {
     const words = context.brand?.match(/[\p{L}\p{N}]+/gu) || [];
@@ -69,7 +75,7 @@ export function applyLogoVariationStyle(context, variationStyle = 'auto') {
 
 export function compileLogoVariation(job, direction = planLogoVariation(job)) {
   const settings = normalizeLogoDesignSettings(job.designSettings, job.style, { strict: false });
-  const lettering = ['wordmark', 'monogram'].includes(job.style);
+  const lettering = isLetteringStyle(job.style);
   const changeStyle = job.variationStyle && job.variationStyle !== 'auto';
   const colors = Object.fromEntries(['primaryColor', 'secondaryColor', 'outlineColor', 'backgroundColor'].filter(key => settings[key]).map(key => [key, settings[key]]));
   return [
@@ -83,6 +89,10 @@ export function compileLogoVariation(job, direction = planLogoVariation(job)) {
       ? `CHANGE STYLE: reinterpret the same accepted logo in the requested ${job.style} style. Target construction rules: ${LOGO_STYLE_PROFILES[job.style].join(' ')}. The target style overrides the source rendering technique and any old style instructions in the original brief, but never its identity, exact text or important motifs. Translate meaningful details into the target's shape/stroke language instead of dropping them. Retain color identity where compatible with the target treatment.`
       : `AUTO STYLE: visually match the supplied logo's actual style, stroke character, detail level, color relationships and finish. The saved ${job.style || 'original'} style label is context only; the accepted image, including any style edits, is authoritative. Do not impose a different illustration style or simplify away its important details.`,
     lettering ? 'Typography remains the dominant logo, with the complete brand name clearly readable where present. Decorative motifs must never replace the wordmark or make the requested letters ambiguous.' : '',
+    ...(changeStyle && job.style === STREETWEAR_STYLE
+      ? logoDesignInstructions(Object.fromEntries(Object.entries(settings).filter(([key]) => key.startsWith('streetwear'))), job.style)
+        .map(instruction => `Target lettering treatment: ${instruction}`)
+      : []),
     job.brand ? job.style === 'monogram'
       ? `Brand context: ${JSON.stringify(job.brand)}. Preserve the existing monogram letters; do not replace them with the full brand name or add new wording.`
       : `The exact brand name is ${JSON.stringify(job.brand)}. Preserve every letter exactly. If an accepted edit has changed this wording, preserve the exact visible edited wording instead.`

@@ -1,6 +1,8 @@
 import sharp from 'sharp';
 import { recraftLogoPlan, recraftResult } from './logoRecraft.mjs';
 import { assertSafeSvg } from './layeredPsd.mjs';
+import { prepareLogoVisualGuides } from './logoVisualGuidesServer.mjs';
+import { createHash } from 'node:crypto';
 
 const dataUrl = (buffer, mime) => `data:${mime};base64,${buffer.toString('base64')}`;
 
@@ -24,7 +26,8 @@ export async function generateRecraftLogo(input, sourceBuffer, sourceFormat, { r
       .resize(1024, 1024, { fit: 'contain', background: '#ffffff' }).flatten({ background: '#ffffff' }).png().toBuffer();
     image = dataUrl(buffer, nativeSvg ? 'image/svg+xml' : 'image/png');
   }
-  const plan = recraftLogoPlan({ ...input, sourceFormat }, { image });
+  const guides = await prepareLogoVisualGuides(input);
+  const plan = recraftLogoPlan({ ...input, sourceFormat }, { image, styleReferences: guides.references });
   const response = await request(`https://external.api.recraft.ai/v1/${plan.endpoint}`, {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(plan.body), signal: AbortSignal.timeout(105_000),
@@ -32,5 +35,7 @@ export async function generateRecraftLogo(input, sourceBuffer, sourceFormat, { r
   // A generation POST is deliberately never retried: retries can bill twice.
   if (!response.ok) throw new Error(`Recraft could not complete the operation (${response.status}).`);
   const result = recraftResult(await response.json(), plan);
-  return { ...result, providerRequestId: result.providerRequestId || response.headers.get('x-request-id') };
+  return { ...result, providerRequestId: result.providerRequestId || response.headers.get('x-request-id'),
+    ...(guides.metadata ? { visualGuideResult: { ...guides.metadata, promptSha256: createHash('sha256').update(plan.body.prompt).digest('hex'), ...(result.styleId ? { styleId: result.styleId } : {}) } } : {}),
+  };
 }

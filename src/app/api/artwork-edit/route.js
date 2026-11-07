@@ -151,9 +151,9 @@ function serviceFor(userId) {
       return markCreditTransaction({ transactionId: job.chargeId, status: 'succeeded' });
     },
     submit: (input) => providerRequest(ARTWORK_EDIT_MODEL, input),
-    status: (id) => providerRequest(`fal-ai/nano-banana-pro/requests/${id}/status`),
-    result: async (id) =>
-      (await providerRequest(`fal-ai/nano-banana-pro/requests/${id}`)).images?.[0],
+    status: (id, model) => providerRequest(`${(model || 'fal-ai/nano-banana-pro/edit').replace(/\/edit$/, '')}/requests/${id}/status`),
+    result: async (id, model) =>
+      (await providerRequest(`${(model || 'fal-ai/nano-banana-pro/edit').replace(/\/edit$/, '')}/requests/${id}`)).images?.[0],
     save: async (project, job) => {
       const { buffer } = await fetchWithSSRFProtection(job.providerUrl, {
         allowedHosts: getAllowedProviderHosts(),

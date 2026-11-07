@@ -1,39 +1,32 @@
 # Text to Logo art direction setup
 
-Implemented for Text to Logo generation only. Image/Sketch, direct edits, Variations and Recraft utilities retain their existing provider prompt paths.
+> Current Text-only behavior (5 November 2026): see [Text to Logo direction contract](./logo-text-direction.md). The historical notes below describe earlier versions; Image/Sketch and Streetwear retain their existing behavior.
+
+
+Text to Logo uses Recraft V4.1. Its first option follows the exact user brief and selected controls. Additional options use bounded, style-specific construction directions that preserve the same subjects, lettering, framing, palette and geometry. A remote text model no longer rewrites complete briefs or invents anatomy and color-role assignments.
 
 ## Configuration
 
-The new compiler/planner is disabled by default. Add server-only environment settings to the appropriate local/deployment secret store:
+`LOGO_ART_DIRECTION_ENABLED=true` enables durable multi-option preparation and storage of directions, seeds and compiler versions. Preparation is local and costs no planner API credits; `LOGO_PLANNER_MODEL` and planner credentials are no longer used. With the flag off, Text generation uses the same first-option compiler. Recraft credentials are required for Text output. `FAL_KEY` remains required for Image/Sketch generation and editing, plus recovery of existing fal jobs.
 
-```dotenv
-LOGO_ART_DIRECTION_ENABLED=true
-FAL_KEY=<existing fal API key>
-LOGO_PLANNER_MODEL=qwen/qwen3-30b-a3b-instruct-2507
-```
+Image/Sketch creation, edits and variations continue using Nano Banana 2. Text edits/variations and background/vector tools keep their documented provider routing. See [providers](logo-studio-providers.md).
 
-Restart the development server after configuration changes. Do not use `NEXT_PUBLIC_` for these settings. No extra SDK or database migration is required. The planner calls `https://fal.run/openrouter/router` using the existing fal key. No separate OpenRouter account/key or direct Google API is used. The adapter requests JSON and validates the result locally with a fifteen-second deadline. The deprecated fal any-llm endpoint is not used. Creation images continue through the existing fal Nano Banana Pro endpoint.
+## Constraint priority
 
-The default planner is Qwen3 30B A3B Instruct 2507, selected for low token cost. Direct Google credentials and the old `LOGO_PLANNER_API_KEY` setting are ignored by this adapter. The local configuration enables art direction; deployment defaults remain disabled. Only one planner call is made per batch, with at most 3,000 output tokens, reasoning and web search disabled, and no automatic paid retries. The model ID remains configurable server-side. Reported usage and cost are retained even when an otherwise successful response fails validation. Actual fal charges must be checked against provider usage; OpenRouter's published model prices alone do not establish fal's final charge.
-
-Without a configured model/key, or after timeout/invalid JSON/provider rejection, enabled art direction uses the deterministic style-specific fallback. Its metadata records `mode: fallback` and the reason; it must not be described as a successful AI planning call. A fallback changes construction/composition by option, but has less semantic creativity than the AI path.
-
-Set `LOGO_ART_DIRECTION_ENABLED=false` to return future text-generation batches to baseline prompt compilation. Submitted jobs retain their frozen compiled prompts and seeds. Existing Image/Sketch jobs are unaffected.
+- Preserve subjects, exact text and explicit relationships in the brief. Font, construction, framing, technique and color controls override conflicting brief text or style defaults.
+- Option one adds no optional concept changes. Other options may vary only unspecified construction decisions; they cannot add subjects, reassign colors or change selected framing.
+- Automatic Streetwear defaults apply only where the brief and controls leave a choice unspecified. Color-role instructions retain requested outline thickness.
+- Recraft receives the selected colors as native RGB controls in addition to role-specific prompt instructions. These are provider preferences, not guaranteed pixel-exact output colors.
+- Monograms preserve their selected letters, font and requested joined/separate construction. Engraved stipple/crosshatch/line/etch techniques remain distinct. Object framing never asks a sailboat or other object to grow character limbs.
+- Automatic Text backgrounds preserve an explicit background in the brief. Otherwise, they prefer white for dark foregrounds and a contrasting dark field for explicitly white/light subjects. Explicit background color controls remain authoritative; Streetwear retains its existing default. The compiler does not request a tile or frame as a contrast workaround.
+- Abstract geometric controls describe construction of the subject itself. Symbol styles preserve requested pose and facing direction and exclude unrequested letter-shaped backdrops or enclosures. These are generation instructions, not a guarantee that every provider image obeys them.
 
 ## Durability and billing
 
-- The text client submits one batch; the server reserves 1–4 slots atomically and plans once.
-- Replay returns the existing reservation and does not restart planning or submissions. Interrupted reservations expire through the existing timeout/refund path instead of blind paid resubmission.
-- Each image is charged through its existing verified ledger key. Partial failure refunds only failed charged slots. Planning is recorded as separate fal provider usage with reported dollar cost retained; unknown cost remains null. Available token usage is retained.
-- Planner/compiler data remains in signed server state and is excluded from public project snapshots.
-- Plans, image seeds and compiler versions are stored with the jobs. No extra candidate images or aesthetic retries are generated.
+The client submits one batch and reserves 1–4 slots atomically. Preparation happens once. Replays return the reservation and do not submit or bill again. Each output keeps its verified ledger key, and failed charged slots use the existing refund path. Local preparation records zero cost. Historical fal planner usage, frozen prompts, provider outputs and queue endpoints remain recoverable through their existing paths. Public project snapshots exclude private compiler data.
 
 ## Verification
 
-Run the Logo Studio tests including `tests/logoArtDirection.test.mjs`, then the production build. `node scripts/evals/logo-quality-eval.mjs` creates 24 offline baseline/fallback pilot entries and makes no provider calls. It is not a live AI planner benchmark and does not establish improved visual quality.
+Run `node --test tests/logo*.test.mjs` and `npm run build`. Coverage checks every available field option through both direct and compiled Text paths, color RGB payloads, conflicting defaults, billing/replay and all provider routes.
 
-The paid visual pilot remains separate from the planner smoke test. Do not declare visual quality improvements based on functional or text-only tests alone. See the implementation plan for paired visual evaluation and the proposed acceptance gate. Local smoke-test evidence is saved under `outputs/logo-quality-pilot/`.
-
-On 23 October 2026, the fal/Qwen planner passed live one-direction and four-direction JSON validation. The reported costs were $0.0000747 (467 tokens, about 2 seconds) and $0.000193 (952 tokens, about 4 seconds), respectively. These are observed text-planning costs, not image-generation prices or guarantees for future requests. Both smoke tests made zero image calls. Evidence: `fal-planner-smoke.json` and `fal-planner-four-directions.json`.
-
-Provider references: [fal LLM router schema](https://fal.ai/models/openrouter/router/api), [Qwen planner model](https://openrouter.ai/qwen/qwen3-30b-a3b-instruct-2507), [fal Nano Banana Pro edit schema](https://fal.ai/models/fal-ai/nano-banana-pro/edit/api).
+`node scripts/evals/logo-style-fidelity.mjs --run-paid` runs a paid live Recraft review across all 13 styles and six paired settings cases. Existing completed cases are skipped unless `--force` is explicit; `--style=<id>` selects a style. Artifacts, exact prompts/settings, seeds and visual-review notes are saved under `outputs/logo-style-review/`. These evaluations do not create app projects or debit customer app credits. Samples demonstrate observed behavior, not perfect adherence across every combination.

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LOGO_STYLES, buildLogoPrompt, validateLogoOperation } from '../src/lib/logoStudio.mjs';
 import { logoVariationSource, applyLogoVariationStyle, planLogoVariation, compileLogoVariation } from '../src/lib/logoVariations.mjs';
+import { STREETWEAR_STYLE, isLetteringStyle } from '../src/lib/logoStyleCapabilities.mjs';
 
 test('Auto is the default and explicit variation styles are allowlisted', () => {
   const request = { requestId: crypto.randomUUID(), sourceId: crypto.randomUUID(), operation: 'variations', style: 'retro' };
@@ -12,7 +13,7 @@ test('Auto is the default and explicit variation styles are allowlisted', () => 
 });
 
 test('Auto follows the accepted image while explicit styles override rendering without dropping identity', () => {
-  const context = { style: 'retro', brand: 'Night Flight', prompt: 'Halloween pug with goggles and pumpkin charm', designSettings: {} };
+  const context = { mode: 'text', style: 'retro', brand: 'Night Flight', prompt: 'Halloween pug with goggles and pumpkin charm', designSettings: {} };
   const auto = applyLogoVariationStyle(context);
   assert.equal(auto.style, 'retro'); assert.equal(auto.variationStyle, 'auto');
   assert.match(compileLogoVariation(auto), /AUTO STYLE: visually match/);
@@ -25,7 +26,7 @@ test('Auto follows the accepted image while explicit styles override rendering w
     assert.match(prompt, /exact text or important motifs/);
     assert.match(prompt, /goggles and pumpkin charm/);
     assert.doesNotMatch(prompt, /AUTO STYLE:|Do not impose a different illustration style/);
-    assert.equal(planLogoVariation(changed).directionId.startsWith(['wordmark', 'monogram'].includes(style) ? 'lettering-' : ['mascot', 'retro', 'cartoon'].includes(style) ? 'character-' : 'symbol-'), true);
+    assert.equal(planLogoVariation(changed).directionId.startsWith(isLetteringStyle(style) ? 'lettering-' : ['mascot', 'retro', 'cartoon'].includes(style) ? 'character-' : 'symbol-'), true);
   }
 });
 
@@ -54,11 +55,11 @@ test('variations bypass photo/sketch generation instructions in all modes and st
 });
 
 test('each family has distinct structural directions rather than color-only variations', () => {
-  for (const style of ['retro', 'wordmark', 'monogram', 'abstract', 'badge']) {
+  for (const style of ['retro', 'wordmark', 'monogram', STREETWEAR_STYLE, 'abstract', 'badge']) {
     const plans = Array.from({ length: 4 }, (_, i) => planLogoVariation({ style }, i));
     for (const field of ['directionId', 'pose', 'composition']) assert.equal(new Set(plans.map(plan => plan[field])).size, 4);
     if (style === 'retro') assert.ok(plans.every(plan => plan.directionId.startsWith('character-')));
-    if (['wordmark', 'monogram'].includes(style)) assert.ok(plans.every(plan => plan.directionId.startsWith('lettering-')));
+    if (isLetteringStyle(style)) assert.ok(plans.every(plan => plan.directionId.startsWith('lettering-')));
     if (style === 'badge') assert.match(plans[1].composition, /badge enclosure/);
   }
 });
@@ -69,6 +70,7 @@ test('edited and utility source lineage retains initials and colors without copy
   const edited = { id: 'edited', sourceId: 'original', operation: 'edit', mode: 'text', style: 'monogram', prompt: 'Remove the star', designSettings: {} };
   const svg = { id: 'vector', sourceId: 'edited', operation: 'vectorize', designSettings: {} };
   const context = logoVariationSource(svg, [original, edited, svg]);
+  assert.equal(context.mode, 'sketch');
   assert.equal(context.style, 'monogram');
   assert.equal(context.designSettings.monogramLetters, 'WB');
   const prompt = compileLogoVariation(context);
@@ -77,4 +79,31 @@ test('edited and utility source lineage retains initials and colors without copy
   assert.doesNotMatch(prompt, /Remove the star|plain white background/);
   const cycle = { ...original, sourceId: 'original' };
   assert.doesNotThrow(() => logoVariationSource(cycle, [cycle]));
+});
+
+test('Streetwear targets require saved text-mode identity, while Auto preserves accepted finish', () => {
+  const source = { mode: 'text', style: 'wordmark', brand: 'Night Shift', designSettings: {} };
+  assert.equal(applyLogoVariationStyle(source, STREETWEAR_STYLE).style, STREETWEAR_STYLE);
+  for (const mode of ['image', 'sketch', undefined]) {
+    assert.throws(() => applyLogoVariationStyle({ ...source, mode }, STREETWEAR_STYLE), /saved Text to Logo source/);
+  }
+  for (const brand of ['', '   ', undefined]) {
+    assert.throws(() => applyLogoVariationStyle({ ...source, brand }, STREETWEAR_STYLE), /saved brand text/);
+  }
+  const accepted = { ...source, style: STREETWEAR_STYLE, designSettings: { streetwearDepth: 'beveled' } };
+  const auto = compileLogoVariation(applyLogoVariationStyle(accepted));
+  assert.match(auto, /AUTO STYLE: visually match/);
+  assert.match(auto, /Typography remains the dominant logo/);
+  assert.doesNotMatch(auto, /Target lettering treatment:/);
+  assert.match(planLogoVariation(accepted).directionId, /^lettering-/);
+});
+
+test('Streetwear eligibility cannot be changed by an edit or utility mode in saved lineage', () => {
+  const original = { id: 'original', operation: 'generate', mode: 'image', style: 'wordmark', brand: 'Night Shift' };
+  const edited = { id: 'edited', operation: 'edit', sourceId: original.id, mode: 'text', style: 'wordmark', brand: 'Night Shift' };
+  const vector = { id: 'vector', operation: 'vectorize', sourceId: edited.id, mode: 'text', style: 'wordmark' };
+  const context = logoVariationSource(vector, [original, edited, vector]);
+  assert.equal(context.mode, 'image');
+  assert.throws(() => applyLogoVariationStyle(context, STREETWEAR_STYLE), /saved Text to Logo source/);
+  assert.doesNotThrow(() => applyLogoVariationStyle(context, 'auto'));
 });

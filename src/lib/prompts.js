@@ -1,7 +1,7 @@
 /**
  * Prompt builders for fal.ai image operations.
  *
- * Extend Design uses Nano Banana Pro as a semantic editor. It has no mask
+ * Extend Design uses Nano Banana 2.1 as a semantic editor. It has no mask
  * parameter, so the input canvas itself carries the edit mask: untouched art in
  * one rectangle, neutral checkerboard everywhere the model must generate.
  */

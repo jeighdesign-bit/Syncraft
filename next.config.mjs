@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: ['fontkit'],
+  outputFileTracingIncludes: {
+    '/api/logo-studio': ['src/assets/logo-guides/**/*'],
+    '/api/cron/logo-studio': ['src/assets/logo-guides/**/*'],
+  },
   turbopack: {
     root: '.',
   },

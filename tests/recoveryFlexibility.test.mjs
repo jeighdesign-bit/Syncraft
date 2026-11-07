@@ -47,7 +47,7 @@ async function harness({ mode = 'UNIVERSAL_KEEP_ARTWORK', category = 'auto', wid
     inspectRecoveryImages: async () => { events.inspections++; throw new Error('Remote analysis is removed.'); },
     prepareRecoveryStrip: forbiddenPath, verifySourceRecovery: forbiddenPath, verifyOutputPrintPlane: forbiddenPath, checkRecoveryCandidate: forbiddenPath,
     normalizedCorrelation: () => 0, recoveryAspectRatioDrift: () => 1,
-    RECOVERY_IMAGE_ENDPOINT: 'fal-ai/nano-banana-pro/edit',
+    RECOVERY_IMAGE_ENDPOINT: 'google/nano-banana-2.1/edit',
     fakeFal: { storage: { upload: async () => { events.falUploads++; throw new Error('Do not replace the selected crop with a generated reference.'); } },
       subscribe: async (_endpoint, options) => { events.generations++; events.input = options.input;
         if (providerFails) throw new Error('Provider unavailable');

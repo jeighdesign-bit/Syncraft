@@ -1,3 +1,5 @@
+> Historical plan: current provider routing and local style preparation are documented in [art direction setup](logo-art-direction-setup.md).
+
 # Logo Studio quality improvement — implementation plan
 
 Status: proposed, ready for implementation review. Prepared 23 October 2026.

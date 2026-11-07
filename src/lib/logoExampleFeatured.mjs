@@ -1,3 +1,4 @@
+// RETIRED: not approved for public examples or marketing; preserved as historical provenance only.
 // Adapted from 12 inspected public featured-prompt presets. See round4 reference evidence.
 export const LOGO_EXAMPLE_FEATURED = [
   {

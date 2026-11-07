@@ -1,5 +1,31 @@
 const choices = (entries) => entries.map(([id, label, instruction]) => ({ id, label, instruction }));
 export const LOGO_DESIGN_FIELDS = Object.freeze({
+  streetwearLetters: { label: 'Lettering style', options: choices([
+    ['gothic', 'Gothic', 'Draw tall condensed ornamental Gothic/blackletter-inspired display letters with waisted vertical stems, narrow open counters, sharp inset cuts and flared wedge terminals. Coordinate oversized first and last letters with the inner letters into a dense, sculpted word silhouette. Preserve every requested letter and its case; avoid a stock medieval font with a decorative border.'],
+    ['script', 'Chicano-inspired script', 'Draw bold condensed Chicano-inspired script with a strong italic slant, tall ascenders, tightly fitted strokes and sharp chisel-cut joins. Extend the lead capital and terminal strokes into long coordinated crossbars or underlines. Use pointed, angular swashes and deliberate thick-to-thin contrast rather than loose round loops or thin signature writing. Preserve every requested letter and its case.'],
+    ['racing-script', 'Racing script', 'Build energetic sign-painter script with a strong forward slant, tall lead capitals, tight flowing joins and a controlled underline sweep. Convey motorsport decal rhythm through the letters. Keep every requested letter and its case readable; add no vehicles, speed lines or racing symbols unless requested.'],
+    ['retro-swash', 'Retro swash', 'Draw substantial vintage display lettering with rounded flared strokes, expressive looping terminals and balanced sweeping swashes integrated into the word silhouette. Keep counters open and every requested letter and its case readable; do not add extra words.'],
+    ['graffiti-brush', 'Graffiti brush', 'Draw bold hand-painted street lettering with lively thick-to-thin brush strokes, a confident bounce and a flowing underline when it supports the name. Favor readable broad strokes over intricate interlocking arrows. Keep every requested letter and its case readable; do not add a wall, paint splatters or distressed texture unless requested.'],
+    ['wildstyle', 'Wildstyle graffiti', 'Construct angular graffiti lettering with interlocking strokes, directional extensions and controlled arrow-like terminals integrated into the letters. Preserve open counters and a clear reading order rather than an illegible tangle. Keep every requested letter and its case readable; do not add separate arrows or symbols.'],
+    ['spiked-display', 'Spiked display', 'Build bold condensed display letters with sharply tapered outward terminals, flared end letters and a strong readable central word silhouette. Use sparse deliberate spikes, with clear stems and open counters, rather than dense tangled thorns. Keep every requested letter and its case readable.'],
+    ['tribal-metal', 'Tribal metal', 'Build a readable metal-inspired word silhouette with curved blade-like strokes, branching thorn terminals and balanced outward extensions. Integrate the ornament into recognizable letters and retain open counters; avoid illegible black-metal tangles. Keep every requested letter and its case readable; add no skulls or occult symbols unless requested.'],
+    ['athletic-block', 'Athletic block', 'Construct weighty athletic display letters with firm slab-like or chamfered terminals, deliberate condensed proportions and consistent stem rhythm. Keep the block letter construction recognizable without switching to connected script. Keep every requested letter and its case readable; add no sports equipment or team crest unless requested.'],
+    ['flared-serif', 'Flared serif', 'Draw custom high-contrast display serif letters with pronounced flared wedge terminals, elegant narrow counters and restrained extended crossbars. Balance expressive serif contours with a clear reading rhythm. Keep every requested letter and its case readable; do not substitute blackletter or connected script.'],
+  ]) },
+  streetwearLayout: { label: 'Lettering layout', options: choices([
+    ['straight', 'Straight', 'Arrange the complete name on one straight horizontal baseline; do not arch or stack the words.'],
+    ['arched', 'Arched', 'Sculpt the whole word into an arched envelope: contour the upper and lower letter edges together, raise the center of the lower edge, and extend the outer letters downward where appropriate. Adjust letter heights and proportions rather than rotating unchanged letters around a circle. Keep the reading order and all terminals clear.'],
+    ['stacked', 'Stacked', 'Stack complete words into balanced readable rows without changing their order. For a single word keep it intact in a compact lockup.'],
+  ]) },
+  streetwearOutline: { label: 'Lettering outline', options: choices([
+    ['single', 'Single', 'Use one deliberate separation outline around the lettering; do not add layered keylines. Keep counters open.'],
+    ['layered', 'Layered', 'Build a dark separating base contour plus controlled accent keylines, with a bold inner separation and a fine outer edge. Follow the custom word silhouette closely, keeping counters and gaps open. Avoid many equally thick concentric sticker borders.'],
+  ]) },
+  streetwearDepth: { label: 'Lettering depth', options: choices([
+    ['flat', 'Flat', 'Use flat solid lettering fills with no extrusion, bevel, highlights or shadow shading. Retain the selected outline treatment.'],
+    ['extruded', 'Extruded', 'Draw a substantial consistent offset extrusion with hard-edged side planes and stepped shadow bands. Let the depth reinforce the shaped word silhouette. Keep letter faces flat without bevel highlights. This is illustrated depth, not a photographed 3D object.'],
+    ['beveled', 'Beveled', 'Draw broad chiseled bevel planes across the letter faces, combining crisp inset highlights, two or three stepped light/dark bands and consistent offset side depth. Use solid color regions instead of a thin shiny rim or soft gradients. This is illustrated 3D shading, not a photographed metal sign or soft cast shadow.'],
+  ]) },
   letterType: { label: 'Letter type', options: choices([
     ['block', 'Block letters', 'Build separate, clearly readable block letterforms.'],
     ['cursive', 'Cursive', 'Use flowing connected letter construction while keeping every letter readable.'],
@@ -45,6 +71,11 @@ export const LOGO_DESIGN_FIELDS = Object.freeze({
   characterComposition: { label: 'Character composition', options: choices([
     ['portrait', 'Portrait', 'Show a character portrait with a recognizable head and expression.'],
     ['full-body', 'Full body', 'Show the complete character from head to feet with a deliberate full-body pose.'],
+  ]) },
+  outlineThickness: { label: 'Outline thickness', options: choices([
+    ['none', 'No outline', 'Separate the character forms with clear solid color boundaries rather than a surrounding contour stroke. Retain readable internal features.'],
+    ['thin', 'Thin outline', 'Use a fine deliberate outer contour and lighter internal feature lines. Keep the outline subordinate to the character shapes.'],
+    ['thick', 'Thick outline', 'Use a substantial confident outer contour with lighter internal feature lines. Preserve generous open gaps and facial counterforms; avoid repeated sticker borders.'],
   ]) },
   monogramLetters: { label: 'Main letters', type: 'initials' },
   capitalization: { label: 'Capitalization', options: choices([
@@ -101,9 +132,9 @@ export const LOGO_DESIGN_FIELDS = Object.freeze({
     ['illustrative', 'Illustrative', 'Use an illustrative badge with deliberate internal artwork and readable supporting text.'],
   ]) },
   viewpoint: { label: 'Viewpoint', options: choices([
-    ['three-quarter', 'Three-quarter view', 'Show the icon subject from a recognizable three-quarter view.'],
+    ['three-quarter', 'Three-quarter view', 'Show the icon subject rotated so the front and one side are visible, with a foreshortened front plane. Do not substitute a straight-on front view with an offset shadow.'],
     ['front', 'Front view', 'Show the icon subject from the front.'],
-    ['high-angle', 'High angle view', 'Show the icon subject from a deliberate high-angle view.'],
+    ['high-angle', 'High angle view', 'Look down at the icon subject from above so its top surfaces are visible; do not keep a straight-on eye-level front view.'],
   ]) },
   engravingStyle: { label: 'Engraving style', options: choices([
     ['vintage', 'Vintage', 'Use a vintage printmaking character in the engraved artwork.'],
@@ -148,6 +179,7 @@ export const LOGO_COLOR_ROLES = Object.freeze({ primaryColor: 'Primary', seconda
 // Explicit profiles mirror the observed control groups, rather than inheriting
 // one generic set. Minimalist is our own style, not Logo Diffusion's Auto mode.
 export const LOGO_DESIGN_STYLE_FIELDS = Object.freeze({
+  'streetwear-lettering': ['streetwearLetters', 'streetwearLayout', 'streetwearOutline', 'streetwearDepth'],
   minimalist: ['symbolConstruction', 'structure', ...sharedMoodFields],
   mascot: ['detail', 'characterComposition', ...sharedMoodFields],
   retro: [...sharedMoodFields],
@@ -162,18 +194,23 @@ export const LOGO_DESIGN_STYLE_FIELDS = Object.freeze({
   cartoon: ['characterComposition', 'detail', ...sharedMoodFields],
 });
 
-export function logoDesignFields(style) {
-  return (LOGO_DESIGN_STYLE_FIELDS[style] || []).map(key => [key, LOGO_DESIGN_FIELDS[key]]);
+const textStyleFields = Object.freeze({
+  mascot: ['detail', 'characterComposition', 'outlineThickness', ...sharedMoodFields],
+  cartoon: ['characterComposition', 'detail', 'outlineThickness', ...sharedMoodFields],
+  retro: ['detail', 'characterComposition', 'outlineThickness', ...sharedMoodFields],
+});
+export function logoDesignFields(style, { mode } = {}) {
+  return ((mode === 'text' && textStyleFields[style]) || LOGO_DESIGN_STYLE_FIELDS[style] || []).map(key => [key, LOGO_DESIGN_FIELDS[key]]);
 }
 
 // Values are IDs from our catalog, never arbitrary prompt text from the client.
-export function normalizeLogoDesignSettings(value, style, { strict = true } = {}) {
+export function normalizeLogoDesignSettings(value, style, { strict = true, mode } = {}) {
   if (value == null) return {};
   if (typeof value !== 'object' || Array.isArray(value)) {
     if (strict) throw new Error('Choose valid logo design settings.');
     return {};
   }
-  const allowed = new Set(logoDesignFields(style).map(([key]) => key));
+  const allowed = new Set(logoDesignFields(style, { mode }).map(([key]) => key));
   const result = {};
   for (const [key, id] of Object.entries(value)) {
     if (Object.hasOwn(LOGO_COLOR_ROLES, key)) {
@@ -192,13 +229,35 @@ export function normalizeLogoDesignSettings(value, style, { strict = true } = {}
   return result;
 }
 
-export function logoDesignInstructions(value, style) {
-  const settings = normalizeLogoDesignSettings(value, style);
-  return Object.entries(settings).map(([key, id]) => {
-    if (Object.hasOwn(LOGO_COLOR_ROLES, key)) return `Authoritative ${LOGO_COLOR_ROLES[key].toLowerCase()} color: ${id}. Apply this color specifically to the ${key === 'backgroundColor' ? 'flat image background' : key === 'outlineColor' ? 'thin logo outline' : `${LOGO_COLOR_ROLES[key].toLowerCase()} logo elements`}; preserve this assigned role over suggested colors.`;
+export function logoDesignInstructions(value, style, options = {}) {
+  const settings = normalizeLogoDesignSettings(value, style, options);
+  const defaults = style === 'streetwear-lettering' ? [
+    !settings.streetwearLetters && 'Auto lettering: follow an explicit lettering genre in the brief; otherwise draw tall condensed ornamental Gothic-inspired letters with waisted stems, inset cuts, flared terminals and narrow open counters. Shape the exact name into one dense custom word silhouette. Preserve exact spelling and case.',
+    !settings.streetwearLayout && 'Auto layout: follow any explicit layout preference in the brief; otherwise use a sculpted arched word envelope for a short name, adjusting letter heights and extending the outer letters. For several words use tightly balanced rows when needed. Preserve reading order and never split a single word into invented words.',
+    !settings.streetwearOutline && 'Auto outline: follow any explicit outline preference in the brief; otherwise use layered separation outlines with a dark base, controlled accent keylines and open counters. Keep the outer keyline fine; avoid repeated thick concentric borders.',
+    !settings.streetwearDepth && 'Auto depth: follow any explicit finish preference in the brief; otherwise draw broad chiseled bevel planes, crisp inset highlights, stepped shade bands and consistent offset side depth. Use hard-edged ink regions, not soft photographic lighting.',
+  ].filter(Boolean) : [];
+  return [...defaults, ...Object.entries(settings).map(([key, id]) => {
+    if (Object.hasOwn(LOGO_COLOR_ROLES, key)) return `Authoritative ${LOGO_COLOR_ROLES[key].toLowerCase()} color: ${id}. Apply this color specifically to the ${key === 'backgroundColor' ? 'flat image background' : key === 'outlineColor' ? style === 'streetwear-lettering' ? 'lettering separation outline, respecting the selected single or layered treatment' : 'logo outline, retaining the thickness requested in the brief or controls' : `${LOGO_COLOR_ROLES[key].toLowerCase()} logo elements`}; preserve this assigned role over suggested colors.`;
     const field = LOGO_DESIGN_FIELDS[key];
+    if (key === 'characterComposition' && ['pictorial', 'line', 'engraved'].includes(style)) return id === 'full-body'
+      ? 'Subject framing: Full body. Show the complete requested subject with all defining parts inside the artboard; do not invent a character face or limbs for an object.'
+      : 'Subject framing: Portrait. Frame the identifying part of the requested subject; do not add a character face or expression to an inanimate object.';
     if (key === 'monogramLetters') return `Main letters: ${JSON.stringify(id)}. Build the primary monogram using only these letters; do not substitute the full brand name.`;
+    if (style === 'abstract' && key === 'structure' && id === 'geometric') return 'Structure: Geometric. Simplify the requested subject into a small coordinated system of geometric masses and deliberate negative spaces. Favor angular segments and faceted planes for forms left unspecified by the brief; preserve explicitly requested curves, shapes and anatomy. Geometric construction must shape the subject itself, not merely put a smooth illustration inside a geometric frame.';
     const choice = field.options.find(option => option.id === id);
-    return `${field.label}: ${choice.label}. ${choice.instruction}`;
-  });
+    const anatomy = key === 'streetwearLetters' ? ({
+      gothic: 'Use upright broken blackletter strokes; exclude connected brush script, sports slabs and tribal branches.',
+      script: 'Use tightly connected italic calligraphic strokes and pointed swashes; exclude upright Gothic stems and varsity slabs.',
+      'racing-script': 'Use forward-driving connected italic signwriting with an underline sweep; exclude upright ornamental blackletter and thorn branches.',
+      'retro-swash': 'Use soft rounded bulbous curves, looping swashes and a warm vintage rhythm; exclude sharp Gothic notches, chiseled wedge terminals and tribal thorns.',
+      'graffiti-brush': 'Use gestural brush-built glyphs with visibly varied stroke widths, blunt brush ends and an irregular bounce; exclude rigid serif stems, Gothic waists and mechanical varsity slabs.',
+      wildstyle: 'Use angular interwoven graffiti glyphs with overlapping ribbons, directional extensions and arrow terminals. Keep the word decipherable; exclude serif lettering, blackletter waists and ordinary connected script.',
+      'spiked-display': 'Use heavy angular display glyphs with triangular outward spikes and broad central stems; exclude soft script loops, ornamental blackletter waists and branching tribal filigree.',
+      'tribal-metal': 'Use thin-to-thick curved blade strokes with branching barbed terminals and an aggressive balanced silhouette. The branches are essential letter anatomy; exclude conventional Gothic or flared-serif glyphs with only a few added spikes.',
+      'athletic-block': 'Use geometric varsity block glyphs with uniform heavy strokes, squared counters, chamfered corners and slab terminals; exclude curved ornamental waists, brush joins, pointed swashes and delicate serif contrast.',
+      'flared-serif': 'Use contrasting thick and hairline Roman display strokes with smoothly widening wedge serifs; exclude broken Gothic strokes, waisted blackletter stems, tribal branches and varsity slabs.',
+    })[id] : '';
+    return `${field.label}: ${choice.label}. ${choice.instruction}${anatomy ? ` Required glyph anatomy (takes priority over shared styling): ${anatomy} Outlines and bevels must follow these glyphs, never replace their construction.` : ''}`;
+  })];
 }

@@ -13,3 +13,14 @@ test('optional color roles validate independently and survive style normalizatio
   assert.match(instructions, /background color: #EEEEEE/);
   assert.match(instructions, /flat image background/);
 });
+
+test('Streetwear outline color respects its selected thickness and other styles retain their rules', () => {
+  const colors = { outlineColor: '#00abcd', primaryColor: '#ffffff' };
+  const prompt = logoDesignInstructions({ ...colors, streetwearOutline: 'layered' }, 'streetwear-lettering').join('\n');
+  assert.match(prompt, /outline color: #00ABCD/);
+  assert.match(prompt, /lettering separation outline/);
+  assert.match(prompt, /dark separating base contour/);
+  assert.match(prompt, /controlled accent keylines/);
+  assert.doesNotMatch(prompt, /thin logo outline/);
+  assert.match(logoDesignInstructions(colors, 'wordmark').join('\n'), /retaining the thickness requested/);
+});

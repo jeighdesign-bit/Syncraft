@@ -1,25 +1,117 @@
+import { logoVisualDirection } from '../src/lib/logoVisualDirection.mjs';
+import { prepareLogoVisualGuides } from '../src/lib/logoVisualGuidesServer.mjs';
+import { TEXT_STYLE_GRAMMAR } from '../src/lib/logoTextDirection.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
-import { LOGO_STYLES, LOGO_COST, LOGO_ACTIVE, logoOperationCost, logoGenerationQuota, validateLogoOperation, buildLogoPrompt, publicLogoProject, logoJobTimedOut, logoStudioAssetUrls } from '../src/lib/logoStudio.mjs';
+import { LOGO_STYLES, LOGO_COST, LOGO_ACTIVE, logoOperationCost, logoGenerationQuota, validateLogoOperation, buildLogoPrompt, logoReplacementText, publicLogoProject, logoJobTimedOut, logoStudioAssetUrls } from '../src/lib/logoStudio.mjs';
+import { recraftLogoPlan } from '../src/lib/logoRecraft.mjs';
 import { nanoLogoPlan } from '../src/lib/logoFal.mjs';
+const studioPlan = (input, image) => {
+  if (input.operation === 'edit' || input.operation === 'generate' && ['image', 'sketch'].includes(input.mode)) {
+    return nanoLogoPlan(input, image);
+  }
+  const plan = recraftLogoPlan(input, { image });
+  return { ...plan, input: plan.body };
+};
 import { logoVariationSource, applyLogoVariationStyle, planLogoVariation, compileLogoVariation } from '../src/lib/logoVariations.mjs';
-import { compileLogoDirection, LOGO_COMPILER_VERSION } from '../src/lib/logoPromptCompiler.mjs';
+import { compileLogoDirection, LOGO_COMPILER_VERSION, logoCompilerVersion } from '../src/lib/logoPromptCompiler.mjs';
 import { planLogoDirections } from '../src/lib/logoArtDirectorServer.js';
 import { signLogoState, verifyLogoState } from '../src/lib/logoStudioIntegrity.mjs';
 import { LOGO_EXPORT_FORMATS, resolveLogoExportJob } from '../src/lib/logoStudioExport.mjs';
+import { STREETWEAR_STYLE, isLogoStyleAvailable, normalizeLogoStyleForMode } from '../src/lib/logoStyleCapabilities.mjs';
+import { LOGO_STYLE_PROFILES } from '../src/lib/logoStyleProfiles.mjs';
 
 const id = () => crypto.randomUUID();
 const input = (changes = {}) => validateLogoOperation({ requestId: id(), prompt: 'A mountain coffee logo', brand: 'Peak', editArea: { x: 0.25, y: 0.25, width: 0.5, height: 0.5 }, ...changes });
 
+test('Streetwear requires exact text, accepts no description, and is creation-only in text mode', () => {
+  assert.equal(input({ style: STREETWEAR_STYLE, brand: '  Night Shift  ', prompt: '' }).brand, 'Night Shift');
+  assert.throws(() => input({ style: STREETWEAR_STYLE, brand: '   ' }), /exact brand name/);
+  for (const mode of ['image', 'sketch']) {
+    assert.equal(isLogoStyleAvailable(STREETWEAR_STYLE, mode), false);
+    assert.equal(normalizeLogoStyleForMode(STREETWEAR_STYLE, mode), 'wordmark');
+    assert.throws(() => input({ style: STREETWEAR_STYLE, mode, sourceUrl: 'https://storage.test/source.png' }), /Text to Logo only/);
+  }
+  assert.equal(normalizeLogoStyleForMode(STREETWEAR_STYLE, 'text'), STREETWEAR_STYLE);
+  for (const operation of ['edit', 'removeBg', 'vectorize', 'variations']) {
+    assert.doesNotThrow(() => input({ operation, style: STREETWEAR_STYLE, sourceId: id(), brand: '', prompt: 'Make the outline gold' }));
+  }
+});
+
+test('Streetwear baseline keeps exact lettering and uses illustrated depth rather than generic flat artwork', () => {
+  const prompt = buildLogoPrompt(input({ style: STREETWEAR_STYLE, brand: 'Night Shift', tagline: 'Made to last', prompt: '' }));
+  assert.match(prompt, /exact brand name is "Night Shift"/);
+  assert.match(prompt, /"Made to last"/);
+  assert.match(prompt, /tall condensed ornamental Gothic-inspired letters/);
+  assert.match(prompt, /broad chiseled bevel planes/);
+  assert.match(prompt, /all letter terminals, swashes and depth inside/);
+  assert.doesNotMatch(prompt, /Flat artwork|Symbol only/);
+});
+
+test('creation services reject unsupported Streetwear requests before reservation, charge or submission', async () => {
+  const valid = input({ style: STREETWEAR_STYLE, brand: 'Night Shift', prompt: '' });
+  for (const changes of [{ mode: 'image', sourceUrl: 'https://storage.test/source.png' }, { mode: 'sketch', sourceUrl: 'https://storage.test/source.png' }, { brand: '   ' }]) {
+    for (const batch of [false, true]) {
+      const h = await serviceHarness();
+      const request = { ...valid, ...changes };
+      await assert.rejects(batch
+        ? h.service.startLogoTextBatch('owner', h.snapshot(), request, 1)
+        : h.service.startLogoOperation('owner', h.snapshot(), request), /Text to Logo|exact brand name/);
+      assert.equal(h.snapshot().canvas_data.jobs.length, 0);
+      assert.equal(h.charges.size, 0);
+      assert.equal(h.submissions.length, 0);
+    }
+  }
+});
+
+test('brand plus controls reaches the actual service-to-provider path without a descriptive prompt', async () => {
+  for (const artDirection of [false, true]) {
+    for (const genre of ['gothic', 'script']) {
+      const h = await serviceHarness({ artDirection });
+      const request = input({ style: STREETWEAR_STYLE, brand: 'FORMA', prompt: '', designSettings: {
+        streetwearLetters: genre, streetwearLayout: 'arched', streetwearDepth: 'beveled', streetwearOutline: 'layered',
+      } });
+      await h.service.startLogoTextBatch('owner', h.snapshot(), request, 1);
+      assert.equal(h.submissions.length, 1);
+      assert.equal(h.charges.size, 1);
+      const submitted = h.submissions[0];
+      assert.equal(submitted.endpoint, 'images/generations');
+      assert.equal(submitted.request.input.image_url, undefined);
+      assert.match(submitted.request.input.prompt, /"FORMA"/);
+      assert.match(submitted.request.input.prompt, /optional brief is blank/);
+      assert.match(submitted.request.input.prompt, /#191919/);
+      assert.match(submitted.request.input.prompt, /broad chiseled bevel planes/);
+      assert.match(submitted.request.input.prompt, /waisted vertical stems|sharp chisel-cut joins/);
+      assert.doesNotMatch(submitted.request.input.prompt, /wildstyle graffiti|athletic block|tribal metal/);
+      const saved = h.snapshot().canvas_data.jobs[0];
+      assert.equal(saved.prompt, '');
+      assert.equal(saved.designSettings.streetwearLetters, genre);
+      if (artDirection) assert.equal(h.snapshot().canvas_data.batches[0].planner.mode, 'style-preset');
+    }
+  }
+});
+
+test('Streetwear variation eligibility uses the saved source before billing', async () => {
+  for (const mode of ['image', 'sketch']) {
+    const h = await serviceHarness();
+    const source = { id: id(), operation: 'generate', mode, style: 'wordmark', brand: 'Night Shift', status: 'succeeded', format: 'png', url: 'https://storage.test/logo.png' };
+    h.change(project => project.canvas_data.jobs.push(source));
+    await assert.rejects(h.service.startLogoOperation('owner', h.snapshot(), input({ operation: 'variations', sourceId: source.id, mode: 'text', variationStyle: STREETWEAR_STYLE })), /saved Text to Logo source/);
+    assert.equal(h.snapshot().canvas_data.jobs.length, 1);
+    assert.equal(h.charges.size, 0);
+    assert.equal(h.submissions.length, 0);
+  }
+});
+
 test('reference generation accepts no brief and sends the selected style to the provider', async () => {
   for (const mode of ['image', 'sketch']) {
-    for (const style of LOGO_STYLES) {
+    for (const style of LOGO_STYLES.filter(item => isLogoStyleAvailable(item.id, mode))) {
       const request = input({ mode, style: style.id, prompt: '   ', sourceUrl: 'https://storage.test/eagle.png' });
       const h = await serviceHarness();
       await h.service.startLogoOperation('owner', h.snapshot(), request);
-      const plan = nanoLogoPlan(request, request.sourceUrl);
+      const plan = studioPlan(request, request.sourceUrl);
       assert.ok(plan.input.prompt.includes(style.name));
       assert.match(plan.input.prompt, /Peak/);
       assert.doesNotMatch(plan.input.prompt, /User preferences: \s*\./);
@@ -31,7 +123,7 @@ test('reference generation accepts no brief and sends the selected style to the 
   assert.throws(() => input({ operation: 'edit', prompt: '', sourceId: id() }), /Describe/);
 });
 
-test('reference controls reach fal and persist in saved public jobs without extra charges', async () => {
+test('reference controls reach Nano Banana 2 and persist in saved public jobs without extra charges', async () => {
   for (const mode of ['image', 'sketch']) {
     const h = await serviceHarness();
     const request = input({ mode, ...(mode === 'sketch' ? { sketchMode: 'precise' } : {}), style: 'mascot', prompt: '', sourceUrl: 'https://storage.test/source.png',
@@ -56,8 +148,8 @@ test('reference controls reach fal and persist in saved public jobs without extr
 test('short preferences do not need to repeat the selected mascot style', () => {
   for (const mode of ['text', 'image', 'sketch']) {
     const request = input({ mode, style: 'mascot', prompt: 'Navy and orange, fierce expression', sourceUrl: 'https://storage.test/eagle.png' });
-    const plan = nanoLogoPlan(request, request.sourceUrl);
-    assert.match(plan.input.prompt, /Mascot/);
+    const plan = studioPlan(request, request.sourceUrl);
+    assert.match(plan.input.prompt, /Mascot/i);
     assert.match(plan.input.prompt, /Navy and orange, fierce expression/);
     assert.match(plan.input.prompt, /Peak/);
   }
@@ -78,7 +170,7 @@ test('Wordmark requires brand text before billing and makes lettering dominant i
     for (const operation of ['generate', 'variations']) {
       assert.throws(() => input({ mode, operation, style: 'wordmark', brand: '   ', sourceUrl: 'https://storage.test/reference.png' }), /exact brand name/);
       const request = input({ mode, operation, style: 'wordmark', brand: 'Barber', prompt: 'Cracked piggy bank, coins spilling, halftone print, skate brand.', sourceUrl: 'https://storage.test/reference.png' });
-      const plan = nanoLogoPlan(request, request.sourceUrl);
+      const plan = studioPlan(request, request.sourceUrl);
       assert.match(plan.input.prompt, /complete brand name clearly readable/);
       assert.match(plan.input.prompt, /exact brand name is "Barber"/);
       assert.match(plan.input.prompt, /must never replace the wordmark/);
@@ -88,7 +180,7 @@ test('Wordmark requires brand text before billing and makes lettering dominant i
   assert.doesNotThrow(() => input({ style: 'wordmark', brand: 'Barber', prompt: '' }));
   assert.doesNotThrow(() => input({ style: 'mascot', brand: '' }));
   const edit = input({ operation: 'edit', style: 'wordmark', brand: '', sourceId: id(), prompt: 'Make the text red' });
-  assert.match(buildLogoPrompt(edit), /Apply only this instruction/);
+  assert.match(buildLogoPrompt(edit), /Requested change: "Make the text red"/);
 });
 
 test('approved prices are charged by the server for each mode and operation', async () => {
@@ -193,9 +285,17 @@ test('Smart and Precise sketch prompts preserve the idea at different fidelity l
   assert.match(precise, /Sketch fidelity/); assert.match(precise, /original positions/);
   assert.doesNotMatch(precise, /Sketch interpretation/);
   const edit = buildLogoPrompt(input({ operation: 'edit', sourceId: id(), prompt: 'Remove the star' }));
-  assert.match(edit, /Apply only this instruction: Remove the star/);
+  assert.match(edit, /Requested change: "Remove the star"/);
   assert.doesNotMatch(edit, /Design one original/);
-  assert.equal(LOGO_STYLES.length, 12);
+  assert.deepEqual(LOGO_STYLES.map(style => style.id).sort(), Object.keys(LOGO_STYLE_PROFILES).sort());
+});
+
+test('a short visual edit keeps saved logo wording and does not print the instruction', () => {
+  const edit = buildLogoPrompt(input({ operation: 'edit', sourceId: id(), prompt: 'bear sad', brand: 'Wildbrew', tagline: 'COASTAL COFFEE' }));
+  assert.match(edit, /not as a new logo brief or a caption to print/);
+  assert.match(edit, /exact main brand text "Wildbrew"/);
+  assert.match(edit, /exact supporting text "COASTAL COFFEE"/);
+  assert.match(edit, /Do not add any new words/);
 });
 
 test('prompt-free image creation gives each visual style its own subject-first logo direction', () => {
@@ -268,11 +368,12 @@ test('all four new styles validate and retain their visual direction in every cr
     assert.ok((await readFile(new URL(`../public/images/logo-styles/${styleId}.webp`, import.meta.url))).length > 0);
     for (const mode of ['text', 'image', 'sketch']) {
       const request = input({ style: styleId, mode, ...(mode === 'text' ? {} : { sourceUrl: 'https://storage.test/reference.png' }) });
-      const plan = nanoLogoPlan(request, request.sourceUrl);
+      const plan = studioPlan(request, request.sourceUrl);
       if (mode === 'sketch') assert.ok(plan.input.prompt.includes(`Refinement style: ${style.name}: ${style.prompt}.`));
+      else if (mode === 'text') assert.ok(plan.input.prompt.includes(TEXT_STYLE_GRAMMAR[styleId]));
       else assert.ok(plan.input.prompt.includes(style.prompt));
       assert.equal(logoOperationCost('generate', mode), 8);
-      assert.equal(plan.endpoint, mode === 'text' ? 'fal-ai/nano-banana-2' : 'fal-ai/nano-banana-2/edit');
+      assert.equal(plan.endpoint, mode === 'text' ? 'images/generations' : 'fal-ai/nano-banana-2/edit');
       if (mode === 'sketch') assert.match(plan.input.prompt, /Sketch interpretation/);
       if (mode === 'image') assert.match(plan.input.prompt, /MAIN SUBJECT/);
     }
@@ -413,15 +514,21 @@ async function serviceHarness(options = {}) {
     }; return query;
   } };
   const deps = {
+    validateLogoOperation,
     validateLogoSvg: () => {},
     generateRecraftLogo: async (request, sourceBuffer, sourceFormat) => {
-      submissions.push({ request, sourceBuffer, sourceFormat });
+      const image = sourceBuffer ? (sourceFormat === 'svg' && request.operation !== 'removeBg' ? 'data:image/png;base64,cG5n' : request.sourceUrl) : undefined;
+      const guides = await prepareLogoVisualGuides(request);
+      const plan = recraftLogoPlan({ ...request, sourceFormat }, { image, styleReferences: guides.references });
+      submissions.push({ endpoint: plan.endpoint, request: { input: plan.body }, sourceBuffer, sourceFormat });
       if (options.providerFailure) throw new Error('Provider failed');
-      return { url: 'https://provider.test/result.svg', format: request.operation === 'removeBg' && sourceFormat !== 'svg' ? 'png' : 'svg',
-        endpoint: request.operation === 'generate' ? 'images/generations' : 'images/imageToImage', model: 'recraftv4_1_vector', providerRequestId: id(), cost: 0.08 };
+      return { url: 'https://provider.test/result.'+plan.format, format: plan.format,
+        endpoint: plan.endpoint, model: plan.model, providerRequestId: id(), cost: plan.cost,
+        ...(guides.metadata ? { visualGuideResult: guides.metadata } : {}),
+      };
     },
-    randomUUID: id, planLogoDirections: async (...args) => { if (options.plannerFailure) throw new Error('Planner failed'); const result = await planLogoDirections(args[0], args[1], { env: {} }); if (options.plannerMetadata) result.metadata = options.plannerMetadata; return result; }, compileLogoDirection, LOGO_COMPILER_VERSION,
-    adminSupabase, nanoLogoPlan, logoVariationSource, applyLogoVariationStyle, planLogoVariation, compileLogoVariation, LOGO_ACTIVE, LOGO_COST, logoOperationCost, logoGenerationQuota, buildLogoPrompt, logoJobTimedOut, signLogoState, verifyLogoState,
+    randomUUID: id, planLogoDirections: async (...args) => { if (options.plannerFailure) throw new Error('Planner failed'); const result = await planLogoDirections(args[0], args[1], { env: {} }); if (options.plannerMetadata) result.metadata = options.plannerMetadata; return result; }, compileLogoDirection, LOGO_COMPILER_VERSION, logoCompilerVersion, logoVisualDirection,
+    adminSupabase, studioPlan, nanoLogoPlan, logoVariationSource, applyLogoVariationStyle, planLogoVariation, compileLogoVariation, LOGO_ACTIVE, LOGO_COST, logoOperationCost, logoGenerationQuota, buildLogoPrompt, logoReplacementText, logoJobTimedOut, signLogoState, verifyLogoState,
     fitImageLogoToArtboard: async buffer => buffer,
     PROJECT_ACCESS: { OWNER: 'owner', EDIT: 'edit', VIEW: 'view' },
     getProjectAccess: async (userId, projectId, { required = 'view' } = {}) => {
@@ -446,13 +553,13 @@ async function serviceHarness(options = {}) {
     fetchWithSSRFProtection: async () => ({ response: { ok: true }, buffer: Buffer.from(!options.raster ? '<svg><path d="M0 0h1v1z" /></svg>' : 'image') }),
     sharp: () => ({ metadata: async () => ({ format: 'png' }), resize() { return this; }, png() { return this; }, toBuffer: async () => Buffer.from('png') }),
     fal: { queue: {
-      submit: async (endpoint, request) => { submissions.push({ endpoint, request }); if (options.providerFailure) throw new Error('Provider failed'); return { request_id: id() }; },
+      submit: async (endpoint, request) => { submissions.push({endpoint,request}); if(options.providerFailure) throw new Error('Provider failed'); return { request_id:id() }; },
       status: async () => { if (options.statusOutage) throw new Error('Network offline'); return { status: options.status || 'COMPLETED' }; },
       result: async () => ({ data: { images: [{ url: 'https://provider.test/result.png' }] } }),
     } },
   };
   const source = (await readFile(new URL('../src/lib/logoStudioServer.js', import.meta.url), 'utf8')).replace(/^import .*;\r?\n/gm, '').replace(/export /g, '');
-  const context = vm.createContext({ ...deps, structuredClone, Buffer, Blob, FormData, AbortSignal, Date, console: { error() {} }, process: { env: { LOGO_ART_DIRECTION_ENABLED: options.artDirection ? 'true' : 'false', FAL_KEY: 'test-only', RECRAFT_API_KEY: 'test-only', SUPABASE_SERVICE_ROLE_KEY: 'test-signing-secret' } }, fetch: async () => ({ ok: true, json: async () => ({ image: { url: 'https://provider.test/result.svg' } }), headers: new Headers() }) });
+  const context = vm.createContext({ ...deps, structuredClone, Buffer, Blob, FormData, AbortSignal, Date, console: { error() {} }, process: { env: { LOGO_TEXT_VISUAL_STYLES: options.visualStyles || '', LOGO_ART_DIRECTION_ENABLED: options.artDirection ? 'true' : 'false', FAL_KEY: options.noFal ? undefined : 'test-only', RECRAFT_API_KEY: options.noRecraft ? undefined : 'test-only', SUPABASE_SERVICE_ROLE_KEY: 'test-signing-secret' } }, fetch: async () => ({ ok: true, json: async () => ({ image: { url: 'https://provider.test/result.svg' } }), headers: new Headers() }) });
   const service = vm.runInContext(`${source}\n({ accessibleLogoProject, ownedLogoProject, startLogoOperation, startLogoTextBatch, refreshLogoJob, mutateLogoProject })`, context);
   return { service, charges, refunded, submissions, uploads, usages, snapshot: () => structuredClone(project), legacyPending: requestId => {
     uploads.length = 0;
@@ -472,7 +579,7 @@ test('text batch reserves once, plans distinct directions and charges only reque
   const state = h.snapshot().canvas_data;
   assert.equal(state.batches.length, 1); assert.equal(state.jobs.length, 3);
   assert.equal(new Set(state.jobs.map(j => j.compiledPrompt)).size, 3);
-  assert.equal(h.usages.filter(u => u.endpoint === 'logo-art-direction').length, 1);
+  assert.equal(h.usages.filter(u => u.endpoint === 'logo-minimalist-preset').length, 1);
   assert.equal(verifyLogoState(state, 'owner', h.snapshot().id, 'test-signing-secret'), true);
   assert.doesNotMatch(JSON.stringify(publicLogoProject(h.snapshot())), /compiledPrompt|designBrief|submissionClaimed|planner|directionId/);
 });
@@ -515,6 +622,24 @@ test('batch quota validation and authorization occur before planning or billing'
   assert.equal(empty.snapshot().canvas_data.jobs.length, 0); assert.equal(empty.usages.length, 0);
 });
 
+test('visual Text batches freeze server-owned guides and send native style controls with one normal charge', async () => {
+  const h = await serviceHarness({ artDirection: true, visualStyles: 'line,monogram' });
+  const request = input({ style: 'monogram', brand: 'Arc Vale', prompt: 'An AV monogram.', designSettings: { monogramLetters: 'AV', monogramFont: 'sans' } });
+  await h.service.startLogoTextBatch('owner', h.snapshot(), request, 1);
+  await h.service.startLogoTextBatch('owner', h.snapshot(), request, 1);
+  const job = h.snapshot().canvas_data.jobs[0];
+  assert.equal(job.visualGuidance.style, 'monogram');
+  assert.equal(job.visualGuidance.version, 'logo-visual-guides-1');
+  assert.equal(job.visualGuideResult.family, 'sans');
+  assert.match(job.visualGuideResult.sha256, /^[0-9a-f]{64}$/);
+  assert.equal(h.charges.size, 1); assert.equal([...h.charges.values()][0].amount, 8);
+  assert.equal(h.submissions.length, 1);
+  assert.equal(h.submissions[0].request.input.style_match, 'flexible');
+  assert.match(h.submissions[0].request.input.style_reference_urls[0], /^data:image\/png;base64,/);
+  assert.ok(h.usages.some(usage => usage.estimatedCostUsd === .04 && usage.metadata.visualGuidance.family === 'sans'));
+  assert.doesNotMatch(JSON.stringify(publicLogoProject(h.snapshot())), /visualGuidance|visualGuideResult|base64/);
+});
+
 test('batch failure releases reservations without charging for preparation', async () => {
   const h = await serviceHarness({ artDirection: true, plannerFailure: true });
   await assert.rejects(h.service.startLogoTextBatch('owner', h.snapshot(), input(), 2));
@@ -528,7 +653,8 @@ test('rejected image submissions refund each batch slot; feature rollback uses b
   const baseline = await serviceHarness(); const request = input();
   await baseline.service.startLogoTextBatch('owner', baseline.snapshot(), request, 1);
   assert.equal(baseline.submissions[0].request.input.prompt, buildLogoPrompt(request));
-  assert.equal(baseline.usages.length, 0);
+  assert.equal(baseline.usages.filter(u => u.provider !== 'recraft').length, 0);
+  assert.equal(baseline.usages.length, 1);
 });
 
 test('a request replay submits once and charges once, including simultaneous tabs', async () => {
@@ -772,16 +898,16 @@ test('SVG export produces a vector derivative without changing the source PNG', 
   assert.equal(h.snapshot().canvas_data.jobs[1].format, 'svg'); assert.equal(h.submissions.length, 1); assert.equal(h.refunded.size, 0);
 });
 
-test('new generation queues Nano Banana 2, saves PNG and records the correct provider cost', async () => {
+test('new generation uses Recraft V4.1, saves PNG and records the correct provider cost', async () => {
   const h = await serviceHarness();
   await h.service.startLogoOperation('owner', h.snapshot(), input());
   const pending = h.snapshot().canvas_data.jobs[0];
-  assert.equal(pending.provider, 'fal'); assert.equal(pending.endpoint, 'fal-ai/nano-banana-2'); assert.equal(pending.status, 'queued');
+  assert.equal(pending.provider, 'recraft'); assert.equal(pending.endpoint, 'images/generations'); assert.equal(pending.model, 'recraftv4_1'); assert.equal(pending.status, 'succeeded');
   await h.service.refreshLogoJob('owner', h.snapshot(), pending.id);
   const project = h.snapshot(); const job = project.canvas_data.jobs[0];
-  assert.equal(job.provider, 'fal'); assert.equal(job.format, 'png'); assert.equal(job.status, 'succeeded');
+  assert.equal(job.provider, 'recraft'); assert.equal(job.format, 'png'); assert.equal(job.status, 'succeeded');
   assert.equal(project.original_image_url, job.url);
-  assert.equal(h.usages[0].provider, 'fal'); assert.equal(h.usages[0].estimatedCostUsd, 0.08);
+  assert.equal(h.usages[0].provider, 'recraft'); assert.equal(h.usages[0].estimatedCostUsd, 0.035);
   assert.equal(h.refunded.size, 0);
 });
 
@@ -795,8 +921,8 @@ test('saved SVG supports edit, variations and background removal; vectorize reje
     } else {
       await h.service.startLogoOperation('owner', h.snapshot(), input({ operation, sourceId }));
       if (operation !== 'removeBg') {
-        assert.equal(h.submissions[0].endpoint, 'fal-ai/nano-banana-2/edit');
-        assert.match(h.submissions[0].request.input.image_urls[0], /^data:image\/png;base64,/);
+        assert.equal(h.submissions[0].endpoint, operation === 'edit' ? 'fal-ai/nano-banana-2/edit' : 'images/imageToImage');
+        assert.match(operation === 'edit' ? h.submissions[0].request.input.image_urls[0] : h.submissions[0].request.input.image_url, /^data:image\/png;base64,/);
         await h.service.refreshLogoJob('owner', h.snapshot(), h.snapshot().canvas_data.jobs[1].id);
       }
       assert.equal(h.snapshot().canvas_data.jobs[1].status, 'succeeded');
@@ -819,7 +945,7 @@ test('a persisted Recraft output resumes saving without generating or charging a
   assert.equal(h.submissions.length, 1); assert.equal(h.charges.size, 1); assert.equal(h.uploads.length, 1);
 });
 
-test('Nano creation plus a single Recraft vectorization costs 10 credits and duplicate vectorization is blocked', async () => {
+test('Recraft creation plus a single Recraft vectorization costs 10 credits and duplicate vectorization is blocked', async () => {
   const h = await serviceHarness(); const create = input();
   await h.service.startLogoOperation('owner', h.snapshot(), create);
   await h.service.refreshLogoJob('owner', h.snapshot(), create.requestId);
@@ -834,8 +960,187 @@ test('Nano creation plus a single Recraft vectorization costs 10 credits and dup
 test('a legacy six-credit job refunds its original transaction after the ten-credit price change', async () => {
   const h = await serviceHarness({ status: 'IN_PROGRESS' }); const request = input();
   await h.service.startLogoOperation('owner', h.snapshot(), request);
+  h.legacyPending(request.requestId);
   const charge = [...h.charges.values()][0]; charge.amount = 6;
   h.change(project => { const job = project.canvas_data.jobs[0]; job.creditCost = 6; job.updatedAt = new Date(Date.now() - 16 * 60_000).toISOString(); });
   await h.service.refreshLogoJob('owner', h.snapshot(), request.requestId);
   assert.ok(h.refunded.has(charge.id)); assert.equal(charge.amount, 6); assert.equal(h.charges.size, 1);
+});
+
+test('missing Recraft credentials fail before reservations and billing, including text batches', async () => {
+ const h = await serviceHarness({ noRecraft: true }); const request = input();
+ await assert.rejects(h.service.startLogoOperation('owner', h.snapshot(), request), /Recraft is not configured/);
+ await assert.rejects(h.service.startLogoTextBatch('owner', h.snapshot(), request, 4), /Recraft is not configured/);
+ assert.equal(h.charges.size,0); assert.equal(h.submissions.length,0); assert.equal(h.snapshot().canvas_data.jobs.length,0);
+});
+
+test('four synchronous Recraft results retain all outputs and charges across concurrent saves and replay', async () => {
+  const h = await serviceHarness({ conflict: true, artDirection: true }); const request = input();
+  const result = await h.service.startLogoTextBatch('owner', h.snapshot(), request, 4);
+  assert.equal(result.canvas_data.jobs.length, 4);
+  assert.ok(result.canvas_data.jobs.every(j => j.status === 'succeeded' && j.provider === 'recraft' && j.model === 'recraftv4_1' && j.format === 'png'));
+  assert.equal(h.charges.size, 4); assert.equal(h.submissions.length, 4); assert.equal(h.uploads.length, 4);
+  assert.equal(new Set(h.submissions.map(s => s.request.input.random_seed)).size, 4);
+  assert.equal(h.usages.filter(u => u.provider === 'recraft').length, 4);
+  await h.service.startLogoTextBatch('owner', h.snapshot(), request, 4);
+  assert.equal(h.charges.size, 4); assert.equal(h.submissions.length, 4);
+});
+
+test('Image and Sketch use Nano Banana 2 without Recraft credentials, recover PNG and charge once', async () => {
+  for (const mode of ['image', 'sketch']) {
+    const h = await serviceHarness({ noRecraft: true });
+    const request = input({ mode, sourceUrl: 'https://storage.test/source.png' });
+    await h.service.startLogoOperation('owner', h.snapshot(), request);
+    const queued = h.snapshot().canvas_data.jobs[0];
+    assert.equal(queued.provider, 'fal'); assert.equal(queued.model, 'nano-banana-2');
+    assert.equal(queued.endpoint, 'fal-ai/nano-banana-2/edit'); assert.equal(queued.status, 'queued');
+    assert.equal(queued.estimatedCostUsd, .08);
+    assert.deepEqual(h.submissions[0].request.input.image_urls, [request.sourceUrl]);
+    await h.service.startLogoOperation('owner', h.snapshot(), request);
+    assert.equal(h.charges.size, 1); assert.equal(h.submissions.length, 1);
+    await h.service.refreshLogoJob('owner', h.snapshot(), queued.id);
+    assert.equal(h.snapshot().canvas_data.jobs[0].status, 'succeeded');
+    assert.equal(h.snapshot().canvas_data.jobs[0].format, 'png');
+    assert.equal(h.usages[0].provider, 'fal'); assert.equal(h.usages[0].estimatedCostUsd, .08);
+  }
+});
+
+test('provider credentials are required only for the selected creation mode before billing', async () => {
+  const reference = await serviceHarness({ noFal: true });
+  for (const mode of ['image', 'sketch']) {
+    await assert.rejects(reference.service.startLogoOperation('owner', reference.snapshot(), input({ mode, sourceUrl:'https://storage.test/source.png' })), /not configured/);
+  }
+  assert.equal(reference.charges.size, 0); assert.equal(reference.snapshot().canvas_data.jobs.length, 0);
+  const text = await serviceHarness({ noFal: true });
+  await text.service.startLogoTextBatch('owner', text.snapshot(), input(), 1);
+  assert.equal(text.snapshot().canvas_data.jobs[0].provider, 'recraft');
+  assert.equal(text.snapshot().canvas_data.jobs[0].status, 'succeeded');
+});
+
+
+test('edits use Nano while other refinements follow saved creation mode through utility history', async () => {
+  for (const mode of ['text', 'image', 'sketch']) {
+    for (const operation of ['edit', 'variations', 'removeBg', 'vectorize']) {
+      const usesNano = operation === 'edit' || mode !== 'text' && operation === 'variations';
+      const h = await serviceHarness(usesNano ? { noRecraft: true } : { noFal: true });
+      const root = { id: id(), operation: 'generate', mode, style: 'mascot', prompt: 'A friendly owl', status: 'succeeded', format: 'png', url: 'https://storage.test/original.png' };
+      const wrongMode = mode === 'text' ? 'image' : 'text';
+      const source = { ...root, id: id(), operation: 'removeBg', sourceId: root.id, mode: wrongMode, url: 'https://storage.test/transparent.png' };
+      h.change(project => project.canvas_data.jobs.push(root, source));
+      const request = input({ operation, mode: wrongMode, sourceId: source.id, prompt: 'Make the primary fill blue' });
+      await h.service.startLogoOperation('owner', h.snapshot(), request);
+      const job = h.snapshot().canvas_data.jobs.find(item => item.id === request.requestId);
+      assert.equal(job.mode, mode);
+      assert.equal(job.provider, usesNano ? 'fal' : 'recraft');
+      assert.equal(job.model, usesNano ? 'nano-banana-2' : ['edit', 'variations'].includes(operation) ? 'recraftv4_1' : undefined);
+      const endpoint = usesNano ? 'fal-ai/nano-banana-2/edit' : operation === 'removeBg' ? 'images/removeBackground' : operation === 'vectorize' ? 'images/vectorize' : 'images/imageToImage';
+      assert.equal(job.endpoint, endpoint);
+      if (usesNano) {
+        assert.deepEqual(h.submissions[0].request.input.image_urls, [source.url]);
+        assert.equal(job.status, 'queued');
+        await h.service.refreshLogoJob('owner', h.snapshot(), job.id);
+      }
+      assert.equal(h.snapshot().canvas_data.jobs.find(item => item.id === job.id).status, 'succeeded');
+      await h.service.startLogoOperation('owner', h.snapshot(), request);
+      assert.equal(h.submissions.length, 1);
+      assert.equal(h.charges.size, 1);
+      assert.equal([...h.charges.values()][0].amount, ['edit', 'variations'].includes(operation) ? 8 : 2);
+      assert.equal(h.usages[0].estimatedCostUsd, usesNano ? .08 : ['edit', 'variations'].includes(operation) ? .035 : .01);
+    }
+  }
+});
+
+test('Image and Sketch refinements rasterize saved SVG sources before sending them to Nano', async () => {
+  for (const mode of ['image', 'sketch']) {
+    for (const operation of ['edit', 'variations']) {
+      const h = await serviceHarness({ noRecraft: true });
+      const root = { id: id(), operation: 'generate', mode, style: 'mascot', prompt: 'A friendly owl', status: 'succeeded', format: 'png', url: 'https://storage.test/original.png' };
+      const vector = { ...root, id: id(), operation: 'vectorize', sourceId: root.id, format: 'svg', url: 'https://storage.test/vector.svg' };
+      h.change(project => project.canvas_data.jobs.push(root, vector));
+      const request = input({ operation, sourceId: vector.id, prompt: 'Make the primary fill blue' });
+      await h.service.startLogoOperation('owner', h.snapshot(), request);
+      assert.equal(h.submissions[0].endpoint, 'fal-ai/nano-banana-2/edit');
+      assert.match(h.submissions[0].request.input.image_urls[0], /^data:image\/png;base64,/);
+      const job = h.snapshot().canvas_data.jobs.find(item => item.id === request.requestId);
+      assert.equal(job.mode, mode);
+      assert.equal(job.provider, 'fal');
+    }
+  }
+});
+
+
+test('GRAVE to MANLY edits the selected image, saves the new brand and freezes an isolated edit prompt', async () => {
+  const h = await serviceHarness({ noRecraft: true, visualStyles: 'all' });
+  const original = { id: id(), operation: 'generate', mode: 'text', style: 'streetwear-lettering', brand: 'GRAVE', tagline: 'FOUR MAN', prompt: '', compiledPrompt: 'CREATE AN UNRELATED CHARACTER', status: 'succeeded', format: 'png', url: 'https://storage.test/original.png', designSettings: {} };
+  h.change(project => project.canvas_data.jobs.push(original));
+  const request = input({ operation: 'edit', style: 'mascot', brand: 'FORGED', tagline: 'WRONG', sourceId: original.id, prompt: 'change the text, MANLY' });
+  await h.service.startLogoOperation('owner', h.snapshot(), request);
+  const jobs = h.snapshot().canvas_data.jobs;
+  const edited = jobs.find(j => j.id === request.requestId);
+  assert.equal(edited.brand, 'MANLY');
+  assert.equal(edited.tagline, 'FOUR MAN');
+  assert.equal(edited.mode, 'text');
+  assert.equal(edited.style, original.style);
+  assert.equal(edited.provider, 'fal');
+  assert.equal(edited.status, 'queued');
+  assert.equal(jobs[0].brand, 'GRAVE');
+  assert.equal(logoVariationSource(edited, jobs).brand, 'MANLY');
+  assert.equal(h.submissions[0].endpoint, 'fal-ai/nano-banana-2/edit');
+  const payload = h.submissions[0].request.input;
+  assert.deepEqual(payload.image_urls, [original.url]);
+  assert.equal(payload.style_reference_urls, undefined);
+  assert.equal(payload.controls, undefined);
+  assert.equal(edited.visualGuidance, undefined);
+  assert.equal(payload.prompt, edited.compiledPrompt);
+  assert.match(payload.prompt, /exactly "MANLY"/);
+  assert.match(payload.prompt, /supporting text "FOUR MAN"/);
+  assert.doesNotMatch(payload.prompt, /CREATE AN UNRELATED CHARACTER|Keep the exact main brand text "GRAVE"/);
+  await h.service.refreshLogoJob('owner', h.snapshot(), edited.id);
+  await h.service.startLogoOperation('owner', h.snapshot(), request);
+  assert.equal(h.snapshot().canvas_data.jobs.at(-1).status, 'succeeded');
+  assert.equal(h.submissions.length, 1);
+  assert.equal(h.charges.size, 1);
+  assert.equal(h.usages[0].estimatedCostUsd, .08);
+});
+
+test('AI Edit needs fal credentials before billing and never falls back to available Recraft credentials', async () => {
+  const h = await serviceHarness({ noFal: true });
+  const original = { id: id(), operation: 'generate', mode: 'text', style: 'wordmark', brand: 'GRAVE', status: 'succeeded', format: 'png', url: 'https://storage.test/original.png' };
+  h.change(project => project.canvas_data.jobs.push(original));
+  await assert.rejects(h.service.startLogoOperation('owner', h.snapshot(), input({ operation: 'edit', sourceId: original.id, prompt: 'change the text to MANLY' })), /AI Edit is not configured/);
+  assert.equal(h.charges.size, 0);
+  assert.equal(h.submissions.length, 0);
+  assert.equal(h.snapshot().canvas_data.jobs.length, 1);
+});
+
+test('a rejected text-source AI Edit refunds its one charge without generating a replacement concept', async () => {
+  const h = await serviceHarness({ providerFailure: true });
+  const original = { id: id(), operation: 'generate', mode: 'text', style: 'wordmark', brand: 'GRAVE', status: 'succeeded', format: 'png', url: 'https://storage.test/original.png' };
+  h.change(project => project.canvas_data.jobs.push(original));
+  const request = input({ operation: 'edit', sourceId: original.id, prompt: 'change the text to MANLY' });
+  await h.service.startLogoOperation('owner', h.snapshot(), request);
+  await h.service.startLogoOperation('owner', h.snapshot(), request);
+  assert.equal(h.snapshot().canvas_data.jobs.at(-1).status, 'failed');
+  assert.equal(h.submissions.length, 1);
+  assert.equal(h.submissions[0].endpoint, 'fal-ai/nano-banana-2/edit');
+  assert.equal(h.charges.size, 1);
+  assert.equal(h.refunded.size, 1);
+});
+
+
+test('mascot text batches use the literal brief on Recraft without requiring a remote planner', async () => {
+  const h = await serviceHarness({ artDirection: true, noFal: true });
+  const request = input({ style: 'mascot', prompt: 'A teal and black snake head in side profile, white eyes, white fangs, thick gray outline and white background.', brand: '', designSettings: { detail: 'minimal', characterComposition: 'portrait' } });
+  const result = await h.service.startLogoTextBatch('owner', h.snapshot(), request, 2);
+  assert.equal(result.canvas_data.batches[0].planner.provider, 'local');
+  assert.equal(result.canvas_data.batches[0].planner.reason, 'user-led-mascot');
+  assert.equal(h.submissions.length, 2);
+  assert.equal(h.charges.size, 2);
+  for (const job of result.canvas_data.jobs) {
+    assert.equal(job.provider, 'recraft'); assert.equal(job.model, 'recraftv4_1');
+    assert.equal(job.prompt, request.prompt);
+    assert.ok(job.compiledPrompt.includes(request.prompt));
+    assert.ok(h.submissions.some(s => s.request.input.prompt === job.compiledPrompt));
+    assert.equal(job.status, 'succeeded');
+  }
 });

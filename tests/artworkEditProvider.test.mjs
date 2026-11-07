@@ -8,7 +8,7 @@ import {
 test('a queue receipt returns its request ID with exactly one submission', async () => {
   let calls = 0;
   const result = await artworkEditProviderRequest(
-    'fal-ai/nano-banana-pro/edit',
+    'google/nano-banana-2.1/edit',
     { image_urls: ['https://v3.fal.media/source.png'] },
     {
       apiKey: 'test-key',

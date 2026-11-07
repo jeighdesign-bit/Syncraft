@@ -104,12 +104,12 @@ export async function POST(request) {
       });
       if (mode !== 'logo_trace') extractionInput.system_prompt = buildGarmentExtractionSystemPrompt();
 
-      console.log(`[B2B - ${company.name}] Starting Nano Banana Pro [${mode}]...`);
-      const nanoResult = await fal.subscribe("fal-ai/nano-banana-pro/edit", {
+      console.log(`[B2B - ${company.name}] Starting Nano Banana 2.1 [${mode}]...`);
+      const nanoResult = await fal.subscribe("google/nano-banana-2.1/edit", {
         input: extractionInput,
       });
       const extractedUrl = nanoResult?.data?.images?.[0]?.url;
-      if (!extractedUrl) throw new Error("Nano Banana Pro failed to return an image.");
+      if (!extractedUrl) throw new Error("Nano Banana 2.1 failed to return an image.");
 
       const { fal } = await import("@fal-ai/client");
       const recraftApiToken = process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY;

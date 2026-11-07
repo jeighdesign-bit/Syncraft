@@ -3,16 +3,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, PanelRightClose, PanelRightOpen, X } from "lucide-react";
-import { LOGO_EXAMPLES } from "@/lib/logoExamples.mjs";
+import { LOGO_STUDIO_EXAMPLES } from "@/lib/logoStudioExamples.mjs";
 import { LOGO_STYLES } from "@/lib/logoStudio.mjs";
 import styles from "./WorkspaceRightPanel.module.css";
 import ResponsivePanel from "@/components/ResponsivePanel";
-
-const featuredIds = ["orbit-robot", "copper-colt", "wingwise", "aurora-unicorn", "north-bear", "pinehaven", "common-span", "southern-roost"];
-const featuredLogos = [
-  ...featuredIds.map(id => LOGO_EXAMPLES.find(example => example.id === id)).filter(Boolean),
-  ...LOGO_EXAMPLES.filter(example => !featuredIds.includes(example.id)),
-];
 
 function DesignPreview({ title, children, onClose, wide = false }) {
   const dialog = useRef(null);
@@ -84,7 +78,7 @@ export default function WorkspaceRightPanel() {
         <div className={styles.body}>
           <p className={styles.hint}>A starting point for your next logo.</p>
           <div className={styles.logoGrid}>
-            {featuredLogos.map(example => <button key={example.id} type="button" className={styles.logoCard} aria-label={`Preview ${example.title}`} onClick={() => setSelected(example)}>
+            {LOGO_STUDIO_EXAMPLES.map(example => <button key={example.id} type="button" className={styles.logoCard} aria-label={`Preview ${example.title}`} onClick={() => setSelected(example)}>
               <img src={example.image} alt={example.title} width={200} height={200} loading="lazy" draggable={false} />
               <span className={styles.cardOverlay} aria-hidden="true">Preview</span>
             </button>)}

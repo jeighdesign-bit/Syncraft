@@ -25,6 +25,10 @@ export default function Select({ value, onChange, children, disabled, compact = 
     return () => document.removeEventListener('pointerdown', close);
   }, [expanded]);
 
+  useEffect(() => {
+    if (expanded) menu.current?.children[active]?.scrollIntoView({ block: 'nearest' });
+  }, [active, expanded]);
+
   const choose = index => {
     if (!options[index]) return;
     onChange?.({ target: { value: options[index].value } });

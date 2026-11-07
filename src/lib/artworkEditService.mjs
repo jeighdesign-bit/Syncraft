@@ -1,5 +1,6 @@
 import { normalizeArtworkComments, artworkCommentInstructions } from './artworkEditComments.mjs';
 import { artworkEditFailureDetails } from './artworkEditProvider.mjs';
+import { ARTWORK_EDIT_MODEL } from './artworkEditPolicy.mjs';
 
 export { ARTWORK_EDIT_MODEL, ARTWORK_EDIT_COST } from './artworkEditPolicy.mjs';
 
@@ -111,9 +112,9 @@ export function createArtworkEditService(deps) {
     if (job.status === 'queued') {
       await deps.verifyJob(projectId, job);
       try {
-        const status = await deps.status(job.providerId);
+        const status = await deps.status(job.providerId, job.model);
         if (status.status !== 'COMPLETED') return artworkEditSnapshot(project);
-        const result = await deps.result(job.providerId);
+        const result = await deps.result(job.providerId, job.model);
         if (!result?.url) {
           throw await terminalFailure(
             projectId,
@@ -219,6 +220,7 @@ export function createArtworkEditService(deps) {
         throw fail('This project has reached its edit-history limit. Start a new project.');
       state.jobs.push({
         id: requestId,
+        model: ARTWORK_EDIT_MODEL,
         prompt,
         comments,
         sourceUrl,

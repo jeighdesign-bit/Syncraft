@@ -9,7 +9,7 @@ export function recoveryModeInstructions(mode) {
 
 export const RECOVERY_VISION_ENDPOINT = 'openrouter/router/vision';
 export const RECOVERY_VISION_MODEL = 'google/gemini-2.5-pro';
-export const RECOVERY_IMAGE_ENDPOINT = 'fal-ai/nano-banana-pro/edit';
+export const RECOVERY_IMAGE_ENDPOINT = 'google/nano-banana-2.1/edit';
 export const RECOVERY_DIRECT_CROP_PROMPT_VERSION = 'direct-crop-v1';
 
 function directCropCategoryGuide(value) {

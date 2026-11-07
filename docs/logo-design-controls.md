@@ -1,5 +1,8 @@
 # Logo Studio design controls
 
+> Current Text-only behavior (5 November 2026): see [Text to Logo direction contract](./logo-text-direction.md). The historical notes below describe earlier versions; Image/Sketch and Streetwear retain their existing behavior.
+
+
 The composer now has actual editable main-text/tagline chips and a horizontally scrolling row of labeled select controls. These update structured form state without rewriting the user's visible brief. Main text and tagline stay synchronized with the sidebar fields.
 
 The compact layout uses one 36-pixel desktop row, short visible labels, and selected-value sizing. Full field names remain available to assistive technology and hover titles. Scroll navigation appears only for overflow; the reset control appears only after a setting is selected. The heading/helper row and persistent scrollbar were removed. The compact layout passed a production build and browser checks for selection, reset and overflow navigation without any paid calls.
@@ -7,6 +10,12 @@ The compact layout uses one 36-pixel desktop row, short visible labels, and sele
 The public Logo Diffusion interface was inspected on 23 October 2026. Its Wordmark controls include letter type, details, treatment, font style, font characteristic, composition, two mood categories and industry. Its Mascot controls instead include character composition (portrait/full body). These observed interaction patterns informed the local controls; this does not claim access to Logo Diffusion's private backend or models.
 
 Each style has an explicit server-side field profile. Mood, brand personality and industry are shared where the reference shares them. Their common presence does not make the construction instructions identical.
+
+Streetwear Lettering (4 November 2026) is a Text to Logo-only style with exact main text required and optional tagline/brief. Letters now offers Gothic, Chicano-inspired script, Racing script, Retro swash, Graffiti brush, Wildstyle graffiti, Spiked display, Tribal metal, Athletic block and Flared serif, following [Pinterest/reference research](./logo-studio-lettering-research.md). Its other controls are Layout (Straight, Arched, Stacked), Outline (Single, Layered), and Depth (Flat, Extruded, Beveled). Each supports Auto. Auto follows explicit brief preferences, otherwise uses coherent Gothic-leaning lettering, layered outlines and illustrated bevel depth. Flat removes dimensional shading. Existing color roles remain available. This focused style does not inherit shared mood/personality/industry menus.
+
+The [original-reference correction](./logo-studio-streetwear-reference-correction.md) makes dense ornamental construction, sculpted word silhouettes, sharp script joins and stepped graphic shading the core direction. Auto defaults to a uniform charcoal background and silver/gray faces with restrained teal keylines; selected colors override these defaults. An empty optional prompt uses local lettering directions instead of the general concept planner. The first-pass Streetwear gallery samples are withheld pending controls-only Studio validation and user selection.
+
+Switching to Image/Sketch substitutes a compatible style and returning to Text restores the saved Streetwear selection. Drafts remember styles by mode. Streetwear variations require a saved text-origin logo with brand text; Auto variations and Edit/background-removal/vectorization remain available for saved Streetwear outputs. The existing generation model, output count and credits are unchanged. See [implementation and verification evidence](./logo-studio-streetwear-lettering-plan.md).
 
 | Syncraft style | Controls in addition to the shared mood/personality/industry fields |
 | --- | --- |

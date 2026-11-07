@@ -74,7 +74,7 @@ export default function LogoExampleCarousel() {
               <img src={example.image} alt="" width="400" height="400" loading="lazy" draggable={false} />
               <span className={styles.cardInfo}>
                 <span className={styles.promptLabel}>{example.title}</span>
-                <span className={styles.prompt}>{example.prompt.split(".")[0]}.</span>
+                <span className={styles.prompt}>{(example.prompt || [example.brand, example.tagline].filter(Boolean).join(' · ')).split(".")[0]}.</span>
                 <span className={styles.style}>{example.style.replace("-", " ")}</span>
               </span>
             </button>

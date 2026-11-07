@@ -12,7 +12,7 @@ import { universalUnavailableResponse } from "@/lib/universalAvailability.mjs";
 import { fal } from "@fal-ai/client";
 
 export const runtime = 'nodejs';
-// Nano Banana Pro editing plus storage and reconciliation can be long-running.
+// Nano Banana 2.1 editing plus storage and reconciliation can be long-running.
 export const maxDuration = 180;
 
 const SEAM_SAMPLE_PX = 4;
@@ -36,7 +36,7 @@ function isFalValidationError(error) {
 }
 
 async function requestExtendedArtwork({ fal, seedUrl, prompt, aspectRatio }) {
-  const subscribe = (input, attempt) => fal.subscribe("fal-ai/nano-banana-pro/edit", {
+  const subscribe = (input, attempt) => fal.subscribe("google/nano-banana-2.1/edit", {
     input,
     logs: true,
     onQueueUpdate: (update) => {
@@ -383,7 +383,7 @@ export async function POST(request) {
     // make this project eligible for a second refund it never earned.
 
     // ============================================================
-    // GENERATIVE EXTEND (Nano Banana Pro)
+    // GENERATIVE EXTEND (Nano Banana 2.1)
     // ============================================================
     // Nano Banana has no mask or exact-pixel outpaint parameters. Give it one
     // larger carrier image instead: the original is untouched in the middle and
@@ -428,7 +428,7 @@ export async function POST(request) {
     });
 
     console.log(
-      '[Extend] Requesting Nano Banana Pro edit project=%s carrier=%dx%d ratio=%s source@%d,%d pads=%j',
+      '[Extend] Requesting Nano Banana 2.1 edit project=%s carrier=%dx%d ratio=%s source@%d,%d pads=%j',
       projectId, carrier.width, carrier.height, carrier.aspectRatio,
       sourceRect.left, sourceRect.top, pads,
     );
@@ -444,7 +444,7 @@ export async function POST(request) {
       projectId,
       userId,
       provider: "fal",
-      endpoint: "fal-ai/nano-banana-pro/edit",
+      endpoint: "google/nano-banana-2.1/edit",
       providerRequestId: result?.requestId || null,
       estimatedCostUsd: 0.15,
       isOwnerTest,

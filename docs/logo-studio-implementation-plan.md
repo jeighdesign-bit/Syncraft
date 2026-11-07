@@ -1,3 +1,5 @@
+> Historical plan: current provider routing and local style preparation are documented in [art direction setup](logo-art-direction-setup.md).
+
 # Logo Studio implementation plan
 
 Date: 2026-10-21

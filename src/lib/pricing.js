@@ -15,9 +15,9 @@ export const CREDIT_COST = {
   universal: 24,  // forensic recovery + the remaining production pipeline
   removeBg: 12,
   upscale: 12,
-  extend: 12,     // one nano-banana-pro/edit call + a free re-run of stages 2 and 3
+  extend: 12,     // one nano-banana-2.1/edit call + a free re-run of stages 2 and 3
   artworkEdit: ARTWORK_EDIT_COST, // preview edit; applying/restoring saved artwork is free
-  logoGenerate: 8, // Nano Banana 2, per saved output
+  logoGenerate: 8, // Recraft V4.1, per saved output (customer price unchanged)
   logoImageGenerate: 8,
   logoSketchGenerate: 8,
   logoVariations: 8,

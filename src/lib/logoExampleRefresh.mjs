@@ -1,4 +1,5 @@
-// Clean collection generated through the existing Logo Studio pipeline.
+// RETIRED: not approved for public examples or marketing; preserved as historical provenance only.
+// Earlier collection generated through the existing Logo Studio pipeline.
 export const LOGO_EXAMPLE_REFRESH = [
   {
     "id": "harbor-penguin",
