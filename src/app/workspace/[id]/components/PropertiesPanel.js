@@ -1,7 +1,8 @@
 "use client";
 
 import { memo, useState } from "react";
-import { Download, Monitor, ChevronDown, FolderDown, Loader2, X, ImageMinus, Eraser, Scissors, Expand, WandSparkles } from "lucide-react";
+import { Download, Monitor, FolderDown, Loader2, X, ImageMinus, Eraser, Scissors, Expand, WandSparkles } from "lucide-react";
+import Select from '@/components/Select';
 import { CREDIT_COST } from "@/lib/pricing";
 import { canResumeTraceUpscale } from "@/lib/traceRequestPolicy.mjs";
 import { REFERENCE_CATEGORIES, normalizeReferenceCategory } from "@/lib/referenceCategories.mjs";
@@ -78,19 +79,13 @@ const fieldLabelStyle = {
   marginBottom: SPACE.sm,
 };
 
-const selectStyle = {
-  width: "100%",
-  background: "rgba(255,255,255,0.03)",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: "8px",
-  color: "#fff",
-  padding: "10px 32px 10px 12px",
-  fontSize: "13px",
-  appearance: "none",
-  cursor: "pointer",
-  outline: "none",
-  transition: "all 0.2s",
-};
+const VECTOR_COLOR_OPTIONS = [
+  { value: 'auto', label: 'Auto (Precision Balance)' },
+  { value: '16', label: '16 Colors (High Detail)' },
+  { value: '8', label: '8 Colors (Medium Detail)' },
+  { value: '4', label: '4 Colors (Merges Shadows)' },
+  { value: '2', label: '2 Colors (Solid / Line Art)' },
+];
 
 const helpTextStyle = {
   marginTop: SPACE.sm,
@@ -287,28 +282,19 @@ const PropertiesPanel = memo(function PropertiesPanel({
       {/* ── Reference category / vector settings ─────────────── */}
       <div style={sectionStyle}>
         <label htmlFor="workspace-reference-setting" style={fieldLabelStyle}>{isUniversal ? 'Reference Category' : 'Vector Engine (Beta)'}</label>
-        <div style={{ position: "relative" }}>
-          <select
+        <div style={{ display: 'grid', minWidth: 0 }}>
+          <Select
             id="workspace-reference-setting"
+            aria-label={isUniversal ? 'Reference Category' : 'Vector Engine (Beta)'}
             aria-describedby="workspace-reference-help"
             disabled={editsLocked || (isUniversal && isBusy)}
             value={isUniversal ? referenceCategory : vectorColors}
             onChange={(e) => { if (!editsLocked) return isUniversal ? onReferenceCategoryChange?.(e.target.value) : onVectorColorsChange(e.target.value); }}
-            style={{ ...selectStyle, minHeight: '44px', opacity: isUniversal && isBusy ? 0.6 : 1 }}
-            onFocus={e => e.target.style.borderColor = COLOR.accent}
-            onBlur={e => e.target.style.borderColor = COLOR.inputBorder}
           >
-            {isUniversal ? REFERENCE_CATEGORIES.map(category => (
+            {(isUniversal ? REFERENCE_CATEGORIES : VECTOR_COLOR_OPTIONS).map(category => (
               <option key={category.value} value={category.value}>{category.label}</option>
-            )) : <>
-            <option value="auto">Auto (Precision Balance)</option>
-            <option value="16">16 Colors (High Detail)</option>
-            <option value="8">8 Colors (Medium Detail)</option>
-            <option value="4">4 Colors (Merges Shadows)</option>
-            <option value="2">2 Colors (Solid / Line Art)</option>
-            </>}
-          </select>
-          <ChevronDown size={13} style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: COLOR.textMuted, pointerEvents: "none" }} />
+            ))}
+          </Select>
         </div>
         <p id="workspace-reference-help" role={isSavingReferenceCategory ? 'status' : undefined} style={helpTextStyle}>
           {isUniversal

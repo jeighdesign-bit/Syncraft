@@ -56,6 +56,7 @@ export default function PricingSection({ isSignedIn, onSelectPlan, compact = fal
             <p className={styles.description}>{plan.description}</p>
             <ul className={styles.features}>
               <li><Check size={13} aria-hidden="true" /><span>Up to <strong>{Math.floor(plan.credits / CREDIT_COST.logoGenerate)} logos</strong> in Logo Studio</span></li>
+              <li><Check size={13} aria-hidden="true" /><span>Or <strong>{Math.floor(plan.credits / CREDIT_COST.logoVariations)} logo variations</strong></span></li>
               <li><Check size={13} aria-hidden="true" /><span>Or <strong>{plan.generations} standard extractions</strong></span></li>
               <li><Check size={13} aria-hidden="true" /><span>Use credits across creative tools</span></li>
               <li><Check size={13} aria-hidden="true" /><span>Export files in supported workflows</span></li>
@@ -73,7 +74,7 @@ export default function PricingSection({ isSignedIn, onSelectPlan, compact = fal
       </div>
 
       <div className={styles.notes}>
-        <p className={styles.note}>Allowances are alternatives, not combined totals. Logo Studio uses {CREDIT_COST.logoGenerate} credits per logo; standard extraction uses {CREDIT_COST.trace}. Some workflows use more.</p>
+        <p className={styles.note}>Allowances are alternatives, not combined totals. Logo Studio creation uses {CREDIT_COST.logoGenerate} credits per logo; variations use {CREDIT_COST.logoVariations} credits per output; standard extraction uses {CREDIT_COST.trace}. Some workflows use more.</p>
         <p className={styles.note}>
           The {CREDIT_PLANS.tingi.price} Tingi plan is not available for international cards because card-processing costs make this small transaction impractical. USD card prices are separate checkout prices—not direct peso conversions—and may include payment processing, cross-border or currency-conversion costs, and applicable taxes.
         </p>

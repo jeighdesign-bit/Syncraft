@@ -3,9 +3,13 @@ import { logoDesignInstructions } from './logoDesignSettings.mjs';
 import { STREETWEAR_STYLE } from './logoStyleCapabilities.mjs';
 import { streetwearBackground, streetwearPaletteDirection } from './logoStreetwear.mjs';
 import { compileLogoTextDirection, LOGO_TEXT_DIRECTION_VERSION } from './logoTextDirection.mjs';
+import { BADGE_DIRECTION_VERSION } from './logoBadgeDirection.mjs';
+import { logoOriginalPrompt, logoEnhancementGuidance } from './logoPromptEnhancer.mjs';
+import { LOGO_STYLE_LANGUAGE } from './logoStyleLanguage.mjs';
 export const LOGO_COMPILER_VERSION = LOGO_TEXT_DIRECTION_VERSION;
-export const logoCompilerVersion = style => style === STREETWEAR_STYLE ? LOGO_PROFILE_VERSION : LOGO_COMPILER_VERSION;
+export const logoCompilerVersion = style => style === STREETWEAR_STYLE ? LOGO_PROFILE_VERSION : style === 'badge' ? BADGE_DIRECTION_VERSION : LOGO_COMPILER_VERSION;
 export function compileLogoDirection(brief, direction) {
+  if (brief.promptEnhancement) brief = { ...brief, rawBrief: logoOriginalPrompt(brief) };
   if (brief.style !== STREETWEAR_STYLE) return compileLogoTextDirection(brief, direction);
   const settings = brief.designSettings || {};
   const background = settings.backgroundColor
@@ -16,6 +20,7 @@ export function compileLogoDirection(brief, direction) {
   const symbolStyle = ['abstract', 'pictorial', 'minimalist', 'line'].includes(brief.style);
   return [
     brief.rawBrief ? `User brief: ${brief.rawBrief}` : '',
+    logoEnhancementGuidance(brief),
     `Create one finished original logo, with crisp edges and purposeful optical spacing. ${background} The canvas is square; keep the entire mark, lettering and extended details inside the artboard with comfortable clear space. No mockup or presentation grid.`,
     `Selected style: ${brief.style}. ${LOGO_STYLE_PROFILES[brief.style].join(' ')}`,
     'Preserve the user brief’s subjects, essential motifs, object relationships and explicit visual preferences. Style defaults and optional construction never replace an explicit instruction.',
@@ -34,5 +39,6 @@ export function compileLogoDirection(brief, direction) {
       ? `Style default, only where the brief and controls leave a choice unspecified: ${instruction}`
       : `Required design control (overrides conflicting brief text and style defaults): ${instruction}`),
     'Resolve all design decisions into one coherent mark. For flat treatments use uniformly colored regions with hard boundaries. Preserve detail only when the chosen style calls for it.',
+    LOGO_STYLE_LANGUAGE[STREETWEAR_STYLE].construction,
   ].filter(Boolean).join('\n');
 }

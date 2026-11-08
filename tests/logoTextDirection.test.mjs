@@ -3,12 +3,14 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { validateLogoOperation, buildLogoPrompt, publicLogoProject } from '../src/lib/logoStudio.mjs';
+import { isLogoStyleAvailable } from '../src/lib/logoStyleCapabilities.mjs';
 import { logoDesignFields, normalizeLogoDesignSettings, LOGO_DESIGN_FIELDS } from '../src/lib/logoDesignSettings.mjs';
 import { normalizeLogoBrief, fallbackLogoDirections } from '../src/lib/logoDesignBrief.mjs';
 import { compileLogoDirection } from '../src/lib/logoPromptCompiler.mjs';
 import { resolveLogoTextDirection, TEXT_STYLE_GRAMMAR, TEXT_INDUSTRIES, TEXT_MOODS, TEXT_PERSONALITIES, LOGO_TEXT_DIRECTION_VERSION } from '../src/lib/logoTextDirection.mjs';
 import { nanoLogoPlan } from '../src/lib/logoFal.mjs';
 import { recraftLogoPlan } from '../src/lib/logoRecraft.mjs';
+import { LOGO_STYLE_LANGUAGE } from '../src/lib/logoStyleLanguage.mjs';
 
 const input = overrides => validateLogoOperation({ requestId: 'bd3b315c-0247-4ddc-9113-3c8b5e1288ce', operation: 'generate', mode: 'text', style: 'minimalist', prompt: 'An owl with one raised wing.', brand: 'FORMA', tagline: '', palette: [], designSettings: {}, ...overrides });
 
@@ -133,14 +135,21 @@ test('automatic native background has foreground contrast, respects explicit bri
   assert.deepEqual(control({ ...input(), compiledPrompt: 'New frozen contract', compilerVersion: LOGO_TEXT_DIRECTION_VERSION }), { rgb: [255, 255, 255] });
 });
 
-test('protected Image/Sketch payloads and Streetwear prompts match the pre-change baseline byte for byte', () => {
+test('Image/Sketch inputs stay byte-identical; Streetwear retains its genre controls plus the new lettering craft contract', () => {
   const baseline = JSON.parse(readFileSync(new URL('./fixtures/logoProtectedFlows.json', import.meta.url), 'utf8'));
   for (const saved of baseline.snapshots) {
+    if (!isLogoStyleAvailable(saved.style, saved.mode)) {
+      assert.throws(() => input({ mode: saved.mode, style: saved.style, sourceId: '58dfc8de-61b5-43ec-9923-178b96246524' }), /compatible visual style|Text to Logo only/);
+      continue;
+    }
     const request = input({ mode: saved.mode, style: saved.style, designSettings: saved.designSettings, sourceId: '58dfc8de-61b5-43ec-9923-178b96246524' });
     const plan = nanoLogoPlan(request, 'https://source.example/reference.png');
-    assert.equal(createHash('sha256').update(JSON.stringify(plan)).digest('hex'), saved.hash, `${saved.mode}/${saved.style}/${JSON.stringify(saved.designSettings)}`);
+    // The fixture includes the old model envelope. Normalize only migration
+    // metadata so every prompt, reference and generation setting stays protected.
+    const legacyEnvelope = { ...plan, endpoint: 'fal-ai/nano-banana-2/edit', model: 'nano-banana-2', cost: .08 };
+    assert.equal(createHash('sha256').update(JSON.stringify(legacyEnvelope)).digest('hex'), saved.hash, `${saved.mode}/${saved.style}/${JSON.stringify(saved.designSettings)}`);
   }
   for (const saved of baseline.streetwear) {
-    assert.equal(buildLogoPrompt(input({ style: 'streetwear-lettering', brand: 'DARKMEN', designSettings: saved.key ? { [saved.key]: saved.value } : {} })), saved.prompt);
+    assert.equal(buildLogoPrompt(input({ style: 'streetwear-lettering', brand: 'DARKMEN', designSettings: saved.key ? { [saved.key]: saved.value } : {} })), `${saved.prompt}\n${LOGO_STYLE_LANGUAGE['streetwear-lettering'].construction}`);
   }
 });

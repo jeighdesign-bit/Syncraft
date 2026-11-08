@@ -63,6 +63,30 @@ test('actual adapter sends compiled creation prompts and rasterizes SVG referenc
 });
 
 const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024"><rect width="1024" height="1024" fill="white"/></svg>');
+test('actual V4.1 adapter prepares user inspiration as the sole native style source while preserving identity, colors and price', async () => {
+  const previous = process.env.RECRAFT_API_TOKEN; process.env.RECRAFT_API_TOKEN = 'test-only';
+  try {
+    const styleReferenceBuffer = await sharp({ create: { width: 1400, height: 700, channels: 3, background: '#123456' } }).png().toBuffer();
+    for (const styleMatch of ['flexible', 'precise']) {
+      const request = { ...input({ generationOptions: { styleMatch }, styleReferenceUrl: 'https://storage.test/owned.png', designSettings: { primaryColor: '#123456' } }), seed: 0,
+        visualGuidance: { version: 'logo-visual-guides-1', style: 'mascot', match: 'flexible' } };
+      const result = await generateRecraftLogo(request, undefined, undefined, { styleReferenceBuffer, request: async (url, options) => {
+        assert.equal(url, 'https://external.api.recraft.ai/v1/images/generations');
+        const body = JSON.parse(options.body);
+        assert.equal(body.model, 'recraftv4_1'); assert.equal(body.style_match, styleMatch); assert.equal(body.random_seed, 0); assert.equal(body.size, '1024x1024');
+        assert.equal(body.style_reference_urls.length, 1); assert.deepEqual(body.controls.colors, [{ rgb: [18, 52, 86] }]);
+        const info = await sharp(Buffer.from(body.style_reference_urls[0].split(',')[1], 'base64')).metadata();
+        assert.equal(info.width, 768); assert.equal(info.height, 384);
+        assert.match(body.prompt, /Do not copy its subject, composition, brand name/);
+        assert.equal(body.image_url, undefined);
+        return { ok: true, headers: new Headers(), json: async () => ({ data: [{ url: 'https://img.recraft.ai/result.png' }], credits: 40 }) };
+      } });
+      assert.equal(result.cost, .04); assert.equal(result.visualGuideResult.role, 'user-style-inspiration');
+    }
+    assert.throws(() => recraftLogoPlan(input({ styleReferenceUrl: 'https://storage.test/owned.png' })), /not prepared/);
+  } finally { if (previous === undefined) delete process.env.RECRAFT_API_TOKEN; else process.env.RECRAFT_API_TOKEN = previous; }
+});
+
 test('Recraft tools retain native SVG backgrounds and vectorize raster images at the utility rate', () => {
   const vector = recraftLogoPlan({ operation: 'vectorize' }, { image: 'png' });
   assert.equal(vector.endpoint, 'images/vectorize'); assert.equal(vector.format, 'svg'); assert.equal(vector.cost, 0.01);
@@ -100,7 +124,7 @@ test('Recraft adapter preserves vector input for background removal without retr
 test('AI Edit cannot fall back to Recraft generation or style reference synthesis', () => {
   for (const prompt of ['change the text, MANLY', 'change the text to MANLY', 'Make the outline blue']) {
     const request = input({ operation: 'edit', sourceId: crypto.randomUUID(), prompt });
-    assert.throws(() => recraftLogoPlan(request, { image: 'reference' }), /Nano Banana 2 image editing/);
+    assert.throws(() => recraftLogoPlan(request, { image: 'reference' }), /Nano Banana 2\.1 image editing/);
   }
 });
 

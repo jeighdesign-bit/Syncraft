@@ -7,6 +7,8 @@ import { requiresLogoBrand } from '../src/lib/logoStyleCapabilities.mjs';
 import { LOGO_EXAMPLE_ADDITIONS } from '../src/lib/logoExampleAdditions.mjs';
 import { LOGO_EXAMPLE_REFRESH } from '../src/lib/logoExampleRefresh.mjs';
 import { LOGO_EXAMPLE_FEATURED } from '../src/lib/logoExampleFeatured.mjs';
+import { LOGO_BADGE_EXAMPLES } from '../src/lib/logoBadgeExamples.mjs';
+import { LOGO_MASCOT_EXAMPLES } from '../src/lib/logoMascotExamples.mjs';
 
 test('example gallery keeps usable briefs, lettering controls and local previews', () => {
   assert.equal(new Set(LOGO_EXAMPLES.map(item => item.id)).size, LOGO_EXAMPLES.length);
@@ -22,8 +24,8 @@ test('example gallery keeps usable briefs, lettering controls and local previews
 });
 
 test('retired gallery-derived examples stay unpublished while DARKMEN streetwear stays available', () => {
-  assert.equal(LOGO_EXAMPLES.length, 22);
-  assert.ok(LOGO_EXAMPLES.every(item => item.id.startsWith('original-') || item.id.startsWith('darkmen-')));
+  assert.equal(LOGO_EXAMPLES.length, 37);
+  assert.ok(LOGO_EXAMPLES.every(item => item.id.startsWith('original-') || item.id.startsWith('darkmen-') || item.id === 'wk-goat-shield' || [...LOGO_BADGE_EXAMPLES, ...LOGO_MASCOT_EXAMPLES].some(example => example.id === item.id)));
   assert.equal(LOGO_EXAMPLES.some(item => item.id.startsWith('recent-')), false);
   const darkmen = LOGO_EXAMPLES.filter(item => item.id.startsWith('darkmen-'));
   assert.equal(darkmen.length, 10);
@@ -37,23 +39,19 @@ test('retired gallery-derived examples stay unpublished while DARKMEN streetwear
   }
 });
 
-test('the cartoon slot uses the user-approved capybara courier and matching controls', () => {
-  const cartoon = LOGO_EXAMPLES.find(item => item.id === 'original-sunday-spore');
-  assert.equal(cartoon.brand, 'PIPPARCEL');
-  assert.equal(cartoon.style, 'cartoon');
-  assert.match(cartoon.prompt, /capybara courier/);
-  assert.equal(cartoon.designSettings.characterComposition, 'full-body');
-  assert.equal(cartoon.designSettings.mood, 'cheerful');
-  assert.equal(cartoon.designSettings.personality, 'playful');
-  assert.match(cartoon.image, /\?v=.+/);
+test('the nine user-removed logos stay out of the shared public gallery', () => {
+  const removedBrands = ['BURROWAY', 'PIPPARCEL', 'NESTZIP', 'BRIARHORN', 'BOPBOLT', 'SWIFTORA', 'VYNTARA', 'LUMIPOD', 'MINTWHEEL'];
+  for (const brand of removedBrands) {
+    assert.equal(LOGO_EXAMPLES.some(item => item.brand === brand), false, `Removed logo still published: ${brand}`);
+  }
 });
 
 test('replacement marketing examples have independently authored briefs and distinct brand names', async () => {
   const { LOGO_ORIGINAL_CONCEPTS } = await import('../src/lib/logoOriginalConcepts.mjs');
   const replacements = LOGO_EXAMPLES.filter(item => item.id.startsWith('original-'));
-  assert.equal(replacements.length, 12);
-  assert.equal(new Set(replacements.map(item => item.brand)).size, 12);
-  assert.equal(new Set(replacements.map(item => item.style)).size, 12);
+  assert.equal(replacements.length, 3);
+  assert.equal(new Set(replacements.map(item => item.brand)).size, 3);
+  assert.equal(new Set(replacements.map(item => item.style)).size, 3);
   for (const item of replacements) {
     const brief = LOGO_ORIGINAL_CONCEPTS.find(concept => concept.id === item.id);
     assert.ok(brief);

@@ -1,11 +1,17 @@
 .controls { position: relative; min-width: 0; margin: 4px 18px 6px; color: #e5dfe9; }
-.row { display: flex; align-items: center; gap: 5px; min-width: 0; }
-.track { display: flex; flex: 1; align-items: center; gap: 6px; overflow-x: auto; min-width: 0; padding: 3px 2px; scrollbar-width: none; overscroll-behavior-x: contain; }
+.row { display: flex; align-items: flex-start; gap: 5px; min-width: 0; }
+.track { display: flex; flex-wrap: wrap; flex: 1; align-items: center; gap: 6px; min-width: 0; padding: 3px 2px; }
+.more { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 5px 9px; border: 1px dashed #75667f; border-radius: 8px; background: transparent; color: #e3dbe9; font: inherit; font-size: 11px; cursor: pointer; }
+.more:hover:not(:disabled) { background: #3b3441; }
+.more:focus-visible { outline: 2px solid var(--studio-purple); outline-offset: 2px; }
+.more[aria-expanded="true"] svg { transform: rotate(180deg); }
 .track::-webkit-scrollbar { display: none; }
 .textChip, .selectChip { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 30px; border: 1px solid #514b56; border-radius: 8px; background: #2b292e; color: #e5dfe9; font-size: 12px; font-weight: 400; white-space: nowrap; }
 .textChip { max-width: 150px; padding: 5px 9px; }
 .textChip span { overflow: hidden; text-overflow: ellipsis; }
 .textChip svg { color: var(--studio-accent); }
+.textChip.requiredText { max-width: 200px; border-color: #b7996b; background: #382f25; color: #f6d7a5; }
+.textChip.requiredText svg { color: #f6d7a5; }
 .textChip:hover, .selectChip:hover { border-color: #8d7b9b; background: #343039; }
 .selectChip { position: relative; max-width: 165px; padding: 0; }
 .selectValue { overflow: hidden; text-overflow: ellipsis; }
@@ -24,4 +30,4 @@
 .textPanel input { width: 100%; margin-top: 8px; padding: 10px 12px; border: 1px solid #74667d; border-radius: 7px; background: #151417; color: #f5f1f8; font: inherit; font-size: 13px; }
 .textPanel p { margin: 9px 0 0; font-size: 11px; line-height: 1.5; color: #cbc2d2; }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-@media (max-width: 760px) { .controls { margin-inline: 12px; } .textChip, .selectChip { min-height: 44px; } .scrollButton, .reset { width: 44px; min-height: 44px; flex-basis: 44px; } }
+@media (max-width: 760px) { .controls { margin-inline: 12px; } .textChip, .selectChip, .more { min-height: 44px; } .scrollButton, .reset { width: 44px; min-height: 44px; flex-basis: 44px; } }

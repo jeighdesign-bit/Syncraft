@@ -1,0 +1,206 @@
+// User-approved Recraft V4.1 outputs. Preserve each short brief and exact input settings.
+export const LOGO_MASCOT_EXAMPLES = [
+  {
+    "id": "mascot-aeron",
+    "title": "AERON",
+    "mode": "text",
+    "style": "mascot",
+    "brand": "AERON",
+    "tagline": "",
+    "prompt": "A sharp-eyed eagle with a closed hooked beak and a sweeping feather silhouette, with compact athletic lettering below.",
+    "palette": [],
+    "designSettings": {
+      "mood": "professional",
+      "detail": "detailed",
+      "industry": "sports",
+      "personality": "bold",
+      "outlineColor": "#163F46",
+      "primaryColor": "#F1E5CD",
+      "secondaryColor": "#C98543",
+      "backgroundColor": "#F7F4EC",
+      "outlineThickness": "thick",
+      "characterComposition": "portrait"
+    },
+    "image": "/images/logo-examples/studio-mascot-aeron.webp?v=fa9e7085b3e7"
+  },
+  {
+    "id": "mascot-skyforge",
+    "title": "SKYFORGE",
+    "mode": "text",
+    "style": "mascot",
+    "brand": "SKYFORGE",
+    "tagline": "HOOPS",
+    "prompt": "A falcon banking upward with a basketball held in its talons, with bold athletic lettering beneath.",
+    "palette": [],
+    "designSettings": {
+      "mood": "energetic",
+      "detail": "detailed",
+      "industry": "sports",
+      "personality": "modern",
+      "outlineColor": "#132B42",
+      "primaryColor": "#4C647C",
+      "secondaryColor": "#E59A51",
+      "backgroundColor": "#F1F0E9",
+      "outlineThickness": "thin",
+      "characterComposition": "full-body"
+    },
+    "image": "/images/logo-examples/studio-mascot-skyforge.webp?v=564490589bf3"
+  },
+  {
+    "id": "mascot-riftcats",
+    "title": "RIFTCATS",
+    "mode": "text",
+    "style": "mascot",
+    "brand": "RIFTCATS",
+    "tagline": "",
+    "prompt": "A crouching panther guarding a basketball with one forepaw, with forward-leaning lettering beneath.",
+    "palette": [],
+    "designSettings": {
+      "mood": "energetic",
+      "detail": "detailed",
+      "industry": "sports",
+      "personality": "dynamic",
+      "outlineColor": "#152A3A",
+      "primaryColor": "#283E57",
+      "secondaryColor": "#3DA99B",
+      "backgroundColor": "#F2EDE4",
+      "outlineThickness": "thick",
+      "characterComposition": "full-body"
+    },
+    "image": "/images/logo-examples/studio-mascot-riftcats.webp?v=6368ce50179b"
+  },
+  {
+    "id": "mascot-taigro",
+    "title": "TAIGRO",
+    "mode": "text",
+    "style": "mascot",
+    "brand": "TAIGRO",
+    "tagline": "",
+    "prompt": "A roaring tiger lunging forward with both forepaws extended, with heavy athletic lettering below.",
+    "palette": [],
+    "designSettings": {
+      "mood": "energetic",
+      "detail": "detailed",
+      "industry": "sports",
+      "personality": "bold",
+      "outlineColor": "#253A35",
+      "primaryColor": "#C66A36",
+      "secondaryColor": "#F1DCB5",
+      "backgroundColor": "#F5EFE4",
+      "outlineThickness": "thick",
+      "characterComposition": "full-body"
+    },
+    "image": "/images/logo-examples/studio-mascot-taigro.webp?v=84b882e23396"
+  },
+  {
+    "id": "mascot-voltig",
+    "title": "VOLTIG",
+    "mode": "text",
+    "style": "mascot",
+    "brand": "VOLTIG",
+    "tagline": "",
+    "prompt": "A front-facing snarling tiger with a compact angular muzzle and crisp triangular stripe cuts, with a small wordmark below.",
+    "palette": [],
+    "designSettings": {
+      "mood": "energetic",
+      "detail": "minimal",
+      "industry": "sports",
+      "personality": "bold",
+      "outlineColor": "#292442",
+      "primaryColor": "#E5B94B",
+      "secondaryColor": "#F5EAD1",
+      "backgroundColor": "#292442",
+      "outlineThickness": "thin",
+      "characterComposition": "portrait"
+    },
+    "image": "/images/logo-examples/studio-mascot-voltig.webp?v=aa569b7844f3"
+  },
+  {
+    "id": "mascot-kirvo",
+    "title": "KIRVO",
+    "mode": "text",
+    "style": "mascot",
+    "brand": "KIRVO",
+    "tagline": "",
+    "prompt": "A geometric tiger face built from a few bold angular shapes and open cheek gaps, with a simple wordmark below.",
+    "palette": [],
+    "designSettings": {
+      "mood": "clean",
+      "detail": "minimal",
+      "industry": "sports",
+      "personality": "minimalist",
+      "primaryColor": "#44B7A5",
+      "backgroundColor": "#102F36",
+      "outlineThickness": "none",
+      "characterComposition": "portrait"
+    },
+    "image": "/images/logo-examples/studio-mascot-kirvo.webp?v=c8fa0f4c5520"
+  },
+  {
+    "id": "mascot-solro",
+    "title": "SOLRO",
+    "mode": "text",
+    "style": "mascot",
+    "brand": "SOLRO",
+    "tagline": "",
+    "prompt": "A proud lion in side profile with a broad flowing mane and a clean negative-space cheek, with restrained lettering below.",
+    "palette": [],
+    "designSettings": {
+      "mood": "professional",
+      "detail": "minimal",
+      "industry": "sports",
+      "personality": "classic",
+      "primaryColor": "#F4E7CC",
+      "backgroundColor": "#8E3D43",
+      "outlineThickness": "none",
+      "characterComposition": "portrait"
+    },
+    "image": "/images/logo-examples/studio-mascot-solro.webp?v=30f259b04cb1"
+  },
+  {
+    "id": "mascot-antler",
+    "title": "ANTLER",
+    "mode": "text",
+    "style": "mascot",
+    "brand": "ANTLER",
+    "tagline": "",
+    "prompt": "A powerful elk facing forward with broad branching antlers and a compact tapered neck, with athletic lettering below.",
+    "palette": [],
+    "designSettings": {
+      "mood": "energetic",
+      "detail": "detailed",
+      "industry": "sports",
+      "personality": "bold",
+      "outlineColor": "#172E3E",
+      "primaryColor": "#D7DFDC",
+      "secondaryColor": "#65A49B",
+      "backgroundColor": "#172E3E",
+      "outlineThickness": "thin",
+      "characterComposition": "portrait"
+    },
+    "image": "/images/logo-examples/studio-mascot-antler.webp?v=0434f2688eda"
+  },
+  {
+    "id": "mascot-cervon",
+    "title": "CERVON",
+    "mode": "text",
+    "style": "mascot",
+    "brand": "CERVON",
+    "tagline": "",
+    "prompt": "An alert deer looking over its shoulder, with broad antlers, a tall curved neck and a small wordmark below.",
+    "palette": [],
+    "designSettings": {
+      "mood": "friendly",
+      "detail": "minimal",
+      "industry": "outdoors",
+      "personality": "sophisticated",
+      "outlineColor": "#482D36",
+      "primaryColor": "#B97743",
+      "secondaryColor": "#F7EBD3",
+      "backgroundColor": "#F5F1E9",
+      "outlineThickness": "thin",
+      "characterComposition": "portrait"
+    },
+    "image": "/images/logo-examples/studio-mascot-cervon.webp?v=053f144dc319"
+  }
+];

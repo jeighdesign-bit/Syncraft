@@ -6,3 +6,7 @@
 .banner button:hover { background:#0000000c; color:#1d260d; }
 .banner a:focus-visible,.banner button:focus-visible { outline:2px solid #26370f; outline-offset:3px; }
 @media(max-width:600px) { .banner { border-radius:15px; padding:6px 32px 6px 14px; width:calc(100% - 28px); margin-bottom:16px; } .banner p { font-size:11px; } }
+@media (max-width:1100px), (pointer:coarse) {
+  .banner { min-height:44px; padding-right:52px; }
+  .banner button { right:4px; width:44px; height:44px; }
+}

@@ -23,7 +23,7 @@ async function panel(props={}) {
   const callbacks=Object.fromEntries(['onExecuteTrace','onRetryVector','onResumeUpscale','onReferenceCategoryChange','onVectorColorsChange',
     'onOpenAiEdit','onOpenRemoveBg','onOpenErase','onOpenCrop','onEnterExtend','onProceedExtend','onCancelExtend',
     'onDownloadSvg','onDownloadPsd','onDownloadRaster','onDownloadAll','onOpenCompare','onOpenTopUp'].map(name=>[name,()=>{events.push(name);} ]));
-  const context=vm.createContext({...availability,React:react,memo:fn=>fn,useState:value=>[value,()=>{}],CREDIT_COST:{universal:24,trace:12,extend:3},
+  const context=vm.createContext({...availability,Select:'select',React:react,memo:fn=>fn,useState:value=>[value,()=>{}],CREDIT_COST:{universal:24,trace:12,extend:3},
     REFERENCE_CATEGORIES,normalizeReferenceCategory,canResumeTraceUpscale,finalArtworkRaster,
     ...Object.fromEntries(['Download','Monitor','ChevronDown','FolderDown','Loader2','X','ImageMinus','Eraser','Scissors','Expand','WandSparkles'].map(name=>[name,name])),
   });

@@ -1,7 +1,7 @@
 import { STREETWEAR_STYLE } from './logoStyleCapabilities.mjs';
 import { STREETWEAR_ART_DIRECTION } from './logoStreetwear.mjs';
 
-export const LOGO_PROFILE_VERSION = 'art-direction-10';
+export const LOGO_PROFILE_VERSION = 'art-direction-11';
 export const LOGO_STYLE_PROFILES = Object.freeze({
   [STREETWEAR_STYLE]: STREETWEAR_ART_DIRECTION,
   wordmark: ['Custom lettering is the main mark, with the complete brand name clearly readable. Requested motifs must never replace the wordmark or obscure any letter.', 'Follow the selected font, weight and alignment; preserve every brand letter.'],

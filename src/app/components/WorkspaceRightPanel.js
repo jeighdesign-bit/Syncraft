@@ -45,6 +45,7 @@ function LogoPreview({ example, onClose }) {
       <div className={styles.previewDetails}>
         <span className={styles.styleLabel}>{styleName}</span>
         <p>{example.prompt}</p>
+        {example.sourceModel === 'nano-banana-2.1' && <p className={styles.hint}>Preview made with Nano Banana 2.1. Use prompt loads the idea and settings; generation uses the current Studio model.</p>}
         <Link href={`/logo-studio?example=${encodeURIComponent(example.id)}`} className={styles.usePrompt}>Use prompt <ArrowUpRight size={15} aria-hidden="true" /></Link>
       </div>
     </DesignPreview>
@@ -57,7 +58,7 @@ export default function WorkspaceRightPanel() {
   const panelId = useId();
 
   return (
-    <ResponsivePanel label="Featured" icon={PanelRightOpen} side="right">{({ compact }) => <aside className={`${styles.panel} ${expanded || compact ? styles.expanded : styles.collapsed}`} aria-label="Workspace side panel">
+    <ResponsivePanel label="Featured" icon={PanelRightOpen} side="right">{({ compact }) => <aside className={`${styles.panel} ${expanded || compact ? styles.expanded : styles.collapsed}`} data-expanded={expanded || compact} aria-label="Workspace side panel">
       <div className={styles.header}>
         {(expanded || compact) && <div className={styles.heading}><span className={styles.title}>Featured Designs</span><p className={styles.subtitle}>Sample designs made with Syncraft.</p></div>}
         {!compact && <button

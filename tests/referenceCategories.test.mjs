@@ -26,7 +26,7 @@ async function panel(props = {}) {
   const code = ts.transpileModule(source, { fileName: 'panel.jsx', compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.CommonJS } }).outputText;
   const module = { exports: {} };
   const icons = Object.fromEntries(['Download','Monitor','ChevronDown','FolderDown','Loader2','X','ImageMinus','Eraser','Scissors','Expand','WandSparkles'].map(name => [name, name]));
-  const context = vm.createContext({ ...categories, ...icons, finalArtworkRaster, module, exports: module.exports,
+  const context = vm.createContext({ ...categories, ...icons, Select: 'select', finalArtworkRaster, module, exports: module.exports,
     UNIVERSAL_AVAILABLE: true, UNIVERSAL_UNAVAILABLE_MESSAGE: '', isUniversalTraceType: value => typeof value === 'string' && value.startsWith('universal'),
     memo: fn => fn, useState: initial => [initial, () => {}], CREDIT_COST: { universal: 24, trace: 12 }, canResumeTraceUpscale: () => false,
     React: { createElement: (type, p, ...children) => ({ type, props: { ...p, children } }) },

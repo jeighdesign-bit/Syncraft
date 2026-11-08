@@ -4,6 +4,8 @@ import { STREETWEAR_STYLE } from './logoStyleCapabilities.mjs';
 import { MASCOT_DIRECTIONS } from './logoMascot.mjs';
 import { logoStyleDirections } from './logoStyleDirections.mjs';
 import { resolveLogoTextDirection, LOGO_TEXT_DIRECTION_VERSION } from './logoTextDirection.mjs';
+import { BADGE_DIRECTION_VERSION } from './logoBadgeDirection.mjs';
+import { logoOriginalPrompt } from './logoPromptEnhancer.mjs';
 
 const STREETWEAR_ROUTES = [
   { summary: 'Sculpted outer letters', construction: 'Construct the exact name using the selected genre characteristic proportions, joins and terminals. Do not introduce another genre glyph anatomy.', composition: 'Shape the word envelope through letter heights and terminal extensions, following the selected layout. Give the main name most of the lockup.' },
@@ -13,14 +15,15 @@ const STREETWEAR_ROUTES = [
 ];
 export function normalizeLogoBrief(input) {
   if (input.mode !== 'text' || input.operation !== 'generate' || !LOGO_STYLE_PROFILES[input.style]) throw new Error('Art direction supports Text to Logo creation only.');
-  const brief = { version: input.style === STREETWEAR_STYLE ? LOGO_PROFILE_VERSION : LOGO_TEXT_DIRECTION_VERSION, rawBrief: input.prompt, brand: input.brand, tagline: input.tagline, palette: [...input.palette], style: input.style, designSettings: normalizeLogoDesignSettings(input.designSettings, input.style, { mode: 'text' }) };
+  const brief = { version: input.style === STREETWEAR_STYLE ? LOGO_PROFILE_VERSION : input.style === 'badge' ? BADGE_DIRECTION_VERSION : LOGO_TEXT_DIRECTION_VERSION, rawBrief: logoOriginalPrompt(input), brand: input.brand, tagline: input.tagline, palette: [...input.palette], style: input.style, designSettings: normalizeLogoDesignSettings(input.designSettings, input.style, { mode: 'text' }), ...(input.promptEnhancement ? { promptEnhancement: input.promptEnhancement } : {}) };
   if (input.style !== STREETWEAR_STYLE) brief.textDirection = resolveLogoTextDirection(brief);
+  if (input.generationOptions) brief.generationOptions = input.generationOptions;
   return brief;
 }
 export function fallbackLogoDirections(brief, count) {
   const routes = brief.style === STREETWEAR_STYLE ? STREETWEAR_ROUTES : brief.style === 'mascot' ? MASCOT_DIRECTIONS : logoStyleDirections(brief.style);
-  return Array.from({ length: count }, (_, i) => ({ ...routes[i], preserveBrief: i === 0,
-    typography: brief.style === STREETWEAR_STYLE ? 'The exact brand name is the dominant artwork. Preserve spelling and case; follow the chosen lettering, layout, outline and depth controls over concept suggestions.' : brief.style === 'wordmark' ? 'Custom readable lettering with a motif integrated into its letter construction.' : brief.style === 'monogram' ? 'Use the requested initials as the symbol; keep their counterforms readable.' : 'When text is supplied, integrate it into the chosen lockup without obscuring the subject.',
+  return Array.from({ length: count }, (_, i) => ({ ...routes[i], preserveBrief: i === 0 || brief.generationOptions?.conceptMode === 'faithful',
+    typography: brief.style === STREETWEAR_STYLE ? 'The exact brand name is the dominant artwork. Preserve spelling and case; follow the chosen lettering, layout, outline and depth controls over concept suggestions.' : brief.style === 'wordmark' ? 'The complete word is the artwork. Customize recurring letter anatomy; integrate a motif only when requested and without obscuring the spelling.' : brief.style === 'monogram' ? 'Use the requested initials as the symbol; keep their counterforms readable.' : 'When text is supplied, integrate it into the chosen lockup without obscuring the subject.',
     palette: brief.palette.length ? brief.palette.join(', ') : 'Choose purposeful color roles appropriate to the brief; keep contrast and reproduction practical.',
     directionId: `direction-${i + 1}` }));
 }
@@ -29,7 +32,7 @@ export function validateLogoDirections(value, brief, count) {
   if (!value || value.brand !== brief.brand || value.tagline !== brief.tagline || value.style !== brief.style || value.rawBrief !== brief.rawBrief
     || !Array.isArray(value.directions) || value.directions.length !== count) throw new Error('Planner changed the brief.');
   const directions = value.directions.map((d, i) => {
-    const result = { directionId: `direction-${i + 1}`, preserveBrief: i === 0 };
+    const result = { directionId: `direction-${i + 1}`, preserveBrief: i === 0 || brief.generationOptions?.conceptMode === 'faithful' };
     for (const field of fields) {
       if (typeof d[field] !== 'string' || !d[field].trim() || d[field].length > (field === 'summary' ? 120 : 900) || /https?:\/\/|data:|<\/?(?:script|iframe)/i.test(d[field])) throw new Error('Invalid design direction.');
       result[field] = d[field].trim();

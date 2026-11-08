@@ -7,10 +7,12 @@
 - `src/app/logo-studio/styleSelection.mjs`: remembered selections across Text, Image and Sketch.
 - `src/lib/logoStylePreviews.mjs`: generated preview URLs with content-based cache versions. Never edit versions manually in the component.
 - `src/lib/logoStudioServer.js`: authorization, reservations, billing, provider routing, saving and recovery.
-- `src/lib/logoFal.mjs`: Nano Banana 2 request builder. Receives the job and source; compiled prompts and seeds come from that job. No environment model override.
+- `src/lib/logoModelRouting.mjs`: server-owned Text style split: Mascot, Retro Mascot, Icon/Emoji and Cartoon use Nano Banana 2.1; the other nine styles use Recraft V4.1.
+- `src/lib/logoFal.mjs`: Nano Banana 2.1 request builder. Text creation uses native Text-to-Image; reference work uses Edit. Compiled prompts and seeds come from the signed job. No client or environment model override.
+- `src/lib/logoNanoTextServer.mjs`: converts server-validated Style Inspiration bytes to a bounded PNG for Nano Text creation with inspiration. No blank artboard is sent for ordinary Text creation.
 - `src/lib/logoRecraft.mjs` and `logoRecraftServer.js`: Recraft request planning, reference normalization and response handling.
 
-Routing is intentional: Text generation and variations use Recraft V4.1; Image/Sketch generation and variations use Nano Banana 2. All new AI edits use Nano Banana 2's image editing endpoint while retaining the saved creation mode for history. Edit identity comes from the signed source; the normalized edit intent and compiled prompt are frozen before charging. Creation controls and guides are excluded from edits. Remove BG and Vectorize retain their original Recraft tools in all modes. Previously submitted jobs recover using their persisted provider and endpoint, including older Recraft edits and Pro jobs. Do not submit new work when refreshing an existing job.
+Routing is intentional: Text creation uses the four-style Nano split above. Image/Sketch creation remains Nano Banana 2.1 Edit. Variations and AI Edit remain Nano Banana 2.1 Edit except for saved Streetwear Lettering sources, which retain Recraft. Edit identity comes from the signed source; the normalized edit intent and compiled prompt are frozen before charging. Creation controls and guides are excluded from edits. Remove BG and Vectorize retain their original Recraft tools in all modes. Previously submitted jobs recover using their persisted provider and endpoint, including older Recraft edits and Pro jobs. Do not submit new work when refreshing an existing job. Creation remains 8 credits, variations 6, AI Edit 8 and each utility 2; the four-logo limit applies to a generation batch, not lifetime project history.
 
 ## Preview artwork (offline)
 

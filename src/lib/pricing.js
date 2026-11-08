@@ -17,10 +17,10 @@ export const CREDIT_COST = {
   upscale: 12,
   extend: 12,     // one nano-banana-2.1/edit call + a free re-run of stages 2 and 3
   artworkEdit: ARTWORK_EDIT_COST, // preview edit; applying/restoring saved artwork is free
-  logoGenerate: 8, // Recraft V4.1, per saved output (customer price unchanged)
+  logoGenerate: 8, // Per Text-to-Logo output; the server selects the style's model
   logoImageGenerate: 8,
   logoSketchGenerate: 8,
-  logoVariations: 8,
+  logoVariations: 6, // Per variation output, across all Logo Studio styles and modes
   logoEdit: 8,
   logoRemoveBg: 2,
   logoVectorize: 2,

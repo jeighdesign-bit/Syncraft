@@ -29,7 +29,7 @@ const faqs = [
   },
   {
     question: "How do credits work?",
-    answer: `A Logo Studio creation or AI edit costs ${CREDIT_COST.logoGenerate} credits per output; vectorizing or removing its background costs ${CREDIT_COST.logoVectorize}. Most other tools cost ${CREDIT_COST.trace} credits per run, while Universal Design Recovery costs ${CREDIT_COST.universal}. The cost appears before you start, and you can add credits from the credit menu.`
+    answer: `A Logo Studio creation or AI edit costs ${CREDIT_COST.logoGenerate} credits per output; variations cost ${CREDIT_COST.logoVariations} credits per output; vectorizing or removing its background costs ${CREDIT_COST.logoVectorize}. Most other tools cost ${CREDIT_COST.trace} credits per run, while Universal Design Recovery costs ${CREDIT_COST.universal}. The cost appears before you start, and you can add credits from the credit menu.`
   },
   {
     question: "How can I get cleaner results?",

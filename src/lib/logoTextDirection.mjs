@@ -1,22 +1,14 @@
 import { LOGO_DESIGN_FIELDS, logoDesignInstructions, normalizeLogoDesignSettings } from './logoDesignSettings.mjs';
+import { BADGE_DIRECTION_VERSION, badgeAutomaticDetail, compileBadgeArtDirection } from './logoBadgeDirection.mjs';
+import { logoCraftInstructions } from './logoCraft.mjs';
+import { logoOriginalPrompt, logoEnhancementGuidance } from './logoPromptEnhancer.mjs';
+import { LOGO_STYLE_LANGUAGE } from './logoStyleLanguage.mjs';
 
-// This contract is used only by Recraft Text to Logo creation. Reference-image
+// This contract is used only by Text to Logo creation. Reference-image
 // creation and Streetwear retain their existing compilers and defaults.
-export const LOGO_TEXT_DIRECTION_VERSION = 'text-direction-12';
-export const TEXT_STYLE_GRAMMAR = Object.freeze({
-  minimalist: 'A reduced identity symbol with a decisive outer silhouette, a few intentional masses and carefully opened negative spaces. Recognition comes from the contour rather than internal illustration. The selected solid, outline or negative-space construction defines how the mark is built.',
-  mascot: 'A finished illustrated brand mascot: distinctive character anatomy, a clear expression, purposeful pose and a compact readable silhouette. Construct facial features as bold separated shapes; use a deliberate contour hierarchy and a small number of hard-edged shadow planes. The subject determines its character; do not make every mascot an angry sports animal.',
-  retro: 'A mid-century advertising mascot with rubber-hose gesture, expressive ink contours and exaggerated character proportions. Use coherent vintage cartoon anatomy and a compact spot-ink silhouette. Keep it distinct from angular esports artwork, a modern emoji or a distressed poster.',
-  cartoon: 'An expressive contemporary cartoon brand character with exaggerated proportions, clear gesture and rounded contour rhythm. Simplify anatomy into appealing connected forms with readable facial features. Use deliberate flat color groups and limited shape-based shading rather than a realistic illustration.',
-  badge: 'An integrated badge or crest with a clear outer enclosure, a dominant central subject and a disciplined border hierarchy. Fit the artwork and any supplied text into a unified silhouette, with readable internal spacing. The selected badge shape controls the actual outer contour.',
-  monogram: 'A custom lettermark in which the requested initials are the primary artwork. Coordinate stems, joins, terminals and counters into one intentional system while keeping each letter identifiable. Any requested motif belongs inside the letter construction rather than beside an unrelated initial.',
-  wordmark: 'A bespoke typographic identity with the complete brand name clearly readable as the dominant artwork. Establish a recurring system of stems, terminals, counters and optical spacing. Requested motifs must never replace the wordmark or obscure a letter. Integrate a requested motif into a letter only if the complete spelling remains immediately readable; avoid a generic font next to a stock symbol.',
-  line: 'An economical contour-based identity. The subject is described by intentional open lines, consistent stroke rhythm and deliberate connected or separated contours. Open negative space is part of the drawing; avoid filling the subject as a solid silhouette or shading it with hatching.',
-  abstract: 'A designed symbolic reduction using coherent geometric or organic forms and deliberate negative space. Build the requested subject or idea out of the forms themselves. Preserve the requested element count, topology and relationships; abstraction must not become an unrelated ornamental swirl or a container around an illustration.',
-  pictorial: 'A recognizable pictorial identity built from distinctive contours and a few interlocking solid color regions. Keep the defining subject characteristics, simplify secondary anatomy and make the silhouette readable at small size. Use purposeful positive and negative shapes rather than a scene or generic clip-art icon.',
-  engraved: 'A printmaking identity with a strong outer silhouette and engraved tonal marks that follow the form. Group light, midtone and dark areas deliberately, leaving clear highlights and separation between strokes. The selected engraving technique and line quality define the drawing; do not replace them with smooth gradients or flat cartoon shading.',
-  icon: 'A compact illustrated brand icon with immediately recognizable geometry, a clear viewpoint and large color regions. Separate overlapping parts with intentional shape boundaries, using only enough interior features to identify the subject. It is a standalone logo asset, not an app-button tile or a realistic product render.',
-});
+export const LOGO_TEXT_DIRECTION_VERSION = 'text-direction-14';
+export const TEXT_STYLE_GRAMMAR = Object.freeze(Object.fromEntries(Object.entries(LOGO_STYLE_LANGUAGE)
+  .filter(([style]) => style !== 'streetwear-lettering').map(([style, value]) => [style, value.construction])));
 
 // Defaults fill gaps; they never add a new subject, accessory or brand name.
 const AUTO = {
@@ -121,8 +113,8 @@ const FONT_CONSTRUCTION = {
 // background only when the brief has not already assigned its treatment.
 export function logoTextAutoBackground(input) {
   if (input.mode !== 'text' || input.operation !== 'generate' || !TEXT_STYLE_GRAMMAR[input.style]
-    || input.designSettings?.backgroundColor || (input.compiledPrompt && input.compilerVersion !== LOGO_TEXT_DIRECTION_VERSION)) return null;
-  const raw = input.rawBrief ?? input.prompt ?? '';
+    || input.designSettings?.backgroundColor || (input.compiledPrompt && input.compilerVersion !== (input.style === 'badge' ? BADGE_DIRECTION_VERSION : LOGO_TEXT_DIRECTION_VERSION))) return null;
+  const raw = logoOriginalPrompt(input);
   if (/\b(?:background|backdrop|transparent|transparency)\b|\bon\s+(?:(?:a|an|the|plain|solid|flat|dark|light|deep|pale|soft|bright|muted|pastel|warm|cool|saturated|off)\s+)*(?:white|black|navy|blue|red|green|yellow|pink|purple|orange|cream|ivory|teal|gr[ae]y|#[0-9a-f]{3,8})\b/i.test(raw)) return null;
   const light = hex => {
     if (!/^#[0-9a-f]{6}$/i.test(hex || '')) return false;
@@ -138,7 +130,7 @@ export function logoTextAutoBackground(input) {
 export function resolveLogoTextDirection(brief) {
   if (!TEXT_STYLE_GRAMMAR[brief.style]) throw new Error('Unsupported Text to Logo direction.');
   const settings = normalizeLogoDesignSettings(brief.designSettings, brief.style, { mode: 'text' });
-  const raw = brief.rawBrief ?? brief.prompt ?? '';
+  const raw = logoOriginalPrompt(brief);
   // Remove quoted copy and exact brand text from inference, but never the prompt.
   const context = raw.replace(/"[^"\n]*"|'[^'\n]*'|“[^”\n]*”/g, ' ');
   const withoutBrand = brief.brand ? context.split(brief.brand).join(' ') : context;
@@ -154,10 +146,13 @@ export function resolveLogoTextDirection(brief) {
   if (brief.style === 'wordmark' && settings.lettering === 'block' && ['script', 'cursive'].includes(settings.fontFamily)) suppressedControls.push('lettering');
   if (settings.outlineThickness === 'none' && settings.outlineColor) suppressedControls.push('outlineColor');
   const autoBackground = logoTextAutoBackground({ ...brief, mode: 'text', operation: 'generate', designSettings: settings });
-  return { version: LOGO_TEXT_DIRECTION_VERSION, industry, suppressedControls,
+  const automatic = { ...AUTO[brief.style] };
+  if (brief.style === 'badge' && badgeAutomaticDetail(settings)) automatic.badgeDetail = badgeAutomaticDetail(settings);
+  if (brief.style === 'badge' && settings.badgeLayout === 'framed') automatic.badgeType = 'build one coherent framed badge with a clear inset around its illustration';
+  return { version: brief.style === 'badge' ? BADGE_DIRECTION_VERSION : LOGO_TEXT_DIRECTION_VERSION, industry, suppressedControls,
     background: settings.backgroundColor ? { color: settings.backgroundColor, source: 'control' }
       : autoBackground ? { color: autoBackground, source: 'auto-contrast' } : { color: null, source: 'brief' },
-    automatic: Object.entries(AUTO[brief.style] || {}).filter(([field]) => !settings[field]).map(([field, instruction]) => ({ field, instruction, source: 'brief-then-style-default' })),
+    automatic: Object.entries(automatic).filter(([field]) => !settings[field]).map(([field, instruction]) => ({ field, instruction, source: 'brief-then-style-default' })),
   };
 }
 
@@ -178,7 +173,7 @@ function textControls(brief, settings, resolved) {
 }
 
 export function compileLogoTextDirection(brief, direction) {
-  const raw = brief.rawBrief ?? brief.prompt ?? '';
+  const raw = logoOriginalPrompt(brief);
   const settings = normalizeLogoDesignSettings(brief.designSettings, brief.style, { mode: 'text' });
   const resolved = resolveLogoTextDirection({ ...brief, designSettings: settings });
   const autoBackground = logoTextAutoBackground({ ...brief, mode: 'text', operation: 'generate', designSettings: settings });
@@ -194,21 +189,25 @@ export function compileLogoTextDirection(brief, direction) {
     : !letteringRequested ? 'PRIMARY VISIBLE CONTENT: the requested subject only. Symbol-only artwork: leave all letters, initials, words, numbers, captions and signatures absent.'
       : '';
   return [
-    `Create one original finished ${brief.style} logo. ${TEXT_STYLE_GRAMMAR[brief.style]}`,
+    `Create one original finished ${brief.style} logo.`,
     visibleContent,
-    ...textControls(brief, settings, resolved).map(value => `Required design control: ${value}`),
     raw ? `User brief (preserve its subjects, essential motifs and relationships): ${raw}` : '',
+    logoEnhancementGuidance(brief),
+    ...textControls(brief, settings, resolved).map(value => `Required design control: ${value}`),
+    `Style construction: ${TEXT_STYLE_GRAMMAR[brief.style]}`,
+    ...compileBadgeArtDirection(brief),
+    ...logoCraftInstructions(brief.style),
     'Decision order: explicit design controls first; then the brief’s explicit visual preferences; then style defaults. Treat mood, personality and industry as refinements within that construction, never replacements for the requested subject or selected style.',
     'Keep the requested pose, viewing angle and facing direction. Do not mirror the subject or substitute a different stance. Preserve explicit counts, accessories, proportions and color relationships. Do not invent extra subjects.',
     symbol ? 'Do not invent alphabetic glyphs, monograms, letter-shaped backdrops, enclosing tiles, crests or badges. Use a letterform or enclosure only when explicitly requested in the brief.' : '',
     brief.style === 'monogram' ? `Render only the selected monogram letters or the initials explicitly requested in the brief. ${brief.brand ? `Brand context: ${JSON.stringify(brief.brand)}; if no initials are specified, derive up to three initials from its words. Do not substitute the full brand name for the monogram.` : 'Invent no additional letters.'}`
       : brief.brand ? `The exact brand name is ${JSON.stringify(brief.brand)}. Spell every letter exactly. Preserve supplied case unless the user explicitly selects another case. ${brief.style === 'wordmark' ? 'The name is the main artwork.' : 'Keep any lettering subordinate to the primary mark in a balanced compact lockup, unless the brief requests a different hierarchy.'}`
-        : letteringRequested ? 'No invented brand text; only render lettering explicitly requested in the brief.' : '',
+        : brief.style === 'wordmark' ? 'The separate brand name field is blank. Use the word or name supplied in the user brief as the main lettering; preserve explicitly quoted or named wording exactly. If the brief gives only a concept, use that concept’s short name for the lettering. Do not invent an unrelated brand, placeholder name, slogan or extra caption.'
+          : letteringRequested ? 'No invented brand text; only render lettering explicitly requested in the brief.' : '',
     brief.tagline ? `Exact supporting tagline: ${JSON.stringify(brief.tagline)}. Keep it secondary and legible.` : 'Do not invent a tagline.',
     resolved.industry.id ? `Industry context (${resolved.industry.source === 'control' ? 'selected' : 'inferred from the business description'}): ${LOGO_DESIGN_FIELDS.industry.options.find(x => x.id === resolved.industry.id).label}. ${TEXT_INDUSTRIES[resolved.industry.id]} Preserve the selected style and all explicit visual preferences.` : 'Industry Auto: keep the identity appropriate to the described business; when context is absent or ambiguous, use neutral branding and invent no sector symbols.',
     ...resolved.automatic.map(({field, instruction}) => `Auto ${LOGO_DESIGN_FIELDS[field].label}: first honor any explicit preference for this attribute in the brief or another selected control; only if unspecified, ${instruction}.`),
-    !settings.mood && 'Mood Auto: follow the brief’s expression and tone; otherwise choose a balanced tone appropriate to the subject and selected style, without adding an emotion or pose that conflicts with the brief.',
-    !settings.personality && 'Personality Auto: follow the described brand character; otherwise make the contours distinctive within the chosen style, without adding ornament or changing the subject.',
+    !settings.mood && !settings.personality && 'Tone Auto: follow the brief’s expression and brand character; otherwise use a balanced tone within the selected style. Do not invent an emotion, pose or ornament.',
     direction && !direction.preserveBrief ? `Optional construction, only where consistent with the brief and controls: ${direction.construction} ${direction.composition}` : '',
     brief.palette?.length ? `Authoritative brand colors: ${brief.palette.join(', ')}. Explicit primary, secondary, outline and background assignments determine their roles.` : 'Follow colors specified in the brief and controls. Where colors are unspecified, choose a coherent restrained ink palette with strong separation; do not assume monochrome for every style.',
     background,

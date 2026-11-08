@@ -1,0 +1,47 @@
+.advanced { margin: 0 20px 6px; color: #e5dfea; font-size: 11px; }
+.advanced > summary, .inspiration > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; cursor: pointer; font-weight: 550; }
+.advanced > summary > span, .inspiration > summary > span { color: #c1b5cb; font-size: 10px; font-weight: 400; }
+.advanced > summary .heading { display: inline-flex; align-items: center; gap: 6px; color: #e5dfea; font-size: 11px; }
+.advanced[open] > summary .heading svg { transform: rotate(180deg); }
+.options { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 4px 0 2px; }
+.direction, .seed { display: inline-flex; align-items: center; min-height: 32px; border: 1px solid #514b56; border-radius: 8px; background: #2b292e; }
+.direction { max-width: 180px; }
+.seed { gap: 6px; padding-left: 9px; }
+.seed label { font-size: 11px; color: #c7bbd0; }
+.seed input { width: 96px; min-width: 0; height: 30px; padding: 4px 0; border: 0; outline: 0; background: transparent; color: #f4eff8; font: inherit; font-size: 11px; }
+.seed:has(input:focus-visible) { outline: 2px solid #d6bfee; outline-offset: 2px; }
+.seed .random { display: grid; place-items: center; align-self: stretch; width: 30px; padding: 0; border: 0; border-left: 1px solid #514b56; border-radius: 0 7px 7px 0; background: transparent; color: #d5cbdc; }
+.seed .random:hover:not(:disabled) { background: #3b3441; }
+.help { position: relative; }
+.help > summary { display: grid; place-items: center; width: 30px; height: 32px; border-radius: 7px; cursor: pointer; color: #c1b5cb; list-style: none; }
+.help > summary::-webkit-details-marker { display: none; }
+.help > summary:hover, .help[open] > summary { background: #3b3441; }
+.helpPanel { position: absolute; z-index: 40; right: 0; bottom: calc(100% + 8px); width: 300px; max-width: calc(100vw - 48px); padding: 13px; border: 1px solid #716477; border-radius: 10px; background: #252229; box-shadow: 0 8px 30px #0007; }
+.helpPanel p { margin: 0; color: #cbc2d2; font-size: 11px; line-height: 1.6; }
+.helpPanel p + p { margin-top: 9px; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.inspiration label { display: grid; gap: 7px; font-size: 12px; min-width: 0; }
+.inspiration p { font-size: 11px; color: #c7bdcf; line-height: 1.65; margin: 0; }
+.attach { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 8px 10px; border: 1px solid #75637e; border-radius: 7px; background: #302a36; color: #eee5f5; font: inherit; font-size: 11px; cursor: pointer; }
+.inspiration { margin: 18px 0; padding: 10px 0; border-block: 1px solid #3e3745; color: #eee8f3; font-size: 12px; }
+.inspiration > p, .inspiration > label, .inspiration > button { margin: 8px 0 12px; }
+.fileInput { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.reference { position: relative; display: grid; gap: 8px; margin-block: 12px; }
+.reference img { width: 100%; height: 130px; object-fit: contain; background: #f7f5f9; border-radius: 8px; }
+.reference span { font-size: 11px; overflow-wrap: anywhere; color: #d5c9de; }
+.reference button { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid #a193ad; background: #25212bdd; color: white; }
+.inspiration .warning { color: #ffe2ab; }
+.options button:focus-visible, .inspiration button:focus-visible, .advanced summary:focus-visible, .inspiration summary:focus-visible { outline: 2px solid #d6bfee; outline-offset: 3px; }
+@media (max-width: 760px) {
+  .advanced { margin-inline: 14px; }
+  .advanced > summary { min-height: 44px; }
+  .options { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 7px; }
+  .direction { grid-column: 1 / -1; width: max-content; max-width: 100%; min-height: 44px; }
+  .direction button { min-height: 44px !important; }
+  .seed { width: max-content; max-width: 100%; min-height: 44px; }
+  .seed input { height: 42px; }
+  .seed .random, .help > summary { width: 44px; min-height: 44px; }
+  .help { justify-self: end; }
+  .helpPanel { left: auto; right: 0; }
+  .attach { min-height: 44px; }
+}

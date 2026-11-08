@@ -1,0 +1,11 @@
+.tools { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+.trigger, .undo { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 30px; padding: 5px 9px; border: 1px solid #665671; border-radius: 14px; background: #352d3c; color: #e6d8f1; font: inherit; font-size: 10px; cursor: pointer; }
+.undo { border-color: transparent; background: transparent; color: #c8bdcf; }
+.trigger:not(:disabled):hover, .undo:not(:disabled):hover { background: #4a3c56; }
+.tools button:disabled { opacity: .5; cursor: default; }
+.tools button:focus-visible { outline: 2px solid #dfc7fa; outline-offset: 3px; }
+.status { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.spin { animation: enhancer-spin 1s linear infinite; }
+@keyframes enhancer-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+@media (max-width: 600px) { .trigger, .undo { min-width: 40px; min-height: 44px; padding: 6px; } .tools button > span { display: none; } }

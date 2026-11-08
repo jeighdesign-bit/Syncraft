@@ -6,14 +6,15 @@ import { useRouter } from 'next/navigation';
 import WorkspaceHeader from '@/components/WorkspaceHeader';
 import GenerationLoading from '@/components/GenerationLoading';
 import WorkspaceTabs from '@/components/WorkspaceTabs';
+import Select from '@/components/Select';
 import { toast } from '@/components/Toast';
 import TopUpModal from '@/components/TopUpModal';
 import { ArrowUp, ArrowUpRight, Crop, ImagePlus, Plus, Share2, Eye, Pencil, Layers3, History, WandSparkles, Scissors, Spline, Loader2, Check, X, FolderOpen, ChevronRight, TriangleAlert } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { fetchWithAuthRetry, uploadImageToStorage } from '@/utils/uploadClient';
-import { LOGO_STYLES, LOGO_COST, LOGO_ACTIVE, logoOperationCost, logoGenerationQuota, groupLogoHistory } from '@/lib/logoStudio.mjs';
+import { LOGO_STYLES, LOGO_COST, LOGO_ACTIVE, LOGO_BATCH_LIMIT, logoOperationCost, groupLogoHistory } from '@/lib/logoStudio.mjs';
 import { normalizeLogoDesignSettings } from '@/lib/logoDesignSettings.mjs';
-import { STREETWEAR_STYLE, requiresLogoBrand, isLogoStyleAvailable } from '@/lib/logoStyleCapabilities.mjs';
+import { STREETWEAR_STYLE, requiresLogoBrand, supportsLogoBrandOnly, isLogoStyleAvailable } from '@/lib/logoStyleCapabilities.mjs';
 import { logoVariationSource } from '@/lib/logoVariations.mjs';
 import { LOGO_STYLE_PREVIEWS } from '@/lib/logoStylePreviews.mjs';
 import { restoreLogoStyleSelection, switchLogoStyleMode } from './styleSelection.mjs';
@@ -22,6 +23,13 @@ import SectionBadge from '@/app/components/SectionBadge';
 import SketchCanvas from './SketchCanvas';
 import DownloadMenu from './DownloadMenu';
 import DesignControls from './DesignControls';
+import LogoReview from './LogoReview';
+import PromptEnhancer from './PromptEnhancer';
+import GenerationControls from './GenerationControls';
+import StyleInspiration from './StyleInspiration';
+import { logoGenerationOptionsFromDraft } from '@/lib/logoGenerationOptions.mjs';
+import { logoReviewContext } from '@/lib/logoReview.mjs';
+import { logoPromptEnhancementFromDraft } from '@/lib/logoPromptEnhancer.mjs';
 import ColorControls from './ColorControls';
 import ExamplePrompts from './ExamplePrompts';
 import SourceCropModal from './SourceCropModal';
@@ -77,6 +85,9 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
   const [brand, setBrand] = useState('');
   const [tagline, setTagline] = useState('');
   const [prompt, setPrompt] = useState('');
+  const [promptEnhancement, setPromptEnhancement] = useState(null);
+  const [enhancing, setEnhancing] = useState(false);
+  const activePromptEnhancement = logoPromptEnhancementFromDraft(promptEnhancement, prompt);
   const [style, setStyle] = useState('minimalist');
   const [stylesByMode, setStylesByMode] = useState({});
   const [palette, setPalette] = useState([]);
@@ -90,6 +101,9 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
     return { ...old, [style]: normalized };
   });
   const [count, setCount] = useState(1);
+  const [generationOptions, setGenerationOptions] = useState({});
+  const [styleReferenceFile, setStyleReferenceFile] = useState(null);
+  const [styleReferenceMissing, setStyleReferenceMissing] = useState(false);
   const [source, setSource] = useState(null);
   const [sourceOriginal, setSourceOriginal] = useState(null);
   const [sourceCrop, setSourceCrop] = useState(null);
@@ -157,15 +171,20 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
       const draft = initialExample ? {
         mode: 'text', brand: initialExample.brand || '', tagline: initialExample.tagline || '', prompt: initialExample.prompt,
         style: initialExample.style, designSettingsByStyle: { [initialExample.style]: initialExample.designSettings || {} },
+        palette: initialExample.palette || [], generationOptions: initialExample.generationOptions || {},
       } : JSON.parse(sessionStorage.getItem(draftKey) || 'null');
       hadSavedDraft.current = Boolean(draft);
+      setStyleReferenceFile(null);
+      setGenerationOptions(draft?.generationOptions || {});
+      setStyleReferenceMissing(Boolean(draft?.hadStyleInspiration));
+      setPromptEnhancement(logoPromptEnhancementFromDraft(draft?.promptEnhancement, draft?.prompt));
       if (draft) { const selection = restoreLogoStyleSelection(draft); setMode(selection.mode); setStyle(selection.style); setStylesByMode(selection.stylesByMode); setSketchMode(draft.sketchMode === 'precise' ? 'precise' : 'smart'); setBrand(draft.brand || ''); setTagline(draft.tagline || ''); setPrompt(draft.prompt || ''); setPalette(draft.palette || []); setDesignSettingsByStyle(draft.designSettingsByStyle || {}); }
     } catch {}
     restored.current = true;
   }, [draftKey, initialExample]);
   useEffect(() => {
-    if (restored.current && (!initialId || !projectLoading)) sessionStorage.setItem(draftKey, JSON.stringify({ mode, sketchMode, brand, tagline, prompt, style, stylesByMode, palette, designSettingsByStyle }));
-  }, [mode, sketchMode, brand, tagline, prompt, style, stylesByMode, palette, designSettingsByStyle, draftKey, initialId, projectLoading]);
+    if (restored.current && (!initialId || !projectLoading)) sessionStorage.setItem(draftKey, JSON.stringify({ mode, sketchMode, brand, tagline, prompt, promptEnhancement: logoPromptEnhancementFromDraft(promptEnhancement, prompt), style, stylesByMode, palette, designSettingsByStyle, generationOptions, hadStyleInspiration: Boolean(styleReferenceFile || styleReferenceMissing) }));
+  }, [mode, sketchMode, brand, tagline, prompt, promptEnhancement, style, stylesByMode, palette, designSettingsByStyle, generationOptions, styleReferenceFile, styleReferenceMissing, draftKey, initialId, projectLoading]);
   useEffect(() => {
     if (!authReady) return;
     if (previousUserId.current !== (user?.id || null)) {
@@ -184,6 +203,10 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
         acceptProject(data.project);
         if (!hadSavedDraft.current) {
           const latest = [...data.project.jobs].reverse().find(job => ['generate', 'variations'].includes(job.operation));
+          const creationContext = latest ? logoReviewContext(latest, data.project.jobs) : null;
+          setGenerationOptions(creationContext?.generationOptions || {});
+          setPromptEnhancement(logoPromptEnhancementFromDraft(creationContext?.promptEnhancement, latest?.prompt));
+          setStyleReferenceMissing(Boolean(creationContext?.hasStyleReference));
           if (latest) { const selection = restoreLogoStyleSelection(latest); setMode(selection.mode); setStyle(selection.style); setStylesByMode(selection.stylesByMode); setSketchMode(latest.sketchMode === 'precise' ? 'precise' : 'smart'); setBrand(latest.brand || ''); setTagline(latest.tagline || ''); setPrompt(latest.prompt || ''); setPalette(latest.palette || []); setDesignSettingsByStyle({ [latest.style]: normalizeLogoDesignSettings(latest.designSettings, latest.style, { strict: false, mode: latest.mode }) }); }
         }
       })
@@ -219,13 +242,12 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
   }, [project?.id, user?.id, request, acceptProject, refreshCredits]);
 
   const jobs = project?.jobs || [];
-  const quota = logoGenerationQuota(jobs);
   const generationUnitCost = logoOperationCost('generate', mode);
-  const generationCount = Math.min(count, quota.remaining);
+  const generationCount = Math.max(1, Math.min(count, LOGO_BATCH_LIMIT));
   const selected = jobs.find(job => job.id === selectedId && job.status === 'succeeded' && (job.mode || 'text') === mode);
   const variationSource = selected ? logoVariationSource(selected, jobs) : null;
   const variationStyle = selected && variationChoice?.sourceId === selected.id ? variationChoice.value : 'auto';
-  const variationNeedsText = target => requiresLogoBrand(target) ? !variationSource?.brand?.trim()
+  const variationNeedsText = target => supportsLogoBrandOnly(target) ? !variationSource?.brand?.trim()
     : target === 'monogram' && !variationSource?.brand && !variationSource?.designSettings?.monogramLetters && variationSource?.style !== 'monogram';
   const visibleStyles = LOGO_STYLES.filter(item => isLogoStyleAvailable(item.id, mode));
   const variationStyles = LOGO_STYLES.filter(item => isLogoStyleAvailable(item.id, variationSource?.mode || 'text'));
@@ -237,11 +259,11 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
   const canEditProject = ['owner', 'edit'].includes(projectAccess);
   const isProjectOwner = projectAccess === 'owner';
   const inputLocked = locked || !canEditProject;
-  const variationOpen = Boolean(selected && variationPanelSource === selected.id && !inputLocked && quota.remaining);
+  const variationOpen = Boolean(selected && variationPanelSource === selected.id && !inputLocked);
   useEffect(() => { setVariationPanelSource(null); }, [selected?.id, mode]);
   useEffect(() => {
     if (!variationOpen) return;
-    variationRoot.current?.querySelector('select')?.focus();
+    variationRoot.current?.querySelector('[aria-haspopup="listbox"]')?.focus();
     const dismiss = event => {
       if (!variationRoot.current?.contains(event.target)) setVariationPanelSource(null);
     };
@@ -255,8 +277,10 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
   const completed = jobs.filter(job => job.status === 'succeeded');
   const hasVectorExport = selected?.format === 'svg' || jobs.some(job => job.operation === 'vectorize' && job.sourceId === selected?.id && job.status === 'succeeded' && job.format === 'svg' && job.url);
   const needsBrandName = requiresLogoBrand(style) && !brand.trim();
-  const needsImageMonogramText = mode === 'image' && style === 'monogram' && !brand.trim() && !designSettings.monogramLetters;
-  const canGenerate = canEditProject && !showSourceCrop && quota.remaining > 0 && isLogoStyleAvailable(style, mode) && !needsBrandName && !needsImageMonogramText && (mode === 'text' ? Boolean(prompt.trim() || requiresLogoBrand(style) && brand.trim() || style === 'monogram' && designSettings.monogramLetters) : Boolean(mode === 'image' ? source : source || sketch));
+  const optionalLetteringDirection = requiresLogoBrand(style) || style === 'wordmark' && Boolean(brand.trim());
+  const missingBrandMessage = canEditProject && needsBrandName && !(editing && selected)
+    ? `${LOGO_STYLES.find(item => item.id === style)?.name} needs a logo name. Add it in “Logo name · Required” above.` : '';
+  const canGenerate = canEditProject && !showSourceCrop && isLogoStyleAvailable(style, mode) && !needsBrandName && (mode === 'text' ? !styleReferenceMissing && Boolean(prompt.trim() || supportsLogoBrandOnly(style) && brand.trim() || style === 'monogram' && designSettings.monogramLetters) : Boolean(mode === 'image' ? source : source || sketch));
   const imageSrc = url => `/api/proxy?url=${encodeURIComponent(url)}`;
 
   async function uploadSource() {
@@ -269,14 +293,16 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
     return uploadImageToStorage(file, { token: data.session?.access_token, fileName: `${crypto.randomUUID()}.${file.type.split('/')[1] === 'jpeg' ? 'jpg' : file.type.split('/')[1]}` });
   }
   async function run(operation = 'generate') {
+    if (operation === 'generate' && mode === 'text' && enhancing) return;
     if (busyRef.current || locked) return;
     if (!canEditProject) { setError('This project is shared with view-only access.'); return; }
     if (!user) { setShowLogin(true); return; }
-    if (['generate', 'variations'].includes(operation) && !quota.remaining) { setError('This project has reached its 4-logo limit. Start a new project to create more logos.'); return; }
     const requiredCredits = logoOperationCost(operation, mode) * (['generate', 'variations'].includes(operation) ? generationCount : 1);
     if (credits != null && credits < requiredCredits) { setError(`You need ${requiredCredits} credits for this request. Choose fewer options or add credits from your Syncraft account.`); return; }
     busyRef.current = true; setBusy(true); setError(''); setCompare(false);
     try {
+      const textOptions = operation === 'generate' && mode === 'text' ? logoGenerationOptionsFromDraft(generationOptions) : undefined;
+      if (operation === 'generate' && mode === 'text' && styleReferenceMissing) throw new Error('Reattach the style image or choose Continue without inspiration.');
       let current = projectRef.current;
       if (!current) {
         if (initialId) throw new Error('This project could not be loaded. Open a new Logo Studio project.');
@@ -290,10 +316,17 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
       let lastSuccess = null;
       const errors = [];
       if (operation === 'generate' && mode === 'text') {
+        let styleReferenceUrl;
+        if (styleReferenceFile) {
+          const { data } = await supabase.auth.getSession();
+          styleReferenceUrl = await uploadImageToStorage(styleReferenceFile, { token: data.session?.access_token, fileName: `${crypto.randomUUID()}.${styleReferenceFile.type.split('/')[1] === 'jpeg' ? 'jpg' : styleReferenceFile.type.split('/')[1]}` });
+        }
         const requestId = crypto.randomUUID();
         const result = await request('/api/logo-studio', { method: 'POST', body: JSON.stringify({
           action: 'generate-text-batch', projectId: current.id, requestId, operation, mode,
           count: generationCount, style, prompt, brand, tagline, palette, designSettings,
+          ...(activePromptEnhancement ? { promptEnhancement: activePromptEnhancement } : {}),
+          generationOptions: textOptions, ...(styleReferenceUrl ? { styleReferenceUrl } : {}),
         }) });
         acceptProject(result.project);
         const batchJobs = result.project.jobs.slice(-generationCount);
@@ -354,6 +387,9 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
     } catch (err) { setError(err.message); } finally { setDownloading(false); }
   }
   const [sourcePreview, setSourcePreview] = useState(null);
+  const currentReference = mode !== 'text' && source && sourcePreview?.file === source ? sourcePreview.url : null;
+  const latestGeneration = [...jobs].reverse().find(job => job.mode === mode && ['generate', 'variations'].includes(job.operation));
+  const failedGeneration = !locked && latestGeneration?.status === 'failed' ? latestGeneration : null;
   useEffect(() => {
     if (!source) { setSourcePreview(null); return; }
     const url = URL.createObjectURL(source);
@@ -369,6 +405,11 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
   function clearSource() {
     setSource(null); setSourceOriginal(null); setSourceCrop(null); setShowSourceCrop(false);
   }
+  function pickStyleReference(file) {
+    if (inputLocked) return;
+    if (file && (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 4 * 1024 * 1024)) { setError('Use a PNG, JPG or WebP style image up to 4 MB.'); return; }
+    setStyleReferenceFile(file); setStyleReferenceMissing(false); setError('');
+  }
   function restoreSource() {
     if (sourceOriginal) setSource(sourceOriginal);
     setSourceCrop(null); setShowSourceCrop(false);
@@ -378,6 +419,21 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
     requestedPreviewId.current = null;
     switchModeStyle(next); clearSource(); setSketch(null);
     setSelectedId(''); setCompare(false); setEditing(false); setEditPrompt('');
+  }
+  function selectSavedLogo(job) {
+    if ((job.mode || 'text') !== mode) changeMode(job.mode || 'text');
+    requestedPreviewId.current = null; setSelectedId(job.id); setCompare(false); setEditing(false);
+  }
+  function reuseSavedBrief(context) {
+    changeMode('text'); selectStyle(context.style, 'text');
+    setPrompt(context.prompt); setBrand(context.brand); setTagline(context.tagline); setPalette(context.palette);
+    setPromptEnhancement(logoPromptEnhancementFromDraft(context.promptEnhancement, context.prompt));
+    setDesignSettingsByStyle(old => ({ ...old, [context.style]: context.designSettings }));
+    setGenerationOptions(context.generationOptions || {});
+    setStyleReferenceFile(null); setStyleReferenceMissing(Boolean(context.hasStyleReference));
+    clearSource(); setSketch(null); setEditing(false); setCompare(false); setError('');
+    promptRef.current?.focus();
+    toast.info(context.hasStyleReference ? 'Brief restored. Reattach the original style image before generating.' : 'Saved brief and settings restored. Generate when you are ready.');
   }
   function switchModeStyle(next) {
     const selection = switchLogoStyleMode({ mode, style, stylesByMode }, next);
@@ -440,6 +496,7 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
             ))}
           </div>
         </section>
+        {mode === 'text' && !(editing && selected) && <StyleInspiration file={styleReferenceFile} missing={styleReferenceMissing} onFile={pickStyleReference} match={generationOptions.styleMatch} onMatch={styleMatch => setGenerationOptions(old => ({ ...old, styleMatch }))} disabled={inputLocked} />}
         <section className={styles.sidebarSection} aria-label="Input image or sketch">
           <div className={styles.sectionLabel}>{mode === 'text' ? 'Your brief' : mode === 'image' ? 'Reference image' : 'Your sketch'}</div>
           <div id="logo-input-panel" role="tabpanel" aria-labelledby={`logo-tab-${mode}`}>
@@ -448,12 +505,12 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
             {source && sourcePreview?.file === source ? <div className={styles.sourcePreview}><img src={sourcePreview.url} alt="Your source image" /><button disabled={inputLocked} aria-label="Remove source image" onClick={clearSource}><X size={15} /></button><span>{source.name}</span>{mode === 'image' && <div className={styles.sourceActions}><button type="button" disabled={inputLocked} onClick={() => setShowSourceCrop(true)}><Crop size={13} aria-hidden="true" />{sourceCrop ? 'Adjust crop' : 'Crop image'}</button>{sourceCrop && <button type="button" disabled={inputLocked} onClick={restoreSource}>Reset</button>}</div>}</div>
               : <button className={styles.uploadButton} disabled={inputLocked} onClick={() => inputRef.current?.click()}><ImagePlus size={22} /><strong>{mode === 'sketch' ? 'Or upload a sketch' : 'Upload your image'}</strong><span>PNG, JPG, WebP · up to 4 MB</span></button>}
           </div>}
-            {mode === 'text' && <p className={styles.hint}>{requiresLogoBrand(style) ? 'Enter the exact words for your logo. Add optional lettering direction below the canvas.' : 'Describe your logo in the prompt panel below the canvas.'}</p>}
+            {mode === 'text' && <p className={styles.hint}>{style === 'wordmark' ? 'Describe your wordmark in the prompt panel below. A separate brand name is optional.' : requiresLogoBrand(style) ? 'Enter the exact words for your logo. Add optional lettering direction below the canvas.' : 'Describe your logo in the prompt panel below the canvas.'}</p>}
             {mode === 'image' && <p className={styles.hint}>Your image and selected style are enough to generate. Add a direction below only if you want to guide colors, expression, or details.</p>}
           </div>
         </section>
         <section className={styles.sidebarSection} aria-label="Brand settings">
-          <label className={styles.field}>Brand name <span>{requiresLogoBrand(style) ? `Required for ${LOGO_STYLES.find(item => item.id === style)?.name}` : mode === 'image' && style === 'monogram' ? 'Or set main letters below' : 'Optional'}</span><input value={brand} maxLength={100} disabled={inputLocked} required={requiresLogoBrand(style) || mode === 'image' && style === 'monogram' && !designSettings.monogramLetters} placeholder={requiresLogoBrand(style) ? 'Exact words for your logo' : mode === 'image' && style === 'monogram' ? 'Brand name for initials' : "What's your brand called?"} onChange={event => setBrand(event.target.value)} /></label>
+          <label className={styles.field}>Brand name <span>{requiresLogoBrand(style) ? `Required for ${LOGO_STYLES.find(item => item.id === style)?.name}` : 'Optional'}</span><input value={brand} maxLength={100} disabled={inputLocked} required={requiresLogoBrand(style)} placeholder={requiresLogoBrand(style) ? 'Exact words for your logo' : "What's your brand called?"} onChange={event => setBrand(event.target.value)} /></label>
           <details className={styles.details}><summary>Tagline & brand colors <Plus size={13} /></summary><label className={styles.field}>Tagline <input value={tagline} disabled={inputLocked} maxLength={160} placeholder="A few words to go with it" onChange={event => setTagline(event.target.value)} /></label><div className={styles.paletteLabel}>Palette <span>Optional · AI colors are approximate</span></div><div className={styles.colors}>{palette.map((color, index) => <div key={index} className={styles.color}><input type="color" value={color} disabled={inputLocked} aria-label={`Brand color ${index + 1}`} onChange={event => setPalette(palette.map((old, n) => n === index ? event.target.value : old))} /><button disabled={inputLocked} aria-label={`Remove color ${index + 1}`} onClick={() => setPalette(palette.filter((_, n) => n !== index))}><X size={11} /></button></div>)}{palette.length < 3 && <button disabled={inputLocked} onClick={() => setPalette([...palette, '#b8a7ff'])}><Plus size={15} /> Add color</button>}</div></details>
         </section>
         {projects.length > 0 && <div className={styles.projectList}><div className={styles.sectionLabel}><span><FolderOpen size={14} /> Your logo projects</span><small>Files expire after 3 days. Download your favorites.</small></div><div className={styles.projectItems}>{projects.map(item => <Link key={item.id} href={`/logo-studio/${item.id}`} title={item.name}><span>{item.name}</span><ArrowUpRight size={13} aria-hidden="true" /></Link>)}</div></div>}
@@ -466,7 +523,7 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
           <div className={styles.canvasProject}><span className={styles.eyebrow}>YOUR WORKSPACE</span><h2 title={project?.name || 'A fresh start.'}>{project?.name || 'A fresh start.'}</h2></div>
           <WorkspaceTabs items={modeItems} value={mode} disabled={inputLocked} label="Logo creation mode" idPrefix="logo-tab" controlsId="logo-input-panel" className={styles.canvasModes}
             onChange={changeMode} />
-          <ExamplePrompts disabled={inputLocked} onSelect={example => { changeMode('text'); setSelectedId(''); setEditing(false); setCompare(false); selectStyle(example.style, 'text'); setPrompt(example.prompt); setBrand(example.brand); setTagline(example.tagline || ''); setPalette([]); setDesignSettingsByStyle(old => ({ ...old, [example.style]: example.designSettings || {} })); clearSource(); setSketch(null); promptRef.current?.focus(); }} />
+          <ExamplePrompts disabled={inputLocked} onSelect={example => { changeMode('text'); setSelectedId(''); setEditing(false); setCompare(false); selectStyle(example.style, 'text'); setPrompt(example.prompt); setPromptEnhancement(null); setBrand(example.brand); setTagline(example.tagline || ''); setPalette([...(example.palette || [])]); setDesignSettingsByStyle(old => ({ ...old, [example.style]: example.designSettings || {} })); setGenerationOptions({ ...(example.generationOptions || {}) }); setStyleReferenceFile(null); setStyleReferenceMissing(false); clearSource(); setSketch(null); promptRef.current?.focus(); if (example.sourceModel === 'nano-banana-2.1') toast.info('Nano Banana 2.1 preview loaded. Generation uses the current Studio model.'); }} />
         </div>
         <div className={styles.canvasFeedback}>
           {(error || pollError) && <div role="alert" className={styles.error}><TriangleAlert size={16} /><span>{error || pollError}</span><button aria-label="Dismiss message" onClick={() => { setError(''); setPollError(''); }}><X size={15} /></button></div>}
@@ -475,7 +532,7 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
         {projectLoading ? <div className={styles.previewStage}><div className={`${styles.empty} ${styles.emptyCanvas}`}><Loader2 className={styles.spin} size={30} /><h2>Opening your workspace…</h2></div></div>
           : busy || hasActive ? <div className={`${styles.previewStage} ${styles.emptyStage}`}><div className={`${styles.empty} ${styles.emptyCanvas} ${styles.generatingCanvas}`}><GenerationLoading label="Generating your logo" /></div></div>
           : selected ? <>
-            <div className={styles.previewToolbar}><span>{displayOperation[selected.operation]} <b>{selected.format.toUpperCase()}</b></span><div>{parent && <button aria-pressed={compare} onClick={() => setCompare(!compare)}><Layers3 size={13} /> Compare</button>}<div className={styles.backgroundChoices} aria-label="Preview background">{['white', 'dark', 'checker'].map(value => <button key={value} aria-label={`${value} preview background`} aria-pressed={background === value} className={styles[value]} onClick={() => setBackground(value)} />)}</div></div></div>
+            <div className={styles.previewToolbar}><span>{displayOperation[selected.operation]} <b>{selected.format.toUpperCase()}</b><b>Saved style: {LOGO_STYLES.find(item => item.id === variationSource?.style)?.name || 'Original'}</b></span><div>{parent && <button aria-pressed={compare} onClick={() => setCompare(!compare)}><Layers3 size={13} /> Compare</button>}<div className={styles.backgroundChoices} aria-label="Preview background">{['white', 'dark', 'checker'].map(value => <button key={value} aria-label={`${value} preview background`} aria-pressed={background === value} className={styles[value]} onClick={() => setBackground(value)} />)}</div></div></div>
             <div className={styles.previewStage}>
             <div className={`${styles.preview} ${styles[background]} ${compare ? styles.comparison : ''}`}>
               <button type="button" className={styles.closePreview} disabled={locked} aria-label="Close logo preview" title="Close preview and create another logo"
@@ -485,28 +542,28 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
             </div>
             </div>
             <div className={styles.actions}>
+              <LogoReview selected={selected} jobs={jobs} imageSrc={imageSrc} onSelect={selectSavedLogo} onReuse={reuseSavedBrief} disabled={locked} canReuse={canEditProject} />
               <button disabled={inputLocked} onClick={() => { setEditing(!editing); setCompare(false); }}><WandSparkles size={15} /> AI edit <small>{LOGO_COST.edit} cr</small></button>
               <div className={styles.variationAction} ref={variationRoot} onBlur={event => {
                 if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setVariationPanelSource(null);
               }}>
-              <button type="button" ref={variationTrigger} disabled={inputLocked || !quota.remaining} aria-haspopup="dialog" aria-expanded={variationOpen}
+              <button type="button" ref={variationTrigger} disabled={inputLocked} aria-haspopup="dialog" aria-expanded={variationOpen}
                 aria-controls={variationOpen ? 'logo-variation-options' : undefined} onClick={() => setVariationPanelSource(variationOpen ? null : selected.id)}>
                 <Layers3 size={15} /> Variations <small>{LOGO_COST.variations * generationCount} cr</small>
               </button>
               {variationOpen && <div id="logo-variation-options" className={styles.variationPopover} role="dialog" aria-label="Create logo variations">
               <div className={styles.variationHeading}><label htmlFor="variation-style">Variation style</label><button type="button" aria-label="Close variation options" onClick={() => { setVariationPanelSource(null); variationTrigger.current?.focus(); }}><X size={14} aria-hidden="true" /></button></div>
+              <p className={styles.variationHint}>Uses this saved logo, not changes in the prompt below. Auto keeps its style and finish.</p>
               <div className={styles.variationControls}>
-              <select id="variation-style" disabled={inputLocked || !quota.remaining} value={variationStyle}
+              <Select id="variation-style" aria-label="Variation style" menuPlacement="top" disabled={inputLocked} value={variationStyle}
                 onChange={event => setVariationChoice({ sourceId: selected.id, value: event.target.value })}>
                 <option value="auto" title="Match the original logo’s style">Auto</option>
-                <optgroup label="Change style">
                 {variationStyles.map(item => <option key={item.id} value={item.id}
                   disabled={variationNeedsText(item.id)}>
                   {item.name}{variationNeedsText(item.id) ? ' — needs saved brand text' : ''}
                 </option>)}
-                </optgroup>
-              </select>
-              <button type="button" className={styles.variationProceed} aria-label={`Create ${generationCount === 1 ? 'variation' : `${generationCount} variations`} for ${LOGO_COST.variations * generationCount} credits`} disabled={inputLocked || !quota.remaining} onClick={() => { setVariationPanelSource(null); variationTrigger.current?.focus(); run('variations'); }}>
+              </Select>
+              <button type="button" className={styles.variationProceed} aria-label={`Create ${generationCount === 1 ? 'variation' : `${generationCount} variations`} for ${LOGO_COST.variations * generationCount} credits`} disabled={inputLocked} onClick={() => { setVariationPanelSource(null); variationTrigger.current?.focus(); run('variations'); }}>
                 Create{generationCount > 1 ? ` ${generationCount}` : ''} <small>{LOGO_COST.variations * generationCount} cr</small>
               </button>
               </div>
@@ -518,9 +575,12 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
             </div>
           </> : <div className={`${styles.previewStage} ${styles.emptyStage}`}>
           <div className={`${styles.empty} ${styles.emptyCanvas}`} role="region" aria-label="Logo canvas">
-            <Spline className={styles.emptyIcon} size={28} strokeWidth={1.4} aria-hidden="true" />
-            <h2>Your logo starts here</h2>
-            <p>{mode === 'image' ? 'Add a reference image to get started.' : mode === 'sketch' ? 'Add a sketch to get started.' : 'Describe your idea below to get started.'}</p>
+            {currentReference && <img className={styles.emptyReference} src={currentReference} alt="Reference image for your logo" />}
+            {failedGeneration ? !currentReference && <TriangleAlert className={styles.emptyIcon} size={28} strokeWidth={1.4} aria-hidden="true" />
+              : !currentReference && <Spline className={styles.emptyIcon} size={28} strokeWidth={1.4} aria-hidden="true" />}
+            <h2>{failedGeneration ? 'Your logo could not be generated' : currentReference ? 'Your reference is ready' : mode === 'text' && missingBrandMessage ? 'Add your logo name' : 'Your logo starts here'}</h2>
+            {failedGeneration ? <p className={styles.emptyFailure} role="alert">{failedGeneration.error || 'This request could not be completed. Check the failed version in History for details.'}</p>
+              : <p>{currentReference ? 'Choose your style and settings, then generate your logo.' : mode === 'image' ? 'Add a reference image to get started.' : mode === 'sketch' ? 'Add a sketch to get started.' : missingBrandMessage ? 'Use “Logo name · Required” below to enter the exact words for your logo.' : supportsLogoBrandOnly(style) && brand.trim() ? 'Your logo name is ready. Add optional lettering direction or generate.' : style === 'wordmark' ? 'Describe your wordmark below, or enter a logo name.' : 'Describe your idea below to get started.'}</p>}
           </div>
           </div>}
 
@@ -531,39 +591,44 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
         <div className={styles.promptDock} aria-label="Prompt panel">
           <form className={styles.composer} aria-label={editing && selected ? 'Edit logo' : 'Create a logo'} onSubmit={event => { event.preventDefault(); if (editing && selected ? editPrompt.trim() : canGenerate) run(editing && selected ? 'edit' : 'generate'); }}>
             <div className={styles.promptInput}>
-              <label className={styles.promptLabel} htmlFor="logo-prompt">{editing && selected ? 'What would you like to change?' : mode === 'image' ? 'Optional image direction' : requiresLogoBrand(style) ? 'Optional lettering direction' : 'Your idea'}</label>
+              <label className={styles.promptLabel} htmlFor="logo-prompt">{editing && selected ? 'What would you like to change?' : mode === 'image' ? 'Optional image direction' : optionalLetteringDirection ? 'Optional lettering direction' : 'Your idea'}</label>
               <textarea ref={promptRef} id="logo-prompt" aria-describedby="logo-prompt-cost" value={editing && selected ? editPrompt : prompt} maxLength={1800} disabled={inputLocked}
-                placeholder={editing && selected ? 'Describe what to change. We’ll keep your original version.' : style === STREETWEAR_STYLE ? 'Optional: e.g. Arched Gothic letters, gold bevels and layered outlines…' : requiresLogoBrand(style) ? 'Optional: e.g. Bold lettering, red and black…' : mode === 'text' ? 'e.g. A coffee cup with mountain peaks…' : mode === 'image' ? `Optional: guide the ${LOGO_STYLES.find(item => item.id === style)?.name || 'selected'} style, e.g. navy and orange, confident expression…` : 'Optional: e.g. Navy and orange, fierce expression…'}
-                onChange={event => editing && selected ? setEditPrompt(event.target.value) : setPrompt(event.target.value)} rows={3} />
+                placeholder={editing && selected ? 'Describe what to change. We’ll keep your original version.' : style === STREETWEAR_STYLE ? 'Optional: e.g. Arched Gothic letters, gold bevels and layered outlines…' : optionalLetteringDirection ? 'Optional: e.g. Bold lettering, red and black…' : style === 'wordmark' ? 'e.g. The word HOUSE built from simple geometric shapes…' : mode === 'text' ? 'e.g. A coffee cup with mountain peaks…' : mode === 'image' ? `Optional: guide the ${LOGO_STYLES.find(item => item.id === style)?.name || 'selected'} style, e.g. navy and orange, confident expression…` : 'Optional: e.g. Navy and orange, fierce expression…'}
+                onChange={event => { if (editing && selected) setEditPrompt(event.target.value); else { setPrompt(event.target.value); setPromptEnhancement(null); } }} rows={3} />
               <div className={styles.promptDesignControls}>
                 {!(editing && selected) && <DesignControls mode={mode} style={style} styleName={LOGO_STYLES.find(item => item.id === style)?.name} settings={designSettings} onChange={updateDesignSettings} brand={brand} onBrandChange={setBrand} tagline={tagline} onTaglineChange={setTagline} disabled={inputLocked} />}
               </div>
+              {mode === 'text' && !(editing && selected) && <GenerationControls value={generationOptions} onChange={setGenerationOptions} disabled={inputLocked} />}
+              {mode === 'text' && styleReferenceMissing && !(editing && selected) && <p className={styles.billingNote} role="status">Reattach your style image in Style inspiration, or continue without it.</p>}
               <div className={styles.promptToolbar}>
                 <div className={styles.promptTools}>
+                  {mode === 'text' && !(editing && selected) && <PromptEnhancer prompt={prompt} style={style} designSettings={designSettings} palette={palette} brand={brand} tagline={tagline} projectId={project?.id} enhancement={activePromptEnhancement} request={request} disabled={inputLocked}
+                    onApply={next => { setPrompt(next.enhancedPrompt); setPromptEnhancement(next); }} onUndo={previous => { setPrompt(previous.prompt); setPromptEnhancement(previous.enhancement); }} onLoadingChange={setEnhancing} />}
                   {editing && selected ? <button type="button" className={styles.promptChip} onClick={() => setEditing(false)}><X size={13} /> Cancel edit</button>
                     : <><button type="button" className={styles.attachButton} disabled={inputLocked} aria-label="Attach a reference image" title="Attach a reference image" onClick={() => inputRef.current?.click()}><Plus size={17} /></button><span className={styles.promptMode}>{source ? source.name : `${modeItems.find(item => item.id === mode)?.name} to logo`}</span>{mode === 'sketch' && <div className={styles.sketchModePicker} role="group" aria-label="How closely to follow your sketch">{[['smart', 'Smart', 'Polish the idea in your sketch'], ['precise', 'Precise', 'Keep the sketch layout closer']].map(([value, label, title]) => <button key={value} type="button" disabled={inputLocked} aria-pressed={sketchMode === value} title={title} onClick={() => setSketchMode(value)}>{label}</button>)}</div>}</>}
                 </div>
                 <div className={styles.composerActions}>
                   {!(editing && selected) && <ColorControls settings={designSettings} onChange={updateDesignSettings} disabled={inputLocked} />}
-                  {!(editing && selected) && <div className={styles.promptOptions} role="group" aria-label="Number of logo options"><span>Options</span>{Array.from({ length: quota.remaining }, (_, index) => index + 1).map(number => <button type="button" key={number} disabled={inputLocked} aria-pressed={generationCount === number} onClick={() => setCount(number)}>{number}</button>)}</div>}
+                  {!(editing && selected) && <div className={styles.promptOptions} role="group" aria-label="Number of logo options"><span>Options</span>{Array.from({ length: LOGO_BATCH_LIMIT }, (_, index) => index + 1).map(number => <button type="button" key={number} disabled={inputLocked} aria-pressed={generationCount === number} onClick={() => setCount(number)}>{number}</button>)}</div>}
                   {editing && selected && <span className={styles.promptMode}>Original preserved</span>}
                   <span className={styles.promptCost}>{editing && selected ? LOGO_COST.edit : generationUnitCost * generationCount} cr</span>
-                  <button className={styles.generate} disabled={inputLocked || (editing && selected ? !editPrompt.trim() : !canGenerate) || !authReady} type="submit"
+                  <button className={styles.generate} disabled={inputLocked || enhancing || (editing && selected ? !editPrompt.trim() : !canGenerate) || !authReady} type="submit"
                     aria-label={!canEditProject ? 'View-only project' : locked ? 'Creating logos' : editing && selected ? 'Apply edit' : `Generate ${generationCount} ${generationCount === 1 ? 'logo' : 'logos'}`}
-                    title={!canEditProject ? 'View-only project' : locked ? 'Creating…' : editing && selected ? 'Apply edit' : `Generate ${generationCount} ${generationCount === 1 ? 'logo' : 'logos'}`} aria-busy={locked} aria-describedby="logo-prompt-cost">
+                    title={!canEditProject ? 'View-only project' : locked ? 'Creating…' : editing && selected ? 'Apply edit' : missingBrandMessage || `Generate ${generationCount} ${generationCount === 1 ? 'logo' : 'logos'}`} aria-busy={locked} aria-describedby={missingBrandMessage ? 'logo-generation-requirement logo-prompt-cost' : 'logo-prompt-cost'}>
                     {locked ? <Loader2 className={styles.spin} size={20} aria-hidden="true" /> : <ArrowUp size={20} strokeWidth={1.8} aria-hidden="true" />}
                   </button>
                 </div>
               </div>
             </div>
-            <p className={styles.billingNote} id="logo-prompt-cost">{!canEditProject ? 'View-only access · You can preview and download saved logos.' : !quota.remaining && !(editing && selected) ? "4-logo limit reached. Start a new project to create more." : <>{editing && selected ? LOGO_COST.edit : generationUnitCost * generationCount} credits · {projectAccess === 'edit' ? 'Uses your credits. ' : ''}Failed outputs are refunded.</>}</p>
+            {missingBrandMessage && <p className={styles.requirementHint} id="logo-generation-requirement" role="status">{missingBrandMessage}</p>}
+            <p className={styles.billingNote} id="logo-prompt-cost">{!canEditProject ? 'View-only access · You can preview and download saved logos.' : <>{editing && selected ? LOGO_COST.edit : generationUnitCost * generationCount} credits · {projectAccess === 'edit' ? 'Uses your credits. ' : ''}Failed outputs are refunded.</>}</p>
           </form>
         </div>
       </section>
       <aside className={styles.historyRail} aria-label="Logo version history">
         <div className={styles.history}>
           <div className={styles.historyHeading}><h2><History size={15} aria-hidden="true" /> History</h2><span className={styles.historyCount} aria-label={`${completed.length} saved versions`}>{completed.length}</span></div>
-          <p className={styles.historyHint} aria-live="polite">{quota.used}/{quota.limit} logos · {quota.remaining ? `${quota.remaining} remaining` : "Limit reached"}</p>
+          <p className={styles.historyHint}>Up to {LOGO_BATCH_LIMIT} logos per batch · Create more variations anytime.</p>
           {jobs.length ? <><div className={styles.historyGrid}>{groupLogoHistory(jobs).flatMap((group, groupIndex) => [
             ...(groupIndex ? [<hr key={`divider-${group.id}`} className={styles.historyGroupDivider} aria-label="Separate logo" />] : []),
             ...group.jobs.map(job => <button key={job.id} disabled={job.status !== 'succeeded'} aria-pressed={selected?.id === job.id} className={selected?.id === job.id ? styles.historySelected : ''} onClick={() => { if ((job.mode || 'text') !== mode) changeMode(job.mode || 'text'); requestedPreviewId.current = null; setSelectedId(job.id); setCompare(false); setEditing(false); }} aria-label={`Version ${jobs.indexOf(job) + 1}, ${displayOperation[job.operation]}, ${job.status}`} title={job.error || job.prompt}>

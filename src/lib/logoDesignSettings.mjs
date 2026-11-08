@@ -1,3 +1,4 @@
+import { BADGE_DIRECTIONS } from './logoBadgeDirection.mjs';
 const choices = (entries) => entries.map(([id, label, instruction]) => ({ id, label, instruction }));
 export const LOGO_DESIGN_FIELDS = Object.freeze({
   streetwearLetters: { label: 'Lettering style', options: choices([
@@ -118,6 +119,20 @@ export const LOGO_DESIGN_FIELDS = Object.freeze({
     ['geometric', 'Geometric', 'Use a geometric contour system with precise directional relationships.'],
     ['curved', 'Curved', 'Build the line work around flowing continuous curves.'],
   ]) },
+  badgeDirection: { label: 'Badge design direction', options: choices(Object.entries(BADGE_DIRECTIONS).map(([id, direction]) => [id, direction.label, direction.instruction])) },
+  badgeSubject: { label: 'Badge subject framing', options: choices([
+    ['portrait', 'Head / focal detail', 'Show the requested subject as a head or identifying focal detail, not a full-body illustration.'],
+    ['full-body', 'Full body / subject', 'Show the entire requested animal or object with all its defining parts inside the enclosure.'],
+  ]) },
+  badgeView: { label: 'Badge subject view', options: choices([
+    ['front', 'Front view', 'Show the subject from the front, with a coherent frontal construction.'],
+    ['profile', 'Side profile', 'Show the subject in a genuine side profile; keep anatomy and silhouette readable.'],
+    ['three-quarter', 'Three-quarter view', 'Show the subject turned in three-quarter view, with coherent overlapping forms and depth.'],
+  ]) },
+  badgeLayout: { label: 'Badge layout', options: choices([
+    ['integrated', 'Integrated emblem', 'Integrate the subject and any supplied lettering into the enclosure through coordinated forms and spacing.'],
+    ['framed', 'Framed illustration', 'Keep the illustration distinct within a surrounding frame with deliberate inset space.'],
+  ]) },
   badgeType: { label: 'Badge type', options: choices([
     ['shield', 'Shield', 'Use a shield-style badge hierarchy with a strong central identity.'],
     ['emblem', 'Emblem', 'Build an integrated emblem with a compact symbolic center.'],
@@ -195,6 +210,7 @@ export const LOGO_DESIGN_STYLE_FIELDS = Object.freeze({
 });
 
 const textStyleFields = Object.freeze({
+  badge: ['badgeDirection', 'badgeType', 'badgeShape', 'badgeSubject', 'badgeView', 'badgeLayout', 'badgeDetail', ...sharedMoodFields],
   mascot: ['detail', 'characterComposition', 'outlineThickness', ...sharedMoodFields],
   cartoon: ['characterComposition', 'detail', 'outlineThickness', ...sharedMoodFields],
   retro: ['detail', 'characterComposition', 'outlineThickness', ...sharedMoodFields],

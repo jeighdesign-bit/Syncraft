@@ -1,5 +1,29 @@
 # Logo Studio: current providers and credits
 
+## Current routing — 8 November 2026
+
+The server-owned Text-to-Logo selection in `logoModelRouting.mjs` routes **Mascot, Retro Mascot, Icon/Emoji and Cartoon** to Nano Banana 2.1. The other nine styles retain regular Recraft V4.1 (`recraftv4_1`). Client-supplied model names and example preview provenance cannot override routing. Other feature models and all credit prices are unchanged.
+
+| Action | Provider endpoint | Customer credits |
+| --- | --- | ---: |
+| Text: Mascot, Retro Mascot, Icon/Emoji, Cartoon | fal google/nano-banana-2.1 | 8 / logo |
+| Text: remaining nine styles | Recraft images/generations | 8 / logo |
+| Image / Sketch to Logo | fal google/nano-banana-2.1/edit | 8 / logo |
+| Variations, except Streetwear | fal google/nano-banana-2.1/edit | 6 / output |
+| AI Edit, except Streetwear | fal google/nano-banana-2.1/edit | 8 / output |
+| Streetwear Variations / AI Edit | Recraft images/imageToImage | 6 / variation; 8 / edit |
+| Remove BG / Vectorize | Original Recraft utility endpoints | 2 / operation |
+
+Nano Text creation uses the same setup as the approved comparison: native Text-to-Image, 1:1, 1K, PNG, one output, medium thinking and web search off. It receives the compiled brief and seed directly without an artificial blank canvas. Optional Style Inspiration is validated for ownership, type and size before billing, converted to a bounded PNG and passed to Nano 2.1 Edit. Flexible/Precise changes the drawing-language instructions in the prompt; no unsupported Recraft `style_match` parameter is sent. Explicit subject, brand fields and selected controls take priority. Inspiration identity carryover still requires visual review.
+
+Each Nano job records its actual provider, model, endpoint and request ID in signed state. Queue refresh, storage, downloads and refunds use that saved endpoint, independently of today's style routing. Previously submitted jobs remain recoverable. Missing selected-provider credentials fail before reservation or billing; there is no automatic cross-provider fallback. Text batches remain limited to four outputs, while completed project history does not impose a lifetime variation quota. Creation still costs 8 credits per output and a four-output batch costs 32.
+
+Nano 2.1 is token-billed. Actual provider cost remains unknown unless reported; never reuse the historical Nano 2 flat fee. Recraft request construction and pricing remain unchanged. The official [Text-to-Image schema](https://fal.ai/models/google/nano-banana-2.1/api) and [Edit schema](https://fal.ai/models/google/nano-banana-2.1/edit/api) describe the two supported routes.
+
+## Historical implementation notes — 6 November 2026
+
+The notes below record an earlier deployment and its live checks. The current routing and prices above supersede the earlier provider, price and total-quota descriptions.
+
 As of 6 November 2026, Text to Logo uses Recraft V4.1 standard raster (recraftv4_1) for all 13 styles. Image to Logo and Sketch to Logo use Nano Banana 2 through fal. Variations follow the saved logo’s creation mode: Recraft V4.1 for Text, Nano Banana 2 for Image/Sketch. All new AI Edit requests use Nano Banana 2's image editing endpoint with the selected saved image, independently of its creation mode. Background removal and vectorization retain their original Recraft tools in every mode. Other Syncraft features are unaffected.
 
 | Action | Provider / endpoint | Customer credits | Standard API cost |

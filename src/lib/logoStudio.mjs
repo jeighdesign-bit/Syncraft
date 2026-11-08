@@ -1,10 +1,12 @@
 import { CREDIT_COST } from './pricing.js';
 import { normalizeLogoDesignSettings, logoDesignInstructions } from './logoDesignSettings.mjs';
 import { compileLogoVariation } from './logoVariations.mjs';
-import { STREETWEAR_STYLE, requiresLogoBrand, isLogoStyleAvailable } from './logoStyleCapabilities.mjs';
+import { STREETWEAR_STYLE, supportsLogoBrandOnly, isLogoStyleAvailable } from './logoStyleCapabilities.mjs';
 import { LOGO_STYLE_PROFILES } from './logoStyleProfiles.mjs';
 import { streetwearBackground, streetwearPaletteDirection } from './logoStreetwear.mjs';
 import { compileLogoDirection } from './logoPromptCompiler.mjs';
+import { normalizeLogoGenerationOptions } from './logoGenerationOptions.mjs';
+import { normalizeLogoPromptEnhancement, logoOriginalPrompt } from './logoPromptEnhancer.mjs';
 
 export const LOGO_STYLES = [
   { id: 'minimalist', name: 'Minimalist', mark: '◒', prompt: 'minimal geometric symbol, simple silhouette, balanced negative space' },
@@ -47,7 +49,7 @@ export function logoOperationCost(operation, mode = 'text') {
   return LOGO_COST[operation];
 }
 export const LOGO_ACTIVE = ['starting', 'queued', 'running', 'saving', 'refunding'];
-export const LOGO_GENERATION_LIMIT = 4;
+export const LOGO_BATCH_LIMIT = 4;
 
 export function groupLogoHistory(jobs = []) {
   const byId = new Map(jobs.map(job => [job.id, job]));
@@ -65,10 +67,10 @@ export function groupLogoHistory(jobs = []) {
   return [...groups.values()];
 }
 
-export function logoGenerationQuota(jobs = []) {
-  const used = jobs.filter(job => ['generate', 'variations'].includes(job.operation)
-    && (job.status === 'succeeded' || LOGO_ACTIVE.includes(job.status))).length;
-  return { used, remaining: Math.max(0, LOGO_GENERATION_LIMIT - used), limit: LOGO_GENERATION_LIMIT };
+export function logoBatchCapacity(jobs = []) {
+  // Completed history never consumes capacity for the next batch.
+  const active = jobs.filter(job => LOGO_ACTIVE.includes(job.status)).length;
+  return { active, remaining: Math.max(0, LOGO_BATCH_LIMIT - active), limit: LOGO_BATCH_LIMIT };
 }
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -78,22 +80,29 @@ export function validateLogoOperation(input) {
   if (!Object.hasOwn(LOGO_COST, operation)) throw new Error('Unknown logo operation.');
   const mode = input.mode || 'text';
   if (!['text', 'image', 'sketch'].includes(mode)) throw new Error('Choose text, image, or sketch.');
+  const textCreation = operation === 'generate' && mode === 'text';
+  const generationOptions = normalizeLogoGenerationOptions(input.generationOptions);
+  if (!textCreation && (input.styleReferenceUrl || Object.keys(generationOptions).length)) throw new Error('Style inspiration and generation options are available for Text to Logo creation only.');
+  const styleReferenceUrl = input.styleReferenceUrl || null;
+  if (styleReferenceUrl && (typeof styleReferenceUrl !== 'string' || styleReferenceUrl.length > 2048 || !styleReferenceUrl.startsWith('https://'))) throw new Error('Upload a valid style inspiration image.');
   const sketchMode = mode === 'sketch' && operation === 'generate' ? input.sketchMode || 'smart' : 'smart';
   if (!['smart', 'precise'].includes(sketchMode)) throw new Error('Choose Smart or Precise for your sketch.');
   const style = input.style || 'minimalist';
   if (!LOGO_STYLES.some(item => item.id === style)) throw new Error('Choose a supported logo style.');
-  if (operation === 'generate' && !isLogoStyleAvailable(style, mode)) throw new Error('Streetwear Lettering is available in Text to Logo only.');
+  if (operation === 'generate' && !isLogoStyleAvailable(style, mode)) throw new Error(style === STREETWEAR_STYLE
+    ? 'Streetwear Lettering is available in Text to Logo only.'
+    : 'Choose a compatible visual style for Image to Logo. Use Text to Logo for lettering or abstract concepts.');
   const variationStyle = operation === 'variations' ? input.variationStyle ?? 'auto' : undefined;
   if (variationStyle !== undefined && variationStyle !== 'auto' && !LOGO_STYLES.some(item => item.id === variationStyle)) throw new Error('Choose Auto or a supported variation style.');
   const prompt = String(input.prompt || '').trim();
+  if (!textCreation && input.promptEnhancement != null) throw new Error('Prompt enhancement is available for Text to Logo creation only.');
+  const promptEnhancement = normalizeLogoPromptEnhancement(input.promptEnhancement, prompt);
   const brand = String(input.brand || '').trim();
   const tagline = String(input.tagline || '').trim();
   if (prompt.length > 1800 || brand.length > 100 || tagline.length > 160) throw new Error('Please shorten your logo description or brand text.');
   const designSettings = operation === 'generate' ? normalizeLogoDesignSettings(input.designSettings, style, { mode }) : {};
-  if (style === 'wordmark' && ['generate', 'variations'].includes(operation) && !brand) throw new Error('Enter the exact brand name for your Wordmark logo.');
   if (style === STREETWEAR_STYLE && operation === 'generate' && !brand) throw new Error('Enter the exact brand name for your Streetwear Lettering logo.');
-  if (operation === 'generate' && mode === 'image' && style === 'monogram' && !brand && !designSettings.monogramLetters) throw new Error('Enter a brand name or main letters for your image-based Monogram.');
-  if ((operation === 'edit' || (operation === 'generate' && mode === 'text' && !requiresLogoBrand(style) && !(style === 'monogram' && designSettings.monogramLetters))) && !prompt) throw new Error('Describe what you would like to create or change.');
+  if ((operation === 'edit' || (operation === 'generate' && mode === 'text' && !(supportsLogoBrandOnly(style) && brand) && !(style === 'monogram' && designSettings.monogramLetters))) && !prompt) throw new Error('Describe what you would like to create or change.');
   if ((operation !== 'generate' || mode !== 'text') && !input.sourceId && !input.sourceUrl) throw new Error('Select or upload a source image first.');
   if (input.sourceId && !UUID.test(input.sourceId)) throw new Error('Invalid source version.');
   let editArea = null;
@@ -107,6 +116,9 @@ export function validateLogoOperation(input) {
   const palette = input.palette || [];
   if (!Array.isArray(palette) || palette.length > 3 || palette.some(color => !/^#[0-9a-f]{6}$/i.test(color))) throw new Error('Choose up to three valid colors.');
   const normalized = { requestId: input.requestId, operation, mode, sketchMode, style, prompt, brand, tagline, palette, designSettings,
+    ...(promptEnhancement ? { promptEnhancement } : {}),
+    ...(textCreation && Object.keys(generationOptions).length ? { generationOptions } : {}),
+    ...(styleReferenceUrl ? { styleReferenceUrl } : {}),
     ...(operation === 'variations' ? { variationStyle } : {}),
     editArea, sourceId: input.sourceId || null, sourceUrl: typeof input.sourceUrl === 'string' ? input.sourceUrl : null };
   return normalized;
@@ -128,7 +140,7 @@ export function logoReplacementText(prompt) {
 
 export function buildLogoPrompt(job) {
   if (job.operation === 'variations') return compileLogoVariation(job, job.variationPlan);
-  if (job.operation === 'generate' && job.mode === 'text') return compileLogoDirection({ ...job, rawBrief: job.prompt });
+  if (job.operation === 'generate' && job.mode === 'text') return compileLogoDirection({ ...job, rawBrief: logoOriginalPrompt(job) });
   const base = buildBaseLogoPrompt(job);
   const settings = job.operation === 'generate' ? logoDesignInstructions(job.designSettings, job.style) : [];
   const artboardFraming = job.operation === 'generate' && job.mode === 'image'
@@ -252,8 +264,11 @@ function buildBaseLogoPrompt(job) {
 export function publicLogoProject(project, access = 'owner') {
   const state = project.canvas_data;
   return { id: project.id, name: project.name, createdAt: project.created_at, revision: state.revision, access,
-    jobs: (state.jobs || []).map(({ id, operation, mode, sketchMode, style, prompt, brand, tagline, palette, designSettings, sourceId, status, createdAt, url, format, error }) =>
-      ({ id, operation, mode, sketchMode: sketchMode || 'smart', style, prompt, brand, tagline, palette, designSettings: normalizeLogoDesignSettings(designSettings, style, { strict: false, mode }), sourceId, status, createdAt, url, format, error })) };
+    jobs: (state.jobs || []).map(({ id, batchId, operation, mode, sketchMode, style, prompt, promptEnhancement, brand, tagline, palette, designSettings, generationOptions, styleReferenceUrl, seed, sourceId, status, createdAt, url, format, error }) =>
+      ({ id, batchId, operation, mode, sketchMode: sketchMode || 'smart', style, prompt, brand, tagline, palette, designSettings: normalizeLogoDesignSettings(designSettings, style, { strict: false, mode }),
+        ...(operation === 'generate' && mode === 'text' ? { generationOptions: generationOptions || {}, hasStyleReference: Boolean(styleReferenceUrl), effectiveSeed: seed,
+          ...(promptEnhancement ? { promptEnhancement } : {}) } : {}),
+        sourceId, status, createdAt, url, format, error })) };
 }
 
 export function logoJobTimedOut(job, now = Date.now()) {
@@ -262,5 +277,5 @@ export function logoJobTimedOut(job, now = Date.now()) {
 
 export function logoStudioAssetUrls(canvasData) {
   if (canvasData?.tool !== 'logo_studio') return [];
-  return [...new Set((canvasData.jobs || []).flatMap(job => [job.url, job.sourceUrl]).filter(url => typeof url === 'string' && url.startsWith('https://')))];
+  return [...new Set((canvasData.jobs || []).flatMap(job => [job.url, job.sourceUrl, job.styleReferenceUrl]).filter(url => typeof url === 'string' && url.startsWith('https://')))];
 }

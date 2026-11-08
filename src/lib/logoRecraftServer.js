@@ -14,7 +14,7 @@ export function validateLogoSvg(buffer) {
   }
 }
 
-export async function generateRecraftLogo(input, sourceBuffer, sourceFormat, { request = fetch } = {}) {
+export async function generateRecraftLogo(input, sourceBuffer, sourceFormat, { request = fetch, styleReferenceBuffer } = {}) {
   const token = process.env.RECRAFT_API_TOKEN || process.env.RECRAFT_API_KEY;
   if (!token) throw new Error('Recraft is not configured on this server.');
   if (sourceFormat === 'svg') validateLogoSvg(sourceBuffer);
@@ -26,7 +26,11 @@ export async function generateRecraftLogo(input, sourceBuffer, sourceFormat, { r
       .resize(1024, 1024, { fit: 'contain', background: '#ffffff' }).flatten({ background: '#ffffff' }).png().toBuffer();
     image = dataUrl(buffer, nativeSvg ? 'image/svg+xml' : 'image/png');
   }
-  const guides = await prepareLogoVisualGuides(input);
+  // A user's chosen inspiration is the sole style source; don't blend it with
+  // an unrelated internal guide. Subject references remain a different input.
+  // Bound even a noisy RGBA reference below the adapter's encoded payload cap.
+  const guides = styleReferenceBuffer ? { references: [dataUrl(await sharp(styleReferenceBuffer, { limitInputPixels: 25_000_000 }).resize({ width: 768, height: 768, fit: 'inside', withoutEnlargement: true }).png().toBuffer(), 'image/png')], metadata: { role: 'user-style-inspiration', referenceCount: 1 } }
+    : await prepareLogoVisualGuides(input);
   const plan = recraftLogoPlan({ ...input, sourceFormat }, { image, styleReferences: guides.references });
   const response = await request(`https://external.api.recraft.ai/v1/${plan.endpoint}`, {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

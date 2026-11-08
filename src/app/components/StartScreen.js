@@ -87,6 +87,7 @@ function AnimatedFeatureHeadline({ className = "" }) {
     <h1 className={`user-feature-headline ${className}`.trim()}>
       <span className="user-feature-headline__lead">Make more with</span>
       <span className="user-feature-headline__slot" aria-live="off">
+        {featuredTools.map(tool => <span key={tool} className="user-feature-headline__name user-feature-headline__measure" aria-hidden="true">{tool}</span>)}
         <span key={featuredTools[activeTool]} className="user-feature-headline__name">{featuredTools[activeTool]}</span>
       </span>
     </h1>
@@ -696,7 +697,7 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
           else { setLoginReturnTo("/logo-studio"); setShowLoginModal(true); }
         }} />
         </div>
-        <div className="home-hero-content" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px", position: "relative", zIndex: 2 }}>
+        <div className="home-hero-content" style={isWorkspace ? undefined : { maxWidth: "1200px", margin: "0 auto", padding: "0 20px", position: "relative", zIndex: 2 }}>
 
           <div className={`hero-section${isWorkspace ? "" : " guest-hero-section"}`} style={{ justifyContent: "flex-start", margin: 0 }}>
             {/* LOGO AND UPLOAD BOX (ALWAYS VISIBLE) */}

@@ -4,22 +4,9 @@
 @media (max-width: 1100px) {
   .workspace-mobile-heading { display: flex; align-items: center; justify-content: center; position: fixed; inset: 0 0 auto; z-index: 55; height: calc(56px + env(safe-area-inset-top, 0px)); padding-top: env(safe-area-inset-top, 0px); border-bottom: 1px solid #303030; background: #171717; }
   .start-screen-container.start-screen-container--workspace { padding-top: calc(56px + env(safe-area-inset-top, 0px)); }
-  .start-screen-container--workspace .home-hero-backdrop { padding-top: 32px !important; min-height: calc(100dvh - 56px); }
-  .start-screen-container--workspace .hero-section { gap: 32px; }
   .start-screen-container--workspace .hero-left, .recent-projects { min-width: 0; }
   .recent-projects-header { flex-wrap: wrap; gap: 16px; }
   .recent-projects-header > div:last-child { width: min(100%, 300px) !important; }
-}
-@media (min-width: 1101px) and (max-width: 1680px) {
-  .start-screen-container--workspace .home-hero-backdrop > div { margin-left: 236px !important; margin-right: 244px !important; max-width: none !important; }
-  .start-screen-container--workspace .hero-section { flex-direction: column; gap: 32px; }
-  .start-screen-container--workspace .hero-left { width: 100%; }
-}
-@media (max-width: 420px) {
-  .start-screen-container--workspace .tool-launch-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .start-screen-container--workspace .tool-launch-row > button { width: 100%; min-width: 0; padding: 0 8px; }
-  .start-screen-container--workspace .tool-launch-row > button:first-child { grid-column: 1 / -1; }
-  .start-screen-container--workspace .tool-launch-row svg { display: block; flex-shrink: 0; }
 }
 @media (max-width: 800px) {
   .start-screen-container--workspace .hero-section { flex-direction: column; align-items: stretch; }
@@ -81,7 +68,6 @@
   .recent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .recent-projects-header > div:last-child { width: 100% !important; }
   .start-screen-container--workspace .user-hero-intro { padding: 0; }
-  .start-screen-container--workspace .user-hero-intro h1 { font-size: clamp(26px, 7.8vw, 36px); }
   .start-screen-container--workspace .guest-beta-badge { max-width: 100%; gap: 6px; }
   .start-screen-container--workspace .hero-left > div { max-width: 100%; }
 }

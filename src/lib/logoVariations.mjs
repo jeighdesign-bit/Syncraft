@@ -1,8 +1,10 @@
 import { normalizeLogoDesignSettings, logoDesignInstructions } from './logoDesignSettings.mjs';
 import { LOGO_STYLE_PROFILES } from './logoStyleProfiles.mjs';
 import { STREETWEAR_STYLE, isLetteringStyle, isLogoStyleAvailable } from './logoStyleCapabilities.mjs';
+import { logoCraftInstructions, LOGO_VARIATION_FINISH } from './logoCraft.mjs';
+import { compileBadgeArtDirection } from './logoBadgeDirection.mjs';
 
-export const LOGO_VARIATION_VERSION = 'logo-variation-5';
+export const LOGO_VARIATION_VERSION = 'logo-variation-6';
 
 // A reserved option has a concrete structural assignment, not another roll of
 // the same edit prompt. No remote planner or extra image candidates are needed.
@@ -46,22 +48,29 @@ export function logoVariationSource(source, jobs = []) {
   }
   const original = lineage.find(job => ['generate', 'variations'].includes(job.operation)) || source;
   const creation = lineage.findLast(job => job.operation === 'generate') || original;
+  // Utility records may contain the client tab's style in older projects.
+  // The nearest actual design/edit defines the style and identity for routing.
+  const identity = lineage.find(job => !['removeBg', 'vectorize'].includes(job.operation)) || original;
+  const style = identity.style || original.style || 'minimalist';
   const settings = lineage.find(job => Object.keys(job.designSettings || {}).length)?.designSettings || {};
   return {
-    mode: creation.mode || original.mode || source.mode || 'text', style: source.style || original.style || 'minimalist',
-    prompt: original.prompt || '', brand: source.brand ?? original.brand ?? '',
-    tagline: source.tagline ?? original.tagline ?? '', palette: source.palette ?? original.palette ?? [],
-    designSettings: normalizeLogoDesignSettings(settings, source.style || original.style || 'minimalist', { strict: false }),
+    mode: creation.mode || original.mode || source.mode || 'text', style,
+    prompt: original.prompt || '', brand: identity.brand ?? original.brand ?? '',
+    tagline: identity.tagline ?? original.tagline ?? '', palette: identity.palette ?? original.palette ?? [],
+    designSettings: normalizeLogoDesignSettings(settings, style, { strict: false, mode: creation.mode || original.mode || source.mode || 'text' }),
   };
 }
 
 export function applyLogoVariationStyle(context, variationStyle = 'auto') {
   if (variationStyle !== 'auto' && !Object.hasOwn(LOGO_STYLE_PROFILES, variationStyle)) throw new Error('Choose Auto or a supported variation style.');
   const style = variationStyle === 'auto' ? context.style : variationStyle;
-  const designSettings = normalizeLogoDesignSettings(context.designSettings, style, { strict: false });
+  const designSettings = normalizeLogoDesignSettings(context.designSettings, style, { strict: false, mode: context.mode });
   if (variationStyle === STREETWEAR_STYLE) {
     if (!isLogoStyleAvailable(style, context.mode)) throw new Error('Streetwear Lettering variations require a saved Text to Logo source. Choose Auto or another style.');
     if (!context.brand?.trim()) throw new Error('Streetwear Lettering variations need saved brand text. Choose Auto or another style.');
+  }
+  if (context.mode === 'image' && variationStyle !== 'auto' && !isLogoStyleAvailable(style, context.mode)) {
+    throw new Error('Choose an image-compatible variation style. Use Auto to preserve a saved logo.');
   }
   if (variationStyle !== 'auto' && style === 'wordmark' && !context.brand) throw new Error('Wordmark variations need saved brand text. Choose Auto or another style.');
   if (variationStyle !== 'auto' && style === 'monogram' && !designSettings.monogramLetters) {
@@ -74,7 +83,7 @@ export function applyLogoVariationStyle(context, variationStyle = 'auto') {
 }
 
 export function compileLogoVariation(job, direction = planLogoVariation(job)) {
-  const settings = normalizeLogoDesignSettings(job.designSettings, job.style, { strict: false });
+  const settings = normalizeLogoDesignSettings(job.designSettings, job.style, { strict: false, mode: job.mode });
   const lettering = isLetteringStyle(job.style);
   const changeStyle = job.variationStyle && job.variationStyle !== 'auto';
   const colors = Object.fromEntries(['primaryColor', 'secondaryColor', 'outlineColor', 'backgroundColor'].filter(key => settings[key]).map(key => [key, settings[key]]));
@@ -88,6 +97,13 @@ export function compileLogoVariation(job, direction = planLogoVariation(job)) {
     changeStyle
       ? `CHANGE STYLE: reinterpret the same accepted logo in the requested ${job.style} style. Target construction rules: ${LOGO_STYLE_PROFILES[job.style].join(' ')}. The target style overrides the source rendering technique and any old style instructions in the original brief, but never its identity, exact text or important motifs. Translate meaningful details into the target's shape/stroke language instead of dropping them. Retain color identity where compatible with the target treatment.`
       : `AUTO STYLE: visually match the supplied logo's actual style, stroke character, detail level, color relationships and finish. The saved ${job.style || 'original'} style label is context only; the accepted image, including any style edits, is authoritative. Do not impose a different illustration style or simplify away its important details.`,
+    job.style !== STREETWEAR_STYLE ? LOGO_VARIATION_FINISH : '',
+    ...(changeStyle && job.style !== STREETWEAR_STYLE ? [
+      ...logoCraftInstructions(job.style),
+      ...logoDesignInstructions(Object.fromEntries(Object.entries(settings).filter(([key]) => !key.endsWith('Color'))), job.style, { mode: job.mode })
+        .map(instruction => `Target design control: ${instruction}`),
+      ...compileBadgeArtDirection({ ...job, designSettings: settings }),
+    ] : []),
     lettering ? 'Typography remains the dominant logo, with the complete brand name clearly readable where present. Decorative motifs must never replace the wordmark or make the requested letters ambiguous.' : '',
     ...(changeStyle && job.style === STREETWEAR_STYLE
       ? logoDesignInstructions(Object.fromEntries(Object.entries(settings).filter(([key]) => key.startsWith('streetwear'))), job.style)
