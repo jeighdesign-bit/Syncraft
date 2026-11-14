@@ -9,6 +9,19 @@ import * as aspect from '../src/lib/aspectRatio.js';
 const projectId = '11111111-1111-4111-8111-111111111111';
 const sourceUrl = `https://storage.test/projects/${projectId}/source.png`;
 
+test('the local Universal test flag cannot enable production', async () => {
+  const source = (await readFile(new URL('../src/lib/universalAvailability.mjs', import.meta.url), 'utf8')).replace(/export /g, '');
+  for (const [mode, flag, expected] of [
+    ['production', 'true', false], ['production', 'false', false],
+    ['development', 'true', true], ['development', 'false', false],
+  ]) {
+    const actual = vm.runInNewContext(source + '\nUNIVERSAL_AVAILABLE', {
+      process: {env: {NODE_ENV: mode, NEXT_PUBLIC_UNIVERSAL_TEST_ENABLED: flag}}, Response,
+    });
+    assert.equal(actual, expected, `${mode}/${flag}`);
+  }
+});
+
 async function harness(route, { traceType = 'universal', method = 'POST', owner = false } = {}) {
   const calls = { writes:0, uploads:0, charges:0, refunds:0, providers:0, downloads:0, start:0, status:0, save:0, balance:0 };
   const user = { id:'owner', ...(owner ? {role:'admin',is_owner:true} : {}) };
