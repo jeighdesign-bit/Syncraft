@@ -355,11 +355,11 @@ const SplitViewCanvas = memo(function SplitViewCanvas({
 
   // Tab config
   const tabs = isUpscale
-    ? [{ id: "generated", label: "4X HD UPSCALE", hasContent: !!project?.generated_image_url }]
+    ? [{ id: "generated", label: "4X SYNCRAFT UPSCALE", hasContent: !!project?.generated_image_url }]
     : [
         { id: "generated", label: "1. FLAT EXTRACT", hasContent: !!project?.generated_image_url },
-        { id: "upscaled",  label: "2. HD UPSCALE",   hasContent: !!project?.upscaled_image_url },
-        { id: "svg",       label: "3. VECTOR SVG",    hasContent: !!project?.svg_url },
+        { id: "upscaled",  label: "2. SYNCRAFT UPSCALE",   hasContent: !!project?.upscaled_image_url },
+        { id: "svg",       label: "3. SYNCRAFT VECTOR", hasContent: !!project?.svg_url },
       ];
 
   return (

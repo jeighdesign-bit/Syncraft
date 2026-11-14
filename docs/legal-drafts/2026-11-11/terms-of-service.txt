@@ -1,0 +1,94 @@
+SYNCRAFT — TERMS OF SERVICE
+Last updated: 11 November 2026
+Effective date: 11 November 2026
+Operator: JAY LUIS CAÑO, operating as Syncraft
+Support: jeighdesign@gmail.com
+
+1. ABOUT THESE TERMS
+
+These Terms govern your use of the Syncraft website, workspace, image-processing tools and related services provided by JAY LUIS CAÑO ("Syncraft", "we", "us" or "our"). They should be read with our Privacy Policy, Refund and Payment Policy, Copyright Policy and Acceptable Use Policy.
+
+You must accept these Terms before creating or using an account. If you use Syncraft for a client, employer or organization, you must have authority to submit their material and agree to the applicable conditions on their behalf. A privacy notice explains our handling of personal data; accepting these Terms does not replace consent required for optional processing.
+
+2. ELIGIBILITY AND YOUR ACCOUNT
+
+You must be at least 18 years old, meet any higher age of legal majority that applies to you, and have legal capacity to enter this agreement. Keep your account information accurate, protect access to your sign-in account, and promptly report suspected unauthorized use to jeighdesign@gmail.com. Do not share credentials or let another person misuse your account.
+
+3. WHAT SYNCRAFT PROVIDES
+
+Available tools may include garment artwork extraction, logo extraction, logo creation from text, images or sketches, variations, AI edits, background removal, image upscaling, vectorization and file exports. Features depend on their availability and the workflow you select. A feature marked unavailable cannot currently be used.
+
+The selected mode, crop, reference image, resolution and other settings affect processing. You are responsible for choosing the source area and instructions you want processed. The interface identifies paid operations and their credit cost before you start them.
+
+Business/API access has a separate wallet and pricing from consumer workspace credits. Where a separate written business agreement applies, it governs conflicting business-specific provisions. These Terms do not remove mandatory consumer protections where they apply.
+
+4. AI OUTPUTS AND PRODUCTION REVIEW
+
+AI processing can change or omit colors, text, logos, fine patterns, gradients, layout or other details. It can invent elements or retain garment outlines, fabric effects or background content. Repeating a request can produce a different result. A successful processing status does not certify that artwork exactly matches a reference or is ready for manufacturing.
+
+Review outputs before printing, sublimation, client delivery or commercial use. Check spelling, authorization, dimensions, color, placement, resolution and required file structure; make a proof or sample where appropriate. We do not guarantee an exact reconstruction, unique design, trademark clearance or suitability for a particular production process.
+
+Resolution options describe the generated raster tier. Pixel dimensions depend on aspect ratio and processing. Upscaling and exporting can change dimensions without restoring original detail. SVG vectorization does not guarantee editable text or perfect paths, and a PSD export may contain rasterized layers. Use the actual delivered file properties to assess production suitability.
+
+These limitations do not excuse failure to provide a paid service as agreed or remove remedies required by law.
+
+5. CREDITS, PURCHASES AND REFUNDS
+
+Syncraft uses prepaid credits. One credit does not equal one completed operation: costs vary by tool, selected resolution and number of outputs. The displayed total is the cost of the selected paid action. Additional paid actions or fresh generations can incur further charges.
+
+Credits can be deducted when a request is accepted or before processing begins. Eligible technical failures are handled through the linked credit-refund or recovery process described in the Refund and Payment Policy. A credit return is different from a refund of the purchase payment.
+
+Consumer credits currently have no scheduled expiry and are non-transferable between accounts. They are service units, not a deposit, investment or general-purpose currency. Cash refunds are considered under the Refund and Payment Policy and applicable law. Changes to future prices do not retroactively change a charge already made for a request.
+
+6. YOUR MATERIAL AND PERMISSION TO PROCESS IT
+
+You must own or have sufficient permission to upload and process images, text, trademarks, fonts and other material, including client files and personal data. Removing a logo, converting an image into a vector or generating a variation does not grant rights to the underlying artwork or authorize counterfeit merchandise.
+
+As between you and Syncraft, you retain the rights you already hold in your uploads, and we do not claim ownership of your uploads or outputs. We do not promise that every AI output creates copyright or is eligible for copyright or trademark registration. Use of an output remains subject to applicable law, existing third-party rights and applicable upstream licensing restrictions.
+
+You give us a limited, non-exclusive permission to host, transmit, reproduce and process your material as necessary to perform requested operations, show your project history, provide exports, support you, secure the service and fulfill lawful obligations. This includes necessary processing by service providers described in our Privacy Policy. It does not give us a general right to sell your artwork or publish it in marketing.
+
+That operational permission lasts only as needed for those purposes, including necessary retention and legal obligations. Project deletion does not necessarily remove all copies instantly from provider systems or backups. Syncraft does not use your files to train its own AI models; provider processing is addressed separately in the Privacy Policy.
+
+7. SHARING AND OPTIONAL PUBLIC DISPLAY
+
+Where project sharing is available, the owner controls which existing Syncraft users receive view or edit access. Share only with people you trust. Paid operations performed by an authorized editor use the acting user's credits where the workflow charges that user; project sharing does not transfer a credit balance.
+
+Project access controls and direct file links are different. Some assets are served through direct URLs; a person who obtains such a URL may be able to access the file while it remains available. Revoking a collaborator's access does not recall downloaded files or copies already shared elsewhere.
+
+Submitting a logo for the optional community showcase requires separate display permission. Submission is subject to review and does not itself publish the logo. Approved logos and their submitted business links may be displayed publicly. You may withdraw your listing through the available controls. Participation does not by itself establish sponsorship or endorsement by Syncraft.
+
+8. TEMPORARY PROJECT STORAGE
+
+Syncraft is a processing workspace, not a permanent archive. Standard projects expire after three days from creation. Temporary transfer files and export caches may expire earlier. Download the files you need before expiry; editing or sharing a project should not be assumed to extend its life.
+
+Project access expiry and physical deletion are separate processes. Storage cleanup is scheduled and can be delayed by execution failures or retries. Transaction, account, security and support records, and optional community submissions, follow different retention purposes as explained in the Privacy Policy.
+
+9. ACCEPTABLE USE AND ENFORCEMENT
+
+Do not use Syncraft for infringement, counterfeiting, unlawful impersonation, fraud, child exploitation, unlawful disclosure of personal information, malicious code, unauthorized access, attacks on the service or abuse of payments, credits or usage limits. Do not use the service or its outputs in a way prohibited by applicable law or applicable AI-provider restrictions.
+
+We may refuse requests, remove offending content, restrict features or suspend or terminate access when reasonably necessary to address violations, security threats or legal obligations. Where appropriate and lawful, we will explain the restriction and provide a way to raise a concern. Suspension does not automatically eliminate any refund or other right that applicable law preserves.
+
+10. AVAILABILITY AND SERVICE CHANGES
+
+AI providers, networks and payment services can be interrupted. We may maintain or change features and take emergency measures to protect the service. We will provide reasonable notice of material changes where practicable, and deal with affected paid requests under the Refund and Payment Policy and applicable law.
+
+11. RESPONSIBILITY AND LEGAL PROTECTIONS
+
+Except for promises expressly made and rights that cannot lawfully be excluded, the service is provided on an available, best-effort basis. To the extent permitted by law, we do not accept responsibility for indirect or consequential losses arising from reliance on an unreviewed output or an interruption outside our reasonable control.
+
+Nothing in these Terms excludes mandatory consumer remedies or liability that cannot lawfully be excluded, including applicable liability for fraud, willful misconduct or gross negligence. The AI limitations above do not waive your rights in a defective or undelivered paid service.
+
+12. CHANGES, COMPLAINTS AND GOVERNING LAW
+
+These Terms are effective from 11 November 2026. We will communicate material revisions through the service or an appropriate contact channel and obtain renewed agreement where required. Changes do not retroactively remove accrued rights or alter completed purchases contrary to law.
+
+Philippine law governs these Terms, without limiting mandatory rights or complaint routes that apply to you. Contact jeighdesign@gmail.com so we can try to resolve a concern. You remain free to approach the appropriate consumer authority, privacy regulator, payment provider or court as permitted by law.
+
+13. CONTACT
+
+Operator: JAY LUIS CAÑO, operating as Syncraft
+Service, payment and privacy inquiries: jeighdesign@gmail.com
+
+The operator details must match the applicable business-registration records. Display of a tax-registration badge does not replace these Terms or the Privacy Policy.

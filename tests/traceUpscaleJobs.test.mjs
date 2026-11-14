@@ -5,17 +5,20 @@ import { createHash, randomUUID } from 'node:crypto';
 import vm from 'node:vm';
 import { downloadUpscaleFile } from '../src/lib/upscaleDownload.mjs';
 import { optimizePngLosslessly } from '../src/lib/pngOptimization.mjs';
+import sharp from 'sharp';
+import * as resolutionPolicy from '../src/lib/extractionResolution.mjs';
 
 // Exercise the production state machine with an atomic in-memory database and
 // provider transport. No real jobs are submitted and no credits are changed.
 async function harness(options = {}) {
   const project = {
-    id: 'project-1', user_id: 'owner', trace_type: options.native ? 'universal' : 'mockup',
+    id: 'project-1', user_id: 'owner', trace_type: options.traceType || (options.native ? 'universal' : 'mockup'),
     created_at: new Date().toISOString(), credits: 0,
-    generated_image_url: 'https://storage.test/projects/project-1/flat.png',
+    generated_image_url: options.resolution ? 'https://storage.test/projects/project-1/generated_flat_123.png' : 'https://storage.test/projects/project-1/flat.png',
     upscaled_image_url: null, svg_url: null,
   };
   const rows = [], usage = [], queries = [];
+  const native4KBuffer = options.resolution === '4K' ? await sharp({ create: { width: options.sourceWidth || 4096, height: options.sourceHeight || 4096, channels: 3, background: '#7236a8' } }).png().toBuffer() : Buffer.from('native-source');
   const calls = { submit: 0, status: 0, result: 0, download: 0, upload: 0, nativeRead: 0, nativeResize: 0, charge: 0, refund: 0 };
   let queueStatus = options.queueStatus || 'IN_QUEUE';
   let downloadFailures = options.downloadFailures || 0;
@@ -74,7 +77,7 @@ async function harness(options = {}) {
   const source = (await readFile(new URL('../src/lib/traceUpscaleJobs.js', import.meta.url), 'utf8'))
     .replace(/^import[\s\S]*?;\r?\n/gm, '').replace(/export /g, '');
   const context = vm.createContext({
-    Buffer, URL, Blob, FormData, Headers, Response, AbortSignal, AbortController, DOMException, Date,
+    ...resolutionPolicy, sharp, Buffer, URL, Blob, FormData, Headers, Response, AbortSignal, AbortController, DOMException, Date,
     createHash, randomUUID, setTimeout, clearTimeout, structuredClone,
     console: { info() {}, warn() {}, error() {}, log() {} },
     process: { env: environment }, adminSupabase, downloadUpscaleFile, optimizePngLosslessly,
@@ -86,11 +89,11 @@ async function harness(options = {}) {
     getAllowedProviderHosts: () => ['provider.test'],
     usesNativeTraceUpscale: () => options.native === true,
     resizeTraceForUpscale: async buffer => { calls.nativeResize++; return buffer; },
-    findLatestProjectCharge: async () => ({ transactionId: 'original-charge', isOwnerTest: false }),
+    findLatestProjectCharge: async () => ({ transactionId: 'original-charge', isOwnerTest: false, status: 'provider_succeeded', metadata: { resolution: options.resolution || '2K' } }),
     recordProviderUsage: async row => { usage.push(copy(row)); return true; },
     chargeCreditsVerified: async () => { calls.charge++; throw new Error('Upscale must not charge'); },
     refundCreditVerified: async () => { calls.refund++; throw new Error('Upscale must not refund'); },
-    fetchStoredAsset: async () => { calls.nativeRead++; return { response: { ok: true, headers: new Headers({ 'content-type': 'image/png' }) }, buffer: Buffer.from('native-source') }; },
+    fetchStoredAsset: async () => { calls.nativeRead++; if (options.changeDuringNativeRead) project.generated_image_url = 'https://storage.test/projects/project-1/new-source.png'; return { response: { ok: true, headers: new Headers({ 'content-type': 'image/png' }) }, buffer: native4KBuffer }; },
     fetchWithSSRFProtection: async () => {
       calls.download++;
       if (downloadFailures > 0) { downloadFailures--; throw new TypeError('terminated'); }
@@ -289,6 +292,67 @@ test('native recovery reserves and saves without sending a paid provider request
   assert.equal(h.calls.submit, 0);
   assert.equal(h.calls.nativeRead, 1);
   assert.equal(h.calls.nativeResize, 1);
+});
+
+test('native 4K keeps the exact saved URL in both preview slots without ESRGAN, resize, upload, charge or refund', async () => {
+  const h = await harness({ resolution: '4K' });
+  const result = await h.start();
+  assert.equal(result.status, 'succeeded');
+  assert.equal(result.upscaleSkipped, true);
+  assert.equal(result.fileUrl, h.project.generated_image_url);
+  assert.equal(h.project.upscaled_image_url, h.project.generated_image_url);
+  assert.equal((await h.poll()).fileUrl, result.fileUrl);
+  assert.equal((await h.save()).fileUrl, result.fileUrl);
+  for (const name of ['submit', 'status', 'result', 'download', 'nativeResize', 'upload', 'charge', 'refund']) assert.equal(h.calls[name], 0, name);
+  assert.equal(h.calls.nativeRead, 1);
+  assert.equal(h.usage[0].provider, 'syncraft_native_4k');
+  assert.equal(h.usage[0].creditTransactionId, 'original-charge');
+  assert.equal(h.usage[0].estimatedCostUsd, 0);
+});
+
+test('start, status and save can all recover saved 4K after an earlier failed ESRGAN job', async () => {
+  for (const action of ['start', 'poll', 'save']) {
+    const h = await harness({ resolution: '4K' });
+    h.rows.push({ id: 'old-job', provider: 'syncraft_upscale', request_status: 'failed',
+      provider_request_id: createHash('sha256').update(JSON.stringify([h.project.id, h.project.generated_image_url, false, 4])).digest('hex'),
+      metadata: { source_url: h.project.generated_image_url, request_id: 'old-failed-request' } });
+    const result = await h[action]();
+    assert.equal(result.status, 'succeeded');
+    assert.equal(result.upscaleSkipped, true);
+    assert.equal(h.calls.submit, 0);
+    assert.equal(h.calls.charge, 0);
+    assert.equal(h.rows[0].request_status, 'failed');
+  }
+});
+
+test('2K keeps ESRGAN and never enters the native 4K transfer path', async () => {
+  const h = await harness({ resolution: '2K' });
+  assert.equal((await h.start()).status, 'queued');
+  assert.equal(h.calls.submit, 1);
+  assert.equal(h.calls.nativeRead, 0);
+  assert.equal(h.project.upscaled_image_url, null);
+});
+
+test('both Universal 4K modes bypass every upscale path and preserve the exact native file', async () => {
+  for(const native of [false,true]) {
+    const h=await harness({traceType:'universal',resolution:'4K',native});
+    const result=await h.start();
+    assert.equal(result.upscaleSkipped,true);
+    assert.equal(h.project.upscaled_image_url,h.project.generated_image_url);
+    assert.equal(h.calls.submit,0);
+    assert.equal(h.calls.nativeResize,0);
+    assert.equal(h.calls.charge,0);
+  }
+});
+
+test('4K pass-through rejects undersized assets and concurrent source changes without calling a provider', async () => {
+  for (const options of [{ sourceWidth: 1024, sourceHeight: 1024 }, { changeDuringNativeRead: true }]) {
+    const h = await harness({ resolution: '4K', ...options });
+    await assert.rejects(h.start(), { code: options.changeDuringNativeRead ? 'UPSCALE_ARTWORK_CHANGED' : 'EXTRACTION_RESOLUTION_MISMATCH' });
+    assert.equal(h.project.upscaled_image_url, null);
+    assert.equal(h.calls.submit, 0);
+    assert.equal(h.calls.charge, 0);
+  }
 });
 
 test('a retry of a failed native job returns directly to ready without waiting for a provider', async () => {

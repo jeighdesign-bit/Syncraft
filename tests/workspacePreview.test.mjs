@@ -39,7 +39,7 @@ test('fit is the minimum readable view and explicit zoom-in remains available', 
   assert.deepEqual(canvasZoomLayout(Number.NaN), { scrollPercent: 100, contentScale: 1 });
 });
 
-test('completed generation opens HD Upscale first even when the SVG is available', () => {
+test('completed generation opens Syncraft Upscale first even when the SVG is available', () => {
   assert.equal(preferredCanvasTab({ svg_url: 'vector', upscaled_image_url: 'large-raster' }), 'upscaled');
   assert.equal(preferredCanvasTab({ svg_url: 'vector' }), 'svg');
   assert.equal(preferredCanvasTab({ upscaled_image_url: 'raster' }), 'upscaled');

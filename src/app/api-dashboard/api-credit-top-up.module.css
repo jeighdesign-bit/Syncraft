@@ -79,6 +79,12 @@
 .checkoutIntro { padding: 42px; }
 .qrShell { width: min(330px, 100%); aspect-ratio: 1; margin: 30px auto 0; padding: 13px; border-radius: 17px; background: #fff; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28); }
 .qrShell img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.expiredQr { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; color:#76541b; }
+.expiredQr strong { color:#40311a; font-size:22px; }
+.countdown { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:14px; color:#d4ff59; font-size:13px; }
+.countdown strong { margin-left:auto; font-size:24px; font-variant-numeric:tabular-nums; }
+.countdownWarning { color:#ffda94; }
+.expiryNotice { margin:16px 0; color:#e0cfb0; font-size:13px; line-height:1.65; }
 .checkoutSummary { padding: 92px 36px 36px; border-left: 1px solid rgba(255, 255, 255, 0.09); background: rgba(0, 0, 0, 0.14); }
 .summaryLabel { color: rgba(255, 255, 255, 0.35); font-size: 10px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; }
 .summaryPlan { margin-top: 22px; padding: 20px 0; border-top: 1px solid rgba(255, 255, 255, 0.09); border-bottom: 1px solid rgba(255, 255, 255, 0.09); display: flex; justify-content: space-between; gap: 18px; font-size: 12px; }

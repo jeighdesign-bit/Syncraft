@@ -34,6 +34,7 @@ import ShareProjectModal from "./components/ShareProjectModal";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 import { CREDIT_COST } from "@/lib/pricing";
+import { DEFAULT_EXTRACTION_RESOLUTION } from "@/lib/extractionResolution.mjs";
 import { evaluateExtendIntent } from "@/lib/aspectRatio";
 import {
   trackExport,
@@ -62,7 +63,7 @@ const WORKSPACE_MODES = {
     accent: "#9effc8",
   },
   upscale: {
-    title: "HD UPSCALE",
+    title: "SYNCRAFT UPSCALE",
     eyebrow: "IMAGE ENHANCEMENT",
     accent: "#6fddff",
   },
@@ -97,6 +98,8 @@ export default function Workspace() {
   // Lifted out of PropertiesPanel: Extend Design re-runs the vectorize stage from
   // here, so it needs the colour setting too.
   const [vectorColors, setVectorColors] = useState("auto");
+  const [extractionResolution, setExtractionResolution] = useState(DEFAULT_EXTRACTION_RESOLUTION);
+  useEffect(() => { setExtractionResolution(DEFAULT_EXTRACTION_RESOLUTION); }, [projectId]);
   const [isSavingReferenceCategory, setIsSavingReferenceCategory] = useState(false);
 
   // ─── Modal State ──────────────────────────────────────────────────────────
@@ -134,6 +137,7 @@ export default function Workspace() {
     traceState, nodeErrors, consoleRef,
     logToConsole, handleExecuteTrace, analyzeRecovery, handleResumeFromStep2, handleRetryVector,
   } = useTraceExecution({
+    extractionResolution,
     project,
     setProject,
     userCredits,
@@ -215,19 +219,15 @@ export default function Workspace() {
     return () => window.removeEventListener("syncraft:credits-updated", handleCreditsUpdate);
   }, []);
 
-  // Auto-switch away from loading state (if any was needed)
+  // Fresh projects show the compact ready state. Restore notices only for saved output.
   useEffect(() => {
     if (!project) return;
     
-    // Initialize console log so it doesn't look empty
     if (consoleRef.current && consoleRef.current.children.length === 0) {
-      logToConsole(`[System] Workspace initialized for ${project.name}`);
       if (project.svg_url) {
-        logToConsole(`[System] Previous vector data loaded`, "success");
-      } else if (project.generated_image_url) {
-        logToConsole(`[System] Processed image ready for vectorization`, "normal");
-      } else {
-        logToConsole(`[System] Ready for background extraction`, "normal");
+        logToConsole(`[Complete] Your artwork and vector are ready.`, "success");
+      } else if (project.generated_image_url && project.generated_image_url !== 'REFUNDED') {
+        logToConsole(`[Saved artwork] Flat extract loaded. Continue with Syncraft Upscale or Syncraft Vector.`, "normal");
       }
     }
   }, [project, logToConsole, consoleRef]);
@@ -449,7 +449,6 @@ export default function Workspace() {
     }
     if (project?.trace_type === "universal") {
       try {
-        logToConsole("[Universal] Preparing your image for extraction...");
         await analyzeRecovery();
       } catch (error) {
         logToConsole(`[Error] ${error.message || "Reference analysis failed."}`, "error");
@@ -809,6 +808,8 @@ export default function Workspace() {
           onReferenceCategoryChange={handleReferenceCategoryChange}
           isSavingReferenceCategory={isSavingReferenceCategory}
           onVectorColorsChange={setVectorColors}
+          extractionResolution={extractionResolution}
+          onExtractionResolutionChange={setExtractionResolution}
           extendMode={canModifyProject && extendMode}
           extendProcessing={extendProcessing}
           extendCanProceed={!!extendPlan?.ok}

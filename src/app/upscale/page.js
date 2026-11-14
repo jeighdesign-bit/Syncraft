@@ -1,5 +1,6 @@
 "use client";
 
+import CreditAmount from '@/components/CreditAmount';
 import GenerateButton from "@/components/GenerateButton";
 import BackToWorkspace from "@/components/BackToWorkspace";
 import { useState, useRef, useEffect } from "react";
@@ -206,7 +207,7 @@ export default function UpscalePage() {
               <span style={{ color: "#fff", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600" }}>BUY CREDITS</span>
             ) : (
               <>
-                <span style={{ color: "#d4ff59", fontWeight: "bold", fontSize: "14px", fontFamily: "monospace" }}>{credits !== null ? credits : "-"}</span>
+                <span style={{ color: "#d4ff59", fontWeight: "bold", fontSize: "14px", fontFamily: "monospace" }}><CreditAmount amount={credits !== null ? credits : "-"} unit={null} /></span>
                 <span style={{ color: "#888", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>CREDITS</span>
               </>
             )}
@@ -225,7 +226,7 @@ export default function UpscalePage() {
               1. ORIGINAL UPLOAD
             </div>
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: upscaledImage ? "#d4ff59" : "#666", fontWeight: "700", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase", whiteSpace: "nowrap", padding: "0 10px" }}>
-              2. 4X HD UPSCALE
+              2. 4X SYNCRAFT UPSCALE
             </div>
           </div>
 

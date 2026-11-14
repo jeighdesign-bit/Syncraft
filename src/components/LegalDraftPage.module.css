@@ -1,0 +1,31 @@
+.page { min-height:100vh; padding:40px 20px 100px; background:#111; color:#ccc; user-select:text; }
+.container { max-width:800px; margin:0 auto; }
+.header { padding-bottom:24px; border-bottom:1px solid #333; }
+.back { display:inline-flex; align-items:center; gap:8px; margin-bottom:30px; color:#aaa; font-size:14px; text-decoration:none; }
+.back:hover { color:#d4ff59; }
+.header h1 { display:flex; align-items:center; gap:12px; margin:0 0 24px; color:#fff; font-size:clamp(28px,5vw,36px); font-weight:700; line-height:1.25; }
+.header h1 svg { flex-shrink:0; color:#d4ff59; }
+.details { padding:20px 24px; border:1px solid #333; border-radius:12px; background:#1a1a1a; font-size:14px; line-height:1.7; overflow-wrap:anywhere; }
+.details p + p { margin-top:8px; }
+.placeholder { padding:1px 4px; border-radius:3px; background:#d4ff5914; color:#e0edae; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+.navigation { display:flex; flex-wrap:wrap; gap:8px; margin-top:20px; }
+.navigation a { display:inline-flex; align-items:center; min-height:40px; padding:8px 12px; border:1px solid #333; border-radius:7px; color:#b8b8b8; font-size:13px; line-height:1.4; text-decoration:none; }
+.navigation a:hover { border-color:#666; color:#fff; }
+.navigation a[aria-current=page] { border-color:#687b36; color:#d4ff59; background:#d4ff5908; }
+.page a:focus-visible { outline:2px solid #d4ff59; outline-offset:4px; }
+.content { display:flex; flex-direction:column; gap:36px; margin-top:36px; }
+.section { padding-left:24px; border-left:3px solid #2a2a2a; scroll-margin-top:24px; }
+.sectionNumber { margin-bottom:8px; color:#d4ff59; font-size:11px; font-weight:700; letter-spacing:1.6px; text-transform:uppercase; }
+.section h2 { margin:0 0 16px; color:#fff; font-size:19px; font-weight:600; line-height:1.45; }
+.copy,.list { color:#b4b4b4; font-size:15px; line-height:1.85; overflow-wrap:anywhere; }
+.copy { white-space:pre-line; }
+.copy + .copy,.copy + .list,.list + .copy { margin-top:16px; }
+.list { padding-left:22px; }
+.list li + li { margin-top:10px; }
+.copy a,.list a { color:#d4ff59; text-underline-offset:3px; }
+@media(max-width:600px) {
+  .page { padding:24px 16px 64px; }
+  .details { padding:16px; }
+  .section { padding-left:16px; }
+  .section h2 { font-size:17px; }
+}

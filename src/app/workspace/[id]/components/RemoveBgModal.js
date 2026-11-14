@@ -1,5 +1,6 @@
 "use client";
 
+import CreditAmount from '@/components/CreditAmount';
 import { memo, useState } from "react";
 import { ImageMinus, X, Loader2, Sparkles, ShieldCheck } from "lucide-react";
 import { CREDIT_COST } from "@/lib/pricing";
@@ -204,7 +205,7 @@ const RemoveBgModal = memo(function RemoveBgModal({
             fontSize: "11px",
           }}>
             <span style={{ fontSize: "14px" }}>🪙</span>
-            <span style={{ color: "#aaa" }}>This action will consume <strong style={{ color: "#fff" }}>{CREDIT_COST.removeBg} Credits</strong> from your account.</span>
+            <span style={{ color: "#aaa" }}>This action will consume <strong style={{ color: "#fff" }}><CreditAmount amount={CREDIT_COST.removeBg} /></strong> from your account.</span>
           </div>
 
           {/* Error */}
@@ -282,7 +283,7 @@ const RemoveBgModal = memo(function RemoveBgModal({
             ) : (
               <>
                 <ImageMinus size={13} strokeWidth={2.5} />
-                Remove Background  (−{CREDIT_COST.removeBg} Credits)
+                Remove Background <CreditAmount amount={CREDIT_COST.removeBg} unit="" />
               </>
             )}
           </button>

@@ -1,5 +1,6 @@
 "use client";
 
+import CreditAmount from '@/components/CreditAmount';
 import { useState } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
@@ -52,7 +53,7 @@ export default function PricingSection({ isSignedIn, onSelectPlan, compact = fal
               </p>
               <span className={styles.purchaseType}>one-time purchase</span>
             </div>
-            <p className={styles.credits}>{plan.credits.toLocaleString()} credits</p>
+            <p className={styles.credits}><CreditAmount amount={plan.credits.toLocaleString()} /></p>
             <p className={styles.description}>{plan.description}</p>
             <ul className={styles.features}>
               <li><Check size={13} aria-hidden="true" /><span>Up to <strong>{Math.floor(plan.credits / CREDIT_COST.logoGenerate)} logos</strong> in Logo Studio</span></li>
@@ -74,7 +75,7 @@ export default function PricingSection({ isSignedIn, onSelectPlan, compact = fal
       </div>
 
       <div className={styles.notes}>
-        <p className={styles.note}>Allowances are alternatives, not combined totals. Logo Studio creation uses {CREDIT_COST.logoGenerate} credits per logo; variations use {CREDIT_COST.logoVariations} credits per output; standard extraction uses {CREDIT_COST.trace}. Some workflows use more.</p>
+        <p className={styles.note}>Allowances are alternatives, not combined totals. Logo Studio creation uses <CreditAmount amount={CREDIT_COST.logoGenerate} /> per logo; variations use <CreditAmount amount={CREDIT_COST.logoVariations} /> per output; standard extraction uses <CreditAmount amount={CREDIT_COST.trace} />. Some workflows use more.</p>
         <p className={styles.note}>
           The {CREDIT_PLANS.tingi.price} Tingi plan is not available for international cards because card-processing costs make this small transaction impractical. USD card prices are separate checkout prices—not direct peso conversions—and may include payment processing, cross-border or currency-conversion costs, and applicable taxes.
         </p>

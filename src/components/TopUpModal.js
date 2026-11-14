@@ -1,18 +1,21 @@
 "use client";
 
+import CreditAmount from '@/components/CreditAmount';
 import { memo, useState, useCallback, useEffect, useRef } from "react";
-import { X, Wallet, CheckCircle, Package, Tag, Mail, Smartphone, ArrowRight, ImageIcon, History, CreditCard, AlertTriangle, QrCode } from "lucide-react";
+import { X, Wallet, CheckCircle, Package, Tag, Mail, Smartphone, ArrowRight, ImageIcon, History, CreditCard, AlertTriangle, QrCode, Clock3 } from "lucide-react";
 import { toast } from "@/components/Toast";
 import { createClient } from "@/utils/supabase/client";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
 import { MANUAL_GCASH_ENABLED } from "@/lib/paymentMethods.mjs";
 import { trackEvent } from "@/lib/analytics.mjs";
+import { useQrExpiry } from "@/hooks/useQrExpiry";
+import { qrExpiryTimestamp } from "@/lib/qrExpiry.mjs";
 import PricingSection from "@/app/components/PricingSection";
 import CreditHistory from "./CreditHistory";
 import styles from "./TopUpModal.module.css";
 
 const PLAN_LABELS = Object.fromEntries(
-  Object.values(CREDIT_PLANS).map((p) => [p.key, `${p.label} — ${p.credits} Credits`])
+  Object.values(CREDIT_PLANS).map((p) => [p.key, <>{p.label} — <CreditAmount amount={p.credits} /></>])
 );
 const PLAN_PRICES = Object.fromEntries(
   Object.values(CREDIT_PLANS).map((p) => [p.key, p.price])
@@ -36,6 +39,25 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [qrExpanded, setQrExpanded] = useState(false);
   const topUpViewTracked = useRef(false);
+  const [isStartingPaymongo, setIsStartingPaymongo] = useState(false);
+  const [qrPhData, setQrPhData] = useState(null);
+  const [qrPaymentStatus, setQrPaymentStatus] = useState("pending");
+  const checkoutRequest = useRef(null);
+  const qrExpiry = useQrExpiry(qrPhData?.expiresAt, show && step === 'qr_display');
+  const qrUnavailable = qrExpiry.expired || ["expired", "failed"].includes(qrPaymentStatus);
+  const resetQrCheckout = useCallback(() => {
+    checkoutRequest.current?.abort();
+    setIsStartingPaymongo(false);
+    setQrPhData(null);
+    setQrPaymentStatus("pending");
+  }, []);
+
+  useEffect(() => {
+    if (!show) {
+      resetQrCheckout();
+    }
+    return () => checkoutRequest.current?.abort();
+  }, [show, resetQrCheckout]);
 
   useEffect(() => {
     if (show && CREDIT_PLANS[initialPlanKey]) {
@@ -87,33 +109,81 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
   }, [activeTab, user, supabase]);
 
   const handleClose = useCallback(() => {
+    resetQrCheckout();
     onClose();
     setStep(1);
     setSubmitted(false);
     setIsStartingPolar(false);
     setActiveTab("plans");
     setForm({ plan: CREDIT_PLANS[initialPlanKey] ? initialPlanKey : "pro", txnRef: "", screenshotName: "", screenshotFile: null });
-    setQrPhData(null);
-    if (qrPollIntervalId) {
-      clearInterval(qrPollIntervalId);
-      setQrPollIntervalId(null);
-    }
-  }, [initialPlanKey, onClose]);
+  }, [initialPlanKey, onClose, resetQrCheckout]);
 
+  useEffect(() => {
+    if (!show || step !== 'qr_display' || !qrPhData?.localPaymentId) return;
+    const controller = new AbortController();
+    let timer;
+    const plan = CREDIT_PLANS[qrPhData.planKey];
+    const deadline = qrExpiryTimestamp(qrPhData.expiresAt);
 
-  const [isStartingPaymongo, setIsStartingPaymongo] = useState(false);
-  const [qrPhData, setQrPhData] = useState(null);
-  const [qrPollIntervalId, setQrPollIntervalId] = useState(null);
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/payments/paymongo/status?localPaymentId=${encodeURIComponent(qrPhData.localPaymentId)}`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        const statusData = res.ok ? await res.json() : null;
+        if (controller.signal.aborted) return;
+        if (statusData?.status === 'paid') {
+          checkoutRequest.current?.abort();
+          setIsStartingPaymongo(false);
+          setStep('success');
+          toast.success("Payment completed! Your credits have been added.");
+          trackEvent("purchase", {
+            transaction_id: qrPhData.localPaymentId,
+            currency: "PHP",
+            value: plan.amount / 100,
+            payment_provider: "paymongo",
+            plan: plan.key,
+            items: [{ item_id: plan.key, item_name: plan.label, quantity: 1 }],
+          });
+          window.dispatchEvent(new CustomEvent("syncraft:credits-updated"));
+          onCreditUpdated?.();
+          return;
+        }
+        if (["failed", "expired"].includes(statusData?.status)) {
+          setQrPaymentStatus(statusData.status);
+          if (statusData.status === 'failed') return;
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error("[PayMongo] Payment confirmation check failed:", error);
+      }
+      // Hide the QR at expiry, but briefly allow a payment made just before
+      // expiry to finish confirming. Never mark a payment failed by the timer.
+      if (!controller.signal.aborted && deadline != null && Date.now() < deadline + 60_000) {
+        timer = setTimeout(poll, 3000);
+      }
+    };
+    poll();
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [show, step, qrPhData, onCreditUpdated]);
 
   const handleStartPaymongoCheckout = useCallback(async () => {
     if (!user) {
       onLoginRequired?.();
       return;
     }
+    if (checkoutRequest.current && !checkoutRequest.current.signal.aborted) return;
+    const controller = new AbortController();
+    checkoutRequest.current = controller;
     setIsStartingPaymongo(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
+      if (controller.signal.aborted) return;
       if (!token) throw new Error("Please log in again before checkout.");
 
       const response = await fetch("/api/payments/paymongo/checkout", {
@@ -123,13 +193,16 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ planKey: form.plan }),
+        signal: controller.signal,
       });
 
       const data = await response.json();
+      if (controller.signal.aborted) return;
       if (!response.ok) throw new Error(data.error || "Failed to start PayMongo checkout");
       if (!data.qrBase64) throw new Error("PayMongo did not return a QR code");
 
-      setQrPhData(data);
+      setQrPaymentStatus("pending");
+      setQrPhData({ ...data, planKey: form.plan });
       setStep('qr_display');
       const selectedPlan = CREDIT_PLANS[form.plan];
       trackEvent("begin_checkout", {
@@ -139,47 +212,13 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
         plan: selectedPlan.key,
       });
 
-      // Start polling
-      const intervalId = setInterval(async () => {
-        try {
-          const res = await fetch(`/api/payments/paymongo/status?localPaymentId=${data.localPaymentId}`);
-          if (res.ok) {
-            const statusData = await res.json();
-            if (statusData.status === 'paid') {
-              clearInterval(intervalId);
-              setQrPollIntervalId(null);
-              setStep('success');
-              toast.success("Payment completed! Your credits have been added.");
-              trackEvent("purchase", {
-                transaction_id: data.localPaymentId,
-                currency: "PHP",
-                value: selectedPlan.amount / 100,
-                payment_provider: "paymongo",
-                plan: selectedPlan.key,
-                items: [{ item_id: selectedPlan.key, item_name: selectedPlan.label, quantity: 1 }],
-              });
-
-              // Broadcast credit update to all open components & parent
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(new CustomEvent("syncraft:credits-updated"));
-              }
-              onCreditUpdated?.();
-            } else if (statusData.status === 'failed' || statusData.status === 'expired') {
-              clearInterval(intervalId);
-              setQrPollIntervalId(null);
-              toast.error("Payment failed or expired. Please try again.");
-              setStep(2);
-            }
-          }
-        } catch(e) {
-          console.error("Polling error", e);
-        }
-      }, 3000);
-      setQrPollIntervalId(intervalId);
     } catch (err) {
-      toast.error(err.message || "Failed to start PayMongo checkout");
+      if (!controller.signal.aborted) toast.error(err.message || "Failed to start PayMongo checkout");
     } finally {
-      setIsStartingPaymongo(false);
+      if (checkoutRequest.current === controller) {
+        checkoutRequest.current = null;
+        setIsStartingPaymongo(false);
+      }
     }
   }, [user, form.plan, supabase, onLoginRequired]);
 
@@ -306,10 +345,10 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
         </header>
         <nav className={styles.navigation} aria-label="Credits sections">
           <div className={styles.tabs}>
-            <button type="button" aria-pressed={activeTab === 'plans'} className={activeTab === 'plans' ? styles.activeTab : ''} onClick={() => { setActiveTab('plans'); setStep(1); }}>
+            <button type="button" aria-pressed={activeTab === 'plans'} className={activeTab === 'plans' ? styles.activeTab : ''} onClick={() => { resetQrCheckout(); setActiveTab('plans'); setStep(1); }}>
               <Package size={14} aria-hidden="true" /> Credit packages
             </button>
-            <button type="button" aria-pressed={activeTab === 'history'} className={activeTab === 'history' ? styles.activeTab : ''} onClick={() => { setActiveTab('history'); setStep(1); }}>
+            <button type="button" aria-pressed={activeTab === 'history'} className={activeTab === 'history' ? styles.activeTab : ''} onClick={() => { resetQrCheckout(); setActiveTab('history'); setStep(1); }}>
               <History size={14} aria-hidden="true" /> Credit history
             </button>
           </div>
@@ -444,7 +483,7 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
               </div>
               <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#fff', margin: '0 0 8px' }}>Payment Completed! 🎉</h2>
               <p style={{ color: '#aaa', fontSize: '15px', margin: '0 0 28px', maxWidth: '420px', lineHeight: '1.5' }}>
-                <strong style={{ color: '#d4ff59' }}>{CREDIT_PLANS[form.plan]?.credits || 24} Credits</strong> have been added directly to your account.
+                <strong style={{ color: '#d4ff59' }}><CreditAmount amount={CREDIT_PLANS[form.plan]?.credits || 24} /></strong> have been added directly to your account.
               </p>
               <button
                 onClick={handleClose}
@@ -458,14 +497,29 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
           ) : step === 'qr_display' && qrPhData ? (
             <section className={styles.paymentStep} aria-labelledby="qr-payment-heading">
               <div className={styles.paymentIntro}>
-                <span className={styles.paymentEyebrow}>Scan to pay with QR Ph</span>
+                <div className={styles.qrIntroRow}>
+                  <span className={styles.paymentEyebrow}>Scan to pay with QR Ph</span>
+                  <div className={`${styles.qrCountdown} ${qrUnavailable || qrExpiry.remainingSeconds <= 120 ? styles.qrCountdownWarning : ''}`}>
+                    <Clock3 size={14} aria-hidden="true" />
+                    <span>{qrUnavailable ? 'QR inactive' : 'Expires in'}</span>
+                    <strong role="timer" aria-label="Time remaining to pay" aria-live="off">{qrUnavailable ? '00:00' : qrExpiry.label}</strong>
+                  </div>
+                </div>
                 <h2 id="qr-payment-heading">{PLAN_LABELS[form.plan]} · {PLAN_PRICES[form.plan]}</h2>
                 <p className={styles.qrSubtitle}>Scan with GCash, Maya, ShopeePay, or any banking app</p>
               </div>
 
               <div className={styles.qrLayout}>
                 <div className={styles.qrCodeCard}>
-                  <img className={styles.qrCode} src={qrPhData.qrBase64} alt="QR Ph Payment Code" />
+                  {qrUnavailable ? (
+                    <div className={styles.qrExpiredPlaceholder}>
+                      <Clock3 size={36} aria-hidden="true" />
+                      <strong>{qrPaymentStatus === 'failed' ? 'QR unavailable' : 'QR expired'}</strong>
+                      <p>Do not scan or pay using this code or a saved screenshot.</p>
+                    </div>
+                  ) : (
+                    <img className={styles.qrCode} src={qrPhData.qrBase64} alt="QR Ph Payment Code" />
+                  )}
                   <div className={`${styles.paymentBrands} ${styles.qrBrands}`}>
                     <img src="/logos/qrph.png?v=2" alt="QR Ph" />
                     <img src="/logos/gcash.svg" alt="GCash" />
@@ -476,34 +530,37 @@ const TopUpModal = memo(function TopUpModal({ show = true, user, supabase: supab
                 <div className={styles.qrDetails}>
                   <div className={styles.qrStatusRow}>
                     <span className={styles.qrProvider}>PAYMONGO QRPH</span>
-                    <span role="status" className={styles.paymentStatus}>Waiting for payment</span>
+                    <span role="status" className={styles.paymentStatus}>{qrUnavailable ? (qrPaymentStatus === 'failed' ? 'Payment failed' : 'QR expired') : 'Waiting for payment'}</span>
                   </div>
                   <div className={styles.qrAmount}>
                     <span>Amount Due</span>
                     <div>
                       <strong>{PLAN_PRICES[form.plan]}</strong>
-                      <span>({CREDIT_PLANS[form.plan]?.credits || 0} credits)</span>
+                      <span>(<CreditAmount amount={CREDIT_PLANS[form.plan]?.credits || 0} />)</span>
                     </div>
                   </div>
 
-                  <ol className={styles.qrInstructions}>
+                  {qrUnavailable ? (
+                    <p className={styles.qrExpiryNotice}>Generate a new QR only if you have not paid. If money was already deducted, do not pay again. Wait for confirmation or contact support with your receipt.</p>
+                  ) : <ol className={styles.qrInstructions}>
                     <li><span>Open <strong>GCash</strong>, <strong>Maya</strong>, or any banking app and tap <strong>Scan QR</strong>.</span></li>
-                    <li><span>Keep this window open while PayMongo confirms the payment.</span></li>
+                    <li><span>Pay before the countdown ends. Do not reuse a saved QR after it expires.</span></li>
                     <li><span>Credits will be <strong>added automatically</strong> to your account.</span></li>
-                  </ol>
+                  </ol>}
 
                   <div className={styles.qrFooter}>
+                    {qrUnavailable && (
+                      <button type="button" className={styles.qrRegenerate} onClick={handleStartPaymongoCheckout} disabled={isStartingPaymongo}>
+                        {isStartingPaymongo ? 'Generating new QR…' : 'Generate new QR'}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className={`${styles.close} ${styles.paymentBack} ${styles.qrBack}`}
                       onClick={() => {
-                      setStep(2);
-                      setQrPhData(null);
-                      if (qrPollIntervalId) {
-                        clearInterval(qrPollIntervalId);
-                        setQrPollIntervalId(null);
-                      }
-                    }}
+                        resetQrCheckout();
+                        setStep(2);
+                      }}
                     >
                       ← Back to Payment Methods
                     </button>

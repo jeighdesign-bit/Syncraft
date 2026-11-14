@@ -3,6 +3,7 @@ import { universalUnavailableResponse } from "@/lib/universalAvailability.mjs";
 import { adminSupabase } from "@/lib/supabase";
 import { chargeCreditsVerified, findLatestProjectCharge, markCreditTransaction, recordProviderUsage, refundCreditVerified } from "@/lib/creditLedger";
 import { CREDIT_COST } from "@/lib/pricing";
+import { DEFAULT_EXTRACTION_RESOLUTION, extractionResolution, extractionCredits, verifyNative4K, MAX_NATIVE_4K_BYTES } from "@/lib/extractionResolution.mjs";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 import { snapToAllowedAspectRatio } from "@/lib/aspectRatio";
@@ -27,6 +28,9 @@ export async function POST(request) {
   let skipRefund = false;
   let chargeTransactionId = null;
   let isOwnerTest = false;
+  let selectedResolution = DEFAULT_EXTRACTION_RESOLUTION;
+  let executionCost = CREDIT_COST.trace;
+  let balanceAfter = null;
   try {
     // ─── Auth: verify caller identity server-side ─────────────────────────────
     const authHeader = request.headers.get('authorization');
@@ -89,6 +93,15 @@ export async function POST(request) {
       if (unavailable) return unavailable;
     }
 
+    if (step === 1) {
+      try { selectedResolution = extractionResolution(body.resolution); }
+      catch (error) { return NextResponse.json({ error: error.message, code: error.code }, { status: 400 }); }
+      if (selectedResolution === '4K' && !['mockup', 'logo'].includes(project.trace_type)) {
+        return NextResponse.json({ error: '4K is available for Garment and Logo Extraction only.' }, { status: 400 });
+      }
+      executionCost = extractionCredits(selectedResolution);
+    }
+
     let sourceUrl;
     let rawSourceBuffer;
     if (step === 1) {
@@ -138,14 +151,15 @@ export async function POST(request) {
           projectId,
           feature: "garment_logo_extract",
           action: "Extract & Vectorize",
-          amount: CREDIT_COST.trace,
-          metadata: { route: "api/trace", step: 1, trace_type: project.trace_type || null },
+          amount: executionCost,
+          metadata: { route: "api/trace", step: 1, trace_type: project.trace_type || null, resolution: selectedResolution },
         });
         chargeTransactionId = charge.transactionId;
         isOwnerTest = charge.isOwnerTest;
+        balanceAfter = charge.balanceAfter ?? null;
       } catch (billingError) {
         if (billingError.code === "INSUFFICIENT_CREDITS" || billingError.code === "PROFILE_NOT_FOUND") {
-          return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
+          return NextResponse.json({ error: "INSUFFICIENT_CREDITS", balance: billingError.balance ?? null }, { status: 403 });
         }
         console.error("[Billing] Verified deduction failed:", billingError);
         return NextResponse.json({ error: "Billing error. Please try again." }, { status: 500 });
@@ -296,6 +310,7 @@ If any difference is detected, continue refining until the reconstruction is vis
           prompt,
           aspectRatio: targetAspectRatio,
           mode: extractionMode,
+          resolution: selectedResolution,
         });
         if (project.trace_type === "mockup") extractionInput.system_prompt = buildGarmentExtractionSystemPrompt();
         console.log("[API Step 1] Garment extraction configuration:", {
@@ -325,6 +340,7 @@ If any difference is detected, continue refining until the reconstruction is vis
           providerRequestId: result?.requestId || null,
           estimatedCostUsd: 0.15,
           isOwnerTest,
+          metadata: { resolution: selectedResolution, credits: executionCost },
         });
 
         console.log("[fal.ai RAW Response]:", JSON.stringify(result, null, 2));
@@ -335,29 +351,33 @@ If any difference is detected, continue refining until the reconstruction is vis
 
         const outputUrl = result.data.images[0].url;
         let downloadedImage;
-        for (let attempt = 0; attempt < 2; attempt++) {
-          try {
-            downloadedImage = await fetchWithSSRFProtection(outputUrl, {
-              allowedHosts: getAllowedProviderHosts(),
-              maxBytes: DEFAULT_MAX_IMAGE_BYTES,
-              timeoutMs: 10_000,
-              allowedContentTypes: ['image/'],
+        try {
+          // Retry only this existing output GET, never the paid generation.
+          // A native 4K PNG needs more transfer time than the old 10s budget.
+          downloadedImage = await fetchWithSSRFProtection(outputUrl, {
+            allowedHosts: getAllowedProviderHosts(),
+            maxBytes: selectedResolution === '4K' ? MAX_NATIVE_4K_BYTES : DEFAULT_MAX_IMAGE_BYTES,
+            timeoutMs: selectedResolution === '4K' ? 60_000 : 10_000,
+            maxAttempts: 2,
+            retryDelayMs: 500,
+            allowedContentTypes: ['image/'],
+          });
+        } catch (downloadError) {
+          if (['AbortError', 'TimeoutError'].includes(downloadError?.name)) {
+            throw Object.assign(new Error('Your artwork was generated, but its image download timed out.'), {
+              code: 'EXTRACTION_DOWNLOAD_TIMEOUT', providerRequestId: result.requestId || null,
             });
-            break;
-          } catch (downloadError) {
-            const isNetworkFailure = downloadError?.message === "fetch failed"
-              || downloadError?.name === "AbortError";
-            if (!isNetworkFailure || attempt === 1) throw downloadError;
-            console.warn("[API Step 1] Generated image download interrupted; retrying once.");
-            await new Promise(resolve => setTimeout(resolve, 500));
           }
+          throw downloadError;
         }
         const { response: imgRes, buffer: generatedBuffer } = downloadedImage;
         if (!imgRes.ok) throw new Error("Failed to download generated image from fal.ai URL");
 
         generatedImageBuffer = generatedBuffer;
+        if (selectedResolution === '4K') verifyNative4K(await sharp(generatedImageBuffer).metadata());
         generatedMimeType = result.data.images[0].content_type || "image/jpeg";
         geminiThinking = "Generated via fal.ai Nano Banana 2.1";
+
         await markCreditTransaction({
           transactionId: chargeTransactionId,
           status: "provider_succeeded",
@@ -395,7 +415,9 @@ If any difference is detected, continue refining until the reconstruction is vis
         const isNetworkFailure = err?.message === "fetch failed"
           || err?.cause?.code === "UND_ERR_CONNECT_TIMEOUT"
           || err?.name === "AbortError";
-        providerError.code = isBalanceLock
+        providerError.code = ['EXTRACTION_RESOLUTION_MISMATCH', 'EXTRACTION_DOWNLOAD_TIMEOUT'].includes(err.code)
+          ? err.code
+          : isBalanceLock
           ? "FAL_BALANCE_EXHAUSTED"
           : providerError.status === 401
           ? "FAL_AUTH_FAILED"
@@ -404,7 +426,7 @@ If any difference is detected, continue refining until the reconstruction is vis
             : isNetworkFailure
               ? "FAL_NETWORK_FAILED"
             : "FAL_GENERATION_FAILED";
-        providerError.providerRequestId = err?.requestId || null;
+        providerError.providerRequestId = err?.providerRequestId || err?.requestId || null;
         throw providerError;
       }
 
@@ -426,11 +448,14 @@ If any difference is detected, continue refining until the reconstruction is vis
           .eq("id", projectId);
         if (saveError) throw new Error(`Could not save flat extract: ${saveError.message}`);
 
-        console.log("[API Step 1] Saved enhanced extract directly to storage.");
+        console.log(`[API Step 1] Saved ${selectedResolution} extract directly to storage.`);
         return NextResponse.json({
           success: true,
           step: 1,
           alreadySaved: true,
+          resolution: selectedResolution,
+          creditsCharged: executionCost,
+          balanceAfter,
           fileUrl,
           mimeType: generatedMimeType,
           thinking: geminiThinking,
@@ -506,6 +531,7 @@ If any difference is detected, continue refining until the reconstruction is vis
           metadata: { route: "api/trace", step: 1 },
         });
         refundIssued = refund.refunded;
+        if (refundIssued && refund.balanceAfter != null) balanceAfter = refund.balanceAfter;
         if (refundIssued) {
           await adminSupabase
             .from('projects')
@@ -541,6 +567,7 @@ If any difference is detected, continue refining until the reconstruction is vis
     const isProviderBalanceExhausted = error.code === "FAL_BALANCE_EXHAUSTED";
     const isProviderForbidden = error.code === "FAL_REQUEST_FORBIDDEN";
     const isProviderNetworkFailure = error.code === "FAL_NETWORK_FAILED";
+    const isDownloadTimeout = error.code === 'EXTRACTION_DOWNLOAD_TIMEOUT';
     const safeMessage = isProviderBalanceExhausted
       ? `AI generation is temporarily unavailable because the provider balance is exhausted. ${refundIssued
           ? 'Your credit has been refunded automatically. Please try again after service is restored.'
@@ -557,11 +584,17 @@ If any difference is detected, continue refining until the reconstruction is vis
         ? `The image provider connection was interrupted. ${refundIssued
             ? 'Your credit has been refunded automatically. Please try again.'
             : 'Please try again. If a credit was deducted, contact support.'}`
+      : isDownloadTimeout
+        ? `Your artwork was generated, but the image download timed out. ${refundIssued
+            ? 'Your credits have been refunded automatically.'
+            : 'If credits were deducted, contact support.'}`
       : (actualErrorMsg || 'Failed to process trace step');
     return NextResponse.json({
       error: safeMessage,
       code: error.code || "TRACE_FAILED",
       refunded: refundIssued,
-    }, { status: isProviderBalanceExhausted || isProviderNetworkFailure ? 503 : isProviderForbidden ? 422 : 500 });
+      refundedCredits: refundIssued ? executionCost : 0,
+      balance: balanceAfter,
+    }, { status: isProviderBalanceExhausted || isProviderNetworkFailure || isDownloadTimeout ? 503 : isProviderForbidden ? 422 : 500 });
   }
 }

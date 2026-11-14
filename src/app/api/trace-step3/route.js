@@ -94,7 +94,7 @@ export async function POST(request) {
     // ==========================================
     if (!project.upscaled_image_url) {
       return NextResponse.json(
-        { error: 'UPSCALE_REQUIRED', message: 'Resume HD Upscale before creating the SVG.' },
+        { error: 'UPSCALE_REQUIRED', message: 'Resume Syncraft Upscale before creating the SVG.' },
         { status: 400 },
       );
     }
@@ -157,7 +157,11 @@ export async function POST(request) {
       // ─────────────────────────────────────────────────────────────────────────
       setStage('prepare-image');
       const sharp = (await import('sharp')).default;
-      const sourceMetadata = await sharp(rawBuffer).metadata();
+      // Native 4K followed by the existing 4x upscale can exceed Sharp's
+      // default ~268MP ceiling. Decode within a bounded 400MP limit and
+      // retain the same 2048px vectorizer input size for both tiers.
+      const rasterOptions = { limitInputPixels: 400_000_000 };
+      const sourceMetadata = await sharp(rawBuffer, rasterOptions).metadata();
       if (!sourceMetadata.width || !sourceMetadata.height) {
         throw new Error('Unable to read the upscaled image dimensions');
       }
@@ -183,7 +187,7 @@ export async function POST(request) {
       const missingWidth = Math.max(0, minVectorDimension - resizedWidth);
       const missingHeight = Math.max(0, minVectorDimension - resizedHeight);
 
-      let sharpInstance = sharp(rawBuffer)
+      let sharpInstance = sharp(rawBuffer, rasterOptions)
         .rotate()
         .resize({ width: resizedWidth, height: resizedHeight, fit: 'fill' });
 
@@ -349,7 +353,7 @@ export async function POST(request) {
         {
           error: 'ARTWORK_CHANGED',
           message:
-            'Your artwork changed during processing. Retry Vector SVG for the current artwork.',
+            'Your artwork changed during processing. Retry Syncraft Vector for the current artwork.',
         },
         { status: 409 },
       );
@@ -401,10 +405,10 @@ export async function POST(request) {
             ? 'VECTORIZE_NETWORK_FAILED'
             : 'VECTORIZE_FAILED',
         message: timedOut
-          ? 'Vectorization timed out. Your upscale is saved. Retry Vector SVG for free.'
+          ? 'Vectorization timed out. Your upscale is saved. Retry Syncraft Vector for free.'
           : networkFailed
-            ? 'The SVG connection was interrupted. Your upscale is saved. Retry Vector SVG for free.'
-            : 'Could not finish saving your SVG. Your upscale is saved. Retry Vector SVG for free.',
+            ? 'The SVG connection was interrupted. Your upscale is saved. Retry Syncraft Vector for free.'
+            : 'Could not finish saving your SVG. Your upscale is saved. Retry Syncraft Vector for free.',
       },
       { status: timedOut ? 504 : networkFailed ? 503 : 500 },
     );

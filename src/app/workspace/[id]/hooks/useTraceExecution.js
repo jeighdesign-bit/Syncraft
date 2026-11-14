@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { CREDIT_COST } from '@/lib/pricing';
+import { DEFAULT_EXTRACTION_RESOLUTION, extractionResolution as normalizeExtractionResolution, extractionCredits, extractionDisplayName, supportsExtractionResolution } from '@/lib/extractionResolution.mjs';
 import { TRACE_REQUEST_TIMEOUT_MS, traceTimeoutMessage, traceConnectionMessage } from '@/lib/traceRequestPolicy.mjs';
 import { waitForTraceUpscale } from '@/lib/traceUpscaleClient.mjs';
 import { trackGenerationFailure, trackGenerationStart, trackGenerationSuccess } from '@/lib/analytics.mjs';
@@ -30,6 +30,7 @@ export function useTraceExecution({
   project,
   setProject,
   userCredits,
+  extractionResolution = DEFAULT_EXTRACTION_RESOLUTION,
   setUserCredits,
   supabase,
   onNoCredits,
@@ -40,6 +41,7 @@ export function useTraceExecution({
   const consoleRef = useRef(null); // DOM ref for the console <div>
   const upscaleRunRef = useRef(null);
   const autoResumeRef = useRef(null);
+  const generationRunRef = useRef(false);
   const updateProject = useCallback(
     (update) => setProject((current) => (current?.id === project?.id ? update(current) : current)),
     [project?.id, setProject],
@@ -58,7 +60,7 @@ export function useTraceExecution({
     if (!container) return;
 
     const el = document.createElement('div');
-    el.className = `console-msg${type === 'success' ? ' success' : type === 'error' ? ' error' : ''}`;
+    el.className = `console-msg${['success', 'error', 'warning'].includes(type) ? ` ${type}` : ''}`;
 
     // Parse [Prefix] Message pattern
     const match = text.match(/^\[(.*?)\] (.*)$/);
@@ -189,6 +191,8 @@ export function useTraceExecution({
         err.status = res.status;
         err.label = label;
         err.refunded = data.refunded === true;
+        err.refundedCredits = typeof data.refundedCredits === 'number' ? data.refundedCredits : null;
+        err.balance = typeof data.balance === 'number' ? data.balance : null;
         err.validation = data.validation;
         throw err;
       }
@@ -202,15 +206,16 @@ export function useTraceExecution({
     const authToken = await getAuthToken();
     if (!authToken) throw new Error('You must be logged in.');
     setTraceState('step1');
+    clearConsole('[Preparation] Preparing your selected crop...');
     try {
-      const data = await postJson('/api/recovery/analyze', { projectId: project.id }, authToken, 'recovery-prepare');
+      const data = await postJson('/api/recovery/analyze', { projectId: project.id, resolution: normalizeExtractionResolution(extractionResolution) }, authToken, 'recovery-prepare');
       updateProject((prev) => ({ ...prev, recovery_analysis: data.analysis, recovery_status: 'analyzed' }));
       return data.analysis;
     } catch (error) {
       setTraceState('idle');
       throw error;
     }
-  }, [project?.id, project?.trace_type, getAuthToken, postJson, updateProject]);
+  }, [project?.id, project?.trace_type, extractionResolution, getAuthToken, postJson, updateProject, clearConsole]);
 
   /**
    * Stages 2 and 3 against whatever `generated_image_url` currently holds.
@@ -228,7 +233,7 @@ export function useTraceExecution({
 
       // ─── Step 2: Upscale ─────────────────────────────────────────────
       setTraceState('step2');
-      logToConsole('[Step 2] Connecting to your HD Upscale job...', 'normal');
+      logToConsole('[Step 2] Connecting to your Syncraft Upscale job...', 'normal');
 
       let data2;
       const controller = new AbortController();
@@ -248,7 +253,7 @@ export function useTraceExecution({
               // Show stage changes immediately and an elapsed-time update every 15s.
               const key = `${progress.status}:${Math.floor((progress.elapsedSeconds || 0) / 15)}`;
               if (key !== lastProgressKey) {
-                logToConsole(`[HD Upscale] ${progress.message}`, 'normal');
+                logToConsole(`[Syncraft Upscale] ${progress.message}`, 'normal');
                 lastProgressKey = key;
               }
             },
@@ -269,11 +274,11 @@ export function useTraceExecution({
 
         runSignal.throwIfAborted();
         updateProject((prev) => ({ ...prev, upscaled_image_url: data2.fileUrl }));
-        logToConsole('[Success] Upscale Complete!', 'success');
+        logToConsole(data2.upscaleSkipped ? '[Success] Native 4K artwork ready for Syncraft Vector.' : '[Success] Syncraft Upscale complete.', 'success');
 
         // ─── Step 3: Vectorize ───────────────────────────────────────────
         setTraceState('step3');
-        logToConsole('[Step 3] Vectorizing with TrueVector™ Core...', 'normal');
+        logToConsole('[Step 3] Vectorizing with Syncraft Vector...', 'normal');
 
         let data3;
         try {
@@ -296,7 +301,7 @@ export function useTraceExecution({
 
         runSignal.throwIfAborted();
         updateProject((prev) => ({ ...prev, svg_url: data3.svg_url }));
-        logToConsole('[Success] Vectorization Complete!', 'success');
+        logToConsole('[Success] Syncraft Vector complete.', 'success');
       } catch (error) {
         if (runSignal.aborted)
           throw Object.assign(new Error('Stopped checking the saved job.'), {
@@ -343,7 +348,7 @@ export function useTraceExecution({
       }
       autoResumeRef.current = key;
       attached = true;
-      logToConsole('[HD Upscale] Reconnecting to your saved job...', 'normal');
+      logToConsole('[Syncraft Upscale] Reconnecting to your saved job...', 'normal');
       await runStep2And3({
         authToken: token,
         vectorColors: 'auto',
@@ -355,7 +360,7 @@ export function useTraceExecution({
     })().catch((error) => {
       if (controller.signal.aborted || error.code === 'REQUEST_CANCELLED') return;
       autoResumeRef.current = key;
-      logToConsole(`[HD Upscale] ${error.message}`, 'error');
+      logToConsole(`[Syncraft Upscale] ${error.message}`, 'error');
       setTraceState('idle');
     });
     // The project can gain its saved upscale while vectorization is starting.
@@ -379,9 +384,10 @@ export function useTraceExecution({
 
   const handleExecuteTrace = useCallback(
     async (vectorColors = 'auto') => {
-      if (!project || traceState !== 'idle') return;
+      if (!project || traceState !== 'idle' || generationRunRef.current) return;
 
-      const executionCost = project.trace_type === 'universal' ? CREDIT_COST.universal : CREDIT_COST.trace;
+      const resolution = supportsExtractionResolution(project) ? normalizeExtractionResolution(extractionResolution) : DEFAULT_EXTRACTION_RESOLUTION;
+      const executionCost = extractionCredits(resolution, project.trace_type);
 
       if (userCredits !== null && userCredits < executionCost) {
         onNoCredits?.();
@@ -391,40 +397,37 @@ export function useTraceExecution({
       // Reset per-node errors
       setNodeErrors({ step1: null, step2: null, step3: null });
 
-      // Universal recovery owns billing inside /api/recovery/generate. Update the
-      // visible balance only after that endpoint confirms success, so a rejected
-      // duplicate/stale request never appears to consume credits.
-      if (project.trace_type !== 'universal' && userCredits >= CREDIT_COST.trace) {
-        setUserCredits((prev) => prev - CREDIT_COST.trace);
-      }
+      generationRunRef.current = true;
 
       // Fetch auth token once — used for all secure API calls in this pipeline
       const authToken = await getAuthToken();
 
       if (!authToken) {
+        generationRunRef.current = false;
         setTraceState('idle');
         setNodeErrors((prev) => ({ ...prev, step1: 'You must be logged in to trace.' }));
         return;
       }
 
       trackGenerationStart({ tool: project.trace_type, credits: executionCost });
+      let balanceApplied = false;
 
       try {
         // ─── Step 1: Extract ──────────────────────────────────────────────
         setTraceState('step1');
         clearConsole(project.trace_type === 'universal'
-          ? '[Step 1] Extracting selected crop...'
-          : '[Step 1] Analyzing Image with SyncraftVision™...');
+          ? `[Step 1] Extracting selected crop with ${extractionDisplayName(resolution)}...`
+          : `[Step 1] Analyzing image with ${extractionDisplayName(resolution)}...`);
 
         let data1;
         try {
           data1 =
             project.trace_type === 'universal'
-              ? await postJson('/api/recovery/generate', { projectId: project.id }, authToken, 'step1')
-              : await postJson('/api/trace', { projectId: project.id, step: 1 }, authToken, 'step1');
+              ? await postJson('/api/recovery/generate', { projectId: project.id, resolution }, authToken, 'step1')
+              : await postJson('/api/trace', { projectId: project.id, step: 1, resolution }, authToken, 'step1');
         } catch (e) {
           if (e.code === 'INSUFFICIENT_CREDITS') {
-            setUserCredits(0);
+            setUserCredits(e.balance ?? userCredits);
             onNoCredits?.();
             setTraceState('idle');
             return;
@@ -433,8 +436,12 @@ export function useTraceExecution({
           throw e;
         }
 
-        if (project.trace_type === 'universal' && userCredits >= executionCost) {
+        if (typeof data1.balanceAfter === 'number') {
+          setUserCredits(data1.balanceAfter);
+          balanceApplied = true;
+        } else if (userCredits !== null && userCredits >= executionCost) {
           setUserCredits((prev) => prev - executionCost);
+          balanceApplied = true;
         }
 
         logToConsole('[Step 1.5] Saving extracted image...', 'normal');
@@ -468,7 +475,7 @@ export function useTraceExecution({
         } else if (project.trace_type === 'universal' && data1.recoveryStatus === 'partial') {
           logToConsole(`[Review] ${data1.validation?.correction || 'Check the extracted artwork against the reference before use.'}`, 'warning');
         } else {
-          logToConsole('[Success] Image Extracted by SyncraftVision™!', 'success');
+          logToConsole(`[Success] Artwork extracted with ${extractionDisplayName(resolution)}.`, 'success');
         }
 
         // ─── Steps 2 & 3 ─────────────────────────────────────────────────
@@ -481,9 +488,10 @@ export function useTraceExecution({
         if (error.code === 'REQUEST_CANCELLED') return { success: false };
         trackGenerationFailure({ tool: project.trace_type, reason: error.code || error.message });
         setTraceState('idle');
+        if (typeof error.balance === 'number') setUserCredits(error.balance);
 
         const isTimeout =
-          !['FOREGROUND_DETECTION_UNAVAILABLE', 'RECOVERY_NETWORK_FAILED'].includes(error.code) &&
+          !['FOREGROUND_DETECTION_UNAVAILABLE', 'RECOVERY_NETWORK_FAILED', 'EXTRACTION_DOWNLOAD_TIMEOUT'].includes(error.code) &&
           (error.code === 'REQUEST_TIMEOUT' ||
             error.status === 504 ||
             error.message?.includes('504') ||
@@ -493,9 +501,9 @@ export function useTraceExecution({
         // Step 1 can now return an already-verified refund. Later pipeline stages
         // use the refund endpoint, which only accepts a server-recorded failure
         // tied to this project's exact charge transaction.
-        if (project.trace_type !== 'universal' && error.refunded) {
-          logToConsole(`[System] Generation failed. ${CREDIT_COST.trace} Credits have been refunded.`, 'success');
-          if (userCredits !== null) setUserCredits((prev) => prev + CREDIT_COST.trace);
+        if (error.refunded) {
+          logToConsole(`[System] Generation failed. ${error.refundedCredits ?? executionCost} Credits have been refunded.`, 'success');
+          if (typeof error.balance !== 'number' && balanceApplied) setUserCredits(prev => prev + executionCost);
         } else if (project.trace_type !== 'universal' && !['step2', 'save2', 'step3'].includes(error.label))
           try {
             const {
@@ -512,8 +520,9 @@ export function useTraceExecution({
               });
               const refundData = await refundRes.json();
               if (refundData.success) {
-                logToConsole(`[System] Generation failed. ${CREDIT_COST.trace} Credits have been refunded.`, 'success');
-                if (userCredits !== null) setUserCredits((prev) => prev + CREDIT_COST.trace);
+                logToConsole(`[System] Generation failed. ${executionCost} Credits have been refunded.`, 'success');
+                if (typeof refundData.balance === 'number') setUserCredits(refundData.balance);
+                else if (balanceApplied) setUserCredits(prev => prev + executionCost);
               }
             }
           } catch {
@@ -532,6 +541,7 @@ export function useTraceExecution({
           error.code === 'FOREGROUND_MASK_NOT_FOUND' ||
           error.code === 'FOREGROUND_DETECTION_UNAVAILABLE' ||
           error.code === 'FAL_NETWORK_FAILED' ||
+          error.code === 'EXTRACTION_DOWNLOAD_TIMEOUT' ||
           error.code === 'RECOVERY_NETWORK_FAILED';
         if (!isTimeout && !isExpectedRecoveryOutcome) {
           // Only surface unexpected errors to the dev overlay, not timeout noise
@@ -541,9 +551,12 @@ export function useTraceExecution({
         logToConsole(`[${error.refunded ? 'Refunded' : 'Error'}] ${displayMsg}`, 'error');
         setTraceState('idle');
         return { success: false };
+      } finally {
+        generationRunRef.current = false;
       }
     },
     [
+      extractionResolution,
       project,
       traceState,
       userCredits,
@@ -619,7 +632,7 @@ export function useTraceExecution({
 
       setNodeErrors((prev) => ({ ...prev, step3: null }));
       setTraceState('step3');
-      logToConsole('[Step 3] Retrying vectorization with TrueVector™ Core...', 'normal');
+      logToConsole('[Step 3] Retrying vectorization with Syncraft Vector...', 'normal');
 
       try {
         const data = await postJson(
@@ -629,14 +642,14 @@ export function useTraceExecution({
           'step3',
         );
         updateProject((prev) => ({ ...prev, svg_url: data.svg_url }));
-        logToConsole('[Success] Vectorization Complete!', 'success');
+        logToConsole('[Success] Syncraft Vector complete.', 'success');
         return { success: true };
       } catch (error) {
         setNodeErrors((prev) => ({ ...prev, step3: error.message }));
         const timedOut = error.status === 504 || error.code === 'VECTORIZE_TIMEOUT' || error.code === 'REQUEST_TIMEOUT';
         logToConsole(
           `[Error] ${
-            timedOut ? 'Vectorization timed out. Your upscale is safe—retry Vector SVG for free.' : error.message
+            timedOut ? 'Vectorization timed out. Your upscale is safe—retry Syncraft Vector for free.' : error.message
           }`,
           'error',
         );

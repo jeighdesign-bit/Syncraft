@@ -7,8 +7,8 @@ test("browser allows the full server run plus response time", () => {
 });
 
 test('interrupted transfers explain how to resume the saved stage without paying again', () => {
-  assert.match(traceConnectionMessage('step3'), /upscale is saved.*Retry Vector SVG for free/);
-  for (const label of ['step2', 'save2']) assert.match(traceConnectionMessage(label), /flat artwork is saved.*Resume HD Upscale for free/);
+  assert.match(traceConnectionMessage('step3'), /upscale is saved.*Retry Syncraft Vector for free/);
+  for (const label of ['step2', 'save2']) assert.match(traceConnectionMessage(label), /flat artwork is saved.*Resume Syncraft Upscale for free/);
   assert.doesNotMatch(traceConnectionMessage('step1'), /upscale is saved|flat artwork is saved/);
 });
 
@@ -22,7 +22,7 @@ test("saved flat artwork resumes without another generation, including a zero-cr
 });
 
 test("late-stage timeouts give stage-specific recovery instead of blaming the image crop", () => {
-  for (const label of ["step2", "save2"]) assert.match(traceTimeoutMessage(label), /Resume HD Upscale for free/);
-  assert.match(traceTimeoutMessage("step3"), /Retry Vector SVG for free/);
+  for (const label of ["step2", "save2"]) assert.match(traceTimeoutMessage(label), /Resume Syncraft Upscale for free/);
+  assert.match(traceTimeoutMessage("step3"), /Retry Syncraft Vector for free/);
   assert.doesNotMatch(traceTimeoutMessage("step1"), /crop|upscale is saved/i);
 });

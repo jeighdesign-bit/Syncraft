@@ -74,6 +74,19 @@
 .qrInstructions strong { color:#d6dfc8; font-weight:600; }
 .qrFooter { margin-top:auto; padding-top:20px; }
 .qrBack { width:100%; min-height:40px; text-align:center; line-height:1.5; }
+.qrExpiredPlaceholder { display:flex; width:100%; max-width:260px; aspect-ratio:1; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; color:#76541b; }
+.qrExpiredPlaceholder strong { color:#40311a; font-size:20px; }
+.qrExpiredPlaceholder p { max-width:24ch; margin:0; color:#5c503c; font-size:13px; line-height:1.6; }
+.qrIntroRow { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 16px; margin-bottom:10px; }
+.qrIntroRow .paymentEyebrow { margin-bottom:0; }
+.qrCountdown { display:inline-flex; align-items:center; gap:6px; color:#a9b59b; font-size:12px; line-height:1.5; white-space:nowrap; }
+.qrCountdown strong { color:#d6dfc8; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; }
+.qrCountdownWarning,.qrCountdownWarning strong { color:#ffda94; }
+.qrExpiryNotice { margin:0; color:#d7c5a4; font-size:13px; line-height:1.7; }
+.qrRegenerate { width:100%; min-height:44px; margin-bottom:10px; padding:10px 14px; border:1px solid #c4d99f; border-radius:9px; background:#c4d99f; color:#17200d; font:inherit; font-size:13px; font-weight:650; cursor:pointer; }
+.qrRegenerate:hover:not(:disabled) { background:#d6e8b7; }
+.qrRegenerate:disabled { opacity:.6; cursor:wait; }
+.qrRegenerate:focus-visible { outline:2px solid #c4d99f; outline-offset:3px; }
 @media(max-width:600px) {
   .qrLayout { grid-template-columns:minmax(0,1fr); }
   .qrCodeCard { padding:20px; }

@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import sharp from 'sharp';
 import { adminSupabase } from '@/lib/supabase';
 import { uploadToR2, getR2DownloadUrl } from '@/lib/cloudflare';
 import { fetchStoredAsset } from '@/lib/storageDownload';
@@ -12,6 +13,7 @@ import {
 } from '@/lib/ssrf';
 import { usesNativeTraceUpscale, resizeTraceForUpscale } from '@/lib/traceUpscale.mjs';
 import { findLatestProjectCharge, recordProviderUsage } from '@/lib/creditLedger';
+import { supportsExtractionResolution, verifyNative4K, MAX_NATIVE_4K_BYTES } from '@/lib/extractionResolution.mjs';
 
 const PROVIDER = 'syncraft_upscale';
 const ENDPOINT = 'fal-ai/esrgan';
@@ -38,12 +40,12 @@ function snapshot(job) {
   if (job.request_status === 'failed')
     throw failure(
       'UPSCALE_PROVIDER_FAILED',
-      'The AI provider could not finish this upscale. Your flat artwork is saved. Resume HD Upscale for free.',
+      'The AI provider could not finish this upscale. Your flat artwork is saved. Resume Syncraft Upscale for free.',
     );
   if (job.request_status === 'superseded')
     throw failure(
       'UPSCALE_ARTWORK_CHANGED',
-      'This upscale belongs to earlier artwork. Resume HD Upscale for the current artwork.',
+      'This upscale belongs to earlier artwork. Resume Syncraft Upscale for the current artwork.',
       409,
     );
   return {
@@ -98,7 +100,7 @@ async function falRequest(path, { body, timeoutMs = 15_000 } = {}) {
   if (!process.env.FAL_KEY)
     throw failure(
       'UPSCALE_UNAVAILABLE',
-      'HD Upscale is temporarily unavailable. Your artwork is saved.',
+      'Syncraft Upscale is temporarily unavailable. Your artwork is saved.',
     );
   const response = await fetch(`https://queue.fal.run/${ENDPOINT}${path}`, {
     method: body ? 'POST' : 'GET',
@@ -119,15 +121,58 @@ async function falRequest(path, { body, timeoutMs = 15_000 } = {}) {
   return response.json();
 }
 
-export async function startTraceUpscale(project, actorId) {
-  let job = await loadJob(project);
+// Keep the existing three preview slots. V3's second slot is an exact alias
+// of its verified native 4K asset, ready for vectorization without ESRGAN.
+async function native4KResult(project) {
   if (project.upscaled_image_url)
     return {
       success: true,
       status: 'succeeded',
       fileUrl: project.upscaled_image_url,
       alreadySaved: true,
+      ...(project.upscaled_image_url === project.generated_image_url ? { upscaleSkipped: true } : {}),
     };
+  if (!supportsExtractionResolution(project)) return null;
+  if (!/\/generated_flat_[^/]+\.(?:png|jpe?g|webp)(?:\?|$)/i.test(project.generated_image_url || '')) return null;
+  const charge = await findLatestProjectCharge(project.id, { throwOnError: true });
+  if (charge?.metadata?.resolution !== '4K' || charge.status === 'refunded') return null;
+  const sourceUrl = project.generated_image_url;
+  const asset = await fetchStoredAsset(sourceUrl, {
+    maxBytes: MAX_NATIVE_4K_BYTES, timeoutMs: 60_000,
+    maxAttempts: 2, signal: AbortSignal.timeout(130_000), allowedContentTypes: ['image/'],
+  });
+  const metadata = await sharp(asset.buffer).metadata();
+  try { verifyNative4K(metadata); }
+  catch (error) {
+    if (error.code === 'EXTRACTION_RESOLUTION_MISMATCH')
+      throw failure(error.code, 'The saved extraction is not native 4K. Your file is safe; contact support before generating again.', 409);
+    throw error;
+  }
+  const { data, error } = await adminSupabase.from('projects')
+    .update({ upscaled_image_url: sourceUrl })
+    .eq('id', project.id).eq('generated_image_url', sourceUrl)
+    .is('upscaled_image_url', null).select('id').maybeSingle();
+  if (error) throw failure('UPSCALE_STORAGE_UNAVAILABLE', 'Could not prepare your saved 4K artwork. Resume for free.');
+  if (!data) {
+    const current = await adminSupabase.from('projects').select('generated_image_url,upscaled_image_url').eq('id', project.id).maybeSingle();
+    if (current.error || current.data?.generated_image_url !== sourceUrl || current.data?.upscaled_image_url !== sourceUrl)
+      throw failure('UPSCALE_ARTWORK_CHANGED', 'The artwork changed. Reopen the current artwork to continue.', 409);
+  }
+  await recordProviderUsage({
+    creditTransactionId: charge.transactionId, projectId: project.id, userId: project.user_id,
+    provider: 'syncraft_native_4k', endpoint: 'trace-pass-through',
+    providerRequestId: createHash('sha256').update(`${project.id}:${sourceUrl}`).digest('hex'),
+    estimatedCostUsd: 0, isOwnerTest: charge.isOwnerTest,
+    metadata: { source_image_url: sourceUrl, resolution: '4K', width: metadata.width, height: metadata.height, upscale_skipped: true },
+  });
+  return { success: true, status: 'succeeded', fileUrl: sourceUrl,
+    mimeType: 'image/png', alreadySaved: true, upscaleSkipped: true };
+}
+
+export async function startTraceUpscale(project, actorId) {
+  const nativeResult = await native4KResult(project);
+  if (nativeResult) return nativeResult;
+  let job = await loadJob(project);
   if (!job) {
     const native = usesNativeTraceUpscale(project);
     const { data, error } = await query()
@@ -189,7 +234,7 @@ export async function startTraceUpscale(project, actorId) {
     if (!process.env.FAL_KEY)
       throw failure(
         'UPSCALE_UNAVAILABLE',
-        'HD Upscale is temporarily unavailable. Your artwork is saved.',
+        'Syncraft Upscale is temporarily unavailable. Your artwork is saved.',
       );
     submissionAttempted = true;
     const result = await falRequest('', {
@@ -233,7 +278,7 @@ export async function startTraceUpscale(project, actorId) {
     if (definiteRejection)
       throw failure(
         'UPSCALE_PROVIDER_FAILED',
-        'The provider could not accept this upscale. Your artwork is saved. Resume HD Upscale for free.',
+        'The provider could not accept this upscale. Your artwork is saved. Resume Syncraft Upscale for free.',
       );
     throw failure(
       'UPSCALE_SUBMISSION_UNCONFIRMED',
@@ -243,14 +288,9 @@ export async function startTraceUpscale(project, actorId) {
 }
 
 export async function getTraceUpscaleStatus(project) {
+  const nativeResult = await native4KResult(project);
+  if (nativeResult) return nativeResult;
   let job = await loadJob(project);
-  if (project.upscaled_image_url)
-    return {
-      success: true,
-      status: 'succeeded',
-      fileUrl: project.upscaled_image_url,
-      alreadySaved: true,
-    };
   if (!job) return snapshot(null);
   if (job.request_status === 'succeeded') {
     job =
@@ -305,7 +345,7 @@ export async function getTraceUpscaleStatus(project) {
       await transition(job, 'failed', { last_error: String(error.message).slice(0, 300) });
       throw failure(
         'UPSCALE_PROVIDER_FAILED',
-        'The AI provider could not finish this upscale. Your flat artwork is saved. Resume HD Upscale for free.',
+        'The AI provider could not finish this upscale. Your flat artwork is saved. Resume Syncraft Upscale for free.',
       );
     }
     throw failure(
@@ -316,15 +356,10 @@ export async function getTraceUpscaleStatus(project) {
 }
 
 export async function saveTraceUpscale(project) {
+  const nativeResult = await native4KResult(project);
+  if (nativeResult) return nativeResult;
   let job = await loadJob(project);
-  if (project.upscaled_image_url)
-    return {
-      success: true,
-      status: 'succeeded',
-      fileUrl: project.upscaled_image_url,
-      alreadySaved: true,
-    };
-  if (!job) throw failure('UPSCALE_REQUIRED', 'Start HD Upscale first.', 409);
+  if (!job) throw failure('UPSCALE_REQUIRED', 'Start Syncraft Upscale first.', 409);
   if (job.request_status === 'saving' && Date.parse(job.metadata.lease_until) < Date.now()) {
     job =
       (await transition(job, 'ready', { lease_token: null, lease_until: null })) ||
@@ -480,7 +515,7 @@ export async function saveTraceUpscale(project) {
     if (error.code === 'ARTWORK_CHANGED') throw error;
     throw failure(
       'UPSCALE_SAVE_INTERRUPTED',
-      'The upscale result is saved with the provider. Resume HD Upscale for free to finish saving it.',
+      'The upscale result is saved with the provider. Resume Syncraft Upscale for free to finish saving it.',
     );
   }
 }

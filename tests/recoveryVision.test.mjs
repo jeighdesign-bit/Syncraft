@@ -54,6 +54,27 @@ test('extraction uses the actual image edit reference and preserves selected rem
   assert.deepEqual(input.image_urls, ['reference']); assert.match(input.prompt, /front label only/); assert.match(input.prompt, /EXTRACT PATTERN ONLY/);
 });
 
+test('both Universal modes explicitly default to 1K for direct crop and legacy recovery', () => {
+  for (const mode of ['UNIVERSAL_BACKGROUND_ONLY', 'UNIVERSAL_KEEP_ARTWORK']) {
+    for (const directCrop of [true, false]) {
+      const input = buildRecoveryImageInput({ imageUrls: ['user-crop'], mode, directCrop });
+      assert.equal(input.resolution, '1K');
+      assert.equal(input.num_images, 1);
+      assert.equal(input.output_format, 'png');
+    }
+  }
+});
+
+test('both Universal modes support explicit native 4K and reject invalid resolution values', () => {
+  for(const mode of ['UNIVERSAL_BACKGROUND_ONLY','UNIVERSAL_KEEP_ARTWORK']) {
+    for(const directCrop of [true,false]) {
+      const input=buildRecoveryImageInput({imageUrls:['user-crop'],mode,directCrop,resolution:'4K'});
+      assert.equal(input.resolution,'4K'); assert.equal(input.output_format,'png'); assert.equal(input.num_images,1);
+      assert.throws(()=>buildRecoveryImageInput({imageUrls:['user-crop'],mode,directCrop,resolution:'8K'}),/supported extraction resolution/);
+    }
+  }
+});
+
 test('observed lettering is bounded reference evidence only in keep-artwork mode', () => {
   const analysis = { readable_text: ['  CAHS  ', null, 'x'.repeat(500), ...Array.from({ length: 20 }, (_, i) => `label ${i}`)] };
   const keep = buildRecoveryImageInput({ imageUrls: ['reference'], analysis, mode: 'UNIVERSAL_KEEP_ARTWORK' });

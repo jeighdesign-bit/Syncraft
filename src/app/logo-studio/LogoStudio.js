@@ -1,5 +1,6 @@
 'use client';
 
+import CreditAmount from '@/components/CreditAmount';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -543,13 +544,13 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
             </div>
             <div className={styles.actions}>
               <LogoReview selected={selected} jobs={jobs} imageSrc={imageSrc} onSelect={selectSavedLogo} onReuse={reuseSavedBrief} disabled={locked} canReuse={canEditProject} />
-              <button disabled={inputLocked} onClick={() => { setEditing(!editing); setCompare(false); }}><WandSparkles size={15} /> AI edit <small>{LOGO_COST.edit} cr</small></button>
+              <button disabled={inputLocked} onClick={() => { setEditing(!editing); setCompare(false); }}><WandSparkles size={15} /> AI edit <small><CreditAmount amount={LOGO_COST.edit} unit="" /></small></button>
               <div className={styles.variationAction} ref={variationRoot} onBlur={event => {
                 if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setVariationPanelSource(null);
               }}>
               <button type="button" ref={variationTrigger} disabled={inputLocked} aria-haspopup="dialog" aria-expanded={variationOpen}
                 aria-controls={variationOpen ? 'logo-variation-options' : undefined} onClick={() => setVariationPanelSource(variationOpen ? null : selected.id)}>
-                <Layers3 size={15} /> Variations <small>{LOGO_COST.variations * generationCount} cr</small>
+                <Layers3 size={15} /> Variations <small><CreditAmount amount={LOGO_COST.variations * generationCount} unit="" /></small>
               </button>
               {variationOpen && <div id="logo-variation-options" className={styles.variationPopover} role="dialog" aria-label="Create logo variations">
               <div className={styles.variationHeading}><label htmlFor="variation-style">Variation style</label><button type="button" aria-label="Close variation options" onClick={() => { setVariationPanelSource(null); variationTrigger.current?.focus(); }}><X size={14} aria-hidden="true" /></button></div>
@@ -564,13 +565,13 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
                 </option>)}
               </Select>
               <button type="button" className={styles.variationProceed} aria-label={`Create ${generationCount === 1 ? 'variation' : `${generationCount} variations`} for ${LOGO_COST.variations * generationCount} credits`} disabled={inputLocked} onClick={() => { setVariationPanelSource(null); variationTrigger.current?.focus(); run('variations'); }}>
-                Create{generationCount > 1 ? ` ${generationCount}` : ''} <small>{LOGO_COST.variations * generationCount} cr</small>
+                Create{generationCount > 1 ? ` ${generationCount}` : ''} <small><CreditAmount amount={LOGO_COST.variations * generationCount} unit="" /></small>
               </button>
               </div>
               </div>}
               </div>
-              <button disabled={inputLocked || selected.operation === 'removeBg'} onClick={() => run('removeBg')}><Scissors size={15} /> Remove BG <small>{LOGO_COST.removeBg} cr</small></button>
-              <button disabled={inputLocked || hasVectorExport} onClick={() => run('vectorize')}><Spline size={15} /> Vectorize <small>{LOGO_COST.vectorize} cr</small></button>
+              <button disabled={inputLocked || selected.operation === 'removeBg'} onClick={() => run('removeBg')}><Scissors size={15} /> Remove BG <small><CreditAmount amount={LOGO_COST.removeBg} unit="" /></small></button>
+              <button disabled={inputLocked || hasVectorExport} onClick={() => run('vectorize')}><Spline size={15} /> Vectorize <small><CreditAmount amount={LOGO_COST.vectorize} unit="" /></small></button>
               <DownloadMenu downloading={downloading} hasVector={hasVectorExport} onDownload={download} />
             </div>
           </> : <div className={`${styles.previewStage} ${styles.emptyStage}`}>
@@ -611,7 +612,7 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
                   {!(editing && selected) && <ColorControls settings={designSettings} onChange={updateDesignSettings} disabled={inputLocked} />}
                   {!(editing && selected) && <div className={styles.promptOptions} role="group" aria-label="Number of logo options"><span>Options</span>{Array.from({ length: LOGO_BATCH_LIMIT }, (_, index) => index + 1).map(number => <button type="button" key={number} disabled={inputLocked} aria-pressed={generationCount === number} onClick={() => setCount(number)}>{number}</button>)}</div>}
                   {editing && selected && <span className={styles.promptMode}>Original preserved</span>}
-                  <span className={styles.promptCost}>{editing && selected ? LOGO_COST.edit : generationUnitCost * generationCount} cr</span>
+                  <span className={styles.promptCost} aria-live="polite" aria-atomic="true"><CreditAmount amount={editing && selected ? LOGO_COST.edit : generationUnitCost * generationCount} unit="" /></span>
                   <button className={styles.generate} disabled={inputLocked || enhancing || (editing && selected ? !editPrompt.trim() : !canGenerate) || !authReady} type="submit"
                     aria-label={!canEditProject ? 'View-only project' : locked ? 'Creating logos' : editing && selected ? 'Apply edit' : `Generate ${generationCount} ${generationCount === 1 ? 'logo' : 'logos'}`}
                     title={!canEditProject ? 'View-only project' : locked ? 'Creating…' : editing && selected ? 'Apply edit' : missingBrandMessage || `Generate ${generationCount} ${generationCount === 1 ? 'logo' : 'logos'}`} aria-busy={locked} aria-describedby={missingBrandMessage ? 'logo-generation-requirement logo-prompt-cost' : 'logo-prompt-cost'}>
@@ -621,7 +622,7 @@ export default function LogoStudio({ projectId: initialId = null, initialExample
               </div>
             </div>
             {missingBrandMessage && <p className={styles.requirementHint} id="logo-generation-requirement" role="status">{missingBrandMessage}</p>}
-            <p className={styles.billingNote} id="logo-prompt-cost">{!canEditProject ? 'View-only access · You can preview and download saved logos.' : <>{editing && selected ? LOGO_COST.edit : generationUnitCost * generationCount} credits · {projectAccess === 'edit' ? 'Uses your credits. ' : ''}Failed outputs are refunded.</>}</p>
+            <p className={styles.billingNote} id="logo-prompt-cost">{!canEditProject ? 'View-only access · You can preview and download saved logos.' : <><CreditAmount amount={editing && selected ? LOGO_COST.edit : generationUnitCost * generationCount} /> · {projectAccess === 'edit' ? 'Uses your credits. ' : ''}Failed outputs are refunded.</>}</p>
           </form>
         </div>
       </section>

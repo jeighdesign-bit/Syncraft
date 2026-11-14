@@ -3,7 +3,8 @@ import { absoluteUrl } from "@/lib/site";
 export const metadata = {
   title: "Privacy Policy",
   description:
-    "Learn how Syncraft handles uploaded images, generated files, account data, payments, technical logs, retention, and AI training protections.",
+    "Read the Syncraft privacy notice on creative content, providers, sharing, analytics, retention and privacy rights.",
+  robots: { index: false, follow: false },
   alternates: {
     canonical: absoluteUrl("/privacy"),
   },

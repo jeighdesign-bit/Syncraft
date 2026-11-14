@@ -85,7 +85,7 @@ export async function POST(request) {
 
     console.log(`[Refund API] ✅ Successfully processed refund for project ${projectId} (User: ${user.id})`);
     
-    return NextResponse.json({ success: true, message: "Refund processed successfully" });
+    return NextResponse.json({ success: true, message: "Refund processed successfully", balance: refund.balanceAfter });
 
   } catch (error) {
     console.error(`[Refund API Error]:`, error);

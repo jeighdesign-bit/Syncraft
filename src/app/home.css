@@ -189,6 +189,7 @@
           display: inline-flex;
           align-items: center;
           justify-content: flex-start;
+          gap: 6px;
           border: 0;
           background: transparent;
           cursor: pointer;
@@ -200,8 +201,23 @@
 
         .landing-home-logo img {
           display: block;
-          width: auto;
-          height: 24px;
+          width: 112px;
+          height: 20px;
+          filter: brightness(0) invert(1);
+        }
+
+        .landing-home-logo__version,
+        .site-footer-logo-version {
+          display: inline-flex;
+          align-items: center;
+          color: #a4a69f;
+          font-size: 9px;
+          font-weight: 500;
+          line-height: 1;
+          letter-spacing: .02em;
+          white-space: nowrap;
+          writing-mode: vertical-rl;
+          transform: rotate(180deg);
         }
 
         .landing-home-logo:hover {
@@ -803,9 +819,18 @@
 
         .user-feature-headline__lead { margin-bottom: 6px; }
 
+        .user-feature-headline__stage {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          width: 100%;
+        }
+
         .user-feature-headline__slot {
           position: relative;
           display: grid;
+          grid-area: 1 / 1;
+          justify-self: start;
+          align-self: start;
           grid-template-columns: minmax(0, 1fr);
           width: fit-content;
           max-width: 100%;
@@ -813,7 +838,10 @@
           padding: 4px 12px 8px;
           border: 1px dashed rgba(230, 231, 222, .38);
           color: #d1c8bc;
+          transition: width 480ms cubic-bezier(.22, 1, .36, 1), height 480ms cubic-bezier(.22, 1, .36, 1);
         }
+
+        .user-feature-headline__content { min-width: 0; overflow: hidden; }
 
         .user-feature-headline__name {
           display: block;
@@ -827,11 +855,12 @@
           -webkit-background-clip: text;
           background-clip: text;
           -webkit-text-fill-color: transparent;
-          animation: featureNameIn 480ms ease-out both;
+          animation: featureNameIn 320ms ease-out 100ms both;
         }
 
-        /* Reserve the largest rotating label without exposing duplicate headings. */
-        .user-feature-headline__measure { visibility: hidden; animation: none; }
+        /* Reserve heading height outside the animated frame so each frame fits its label. */
+        .user-feature-headline__measure { visibility: hidden; transition: none; }
+        .user-feature-headline__measure .user-feature-headline__name { animation: none; }
 
 
         .guest-feature-headline {
@@ -859,6 +888,7 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
+          .user-feature-headline__slot { transition: none; }
           .user-feature-headline__name { animation: none; }
         }
 
@@ -1298,12 +1328,17 @@
           background: radial-gradient(circle at 20% 0%, #303030, #262626 38%);
         }
 
+        .site-footer-brand-lockup {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
         .site-footer-brand .site-footer-logo {
           display: block;
-          width: 148px;
-          height: auto;
-          filter: grayscale(100%) brightness(2.2);
-          opacity: 0.84;
+          width: 112px;
+          height: 20px;
+          filter: brightness(0) invert(1);
         }
 
         .site-footer-brand p {

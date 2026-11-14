@@ -1,5 +1,6 @@
 "use client";
 
+import CreditAmount from '@/components/CreditAmount';
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
@@ -126,7 +127,7 @@ export default function ApiDashboardPage() {
               </div>
               <div className={styles.balanceBlock}>
                 <p id="wallet-title">Available balance</p>
-                <div className={styles.balanceValue}><strong>{dashboardData.wallet.balance_credits.toLocaleString()}</strong><span>API credits</span></div>
+                <div className={styles.balanceValue}><strong><CreditAmount amount={dashboardData.wallet.balance_credits.toLocaleString()} unit={null} /></strong><span>API credits</span></div>
               </div>
               <p className={styles.walletCopy}>Prepaid credits never expire. Top up through QR Ph and your balance updates automatically.</p>
               <button type="button" onClick={() => setShowTopUpModal(true)} className={styles.primaryButton}>Buy API credits <ArrowRight size={18} aria-hidden="true" /></button>

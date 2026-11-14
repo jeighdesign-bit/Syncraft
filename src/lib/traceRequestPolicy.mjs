@@ -8,20 +8,20 @@ export function canResumeTraceUpscale(project) {
 
 export function traceTimeoutMessage(label) {
   if (label === "step2" || label === "save2") {
-    return "HD upscaling timed out. Your flat artwork is saved. Resume HD Upscale for free; no need to generate again.";
+    return "Syncraft Upscale timed out. Your flat artwork is saved. Resume Syncraft Upscale for free; no need to generate again.";
   }
   if (label === "step3") {
-    return "Vectorization timed out. Your upscale is saved. Retry Vector SVG for free.";
+    return "Vectorization timed out. Your upscale is saved. Retry Syncraft Vector for free.";
   }
   return "The request took too long. Please try again. Your saved project is still available.";
 }
 
 export function traceConnectionMessage(label) {
   if (label === 'step3') {
-    return 'The SVG connection was interrupted. Your upscale is saved. Retry Vector SVG for free.';
+    return 'The SVG connection was interrupted. Your upscale is saved. Retry Syncraft Vector for free.';
   }
   if (label === 'step2' || label === 'save2') {
-    return 'The upscale connection was interrupted. Your flat artwork is saved. Resume HD Upscale for free.';
+    return 'The upscale connection was interrupted. Your flat artwork is saved. Resume Syncraft Upscale for free.';
   }
   return 'The server connection was interrupted. Your saved project is still available. Please try again.';
 }

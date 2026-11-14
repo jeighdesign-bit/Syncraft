@@ -1,5 +1,6 @@
 "use client";
 
+import CreditAmount from '@/components/CreditAmount';
 import { useState } from "react";
 
 export default function B2bDemoPage() {
@@ -103,7 +104,7 @@ export default function B2bDemoPage() {
             marginTop: "10px"
           }}
         >
-          {loading ? "Generating (This takes 30-60s)..." : "Send API Request"}
+          {loading ? "Generating (This takes 30-60s)..." : <>Send API Request · <CreditAmount amount={mode === 'bg_remover' ? 5 : 40} unit="API credits" /></>}
         </button>
       </form>
 
@@ -115,7 +116,7 @@ export default function B2bDemoPage() {
 
       {result && (
         <div style={{ marginTop: "30px", padding: "20px", background: "#dcfce7", color: "#166534", borderRadius: "8px" }}>
-          <h2 style={{ marginBottom: "15px", color: "#166534" }}>Success! (Charged {result.credits_charged} Credits)</h2>
+          <h2 style={{ marginBottom: "15px", color: "#166534" }}>Success! (Charged <CreditAmount amount={result.credits_charged} />)</h2>
           <p><strong>Company:</strong> {result.company}</p>
           <p><strong>Mode Used:</strong> {result.mode}</p>
           <p style={{ marginTop: "10px", marginBottom: "10px" }}><strong>Final {result.type === 'image/png' ? 'PNG' : 'Vector'} Output:</strong></p>

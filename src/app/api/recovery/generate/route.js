@@ -6,7 +6,7 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 import { DEFAULT_MAX_IMAGE_BYTES, fetchWithSSRFProtection, getAllowedProviderHosts, getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from "@/lib/ssrf";
 import { normalizeRecoveryAnalysis } from "@/lib/recovery";
 import { normalizedCorrelation, recoveryAspectRatioDrift } from "@/lib/recoveryPolicy.mjs";
-import { CREDIT_COST } from "@/lib/pricing";
+import { DEFAULT_EXTRACTION_RESOLUTION, extractionResolution, extractionCredits, verifyNative4K, MAX_NATIVE_4K_BYTES } from "@/lib/extractionResolution.mjs";
 import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 import { uploadToR2 } from "@/lib/cloudflare";
 import sharp from "sharp";
@@ -39,15 +39,16 @@ const waitForRetry = delayMs => new Promise(resolve => setTimeout(resolve, delay
 
 async function fetchRecoveryAsset(url, options, stage) {
   let lastError;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  const { maxAttempts = 3, ...downloadOptions } = options;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      return await fetchWithSSRFProtection(url, { ...options, timeoutMs: 30_000 });
+      return await fetchWithSSRFProtection(url, { ...downloadOptions, timeoutMs: downloadOptions.timeoutMs ?? 30_000 });
     } catch (error) {
       lastError = error;
       const message = providerErrorMessage(error);
       const transient = error instanceof TypeError
         || /fetch failed|network|socket|econn|timed?\s*out|timeout|aborted/i.test(message);
-      if (!transient || attempt === 3) break;
+      if (!transient || attempt === maxAttempts) break;
       await waitForRetry(attempt * 350);
     }
   }
@@ -57,11 +58,11 @@ async function fetchRecoveryAsset(url, options, stage) {
   throw wrapped;
 }
 
-async function runGeneration(imageUrls, analysis, mode, sourceBuffer, stage = "generation") {
+async function runGeneration(imageUrls, analysis, mode, sourceBuffer, stage = "generation", resolution = DEFAULT_EXTRACTION_RESOLUTION) {
   const { fal } = await import("@fal-ai/client");
   let requestId = "";
   try {
-    const input = buildRecoveryImageInput({ imageUrls, analysis, mode, directCrop: true });
+    const input = buildRecoveryImageInput({ imageUrls, analysis, mode, directCrop: true, resolution });
     const result = await fal.subscribe(RECOVERY_IMAGE_ENDPOINT, {
       input,
       logs: true,
@@ -161,6 +162,7 @@ function normalizeValidation(raw) {
 
 async function refund(userId, projectId, chargeTransactionId, reason, validation = null) {
   let ok = false;
+  let balanceAfter = null;
   try {
     const result = await refundCreditVerified({
       chargeTransactionId,
@@ -169,6 +171,7 @@ async function refund(userId, projectId, chargeTransactionId, reason, validation
       metadata: { route: "api/recovery/generate", validation: validation || null },
     });
     ok = result.refunded;
+    balanceAfter = result.balanceAfter ?? null;
   } catch (refundError) {
     console.error("[Universal Recovery] Verified refund failed:", refundError);
   }
@@ -187,7 +190,7 @@ async function refund(userId, projectId, chargeTransactionId, reason, validation
       },
     },
   }).eq("id", projectId);
-  return ok;
+  return { refunded: ok, balanceAfter };
 }
 
 export async function POST(request) {
@@ -196,6 +199,9 @@ export async function POST(request) {
   let userId;
   let chargeTransactionId = null;
   let isOwnerTest = false;
+  let selectedResolution = DEFAULT_EXTRACTION_RESOLUTION;
+  let executionCost = extractionCredits();
+  let balanceAfter = null;
   try {
     const token = request.headers.get("authorization")?.replace("Bearer ", "").trim();
     const { data: { user } } = await adminSupabase.auth.getUser(token || "");
@@ -206,7 +212,11 @@ export async function POST(request) {
     const limit = await enforceRateLimit({ namespace: "api:recovery:generate", identifier: user.id, max: 3, window: "60 s", windowMs: 60_000 });
     if (!limit.success) return limit.response;
 
-    ({ projectId } = await request.json());
+    const body = await request.json();
+    projectId = body.projectId;
+    try { selectedResolution = extractionResolution(body.resolution); }
+    catch (error) { return NextResponse.json({ error: error.message, code: error.code }, { status: 400 }); }
+    executionCost = extractionCredits(selectedResolution, 'universal');
     const { project } = await getProjectAccess(user.id, projectId, { required: PROJECT_ACCESS.EDIT });
     if (!project || project.trace_type !== "universal") return NextResponse.json({ error: "Universal project not found" }, { status: 404 });
     const recovery = project.canvas_data?.universal_recovery;
@@ -217,7 +227,7 @@ export async function POST(request) {
     if (recovery.status !== "analyzed") return NextResponse.json({ error: "RECOVERY_NOT_ANALYZED" }, { status: 409 });
     const generatingCanvas = {
       ...(project.canvas_data || {}),
-      universal_recovery: { ...recovery, status: "generating" },
+      universal_recovery: { ...recovery, status: "generating", resolution: selectedResolution },
     };
     const { data: locked, error: lockError } = await adminSupabase.from("projects")
       .update({ canvas_data: generatingCanvas, credit_deducted: true, refunded: false })
@@ -235,16 +245,17 @@ export async function POST(request) {
         projectId,
         feature: "universal_design_recovery",
         action: "Universal Design Recovery",
-        amount: CREDIT_COST.universal,
-        metadata: { route: "api/recovery/generate", mode: recovery.mode || project.ai_prompt || null, reference_category: normalizeReferenceCategory(project.canvas_data?.reference_category) },
+        amount: executionCost,
+        metadata: { route: "api/recovery/generate", resolution: selectedResolution, mode: recovery.mode || project.ai_prompt || null, reference_category: normalizeReferenceCategory(project.canvas_data?.reference_category) },
       });
       chargeTransactionId = charge.transactionId;
       isOwnerTest = charge.isOwnerTest;
+      balanceAfter = charge.balanceAfter ?? null;
       charged = true;
     } catch (billingError) {
       await adminSupabase.from("projects").update({ canvas_data: project.canvas_data, credit_deducted: false }).eq("id", projectId);
       if (billingError.code === "INSUFFICIENT_CREDITS" || billingError.code === "PROFILE_NOT_FOUND") {
-        return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 403 });
+        return NextResponse.json({ error: "INSUFFICIENT_CREDITS", balance: billingError.balance ?? null }, { status: 403 });
       }
       console.error("[Universal Recovery] Verified charge failed:", billingError);
       return NextResponse.json({ error: "Billing error. Please try again." }, { status: 500 });
@@ -280,9 +291,10 @@ export async function POST(request) {
       reason: 'Direct extraction from the selected crop; no separate image analysis was requested.',
     }, 'auto'), source_width: sourceWidth, source_height: sourceHeight,
       crop_authoritative: true, preparation: 'local_crop_dimensions_only' }, project.canvas_data?.reference_category);
-    const finalImage = await runGeneration([source.finalUrl], analysis, recoveryMode, source.buffer);
+    const finalImage = await runGeneration([source.finalUrl], analysis, recoveryMode, source.buffer, 'generation', selectedResolution);
     let downloaded = await fetchRecoveryAsset(finalImage.url, {
-      allowedHosts: getAllowedProviderHosts(), maxBytes: DEFAULT_MAX_IMAGE_BYTES,
+      allowedHosts: getAllowedProviderHosts(), maxBytes: selectedResolution === '4K' ? MAX_NATIVE_4K_BYTES : DEFAULT_MAX_IMAGE_BYTES,
+      ...(selectedResolution === '4K' ? { timeoutMs: 60_000, maxAttempts: 2 } : {}),
       allowedContentTypes: ['image/'],
     }, 'Generated image');
     await recordProviderUsage({ creditTransactionId: chargeTransactionId, projectId, userId,
@@ -291,16 +303,18 @@ export async function POST(request) {
       metadata: { operation: 'universal_design_recovery', extraction_flow: 'direct_crop',
         mode: recoveryMode, reference_category: analysis.reference_category,
         input_reference_sha256: sourceReferenceHash, provider_input: finalImage.input,
-        source_width: sourceWidth, source_height: sourceHeight },
+        source_width: sourceWidth, source_height: sourceHeight, resolution: selectedResolution, credits: executionCost },
     });
+    if (selectedResolution === '4K') verifyNative4K(await sharp(downloaded.buffer).metadata());
     const preserveStripProportions = cropRatio < 0.35 || cropRatio > 3;
     if (preserveStripProportions) downloaded = { ...downloaded,
-      buffer: await matchRecoveryStripProportions(downloaded.buffer, sourceWidth, sourceHeight),
+      buffer: await matchRecoveryStripProportions(downloaded.buffer, sourceWidth, sourceHeight, { resolution: selectedResolution }),
       response: new Response(null, { headers: { 'content-type': 'image/png' } }) };
     const [retention, outputMeta, similarity] = await Promise.all([
       contentRetentionCheck(source.buffer, downloaded.buffer), sharp(downloaded.buffer).metadata(),
       keepArtwork ? structuralSimilarity(source.buffer, downloaded.buffer) : Promise.resolve(null),
     ]);
+    if (selectedResolution === '4K') verifyNative4K(outputMeta);
     let validation = { pass: false, usable_partial: true, advisory_only: true, failures: [],
       review_status: 'not_requested', extraction_method: 'direct_crop_image_edit',
       correction: 'Extraction is ready. Compare the artwork with your selected crop before use.',
@@ -339,6 +353,7 @@ export async function POST(request) {
         ...(project.canvas_data || {}),
         universal_recovery: {
           ...recovery,
+          resolution: selectedResolution,
           analysis,
           status: validation.pass ? "validated" : "partial",
           validation,
@@ -351,7 +366,7 @@ export async function POST(request) {
             output_plane_verification_calls: 0,
             foreground_detection_calls: 0,
             masked_regions: 0,
-            charged_credits: CREDIT_COST.universal,
+            charged_credits: executionCost,
           },
         },
       },
@@ -361,12 +376,15 @@ export async function POST(request) {
     await markCreditTransaction({
       transactionId: chargeTransactionId,
       status: "succeeded",
-      metadata: { recovery_status: validation.pass ? "complete" : "partial" },
+      metadata: { recovery_status: validation.pass ? "complete" : "partial", resolution: selectedResolution },
     });
 
     return NextResponse.json({
       success: true,
       alreadySaved: true,
+      resolution: selectedResolution,
+      creditsCharged: executionCost,
+      balanceAfter,
       fileUrl,
       mimeType: exactOutputMimeType,
       recoveryStatus: validation.pass ? "complete" : "partial",
@@ -381,9 +399,11 @@ export async function POST(request) {
     } else {
       console.error("[Universal Recovery]", error);
     }
-    const refunded = charged && userId && projectId
+    const refundResult = charged && userId && projectId
       ? await refund(userId, projectId, chargeTransactionId, errorMessage, error.validation)
-      : false;
+      : { refunded: false, balanceAfter: null };
+    const refunded = refundResult.refunded;
+    if (typeof refundResult.balanceAfter === 'number') balanceAfter = refundResult.balanceAfter;
     const expectedQualityRejection = error.code === "BACKGROUND_ONLY_VALIDATION_FAILED"
       || error.code === "RECOVERY_VALIDATION_FAILED"
       || error.code === "RECOVERY_VISUAL_CHECK_FAILED"
@@ -395,6 +415,8 @@ export async function POST(request) {
       error: errorMessage,
       code: error.code || "UNIVERSAL_RECOVERY_FAILED",
       refunded,
+      refundedCredits: refunded ? executionCost : 0,
+      balance: balanceAfter,
       ...(error.validation ? { validation: error.validation } : {}),
       ...(error.providerRequestId ? { requestId: error.providerRequestId } : {}),
     }, { status: expectedQualityRejection ? 200 : error.status || 500 });

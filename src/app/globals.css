@@ -794,91 +794,80 @@ html, body {
    ACTIVITY LOG STYLES
    ========================================= */
 .console-area {
-  flex: 1;
-  background-color: #1a1a1a;
-  border-top: 1px solid #111;
-  padding: 16px 20px;
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: 140px;
+  background-color: transparent;
+  padding: 10px 16px 14px;
   font-family: var(--font-geist-sans), "Inter", sans-serif;
   font-size: 12px;
   color: var(--text-muted);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
   position: relative;
-}
-
-/* Timeline left line */
-.console-area::before {
-  content: '';
-  position: absolute;
-  left: 24px;
-  top: 16px;
-  bottom: 16px;
-  width: 1px;
-  background: #333;
-  z-index: 0;
 }
 
 .console-msg {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  display: grid;
+  gap: 4px;
+  padding: 0 0 14px 20px;
+  min-width: 0;
   position: relative;
-  z-index: 1;
-  animation: logSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0;
-  transform: translateY(4px);
+  animation: logSlideIn 180ms ease-out;
 }
-
+.console-msg:last-child { padding-bottom: 0; }
+.console-msg::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 7px;
+  height: 7px;
+  border: 1px solid #727272;
+  border-radius: 50%;
+  background: #343434;
+}
+.console-msg::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 17px;
+  bottom: 4px;
+  width: 1px;
+  background: #303030;
+}
+.console-msg:last-child::after { display: none; }
 @keyframes logSlideIn {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .console-badge {
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 3px 6px;
-  border-radius: 4px;
-  background: #2a2a2a;
-  color: #888;
-  border: 1px solid #3a3a3a;
-  white-space: nowrap;
-  flex-shrink: 0;
-  min-width: 50px;
-  text-align: center;
-  box-shadow: 0 0 0 4px #1a1a1a; /* masks the timeline line */
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: 500;
+  color: #a6a6a6;
+  overflow-wrap: anywhere;
 }
 
 .console-text {
   font-size: 12px;
-  line-height: 1.4;
-  color: #ccc;
-  font-weight: 500;
-  margin-top: 1px;
+  line-height: 1.55;
+  color: #e0e0e0;
+  font-weight: 400;
+  overflow-wrap: anywhere;
 }
 
-.console-msg.success .console-badge {
-  background: rgba(74, 222, 128, 0.1);
-  color: #4ade80;
-  border-color: rgba(74, 222, 128, 0.3);
-}
-.console-msg.success .console-text {
-  color: #d4ff59;
-}
-
-.console-msg.error .console-badge {
-  background: rgba(248, 113, 113, 0.1);
-  color: #f87171;
-  border-color: rgba(248, 113, 113, 0.3);
-}
-.console-msg.error .console-text {
-  color: #ff9d9d;
+.console-msg.success::before { background: #b8d77e; border-color: #b8d77e; }
+.console-msg.success .console-badge { color: #b8d77e; }
+.console-msg.error::before { background: #ed9292; border-color: #ed9292; }
+.console-msg.error .console-badge, .console-msg.error .console-text { color: #ffaaaa; }
+.console-msg.warning::before { background: #e4c282; border-color: #e4c282; }
+.console-msg.warning .console-badge { color: #e4c282; }
+@media (prefers-reduced-motion: reduce) {
+  .console-msg { animation: none; }
 }
 
 /* =========================================
@@ -1153,6 +1142,18 @@ html, body {
   text-decoration: none;
   white-space: nowrap;
   transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.syncraft-header-control.syncraft-header-control--credits {
+  width: auto;
+  min-width: 128px;
+  flex: 0 0 auto;
+  padding: 0 14px;
+  gap: 10px;
+}
+
+.syncraft-header-control--credits [data-credit-amount] {
+  gap: 6px;
 }
 
 button.syncraft-header-control,

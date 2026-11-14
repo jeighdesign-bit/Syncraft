@@ -1,0 +1,68 @@
+SYNCRAFT — ACCEPTABLE USE POLICY
+Last updated: 11 November 2026
+Effective date: 11 November 2026
+Operator: JAY LUIS CAÑO, operating as Syncraft
+Support and abuse reports: jeighdesign@gmail.com
+
+1. SCOPE AND ELIGIBILITY
+
+This policy applies when you submit prompts or files, generate or edit artwork, extract designs, remove backgrounds, upscale or vectorize images, use business/API access, share projects, export files or submit an optional community listing. It forms part of the Terms of Service and should be read with the Copyright Policy, Privacy Policy and Refund and Payment Policy.
+
+You must satisfy the Terms' eligibility requirements, including being at least 18 years old or the higher applicable age of legal majority. Do not use another person's account or misrepresent your eligibility to bypass these requirements. Available features must be used within their displayed permissions, settings and limits.
+
+2. AUTHORIZED MATERIAL AND INTENDED USE
+
+Use material you own or have sufficient permission to process and use as intended. Respect copyright, trademark, privacy, publicity and other applicable rights, including rights in client files and personal data about others. Do not assume a download, purchase, commission or attribution permits every proposed use.
+
+Do not upload, generate, process, share or export material for infringement, counterfeiting or unauthorized branded merchandise. Removing an identity mark, reconstructing a garment print or turning an image into SVG does not grant permission to exploit the underlying work. Applicable legal exceptions remain subject to their conditions; Syncraft does not certify rights clearance or the legality of a proposed use.
+
+3. UNLAWFUL, EXPLOITATIVE AND DECEPTIVE CONTENT
+
+Do not use Syncraft to create, obtain, promote or distribute:
+
+- Child sexual abuse or exploitation material, sexual content involving minors, or content that facilitates their exploitation.
+- Non-consensual sexual imagery, sexual exploitation or other unlawful sexual content.
+- Unlawful threats, targeted harassment, hateful abuse or content that unlawfully promotes violence or exploitation.
+- Fraud, scams, counterfeit documents or assets intended to deceive people about identity, ownership, authorization or payment.
+- Unlawful impersonation of a person, artist, business, brand, school, team or public body, including misleading claims of sponsorship or endorsement.
+- Personal or confidential information you are not entitled to disclose, or material intended for doxxing, stalking or other unlawful invasions of privacy.
+- Malware, malicious links or other material intended to damage, compromise or unlawfully access systems or data.
+
+Do not make a materially misleading claim that a generated or extracted result has been certified by Syncraft as original, rights-cleared, exact to its reference or approved for production.
+
+4. ACCOUNT, SYSTEM AND PAYMENT ABUSE
+
+Do not steal or share credentials, access another user's private project without authorization, exceed granted collaborator permissions, exploit exposed file links to obtain material you are not entitled to use, or attempt to bypass security or moderation controls. Do not attack, disrupt or overload the service or interfere with other users.
+
+Do not manipulate payment confirmations, forge receipts, exploit duplicate-request or refund handling, resubmit refunded transactions to obtain duplicate reimbursement, or use accounts or automation to evade charges, rate limits or restrictions. Authorized use of a provided business/API interface within its limits is different from evading those limits. Follow the separate wallet, pricing and access arrangements applicable to that interface.
+
+A lawful, good-faith complaint or payment dispute is not payment abuse merely because you raise it with a bank, provider or regulator. The Refund and Payment Policy explains credit returns, monetary-refund requests and suspected-fraud investigations.
+
+5. SHARING, COMMUNITY LISTINGS AND REVIEW
+
+Share only with people you are authorized to give access to, and only at an appropriate permission level. Do not use collaborator access to take ownership of someone else's work or spend from an account without authorization. Keep account credentials separate from project-sharing permissions.
+
+Community submissions must truthfully identify the submitted business and link, include the required display permission and meet the submission requirements. Do not submit stolen logos, misleading links or a listing that impersonates another business. Submission remains subject to moderation; it does not guarantee publication, verification, sponsorship or endorsement. Do not try to bypass withdrawal or moderation controls.
+
+6. AI PROVIDERS AND OUTPUT RESPONSIBILITY
+
+Use enabled AI features and outputs consistently with the Terms, applicable law and applicable upstream restrictions. Do not bypass provider safeguards through misleading prompts, altered files or repeated prohibited requests. A provider's refusal or acceptance does not by itself establish whether content is lawful or authorized.
+
+Review generated and extracted artwork before printing, sublimation, client delivery or commercial use. Follow the Terms' guidance on accuracy, rights and production suitability. This policy does not promise exact reconstruction, registration eligibility, exclusive ownership or flawless output.
+
+7. ENFORCEMENT AND REQUESTS FOR REVIEW
+
+We may refuse a request, restrict a feature, remove offending content, limit access or suspend or terminate an account when reasonably necessary to address violations, serious or repeated infringement, security threats or legal obligations. Actions should be proportionate to the circumstances. Where appropriate and lawful, we will explain the action and allow the affected user to raise a concern; urgent protective action may be necessary before notice.
+
+To request review, contact jeighdesign@gmail.com with your account email, affected project or request identifier, a description of the issue and relevant evidence. Do not send passwords, one-time codes or unnecessary sensitive documents. Reviews do not guarantee restoration or permit continued prohibited use while a restriction remains in place.
+
+An account restriction does not automatically forfeit every unused credit or remove refund and other rights preserved by applicable law. We handle the financial consequences under the Terms, Refund and Payment Policy and applicable legal obligations. Information needed for an investigation is handled under the Privacy Policy.
+
+8. REPORTS, CONTACT AND CHANGES
+
+Operator: JAY LUIS CAÑO, operating as Syncraft
+Abuse, support and review requests: jeighdesign@gmail.com
+
+For intellectual-property complaints, follow the Copyright Policy and include the information requested there. For other concerns, identify the affected material or action and provide enough detail for us to locate and assess it. Submit reports honestly; do not use the reporting process to harass others or make knowingly false claims.
+
+This policy is effective from 11 November 2026. Material changes will be communicated as described in the Terms. Nothing here removes mandatory consumer rights, lawful complaint channels or remedies available under applicable law.

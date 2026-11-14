@@ -97,7 +97,7 @@ export async function waitForTraceUpscale({
     }
     if (state.status === 'none') {
       if (existingOnly) return null;
-      throw new Error('No upscale job was found. Resume HD Upscale for free.');
+      throw new Error('No upscale job was found. Resume Syncraft Upscale for free.');
     }
     if (state.status === 'succeeded') {
       if (!state.fileUrl)
@@ -118,7 +118,7 @@ export async function waitForTraceUpscale({
   }
   throw Object.assign(
     new Error(
-      'HD Upscale is still processing. Your job is saved. Reopen this project to resume the same job for free.',
+      'Syncraft Upscale is still processing. Your job is saved. Reopen this project to resume the same job for free.',
     ),
     { code: 'UPSCALE_STILL_PROCESSING' },
   );

@@ -1,5 +1,7 @@
 "use client";
 
+import { CREDIT_COST } from '@/lib/pricing';
+import CreditAmount from '@/components/CreditAmount';
 import { memo, useState } from "react";
 import { ArrowUpRight, PenTool, ScanLine, Scissors, Shirt, Sparkles, X } from "lucide-react";
 import { UNIVERSAL_AVAILABLE, UNIVERSAL_UNAVAILABLE_MESSAGE, isUniversalTraceType } from "@/lib/universalAvailability.mjs";
@@ -33,7 +35,7 @@ function CategoryCard({ icon: Icon, eyebrow, title, description, tags, credits, 
       </span>
 
       <span className={styles.featureAction}>
-        <span className={disabled ? styles.unavailableBadge : styles.creditBadge}>{disabled ? 'Unavailable' : `${credits} credits`}</span>
+        <span className={disabled ? styles.unavailableBadge : styles.creditBadge}>{disabled ? 'Unavailable' : <CreditAmount amount={credits} />}</span>
         {!disabled && <ArrowUpRight size={17} strokeWidth={1.8} />}
       </span>
     </button>
@@ -148,7 +150,7 @@ const NewProjectModal = memo(function NewProjectModal({
                 title="Garment Pattern Extraction"
                 description="Separate a jersey or shirt design from its mockup and rebuild it as clean production artwork."
                 tags={["Pattern cleanup", "SVG ready"]}
-                credits={12}
+                credits={CREDIT_COST.trace}
                 accent="#d4ff59"
                 onClick={() => handleCategorySelect("garment")}
               />
@@ -158,7 +160,7 @@ const NewProjectModal = memo(function NewProjectModal({
                 title="Syncraft Extraction (Universal)"
                 description={UNIVERSAL_AVAILABLE ? "Unwarp and recover visible print from banners, labels, packaging, decals, and complex surfaces." : UNIVERSAL_UNAVAILABLE_MESSAGE}
                 tags={["Perspective fix", "Any surface"]}
-                credits={24}
+                credits={CREDIT_COST.universal}
                 accent="#9effc8"
                 featured
                 disabled={!UNIVERSAL_AVAILABLE}
@@ -170,7 +172,7 @@ const NewProjectModal = memo(function NewProjectModal({
                 title="Logo / Wordmark Tracing"
                 description="Turn emblems, icons, and wordmarks into crisp mathematical paths with controlled colors."
                 tags={["Sharp paths", "Color precise"]}
-                credits={12}
+                credits={CREDIT_COST.trace}
                 accent="#b8a7ff"
                 onClick={() => handleCategorySelect("logo")}
               />
@@ -180,7 +182,7 @@ const NewProjectModal = memo(function NewProjectModal({
                 title="Background Remover"
                 description="Isolate products and portraits with a clean transparent edge, ready to download."
                 tags={["Transparent PNG", "Fast AI"]}
-                credits={12}
+                credits={CREDIT_COST.removeBg}
                 accent="#6fddff"
                 onClick={() => handleCategorySelect("bg_remover")}
               />
@@ -242,14 +244,14 @@ const NewProjectModal = memo(function NewProjectModal({
                     current={traceType}
                     onChange={setTraceType}
                     title="Keep All Artwork (Recommended)"
-                    description="Preserves visible text, logos, graphics, textures, and patterns while preparing a clean flat result. Uses 24 credits per run."
+                    description={<>Preserves visible text, logos, graphics, textures, and patterns while preparing a clean flat result. Starts at <CreditAmount amount={CREDIT_COST.universal} /> for 1K.</>}
                   />
                   <TraceOptionCard
                     value="universal_erase"
                     current={traceType}
                     onChange={setTraceType}
                     title="Extract Background / Pattern Only"
-                    description="Intentionally removes all text and logos while preserving only the visible background or pattern. Uses 24 credits per run."
+                    description={<>Intentionally removes all text and logos while preserving only the visible background or pattern. Starts at <CreditAmount amount={CREDIT_COST.universal} /> for 1K.</>}
                   />
                 </div>
               </div>

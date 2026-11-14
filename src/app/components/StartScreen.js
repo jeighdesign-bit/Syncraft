@@ -1,7 +1,7 @@
 "use client";
 
 // ─── React & Routing ──────────────────────────────────────────────────────────
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -40,6 +40,8 @@ import HeroShowcase from "./HeroShowcase";
 import FloatingPromoVideo from "./FloatingPromoVideo";
 import SectionBadge from "./SectionBadge";
 import WhySyncraft from "./WhySyncraft";
+import CommunityShowcase from "./CommunityShowcase";
+import CommunitySubmissionModal from "../community/CommunitySubmissionModal";
 import LogoStudioAnnouncement from "./LogoStudioAnnouncement";
 
 const landingNavItems = [
@@ -71,6 +73,22 @@ const featuredTools = [
 
 function AnimatedFeatureHeadline({ className = "" }) {
   const [activeTool, setActiveTool] = useState(0);
+  const [frameSize, setFrameSize] = useState(null);
+  const measureRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const measurement = measureRef.current;
+    if (!measurement) return undefined;
+
+    const updateFrameSize = () => {
+      const { width, height } = measurement.getBoundingClientRect();
+      setFrameSize(current => current?.width === width && current?.height === height ? current : { width, height });
+    };
+    updateFrameSize();
+    const observer = new ResizeObserver(updateFrameSize);
+    observer.observe(measurement);
+    return () => observer.disconnect();
+  }, [activeTool]);
 
   useEffect(() => {
     const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -86,9 +104,13 @@ function AnimatedFeatureHeadline({ className = "" }) {
   return (
     <h1 className={`user-feature-headline ${className}`.trim()}>
       <span className="user-feature-headline__lead">Make more with</span>
-      <span className="user-feature-headline__slot" aria-live="off">
-        {featuredTools.map(tool => <span key={tool} className="user-feature-headline__name user-feature-headline__measure" aria-hidden="true">{tool}</span>)}
-        <span key={featuredTools[activeTool]} className="user-feature-headline__name">{featuredTools[activeTool]}</span>
+      <span className="user-feature-headline__stage" aria-live="off">
+        {featuredTools.map((tool, index) => <span key={`measure-${tool}`} ref={index === activeTool ? measureRef : null} className="user-feature-headline__slot user-feature-headline__measure" aria-hidden="true"><span className="user-feature-headline__name">{tool}</span></span>)}
+        <span className="user-feature-headline__slot" style={frameSize ? { width: frameSize.width, height: frameSize.height } : undefined}>
+          <span className="user-feature-headline__content">
+            <span key={featuredTools[activeTool]} className="user-feature-headline__name" style={frameSize ? { width: Math.max(0, frameSize.width - 26) } : undefined}>{featuredTools[activeTool]}</span>
+          </span>
+        </span>
       </span>
     </h1>
   );
@@ -142,6 +164,14 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
   const [openingTool, setOpeningTool] = useState(null);
   const [isDraggingGlobal, setIsDraggingGlobal] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showCommunityModal, setShowCommunityModal] = useState(false);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('community') !== 'submit') return;
+    setShowCommunityModal(true);
+    url.searchParams.delete('community');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }, []);
   const [sidebarModalCategory, setSidebarModalCategory] = useState(null);
   const [showTopUpModal, setShowTopUpModal] = useState(false);
   const [selectedPricingPlan, setSelectedPricingPlan] = useState("pro");
@@ -628,9 +658,10 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
                 containerRef.current?.scrollTo({ top: 0, behavior });
                 window.scrollTo({ top: 0, behavior });
               }}
-              aria-label="Back to the top of the Syncraft landing page"
+              aria-label="Syncraft V3.0: back to the top of the homepage"
             >
-              <img src="/logo.svg" alt="" width={765} height={137} />
+              <img src="/logo.svg" alt="" width={112} height={20} />
+              <span className="landing-home-logo__version">V3.0</span>
             </button>
           </div>
 
@@ -660,6 +691,7 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
 
       {isWorkspace && (
         <WorkspaceSidebar
+          onOpenCommunity={() => setShowCommunityModal(true)}
           withoutHeader={workspaceRoute}
           disabled={isUploading}
           user={user}
@@ -834,6 +866,7 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px", width: "100%" }}>
 
         {!workspaceRoute && <>
+        <CommunityShowcase />
         <div id="creative-tools"><EduSection /></div>
         <WhySyncraft />
         <SamplesSection />
@@ -866,6 +899,7 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
         <input type="file" ref={bgRemoveInputRef} onChange={(e) => { if (e.target.files[0]) handleFileUpload(e.target.files[0], true); e.target.value = ""; }} accept="image/*" style={{ display: "none" }} />
 
         {/* ─── Modals ────────────────────────────────────────────────────────── */}
+        {showCommunityModal && <CommunitySubmissionModal onClose={() => setShowCommunityModal(false)} returnTo={workspaceRoute ? '/workspace?community=submit' : '/?community=submit'} />}
         <NewProjectModal
           key={sidebarModalCategory || "default"}
           show={showModal}
@@ -936,7 +970,10 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
         {!workspaceRoute && <footer className="site-footer">
           <div className="site-footer-main">
             <div className="site-footer-brand">
-              <img className="site-footer-logo" src="/logo.svg" alt="Syncraft" width={765} height={137} />
+              <div className="site-footer-brand-lockup">
+                <img className="site-footer-logo" src="/logo.svg" alt="Syncraft" width={112} height={20} />
+                <span className="site-footer-logo-version">V3.0</span>
+              </div>
               <p>AI-powered production tools for clean SVG tracing, background removal, upscaling, and print-ready artwork delivery.</p>
               <div className="site-footer-details">
                 <div>

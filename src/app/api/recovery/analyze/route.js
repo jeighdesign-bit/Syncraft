@@ -8,7 +8,7 @@ import { fetchWithSSRFProtection, getAllowedStorageHosts, isOwnedStorageUrl, nor
 import { normalizeRecoveryAnalysis } from "@/lib/recovery";
 import { isRecoveryInProgress } from "@/lib/recoveryPolicy.mjs";
 import { snapToAllowedAspectRatio } from "@/lib/aspectRatio";
-import { CREDIT_COST } from "@/lib/pricing";
+import { extractionResolution, extractionCredits } from "@/lib/extractionResolution.mjs";
 import { getProjectAccess, PROJECT_ACCESS } from "@/lib/projectAccess";
 
 export const runtime = "nodejs";
@@ -24,7 +24,10 @@ export async function POST(request) {
     const limit = await enforceRateLimit({ namespace: "api:recovery:analyze", identifier: user.id, max: 10, window: "60 s", windowMs: 60_000 });
     if (!limit.success) return limit.response;
 
-    const { projectId } = await request.json();
+    const { projectId, resolution } = await request.json();
+    let selectedResolution;
+    try { selectedResolution = extractionResolution(resolution); }
+    catch (error) { return NextResponse.json({ error: error.message, code: error.code }, { status: 400 }); }
     const { project } = await getProjectAccess(user.id, projectId, {
       required: PROJECT_ACCESS.EDIT,
       select: "id,user_id,created_at,trace_type,original_image_url,canvas_data,ai_prompt",
@@ -90,6 +93,7 @@ export async function POST(request) {
       : "UNIVERSAL_KEEP_ARTWORK";
     const recovery = {
       analysis,
+      resolution: selectedResolution,
       mode: selectedMode,
       status: "analyzed",
       validation: null,
@@ -123,7 +127,7 @@ export async function POST(request) {
         code: "RECOVERY_ALREADY_RUNNING",
       }, { status: 409 });
     }
-    return NextResponse.json({ success: true, analysis, creditCost: CREDIT_COST.universal });
+    return NextResponse.json({ success: true, analysis, resolution: selectedResolution, creditCost: extractionCredits(selectedResolution, 'universal') });
   } catch (error) {
     console.error("[Recovery Analyze]", error);
     return NextResponse.json({ error: error.message || "Analysis failed" }, { status: 500 });

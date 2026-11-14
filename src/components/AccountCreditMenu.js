@@ -1,5 +1,6 @@
 "use client";
 
+import CreditAmount from '@/components/CreditAmount';
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, LogOut } from "lucide-react";
 import styles from "./AccountCreditMenu.module.css";
@@ -28,8 +29,8 @@ export default function AccountCreditMenu({ user, credits, onSignOut, placement 
   }, [isOpen]);
 
   if (placement === "header") {
-    return <div className="syncraft-header-control" aria-label={`${displayedCredits} credits`}>
-      <span className="syncraft-header-control__value">{displayedCredits}</span>
+    return <div className="syncraft-header-control syncraft-header-control--credits" aria-label={`${displayedCredits} credits`}>
+      <span className="syncraft-header-control__value"><CreditAmount amount={displayedCredits} unit={null} /></span>
       <span className="syncraft-header-control__label">CREDITS</span>
     </div>;
   }

@@ -1,4 +1,6 @@
 import { CREDIT_COST } from "@/lib/pricing";
+import CreditAmount from '@/components/CreditAmount';
+import { EXTRACTION_RESOLUTIONS } from "@/lib/extractionResolution.mjs";
 import SectionBadge from "./SectionBadge";
 import styles from "./FAQSection.module.css";
 
@@ -29,7 +31,7 @@ const faqs = [
   },
   {
     question: "How do credits work?",
-    answer: `A Logo Studio creation or AI edit costs ${CREDIT_COST.logoGenerate} credits per output; variations cost ${CREDIT_COST.logoVariations} credits per output; vectorizing or removing its background costs ${CREDIT_COST.logoVectorize}. Most other tools cost ${CREDIT_COST.trace} credits per run, while Universal Design Recovery costs ${CREDIT_COST.universal}. The cost appears before you start, and you can add credits from the credit menu.`
+    answer: <>A Logo Studio creation or AI edit costs <CreditAmount amount={CREDIT_COST.logoGenerate} /> per output; variations cost <CreditAmount amount={CREDIT_COST.logoVariations} /> per output; vectorizing or removing its background costs <CreditAmount amount={CREDIT_COST.logoVectorize} />. Extraction costs {EXTRACTION_RESOLUTIONS.map((option, index) => <span key={option.value}>{index > 0 ? ', ' : ''}<CreditAmount amount={option.credits} /> at {option.value}</span>)}. The default is 1K. Other tool prices appear before you start, and you can add credits from the credit menu.</>
   },
   {
     question: "How can I get cleaner results?",

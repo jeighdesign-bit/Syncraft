@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import * as resolutionPolicy from '../src/lib/extractionResolution.mjs';
 import { universalUnavailableResponse } from '../src/lib/universalAvailability.mjs';
 import { getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from '../src/lib/ssrf.js';
 
@@ -13,7 +14,7 @@ async function harness(options = {}) {
   const source = (await readFile(new URL('../src/app/api/trace/route.js', import.meta.url), 'utf8'))
     .replace(/^import[\s\S]*?;\r?\n/gm, '').replace(/export /g, '');
   const project = { id: 'project', user_id: 'owner', original_image_url: options.url || 'https://storage.test/users/owner/crop.jpg' };
-  const context = vm.createContext({ Buffer, AbortSignal, URL, universalUnavailableResponse, console: { warn() {}, error() {} },
+  const context = vm.createContext({ ...resolutionPolicy, Buffer, AbortSignal, URL, universalUnavailableResponse, console: { warn() {}, error() {} },
     NextResponse: Response, PROJECT_ACCESS: { EDIT: 'edit' }, CREDIT_COST: { trace: 12 },
     adminSupabase: { auth: { getUser: async () => ({ data: { user: { id: 'owner' } } }) } },
     enforceRateLimit: async () => ({ success: true }), getProjectAccess: async () => ({ project }),

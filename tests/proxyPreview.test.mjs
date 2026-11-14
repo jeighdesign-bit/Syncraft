@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import sharp from 'sharp';
 import { isTransientFetchError } from '../src/lib/ssrf.js';
 import { assertSafeSvg } from '../src/lib/svgSafety.mjs';
+import { MAX_NATIVE_4K_BYTES } from '../src/lib/extractionResolution.mjs';
 
 async function harness(options = {}) {
   const buffer = options.buffer || await sharp({ create: {
@@ -19,7 +20,7 @@ async function harness(options = {}) {
     .replace(/^import[\s\S]*?;\r?\n/gm, '').replace(/export /g, '')
     .replace(/const\s+sharp\s*=\s*\(await import\(['"]sharp['"]\)\)\.default;/g, '');
   const context = vm.createContext({
-    Buffer, URL, Response, Headers, AbortSignal, AbortController, NextResponse, sharp, Date, assertSafeSvg,
+    MAX_NATIVE_4K_BYTES, Buffer, URL, Response, Headers, AbortSignal, AbortController, NextResponse, sharp, Date, assertSafeSvg,
     console: { warn() {}, error() {}, info() {} },
     process: { env: { CF_R2_PUBLIC_URL: 'https://public.r2.dev', CF_ACCOUNT_ID: 'account', CF_R2_BUCKET_NAME: 'bucket', NEXT_PUBLIC_SUPABASE_URL: 'https://storage.test' } },
     DEFAULT_MAX_IMAGE_BYTES: 15 * 1024 * 1024, DEFAULT_MAX_UPSCALED_IMAGE_BYTES: 96 * 1024 * 1024,
@@ -32,6 +33,7 @@ async function harness(options = {}) {
     },
     fetchStoredAsset: async (url, config) => {
       calls.push({ url, config });
+      if (buffer.length > config.maxBytes) throw new Error('Remote file is too large');
       if (options.gate) await options.gate;
       if (options.error) throw options.error;
       return { buffer, response: new Response(buffer, { headers: {
@@ -72,6 +74,24 @@ test('small previews are not enlarged', async () => {
   const metadata = await sharp(Buffer.from(await response.arrayBuffer())).metadata();
   assert.equal(metadata.width, 320);
   assert.equal(metadata.height, 640);
+});
+
+test('large native extraction PNGs use a bounded 64 MiB limit with the same preview rendering and exact downloads', async () => {
+  const png = await sharp({ create: { width: 4096, height: 4096, channels: 3, background: '#7236a8' } }).png().toBuffer();
+  const original = Buffer.concat([png, Buffer.alloc(16 * 1024 * 1024)]);
+  const h = await harness({ buffer: original });
+  const source = 'https://public.r2.dev/projects/id/generated_flat_123.png';
+  const preview = await h.run({ preview: '1' }, source);
+  assert.equal(preview.status, 200);
+  assert.equal(h.calls[0].config.maxBytes, MAX_NATIVE_4K_BYTES);
+  const metadata = await sharp(Buffer.from(await preview.arrayBuffer())).metadata();
+  assert.equal(metadata.width, 1600); assert.equal(metadata.height, 1600);
+  assert.equal(preview.headers.get('X-Source-Width'), '4096');
+  const download = await h.run({ download: 'artwork.png' }, source);
+  assert.equal(download.status, 200);
+  assert.deepEqual(Buffer.from(await download.arrayBuffer()), original);
+  const upload = await h.run({ preview: '1' }, 'https://public.r2.dev/users/id/upload.png');
+  assert.equal(upload.status, 413);
 });
 
 test('SVG display previews return a cacheable lossless bitmap with the original faint colors', async () => {

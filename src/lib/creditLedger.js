@@ -82,11 +82,11 @@ export async function markCreditTransaction({ transactionId, status, metadata = 
   return data === true;
 }
 
-export async function findLatestProjectCharge(projectId) {
+export async function findLatestProjectCharge(projectId, { throwOnError = false } = {}) {
   if (!projectId) return null;
   const { data, error } = await adminSupabase
     .from("credit_logs")
-    .select("id,is_owner_test,feature,transaction_status")
+    .select("id,is_owner_test,feature,transaction_status,metadata")
     .eq("project_id", projectId)
     .eq("transaction_type", "charge")
     .order("created_at", { ascending: false })
@@ -94,6 +94,7 @@ export async function findLatestProjectCharge(projectId) {
     .maybeSingle();
   if (error) {
     console.error(`[Credit Ledger] Could not find charge for project ${projectId}:`, error.message);
+    if (throwOnError) throw Object.assign(new Error('Could not verify the saved extraction tier. Please retry.'), { code: 'UPSCALE_STORAGE_UNAVAILABLE' });
     return null;
   }
   return data ? {
@@ -101,6 +102,7 @@ export async function findLatestProjectCharge(projectId) {
     isOwnerTest: data.is_owner_test === true,
     feature: data.feature,
     status: data.transaction_status,
+    metadata: data.metadata || {},
   } : null;
 }
 

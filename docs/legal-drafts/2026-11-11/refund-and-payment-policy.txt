@@ -1,0 +1,73 @@
+SYNCRAFT — REFUND AND PAYMENT POLICY
+Last updated: 11 November 2026
+Effective date: 11 November 2026
+Operator: JAY LUIS CAÑO, operating as Syncraft
+Support: jeighdesign@gmail.com
+
+1. SCOPE
+
+This policy explains prepaid-credit purchases, processing charges, in-app credit returns and requests for monetary refunds. Read it with the Terms of Service. Separately agreed business/API purchase terms govern conflicting business-specific provisions; mandatory legal rights still apply.
+
+2. CREDIT COSTS AND WHEN CHARGES OCCUR
+
+Credits are prepaid units used for Syncraft operations. Costs vary by action, selected resolution and number of outputs. The interface displays the cost before a paid action starts. One credit does not equal one generation.
+
+Credits may be deducted when a request is accepted or before processing begins. Each requested paid action can carry its own charge. Consumer workspace credits and business/API credits use separate wallets and are not interchangeable. Consumer credits currently have no scheduled expiry and cannot be transferred between accounts.
+
+3. FAILED REQUESTS AND IN-APP CREDIT RETURNS
+
+If a charged request cannot deliver its result because of an eligible provider, server, processing, download or save failure, Syncraft uses the request's linked charge record to return the refundable credits or recover the already-paid result, depending on the workflow. A credit return restores service credits to your balance; it does not automatically refund the original purchase payment.
+
+The refundable amount is the actual amount charged for that failed operation, including an older request made at a different price. For a batch, failed outputs may be refunded individually while successfully delivered outputs retain their charges. A later-stage failure may instead offer a free retry or resume of the already-paid work.
+
+Recovery of an existing request is different from starting a fresh generation or another paid edit. The interface identifies which action you are taking. Do not repeatedly submit fresh requests solely because an earlier request is still processing.
+
+Automated recovery or refund confirmation can be delayed. If a failed request remains charged without an available result or confirmed credit return, contact jeighdesign@gmail.com with the project or request details. We will investigate the linked transaction; you do not need to disclose your password or payment credentials.
+
+4. OUTPUT QUALITY AND COMPLETED WORK
+
+AI results can contain changed details, spelling mistakes, inaccurate colors, invented elements or incomplete flattening. An undesired artistic result, a poor source crop or a change of mind does not by itself trigger an automatic credit return when processing completed and the result was delivered. A fresh generation normally incurs its displayed charge.
+
+Please report a result that was not delivered, a duplicate charge, an incorrect charge or a material failure to provide the purchased operation or selected settings. We assess those issues under this policy and applicable law. A "completed" status does not itself remove your legal remedies.
+
+5. VOLUNTARY MONETARY REFUNDS
+
+The following voluntary seven-day refund rules apply, subject to the mandatory legal rights described below:
+
+- Request within seven calendar days of purchase, with no credits from that purchase used: eligible for a full refund of that purchase after verification.
+- Request within seven calendar days, with some credits from that purchase used: eligible for review for a partial refund attributable to the unused portion of that purchase.
+- Request after seven calendar days: ordinary change-of-mind refunds are not offered under this voluntary window.
+- Credits consumed for successfully delivered operations: ordinarily excluded from a voluntary change-of-mind refund.
+
+We check the purchase and usage records, any previous credit returns, promotional credits and any previous payment refund to avoid duplicate reimbursement. A verified payment refund may be accompanied by removal of the corresponding refunded credits. The partial-refund amount must be explained before it is finalized; a remaining account balance is not automatically equal to a refundable cash amount.
+
+These voluntary conditions do not impose a seven-day limit on statutory remedies or prevent refunds required for an undelivered or defective service, erroneous or duplicate payment, unauthorized transaction or other legally protected situation. Account restrictions do not automatically cancel those rights.
+
+6. PAYMENT METHODS, CURRENCY AND CREDIT DELIVERY
+
+Use only payment methods actually offered by Syncraft's checkout. QR Ph payments are processed through PayMongo; any additional enabled method and provider will be identified at checkout. A payment method marked unavailable is not currently accepted through that control. Do not send manual payments outside the offered process on the assumption that credits will be added automatically.
+
+The checkout identifies the package, payment currency and amount payable. International card prices can differ from PHP prices and are not necessarily direct currency conversions. Your bank or payment provider may impose disclosed or separately applicable conversion charges, taxes or fees.
+
+Credits are added after payment is verified through the relevant provider and the Syncraft payment record. A pending, expired or unconfirmed checkout does not establish successful payment. If you paid but credits are missing, contact support with the payment reference rather than making another payment to correct the first one.
+
+7. REQUESTING A MONETARY REFUND
+
+Contact jeighdesign@gmail.com or the official support channel linked from the Syncraft website. Provide your account email, purchase date, amount and currency, payment reference, reason for the request and relevant project/request identifiers. Do not send passwords, one-time codes or full card credentials.
+
+We aim to respond within three to five business days. This is a response target, not a promise that a bank or provider will complete a refund within that period. Approved refunds are normally routed to the original payment method where supported. Any necessary alternative will be discussed and verified before processing. Provider processing times and the treatment of external fees vary and remain subject to applicable law.
+
+8. DISPUTES AND SUSPECTED ABUSE
+
+We encourage you to contact support so that incorrect charges or missing results can be resolved promptly. You retain the right to use lawful complaint and payment-dispute channels. A good-faith dispute does not by itself justify automatic forfeiture of your remaining credits.
+
+We may investigate suspected fraud, duplicate reimbursement, abuse of credits or unauthorized payments, and proportionately restrict affected transactions or access where necessary. We will not seek both payment and a refund reversal for the same loss without accounting for amounts already recovered.
+
+9. YOUR LEGAL RIGHTS
+
+Nothing in this policy limits non-waivable rights under applicable Philippine consumer law or other law that applies to your transaction. These include available remedies where a paid service is defective, undelivered or fails to conform to legally enforceable commitments. Philippine law governs this policy subject to those protections.
+
+10. CONTACT
+
+JAY LUIS CAÑO, operating as Syncraft
+jeighdesign@gmail.com

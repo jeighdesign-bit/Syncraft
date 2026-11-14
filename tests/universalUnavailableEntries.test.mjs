@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 import ts from 'typescript';
+import { CREDIT_COST } from '../src/lib/pricing.js';
 import * as availability from '../src/lib/universalAvailability.mjs';
 
 function elements(root) {
@@ -30,7 +31,7 @@ async function component(file, options = {}) {
   const changes = [];
   let stateIndex = 0;
   const icons = Object.fromEntries(['Shirt', 'PenTool', 'ScanLine', 'Image', 'LayoutDashboard', 'FolderOpen', 'FileText', 'Send', 'ShoppingBag', 'Menu', 'Scissors'].map(name => [name, name]));
-  const context = vm.createContext({ ...icons, ...names, ...availability, module, exports: module.exports,
+  const context = vm.createContext({ ...icons, ...names, ...availability, CREDIT_COST, module, exports: module.exports,
     styles: new Proxy({}, { get: (_target, key) => key }), memo: fn => fn,
     useState(initial) {
       const index = stateIndex++;

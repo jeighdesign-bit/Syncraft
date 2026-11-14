@@ -1,7 +1,8 @@
 "use client";
 
+import CreditAmount from '@/components/CreditAmount';
 import Link from "next/link";
-import { FileText, FolderOpen, Image, LayoutDashboard, Menu, PenTool, ScanLine, Scissors, Send, Shirt, ShoppingBag } from "lucide-react";
+import { FileText, FolderOpen, Image, ImagePlus, LayoutDashboard, Menu, PenTool, ScanLine, Scissors, Send, Shirt, ShoppingBag } from "lucide-react";
 import ResponsivePanel from "@/components/ResponsivePanel";
 import AccountCreditMenu from "@/components/AccountCreditMenu";
 import FloatingPromoVideo from "./FloatingPromoVideo";
@@ -17,10 +18,13 @@ const features = [
   { label: "Background Removal", icon: Scissors, action: "background" },
 ];
 
-export default function WorkspaceSidebar({ onOpenFeature, user, credits, onOpenTopUp, onSignOut, disabled = false, withoutHeader = false }) {
+export default function WorkspaceSidebar({ onOpenFeature, onOpenCommunity, user, credits, onOpenTopUp, onSignOut, disabled = false, withoutHeader = false }) {
   return (
     <ResponsivePanel label="Tools" icon={Menu}>{({ close }) => <aside className={`${styles.sidebar}${withoutHeader ? ` ${styles.withoutHeader}` : ""}`} aria-label="Workspace sidebar">
-      {withoutHeader && <Link href="/workspace" className={styles.brand} aria-label="Syncraft workspace dashboard"><img src="/logo.svg" alt="Syncraft" width={112} height={20} /></Link>}
+      {withoutHeader && <Link href="/workspace" className={styles.brand} aria-label="Syncraft V3.0 workspace dashboard">
+        <img src="/logo.svg" alt="Syncraft" width={112} height={20} />
+        <span className={styles.brandVersion}>V3.0</span>
+      </Link>}
       <nav className={styles.navigation} aria-label="Workspace features">
         <Link href="/workspace" className={styles.dashboardLink} aria-current="page">
           <LayoutDashboard size={17} strokeWidth={1.8} aria-hidden="true" />
@@ -50,6 +54,7 @@ export default function WorkspaceSidebar({ onOpenFeature, user, credits, onOpenT
           })}
         </div>
         <div className={styles.accountLinks} aria-label="More workspace links">
+          <button type="button" className={styles.accountLink} aria-haspopup="dialog" disabled={disabled} onClick={() => { close(); onOpenCommunity(); }}><ImagePlus size={17} aria-hidden="true" />Submit Your Logo</button>
           <Link href="/store" className={styles.accountLink}><ShoppingBag size={17} aria-hidden="true" />Store</Link>
           <Link href="/terms" className={styles.accountLink}><FileText size={17} aria-hidden="true" />Legal &amp; policies</Link>
           <Link href="/feedback" className={styles.accountLink}><Send size={17} aria-hidden="true" />Request a feature</Link>
@@ -63,7 +68,7 @@ export default function WorkspaceSidebar({ onOpenFeature, user, credits, onOpenT
         </div>
       </nav>
       <div className={styles.accountArea}>
-        {withoutHeader && <div className={styles.creditBalance}><div className="syncraft-header-control" aria-label={`${credits ?? "—"} credits`}><span className="syncraft-header-control__value">{credits ?? "—"}</span><span className="syncraft-header-control__label">CREDITS</span></div></div>}
+        {withoutHeader && <div className={styles.creditBalance}><div className="syncraft-header-control" aria-label={`${credits ?? "—"} credits`}><span className="syncraft-header-control__value"><CreditAmount amount={credits ?? "—"} unit={null} /></span><span className="syncraft-header-control__label">CREDITS</span></div></div>}
         <button type="button" className={styles.topUpButton} onClick={() => { close(); onOpenTopUp(); }}>
           Buy More Credits
         </button>

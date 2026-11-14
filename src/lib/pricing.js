@@ -11,8 +11,8 @@ import { ARTWORK_EDIT_COST } from "./artworkEditPolicy.mjs";
  * B2B pricing is separate and lives inline in api/v1/generate/route.js.
  */
 export const CREDIT_COST = {
-  trace: 12,      // full 3-stage pipeline, charged once at step 1
-  universal: 24,  // forensic recovery + the remaining production pipeline
+  trace: 12,      // default 1K extraction; shared tiers: 2K=16, 4K=24
+  universal: 12,  // same extraction tiers; availability remains independently gated
   removeBg: 12,
   upscale: 12,
   extend: 12,     // one nano-banana-2.1/edit call + a free re-run of stages 2 and 3

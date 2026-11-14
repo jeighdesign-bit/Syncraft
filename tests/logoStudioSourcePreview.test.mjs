@@ -1,3 +1,4 @@
+import { creditAmountModule, plainText } from './helpers/creditAmount.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -55,6 +56,7 @@ function renderPreview(source, preview, project = null, mode = 'image', variatio
   const module = { exports: {} };
   const emptyComponent = { __esModule: true, default: () => null };
   const dependencies = {
+    '@/components/CreditAmount': creditAmountModule,
     'next/link': emptyComponent,
     'next/navigation': { useRouter: () => ({}) },
     '@/components/WorkspaceHeader': { __esModule: true, default: ({ actions }) => React.createElement('header', null, actions) },
@@ -324,8 +326,8 @@ test('variation buttons show six credits per output for every batch size and cre
       { id: 'logo', mode, style: 'mascot', status: 'succeeded', operation: 'generate', format: 'png', url: 'https://storage.test/logo.png' },
     ] };
     const html = renderPreview(null, null, project, mode, null, 'logo', { count });
-    assert.ok(html.includes(`Variations <small>${count * 6} cr</small>`));
+    assert.ok(plainText(html).includes(`Variations ${count * 6} credits`));
     assert.ok(html.includes(`aria-label="Create ${count === 1 ? 'variation' : `${count} variations`} for ${count * 6} credits"`));
-    assert.ok(html.includes(`${count * 8} credits · Failed outputs are refunded.`));
+    assert.ok(plainText(html).includes(`${count * 8} credits · Failed outputs are refunded.`));
   }
 });

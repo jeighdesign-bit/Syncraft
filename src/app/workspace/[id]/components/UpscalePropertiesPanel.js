@@ -1,5 +1,6 @@
 "use client";
 
+import CreditAmount from '@/components/CreditAmount';
 import { memo, useEffect, useState } from "react";
 import { Download, Info, Loader2, Monitor, ShieldCheck, Wand2 } from "lucide-react";
 import { CREDIT_COST } from "@/lib/pricing";
@@ -129,7 +130,7 @@ const UpscalePropertiesPanel = memo(function UpscalePropertiesPanel({
               ? "Upscale complete. The result is stored with this project and remains available after refresh."
               : legacyResult
               ? "This older result used temporary provider storage. Restore it to permanent project storage at no extra charge."
-              : `Ready to upscale. This operation uses ${CREDIT_COST.upscale} credits.`)}</span>
+              : <>Ready to upscale. This operation uses <CreditAmount amount={CREDIT_COST.upscale} />.</>)}</span>
           </div>
         )}
       </div>
@@ -141,7 +142,7 @@ const UpscalePropertiesPanel = memo(function UpscalePropertiesPanel({
             <GenerateButton
               disabled={readOnly || busy}
               onClick={!legacyResult && noCredits ? onOpenTopUp : onGenerate}
-              detail={!busy && !legacyResult && !noCredits ? `${CREDIT_COST.upscale} credits` : undefined}
+              detail={!busy && !legacyResult && !noCredits ? <CreditAmount amount={CREDIT_COST.upscale} /> : undefined}
             >
               {busy ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}
               {busy ? "Generating…" : legacyResult ? "Restore Result (Free)" : noCredits ? "Buy More Credits" : "Generate Now"}

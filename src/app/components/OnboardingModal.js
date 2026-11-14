@@ -1,5 +1,7 @@
 "use client";
 
+import { CREDIT_COST } from '@/lib/pricing';
+import CreditAmount from '@/components/CreditAmount';
 import { memo, useEffect, useRef } from "react";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
 import styles from "./OnboardingModal.module.css";
@@ -73,7 +75,7 @@ const OnboardingModal = memo(function OnboardingModal({ show, onClose }) {
 
         <div className={styles.creditNote}>
           <div>
-            <p className={styles.creditTitle}>12 credits</p>
+            <p className={styles.creditTitle}><CreditAmount amount={CREDIT_COST.trace} /></p>
             <p className={styles.creditDescription}>for one AI generation</p>
           </div>
           <p className={styles.creditPrice}>Plans from <strong>{CREDIT_PLANS.tingi.price}</strong></p>

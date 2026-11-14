@@ -34,6 +34,19 @@ test('an interrupted body is retried from scratch, without retaining partial byt
   });
 });
 
+test('a timed-out output body retries the same GET and returns only complete bytes', async () => {
+  let calls = 0;
+  await serverTest(async url => {
+    const result = await fetchWithSSRFProtection(url, { ...options, timeoutMs: 250, maxAttempts: 2 });
+    assert.equal(result.buffer.toString(), 'complete');
+    assert.equal(calls, 2);
+  }, (_req, res) => {
+    calls++;
+    res.writeHead(200, { 'content-type': 'image/png' });
+    if (calls === 1) res.write('partial'); else res.end('complete');
+  });
+});
+
 test('rate-limited GETs retry before content-type validation', async () => {
   let calls = 0;
   await serverTest(async url => {

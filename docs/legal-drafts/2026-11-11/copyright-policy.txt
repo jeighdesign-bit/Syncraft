@@ -1,0 +1,69 @@
+SYNCRAFT — COPYRIGHT POLICY
+Last updated: 11 November 2026
+Effective date: 11 November 2026
+Operator: JAY LUIS CAÑO, operating as Syncraft
+Copyright and support contact: jeighdesign@gmail.com
+
+1. SCOPE AND RELATED POLICIES
+
+This policy explains responsibilities for copyright, trademarks and other protected material when using Syncraft's extraction, logo creation, variations, editing, background removal, upscaling, vectorization, sharing and export tools. It forms part of the Terms of Service and should be read with the Acceptable Use Policy, Privacy Policy and Refund and Payment Policy.
+
+2. RIGHTS IN MATERIAL YOU SUBMIT
+
+You must own or have sufficient permission to submit and process the material you use, including client artwork, images, logos, fonts, sketches, text and personal data. Permission must cover the intended processing and use. Purchasing, commissioning or finding a file online does not necessarily give you every reproduction, adaptation, merchandising or distribution right.
+
+Do not submit material for an infringing purpose. Copyright law can permit certain uses without the rights holder's permission, subject to applicable exceptions and limitations. Whether such an exception applies depends on the law and circumstances; Syncraft does not certify that your use qualifies or clear third-party rights for you.
+
+3. OWNERSHIP AND AI OUTPUTS
+
+As between you and Syncraft, you retain the rights you already hold in your uploads, and Syncraft does not claim ownership of your uploads or outputs. We do not guarantee that an AI-generated or AI-modified result creates copyright, is unique, qualifies for registration, or is available for exclusive use.
+
+Using Syncraft does not grant rights in someone else's protected material or establish trademark clearance. Removing names, numbers, logos or watermarks, extracting a pattern, vectorizing an image or generating a variation does not by itself make the underlying material yours to reproduce or sell. Applicable upstream licensing restrictions may also affect use of a result.
+
+You are responsible for checking that your intended printing, sublimation, client delivery, publication or commercial use is lawful and authorized. A successful generation or export is not evidence that rights have been cleared.
+
+4. LIMITED OPERATIONAL PERMISSION
+
+You give Syncraft the limited, non-exclusive permission described in the Terms to host, transmit, reproduce and process your material as necessary to provide requested operations, project history, sharing, exports, support, service security and lawful compliance. Necessary service providers may process the material as explained in the Privacy Policy.
+
+This operational permission does not give Syncraft a general right to sell your artwork or publish it in marketing. It lasts only as needed for the stated purposes, including necessary retention and legal obligations. Project expiry or deletion does not guarantee immediate erasure from every provider, cache or backup. Syncraft does not use your files to train its own AI models; the Privacy Policy separately explains provider handling.
+
+5. SHARING AND OPTIONAL COMMUNITY DISPLAY
+
+Only share projects or file links with people you are authorized to give access to. Revoking in-app access does not recall downloaded copies or links already disclosed.
+
+The optional community showcase requires separate display permission and moderation. Submitting a logo does not itself publish it. Approved logos and submitted business links may be displayed publicly, and owners may withdraw their listings through the available controls. Display permission does not transfer ownership to Syncraft or establish sponsorship, endorsement or rights clearance.
+
+6. INFRINGEMENT AND MISLEADING USE
+
+Do not use Syncraft to reproduce, adapt, distribute or sell protected material in an infringing manner, create counterfeit or unauthorized branded merchandise, or misleadingly impersonate a creator, client, team, school, brand or business. Attribution alone should not be treated as permission for a use that requires authorization.
+
+The Acceptable Use Policy also addresses fraud, privacy violations, abusive content and misuse of the service. These rules do not state that every use of a third-party name or work is unlawful; applicable legal exceptions remain subject to their actual conditions.
+
+7. REPORTING A COPYRIGHT OR TRADEMARK CONCERN
+
+Send a report to jeighdesign@gmail.com with the subject "Copyright Takedown Request" and include:
+
+- Your name, contact email and organization, if relevant.
+- Identification of the work or trademark concerned and the basis of your rights or authority to act for the rights holder.
+- The URL, project identifier or other information sufficient to locate the reported material. Describe the specific allegedly infringing use.
+- Supporting information reasonably needed to understand the claim, such as an original-work reference or relevant authorization records.
+- A statement that you have a good-faith belief the reported use is not authorized by the rights holder, its agent or applicable law.
+- A statement that the report is accurate and you are the rights holder or authorized to act on their behalf, together with your electronic signature.
+
+The existing request guide is available at /copyright-takedown. Do not send passwords, payment credentials or unnecessary sensitive identity documents. A complaint is a request for review, not a final determination of infringement.
+
+8. REVIEW, RESTRICTIONS AND RESPONSES
+
+We may request relevant clarification, assess the report, restrict access to disputed material, remove content or take proportionate account action when reasonably necessary to address a violation or legal obligation. Where appropriate and lawful, we may notify the affected user and allow them to explain their rights or provide relevant evidence. Send a response or request to review an action to jeighdesign@gmail.com, identifying the report or affected project.
+
+We handle information supplied in reports and responses under the Privacy Policy. We may disclose relevant information where lawfully necessary to investigate or respond to a claim, notify an affected party or comply with legal obligations. Do not include personal data unnecessary to the claim. We do not promise a particular legal outcome, automatic restoration or a fixed statutory takedown timetable under this voluntary reporting process.
+
+Repeated or serious infringement and deliberately false or abusive reports can lead to restrictions under the Terms and Acceptable Use Policy. A good-faith complaint, response or payment dispute is not by itself grounds for automatic forfeiture of all remaining credits. Refund questions are handled under the Refund and Payment Policy and applicable law.
+
+9. CONTACT AND LEGAL RIGHTS
+
+Operator: JAY LUIS CAÑO, operating as Syncraft
+Copyright, trademark, support and review requests: jeighdesign@gmail.com
+
+This policy is effective from 11 November 2026. It does not limit mandatory legal rights, lawful complaint routes or remedies preserved by the Terms and applicable law. Material changes will be communicated as described in the Terms.

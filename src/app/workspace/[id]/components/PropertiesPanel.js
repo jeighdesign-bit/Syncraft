@@ -1,9 +1,12 @@
 "use client";
 
-import { memo, useState } from "react";
-import { Download, Monitor, FolderDown, Loader2, X, ImageMinus, Eraser, Scissors, Expand, WandSparkles } from "lucide-react";
+import { memo, useRef, useState } from "react";
+import { Download, Columns2, FolderDown, Loader2, X, ImageMinus, Eraser, Scissors, Expand, WandSparkles, ArrowUp } from "lucide-react";
 import Select from '@/components/Select';
+import styles from './PropertiesPanel.module.css';
 import { CREDIT_COST } from "@/lib/pricing";
+import CreditAmount from '@/components/CreditAmount';
+import { DEFAULT_EXTRACTION_RESOLUTION, EXTRACTION_RESOLUTIONS, extractionCredits, extractionDisplayName, supportsExtractionResolution } from '@/lib/extractionResolution.mjs';
 import { canResumeTraceUpscale } from "@/lib/traceRequestPolicy.mjs";
 import { REFERENCE_CATEGORIES, normalizeReferenceCategory } from "@/lib/referenceCategories.mjs";
 import { UNIVERSAL_AVAILABLE, UNIVERSAL_UNAVAILABLE_MESSAGE, isUniversalTraceType } from "@/lib/universalAvailability.mjs";
@@ -159,6 +162,8 @@ const PropertiesPanel = memo(function PropertiesPanel({
   traceState,
   isSavingCrop,
   userCredits,
+  extractionResolution = DEFAULT_EXTRACTION_RESOLUTION,
+  onExtractionResolutionChange,
   consoleRef,
   onExecuteTrace,
   onRetryVector,
@@ -191,11 +196,10 @@ const PropertiesPanel = memo(function PropertiesPanel({
 }) {
   const [downloading, setDownloading] = useState(null);
   const [exportError, setExportError] = useState('');
+  const generationBarRef = useRef(null);
 
   const isUnauthenticated = userCredits === null;
-  const executionCost = project?.trace_type === "universal"
-    ? CREDIT_COST.universal
-    : CREDIT_COST.trace;
+  const executionCost = extractionCredits(extractionResolution, project?.trace_type);
   const noCredits = !isUnauthenticated && userCredits < executionCost;
   const isCropped = project?.original_image_url?.includes("crop") || project?.generated_image_url;
   const isBusy = traceState !== "idle" || isSavingCrop || extendMode || isSavingReferenceCategory;
@@ -232,9 +236,9 @@ const PropertiesPanel = memo(function PropertiesPanel({
     : traceState !== "idle"
     ? "Processing..."
     : canRetryVector
-    ? "Retry Vector SVG (Free)"
+    ? "Retry Syncraft Vector"
     : canResumeUpscale
-    ? "Resume HD Upscale (Free)"
+    ? "Resume Syncraft Upscale (Free)"
     : isUnauthenticated
     ? "Login to Trace"
     : noCredits
@@ -243,16 +247,27 @@ const PropertiesPanel = memo(function PropertiesPanel({
     ? "Crop Image First"
     : "Generate Now";
 
-  // "Unlocked" mirrors the original enable condition exactly — kept as its
-  // own branch because this button has a 3-state style (busy / unlocked /
-  // locked) that the simpler active/inactive secondary buttons don't need.
-  const traceUnlocked = canRetryVector || canResumeUpscale || noCredits || isCropped;
+  const showResolutionBar = supportsExtractionResolution(project) && !canRetryVector && !canResumeUpscale;
+  const generationName = canRetryVector ? 'Syncraft Vector' : canResumeUpscale ? 'Syncraft Upscale'
+    : extractionDisplayName(extractionResolution);
+  const generationCost = canRetryVector ? null : canResumeUpscale ? 'Free' : executionCost;
+  const runTrace = () => {
+    if (editsLocked || isBusy) return;
+    if (canRetryVector) { onRetryVector?.(vectorColors); return; }
+    if (canResumeUpscale) { onResumeUpscale?.(vectorColors); return; }
+    if (isUnauthenticated || noCredits) { onOpenTopUp?.(); return; }
+    if (isCropped) onExecuteTrace(vectorColors);
+  };
 
   const svgActive = !readOnly && !!project?.svg_url && !downloading;
   const psdActive = !readOnly && !!project?.svg_url && !downloading && !isBusy;
   const pngActive = !readOnly && !!finalArtworkRaster(project) && !downloading && !isBusy;
   const zipActive = !readOnly && (!!finalArtworkRaster(project) || hasSvg) && !downloading && !isBusy;
   const compareActive = !!project?.svg_url;
+  const generationDetails = <>
+    <span className={styles.resolutionValue}>{generationName}</span>
+    {generationCost !== null && <span className={styles.creditCost} aria-live="polite" aria-atomic="true">{typeof generationCost === 'number' ? <CreditAmount amount={generationCost} /> : generationCost}</span>}
+  </>;
 
   return (
     <aside className="workspace-properties" style={panelStyle}>
@@ -317,9 +332,13 @@ const PropertiesPanel = memo(function PropertiesPanel({
       </div>}
 
       {/* ── Activity Log ─────────────────────────────────────── */}
-      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: "160px", borderBottom: `1px solid ${COLOR.border}` }}>
-        <span style={{ ...eyebrowStyle, padding: `${SPACE.md}px ${SPACE.lg}px ${SPACE.sm}px` }}>Activity Log</span>
-        <div className="console-area" ref={consoleRef} style={{ flex: 1, minHeight: "120px" }} />
+      <div className={styles.activitySection}>
+        <span className={styles.activityHeading} style={eyebrowStyle}>Activity</span>
+        <div className="console-area" ref={consoleRef} role="log" aria-label="Generation activity" aria-live="polite" aria-relevant="additions text" />
+        <div className={styles.activityEmpty}>
+          <p className={styles.activityEmptyTitle}>Ready when you are</p>
+          <p className={styles.activityEmptyHint}>Choose 1K, 2K or 4K, then tap ↑ to start. Progress will appear here.</p>
+        </div>
       </div>
 
       {/* ── Actions ────────────────────────────────────────── */}
@@ -333,7 +352,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
             style={secondaryBtnStyle(!editsLocked && !isBusy && canExtend)}
             title={canExtend ? "Describe a change to your generated artwork" : "Generate artwork first to unlock AI Edit"}
           >
-            <WandSparkles size={14} aria-hidden="true" /> AI Edit <span className="workspace-tool-new">NEW</span>
+            <WandSparkles size={14} aria-hidden="true" /> AI Edit <span className="workspace-tool-new" style={{ marginLeft: 0 }}>NEW</span><CreditAmount className={styles.actionCost} amount={CREDIT_COST.artworkEdit} unit="" />
           </button>
           <button
             onClick={editingAction(onOpenRemoveBg)}
@@ -342,7 +361,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
             onMouseOver={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = "#484848"; }}
             onMouseOut={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
           >
-            <ImageMinus size={14} /> Remove BG
+            <ImageMinus size={14} /> Remove BG <CreditAmount className={styles.actionCost} amount={CREDIT_COST.removeBg} unit="" />
           </button>
           <button
             onClick={editingAction(onOpenErase)}
@@ -375,7 +394,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
               onMouseOut={e => { if (!editsLocked && !isBusy && canExtend) e.currentTarget.style.borderColor = COLOR.border; }}
               title={canExtend ? "Drag the canvas edges to add space, then generate" : "Run Syncraft first — Extend works on the flat extract"}
             >
-              <Expand size={14} /> Extend Design
+              <Expand size={14} /> Extend Design <CreditAmount className={styles.actionCost} amount={CREDIT_COST.extend} unit="" />
             </button>
           ) : (
             <>
@@ -388,7 +407,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
                 {extendProcessing ? (
                   <><Loader2 size={14} className="animate-spin" /> Extending…</>
                 ) : (
-                  <><Expand size={14} /> Extend Design (−{CREDIT_COST.extend})</>
+                  <><Expand size={14} /> Extend Design <CreditAmount amount={CREDIT_COST.extend} unit="" /></>
                 )}
               </button>
               <button
@@ -409,63 +428,39 @@ const PropertiesPanel = memo(function PropertiesPanel({
           an SVG exists, Compare replaces Run without becoming an export item. */}
       <div style={{ ...sectionStyle, flexShrink: 0 }}>
         {!hasSvg ? (
-          <button
-            onClick={() => {
-              if (editsLocked || isBusy) return;
-              if (canRetryVector) { onRetryVector?.(vectorColors); return; }
-              if (canResumeUpscale) { onResumeUpscale?.(vectorColors); return; }
-              if (isUnauthenticated || noCredits) { onOpenTopUp?.(); return; }
-              if (isCropped) onExecuteTrace(vectorColors);
-            }}
-            disabled={editsLocked || isBusy || (!isCropped && !noCredits)}
-            style={{
-              width: "100%",
-              background: (editsLocked || isBusy) ? "rgba(255,255,255,0.02)" : traceUnlocked ? "#ffffff" : "rgba(255,255,255,0.05)",
-              border: (editsLocked || isBusy) ? "1px solid rgba(255,255,255,0.05)" : traceUnlocked ? "1px solid #ffffff" : "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "8px",
-              color: (editsLocked || isBusy) ? "#555" : traceUnlocked ? "#000000" : "#666",
-              minHeight: "56px",
-              padding: "9px 16px",
-              fontSize: "11px",
-              fontWeight: 600,
-              letterSpacing: "0.5px",
-              whiteSpace: "nowrap",
-              cursor: (!editsLocked && !isBusy && traceUnlocked) ? "pointer" : "not-allowed",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "3px",
-              opacity: (editsLocked || isBusy) ? 0.6 : 1,
-              transition: "all 0.2s",
-              boxShadow: (!editsLocked && !isBusy && traceUnlocked) ? "0 4px 12px rgba(255,255,255,0.15)" : "none",
-            }}
-            onMouseOver={e => { if (!editsLocked && !isBusy && traceUnlocked) e.currentTarget.style.background = "#e5e5e5"; }}
-            onMouseOut={e => { if (!editsLocked && !isBusy && traceUnlocked) e.currentTarget.style.background = "#ffffff"; }}
-          >
-            {traceButtonLabel === "Generate Now" ? (
-              <>
-                <span style={{ fontSize: "15px", fontWeight: 700, lineHeight: 1.15, letterSpacing: "0.5px" }}>GENERATE NOW</span>
-                <span style={{ fontSize: "11px", fontWeight: 500, lineHeight: 1.15, letterSpacing: "0.2px", opacity: 0.68 }}>{executionCost} credits</span>
-              </>
-            ) : (
-              <span style={{ textTransform: "uppercase" }}>{traceButtonLabel}</span>
-            )}
-          </button>
+          <>
+            <div className={styles.generationBar} ref={generationBarRef}>
+              {showResolutionBar ? <div className={styles.resolutionPicker}>
+                <Select compact portal portalAnchorRef={generationBarRef} displayLabel={generationDetails} aria-label="Extraction resolution" value={extractionResolution}
+                  disabled={editsLocked || isBusy}
+                  onChange={event => { if (!editsLocked && !isBusy) onExtractionResolutionChange?.(event.target.value); }}>
+                  {EXTRACTION_RESOLUTIONS.map(option => <option key={option.value} value={option.value}>{option.label} · {option.value} — {extractionCredits(option.value, project?.trace_type)} credits</option>)}
+                </Select>
+              </div> : <div className={styles.generationDetails} data-disabled={editsLocked || isBusy}>{generationDetails}</div>}
+              <button type="button" className={styles.generateButton}
+                onClick={runTrace} disabled={editsLocked || isBusy || (!isCropped && !noCredits)}
+                aria-label={traceButtonLabel === 'Generate Now' ? `Generate now with ${generationName} at ${extractionResolution} for ${executionCost} credits` : traceButtonLabel}
+                title={traceButtonLabel === 'Generate Now' ? `${generationName} · ${executionCost} credits` : traceButtonLabel}
+                aria-busy={isBusy}>
+                <span className={styles.generateCircle}>
+                  {isBusy ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : <ArrowUp size={20} strokeWidth={1.8} aria-hidden="true" />}
+                </span>
+              </button>
+            </div>
+            {!isBusy && traceButtonLabel !== 'Generate Now' && <p className={styles.generationStatus} role="status">{traceButtonLabel}</p>}
+          </>
         ) : (
           <button
+            type="button"
             onClick={onOpenCompare}
             disabled={!compareActive}
-            style={{
-              ...primaryBtnStyle(compareActive),
-              textTransform: "uppercase",
-              whiteSpace: "nowrap",
-            }}
-            onMouseOver={e => { if (compareActive) e.currentTarget.style.background = "#e5e5e5"; }}
-            onMouseOut={e => { if (compareActive) e.currentTarget.style.background = "#ffffff"; }}
+            className={`${styles.generationBar} ${styles.compareBar}`}
+            title="Compare the original image and your result"
           >
-            <Monitor size={16} aria-hidden="true" />
-            Before / After Compare
+            <span className={styles.compareLabel}>
+              <Columns2 size={16} strokeWidth={1.7} aria-hidden="true" />
+              <span>Compare before &amp; after</span>
+            </span>
           </button>
         )}
       </div>
@@ -497,27 +492,6 @@ const PropertiesPanel = memo(function PropertiesPanel({
     </aside>
   );
 });
-
-function primaryBtnStyle(active) {
-  return {
-    width: "100%",
-    background: active ? "#ffffff" : "rgba(255,255,255,0.05)",
-    border: active ? "1px solid #ffffff" : "1px solid rgba(255,255,255,0.1)",
-    borderRadius: "8px",
-    color: active ? "#000000" : "#666",
-    padding: "14px 16px",
-    fontSize: "11px",
-    fontWeight: 600,
-    letterSpacing: "0.5px",
-    cursor: active ? "pointer" : "not-allowed",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: SPACE.sm,
-    transition: "all 0.2s",
-    boxShadow: active ? "0 4px 12px rgba(255,255,255,0.15)" : "none",
-  };
-}
 
 function secondaryBtnStyle(active) {
   return {

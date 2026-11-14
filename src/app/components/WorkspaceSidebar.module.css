@@ -30,14 +30,29 @@
 }
 .withoutHeader { top: 0; padding-top: 0; }
 .brand {
+  position: relative;
   display: flex;
   flex: 0 0 64px;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   margin: 0 -12px 20px;
   border-bottom: 1px solid #252525;
+  text-decoration: none;
 }
 .brand img { display: block; width: 112px; height: 20px; filter: brightness(0) invert(1); }
+.brandVersion {
+  display: inline-flex;
+  align-items: center;
+  color: #a4a69f;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
 .brand:focus-visible { outline: 2px solid #c9b9ed; outline-offset: -4px; }
 .creditBalance {
   display: flex;
@@ -83,6 +98,11 @@
   border-top: 1px solid #2b2e27;
 }
 .accountLink {
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
   min-height: 40px;
   padding: 0 12px;
   display: flex;

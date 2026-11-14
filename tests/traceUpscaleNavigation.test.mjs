@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import * as resolutionPolicy from '../src/lib/extractionResolution.mjs';
 import { readFile } from 'node:fs/promises';
 import { TRACE_REQUEST_TIMEOUT_MS, traceTimeoutMessage, traceConnectionMessage } from '../src/lib/traceRequestPolicy.mjs';
 
@@ -15,6 +16,7 @@ async function harness(options = {}) {
   const source = (await readFile(new URL('../src/app/workspace/[id]/hooks/useTraceExecution.js', import.meta.url), 'utf8'))
     .replace(/^import[\s\S]*?;\r?\n/gm, '').replace(/export /g, '');
   const context = vm.createContext({
+    ...resolutionPolicy, normalizeExtractionResolution: resolutionPolicy.extractionResolution,
     AbortController, AbortSignal, DOMException, setTimeout, clearTimeout, queueMicrotask,
     TRACE_REQUEST_TIMEOUT_MS, traceTimeoutMessage, traceConnectionMessage,
     CREDIT_COST: { trace: 12, universal: 20 }, console: { error() {} },

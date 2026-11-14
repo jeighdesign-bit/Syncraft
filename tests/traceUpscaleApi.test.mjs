@@ -139,7 +139,7 @@ test('rate-limited requests return Retry-After without reading or changing jobs'
 
 test('known service errors retain safe recovery advice and stale artwork uses a conflict response', async () => {
   for (const [code, status, expectedHttp] of [['UPSCALE_STATUS_UNAVAILABLE', 503, 503], ['ARTWORK_CHANGED', 409, 409]]) {
-    const message = 'Your artwork is saved. Resume HD Upscale for free.';
+    const message = 'Your artwork is saved. Resume Syncraft Upscale for free.';
     const h = await harness({ jobError: Object.assign(new Error(message), { code, status }) });
     const result = await h.run();
     assert.equal(result.status, expectedHttp);

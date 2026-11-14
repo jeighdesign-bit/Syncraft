@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import * as resolutionPolicy from '../src/lib/extractionResolution.mjs';
 import * as availability from '../src/lib/universalAvailability.mjs';
 import * as aspect from '../src/lib/aspectRatio.js';
 
@@ -27,6 +28,7 @@ async function harness(route, { traceType = 'universal', method = 'POST', owner 
   const source = (await readFile(new URL(`../src/app/api/${route}/route.js`,import.meta.url),'utf8'))
     .replace(/^import[\s\S]*?;\r?\n/gm,'').replace(/export /g,'');
   const context = vm.createContext({
+    ...resolutionPolicy,
     ...availability,...aspect,Response,Request,Headers,URL,Buffer,File,FormData,Blob,AbortSignal,setTimeout,
     process:{env:{FAL_KEY:'test-key',SUPABASE_SERVICE_ROLE_KEY:'test-signing-key'}},
     console:{log(){},warn(){},error(){},info(){}},

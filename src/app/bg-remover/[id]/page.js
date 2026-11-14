@@ -1,5 +1,6 @@
 "use client";
 
+import CreditAmount from '@/components/CreditAmount';
 import GenerateButton from "@/components/GenerateButton";
 import WorkspaceHeader from "@/components/WorkspaceHeader";
 import GenerationLoading from "@/components/GenerationLoading";
@@ -217,7 +218,7 @@ export default function BgRemoverPage() {
         <section className={styles.panelSection}>
           <h2>Actions</h2>
           {errorMsg && <p className={styles.error} role="alert">{errorMsg}</p>}
-          {!isCompleted ? <GenerateButton onClick={noCredits ? () => setShowTopUp(true) : handleRemoveBg} disabled={isProcessing} detail={!isProcessing && !noCredits ? `${CREDIT_COST.removeBg} credits` : undefined}>
+          {!isCompleted ? <GenerateButton onClick={noCredits ? () => setShowTopUp(true) : handleRemoveBg} disabled={isProcessing} detail={!isProcessing && !noCredits ? <CreditAmount amount={CREDIT_COST.removeBg} /> : undefined}>
             {isProcessing ? <Loader2 size={15} className="animate-spin" /> : <Scissors size={15} />}{isProcessing ? "Processing…" : noCredits ? "Buy More Credits" : "Remove Background"}
           </GenerateButton> : <button type="button" className={styles.compareButton} aria-pressed={compare} onClick={() => setCompare(value => !value)}><Monitor size={14} />{compare ? "View transparent result" : "Before / After Compare"}</button>}
           <p className={styles.status}>{isProcessing ? "Processing your image…" : isCompleted ? (compare ? "Drag the divider to inspect the edges." : "Checkerboard areas are transparent.") : "Remove the background while keeping your subject."}</p>

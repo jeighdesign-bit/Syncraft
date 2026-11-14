@@ -1,0 +1,72 @@
+SYNCRAFT LEGAL DRAFTS — REVIEW NOTES
+Prepared: 11 November 2026
+Status: Localhost policy copy updated at the owner’s request; effective date 11 November 2026. No live deployment.
+
+DELIVERABLES
+
+- terms-of-service.txt
+- refund-and-payment-policy.txt
+- privacy-policy.txt
+
+The /terms, /refunds and /privacy routes now render these drafts on localhost, with draft labels removed and an effective date of 11 November 2026. No live deployment was performed. No pricing, credit deductions, provider prompts, payment settings or retention settings were changed. The owner supplied JAY LUIS CAÑO as operator and jeighdesign@gmail.com as the support/privacy contact on 11 November 2026; both identity placeholders have been replaced. The supplied identity has not been independently matched to the COR/eCOR.
+
+WHAT WAS CHECKED IN THE APPLICATION
+
+1. src/lib/pricing.js and src/lib/extractionResolution.mjs: variable operation prices; the current 1K/2K/4K tiers are 12/16/24. The drafts deliberately point readers to the selected UI total rather than embedding a price table that could go stale.
+2. src/app/api/trace/route.js, src/lib/creditLedger.js, consumer recovery and Logo Studio processing: linked charges, upfront deductions, recoveries and operation-specific returns. The draft distinguishes technical failure from subjective quality dissatisfaction, and an in-app credit return from a payment refund.
+3. Existing src/app/refunds/page.js: seven-day voluntary window, full refund where none of the purchased credits were used, review of unused portions, and a three-to-five-business-day support response target. These are preserved as proposed business rules; automated monetary-refund fulfillment was not established.
+4. src/lib/projectAccess.js: projects are treated as expired three days after creation. src/lib/storageCleanup.js: default project-storage retention is three days and temporary-object retention is one day. src/app/api/cron/cleanup/route.js: deletion is gated by STORAGE_CLEANUP_DELETE_ENABLED and successful cleanup execution. That flag was not present in the inspected local environment files. The deployed deletion flag, cron execution, bucket lifecycle settings, actual purge results and backup/provider deletion cycles were not verified. No cleanup operation was run.
+5. src/app/api/project-share/route.js and existing asset delivery: owner-controlled view/edit collaboration and direct asset URLs. The drafts do not represent every asset URL as private, signed or immediately revocable.
+6. src/app/components/GoogleAnalytics.js, CookieConsent.js and src/lib/analytics.mjs: analytics initially loads only on acceptance; the interface offers Essential Only and later Cookie Settings. The draft avoids promising that withdrawal erases prior data/cookies. Confirm consent-revocation behavior for already-loaded scripts before making stronger claims.
+7. src/app/api/community/route.js, src/app/api/community/logo/route.js and docs/community-showcase.md: explicit submission permission, moderation, separate community-logo storage, approved public display and owner withdrawal. No community entry was submitted, approved or published during drafting.
+8. Current provider integrations and payment UI: Fal/Google-powered AI, Recraft API, Supabase, Cloudflare R2/Turnstile, Vercel hosting, optional Resend, PayMongo QR Ph and additional payment integrations where enabled. MANUAL_GCASH_ENABLED is currently false; disabled card methods are not described as presently available. Drafts do not assert that every integrated provider is currently enabled.
+9. src/app/components/StartScreen.js and public/BIR.jpg: the footer links to an existing 2026 BIR Registration Seal Badge with a QR code and RSN. The QR verification result and matching COR/eCOR operator identity were not independently validated.
+
+OWNER CONFIRMATIONS BEFORE FINALIZING
+
+- Operator supplied by owner: JAY LUIS CAÑO, operating as Syncraft. Match the final operator wording to the relevant registration records, and confirm any business/contact address or additional disclosures required for publication. The badge image alone does not establish the name.
+- Support/privacy contact supplied by owner: jeighdesign@gmail.com. Confirm this mailbox is monitored and whether a separate privacy contact is needed before final publication.
+- Confirm the voluntary seven-day cash-refund rules, attribution of used/unused purchased credits, any promotional-credit treatment, partial-refund calculation, supported refund methods and the support response target. These are proposed text based on the current page, not new refund automation.
+- Confirm the separate business/API terms or agreement. The drafts identify separate wallets and do not invent a B2B refund schedule. Have legal review resolve any consumer/API scope ambiguity before publishing.
+- Review the minimum-age clause. Fal's current terms expressly address adult end users in customer solutions. The draft uses 18 or the higher applicable age of legal majority, rather than promising that guardian consent overrides the provider's restriction. No age-verification or sign-in logic was changed.
+- Verify the actual production retention/deletion configuration and operational results, including protected/permanent storage, account/transaction/security/support retention and provider copies. Project access expiry is not proof of file erasure. Establish a defensible retention schedule for records retained longer than project files.
+- Confirm the provider account agreements, subprocessors, hosting locations, international-transfer safeguards and data-use settings. Recraft's published API terms distinguish API processing from free-tier website/gallery handling; do not copy free-tier claims into Syncraft's policy. Do not make an all-provider zero-training or zero-retention guarantee without confirming its application to each enabled service.
+- Confirm the privacy-request and account-deletion process, verification steps and accountable privacy contact. The draft describes rights subject to law; it does not claim a new automated deletion feature exists.
+- Review the proposed fair enforcement language: the drafts do not automatically forfeit all credits for every account restriction or penalize a good-faith payment dispute. These replace overly absolute statements in the current pages and require business/legal review.
+- Confirm the factual no-sale/no-own-model-training statements. No independent audit of all historical processing or downstream-provider behavior was performed.
+- The owner requested an effective date of 11 November 2026 and removal of draft labels for the localhost copy. Align the related Copyright and Acceptable Use pages, login consent copy, footer links and page metadata before publishing the final set. Consider recording the accepted policy version where needed; no version-recording feature was implemented here.
+
+REFERENCE MATERIAL CONSULTED
+
+The documents are original Syncraft-specific drafts. References inform the wording; they do not certify compliance or substitute for review of the actual business and provider contracts. An independent Philippine legal review is appropriate before adopting the substantive terms.
+
+Philippine consumer remedies:
+Republic Act No. 11967, especially Section 20; preserve applicable statutory remedies rather than treating a voluntary seven-day window as a universal bar.
+https://elibrary.judiciary.gov.ph/thebookshelf/showdocs/2/96902
+
+Privacy transparency and rights:
+National Privacy Commission, implementing rules of the Data Privacy Act; advisory material on privacy notices; data-subject rights.
+https://privacy.gov.ph/implementing-rules-regulations-data-privacy-act-2012/
+https://privacy.gov.ph/wp-content/uploads/2022/01/AdOpNo.2018-013.pdf
+https://privacy.gov.ph/data-subject-rights/
+
+Copyright and authorization:
+IPOPHL copyright guidance. The draft distinguishes retaining existing rights from guaranteeing that every generated output acquires copyright, registration eligibility or third-party clearance.
+https://www.ipophil.gov.ph/copyright/
+
+Provider terms and data handling:
+Fal Terms of Service, including eligibility/end users and its linked API and processing terms. Current page identifies a September 8, 2026 revision.
+https://fal.ai/legal/terms-of-service
+https://fal.ai/legal/api-services
+https://fal.ai/legal/data-processing-addendum
+Recraft Developer Terms and Privacy Policy, including their API-specific provisions. Scope and contractual applicability need confirmation against the actual account/service.
+https://www.recraft.ai/legal/developer-terms
+https://www.recraft.ai/legal/privacy
+
+BIR badge:
+Revenue Memorandum Circular No. 038-2026, issued April 29, 2026, addresses BIR Registration Seal Badges and QR-coded registration documents for online businesses/services. Having a badge displayed is distinct from independently checking its verification result and matching the legal operator to the underlying COR/eCOR. Tax registration does not replace service terms or a privacy notice.
+https://bir-cdn.bir.gov.ph/BIR/pdf/RMC%20NO.%2038-2026.pdf
+
+VALIDATION SCOPE
+
+Drafts were checked for consistent placeholders, explicit draft status, non-effective dates, current feature coverage, accurate variable-credit language, mandatory-rights qualifications and consistency between documents. Existing tracked/untracked files were fingerprinted before drafting to verify that application files and published policies remained unchanged. No paid generation, refund, payment, customer-account modification, retention job, deployment or external publication was performed.

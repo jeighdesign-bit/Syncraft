@@ -37,7 +37,7 @@ async function harness() {
   };
 }
 
-test('generation completion restores fit and opens HD Upscale instead of SVG', async () => {
+test('generation completion restores fit and opens Syncraft Upscale instead of SVG', async () => {
   const h = await harness(); h.render('step3');
   h.states[1] = 2;
   h.refs[0].current = { scrollLeft: 30, scrollTop: 40 };

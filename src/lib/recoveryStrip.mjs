@@ -1,7 +1,17 @@
 import sharp from 'sharp';
 import { recoveryModeInstructions } from './recoveryVision.mjs';
+import { DEFAULT_EXTRACTION_RESOLUTION, extractionResolution } from './extractionResolution.mjs';
 
-export async function matchRecoveryStripProportions(buffer, width, height) {
+export async function matchRecoveryStripProportions(buffer, width, height, { resolution = DEFAULT_EXTRACTION_RESOLUTION } = {}) {
+  if (extractionResolution(resolution) === '4K') {
+    // Correct the crop ratio while retaining the native provider pixel budget.
+    // The legacy 2048px carrier would discard most of a native 4K result.
+    const metadata = await sharp(buffer).metadata();
+    const area = metadata.width * metadata.height;
+    const ratio = width / height;
+    return sharp(buffer).resize(Math.max(1, Math.round(Math.sqrt(area * ratio))),
+      Math.max(1, Math.round(Math.sqrt(area / ratio))), { fit: 'fill' }).png().toBuffer();
+  }
   const multiplier = Math.max(1, Math.min(8, Math.floor(2048 / Math.max(width, height))));
   return sharp(buffer).resize(width * multiplier, height * multiplier, { fit: 'fill' }).png().toBuffer();
 }

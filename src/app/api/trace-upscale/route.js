@@ -55,7 +55,7 @@ export async function POST(request) {
         error: error.code || 'UPSCALE_UNAVAILABLE',
         message: error.code
           ? error.message
-          : 'Could not check HD Upscale. Your artwork is saved. Reopen the project to resume for free.',
+          : 'Could not check Syncraft Upscale. Your artwork is saved. Reopen the project to resume for free.',
       },
       { status: error.status === 409 ? 409 : 503 },
     );

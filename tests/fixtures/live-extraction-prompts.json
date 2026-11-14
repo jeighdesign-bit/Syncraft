@@ -1,0 +1,676 @@
+{
+  "production": {
+    "domain": "syncraftech.com",
+    "deploymentId": "dpl_98K9ZNGKUk4TCBktiCJ8LAwgXb3i",
+    "commit": "895988aab7157bfbc6db2ca404bb2bf4ee220e5a",
+    "verifiedAt": "2026-11-10T11:42:30.139Z"
+  },
+  "model": "google/nano-banana-2.1/edit",
+  "garment": {
+    "version": "reconstruction-v6",
+    "system": "a96bfe22116b36e545f6c0414b8696d9d5e541551e6b145ee1bfdb8b002426c8",
+    "surface": "340f9cea79ee41d9aaad177effb9d056975751846dfdefefe075fa8c3a2d5028",
+    "modes": {
+      "ERASE_LOGOS": {
+        "prompt": "8690ad94172521962ab3955728a2dc0c4bb3675699012a19d325907d8d263454",
+        "guard": "d56c6990add0756e3a4d8b4cc3dda84679158313f24415d7b04a222b06854e8a"
+      },
+      "PRESERVE_LOGOS": {
+        "prompt": "640c5e34a5daae74bb9a13cff9bc37f8d7965b715cafa8bd2a6f235fabef2b91",
+        "guard": "e4aaf8cbb0a684122ee477fb0d3f2a1d1dce781154469db733bb0db8efd2d440"
+      }
+    }
+  },
+  "logo": {
+    "consumer": "857acfc225559799d6700ab0c33ca677dc0331a2ffd55317b0fa21ca1e1efd07",
+    "b2b": "6c48146237215933e651730714a9384d4dfe24a76a09c985f4137dac85e35d08"
+  },
+  "universal": {
+    "model": "google/nano-banana-2.1/edit",
+    "directCropVersion": "direct-crop-v1",
+    "cases": [
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "auto",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_BACKGROUND_ONLY",
+          "directCrop": false
+        },
+        "prompt": "1ce7580481cb7cba94da302ee758264364cdcc968ef31e1a535feed3076310a2",
+        "review": "afb22b7dc2eb1497eb50b33db473a983265104fe05071f9ad0e1cc5020e42ef0"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "poster",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_BACKGROUND_ONLY",
+          "directCrop": false
+        },
+        "prompt": "3ae9110df64c4d928ce307799f15403dca24d8a7b066b40907c5add1acf388ed",
+        "review": "4f12fcd8c8db761c26315dee06e735028f8eeacebb64e8c3d5ee0b9cb25c983a"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "lanyard",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_BACKGROUND_ONLY",
+          "directCrop": false
+        },
+        "prompt": "f56f81d62ec5683f1719d5a0dbedc48a2a8c49df818d5a57a51cf859fdacbf0d",
+        "review": "616ddc916bc39e7424ac123d337b4bf2574465837f51162c986abc221232e676"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "banner",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_BACKGROUND_ONLY",
+          "directCrop": false
+        },
+        "prompt": "9321e7be71cd6100117b1e079fe364972f9afdf36587ac73dd0bf61cfa1bb0c6",
+        "review": "5eb851c77e29b5c3700a4a335d53a6af21d0282d7de1e7f1e2a535b46d121fe3"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "packaging",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_BACKGROUND_ONLY",
+          "directCrop": false
+        },
+        "prompt": "3d2f3816bd93fc15d906d582f4c97d0d8e80ee87d5f93f0d403818d5416e2e90",
+        "review": "39506e107fd4a636d77631dd0b4743b37ce5b1ad647975860c27b4e7d0f2b60d"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "label",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_BACKGROUND_ONLY",
+          "directCrop": false
+        },
+        "prompt": "8f1454f392ab58eb6e4607a2ea55dd67464dfc5808877c519db0efc6666676c9",
+        "review": "1fa614d35726cd36714b88601d9538102e38243faeef1d525ba0dc08f136769b"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "other",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_BACKGROUND_ONLY",
+          "directCrop": false
+        },
+        "prompt": "ba880d474cd763120afd3e0a0ec33b9c4a00b075b761b1d0ee7a5bbd3c4b8385",
+        "review": "ccdc41606c6ad56bcf3e0f0240f2b237a09435c92ab402830021df0bcadad079"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "auto",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_BACKGROUND_ONLY",
+          "directCrop": true
+        },
+        "prompt": "680cede25b7a27dd98f6dcf8ad8ba3a6ab4956799db131cfcec5ab0d158c6d98",
+        "review": "afb22b7dc2eb1497eb50b33db473a983265104fe05071f9ad0e1cc5020e42ef0"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "poster",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_BACKGROUND_ONLY",
+          "directCrop": true
+        },
+        "prompt": "99d4590e4842d265df44aeb3a6b7b5031525b60df7aa4a8d032106a3f7d8fe63",
+        "review": "4f12fcd8c8db761c26315dee06e735028f8eeacebb64e8c3d5ee0b9cb25c983a"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "lanyard",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_BACKGROUND_ONLY",
+          "directCrop": true
+        },
+        "prompt": "032873583ff20e7ae0b3d1250a7244f8378eae7e8db1869fc1a2adce275b4857",
+        "review": "616ddc916bc39e7424ac123d337b4bf2574465837f51162c986abc221232e676"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "banner",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_BACKGROUND_ONLY",
+          "directCrop": true
+        },
+        "prompt": "5f6241cbbddaefd4dd31b6a5e1b4327ebf1074f34aa0a74883b63451d310e6c1",
+        "review": "5eb851c77e29b5c3700a4a335d53a6af21d0282d7de1e7f1e2a535b46d121fe3"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "packaging",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_BACKGROUND_ONLY",
+          "directCrop": true
+        },
+        "prompt": "b506756baab7dfcec4668bc2dabed2da034e71642144cf2be914e78188bd4705",
+        "review": "39506e107fd4a636d77631dd0b4743b37ce5b1ad647975860c27b4e7d0f2b60d"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "label",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_BACKGROUND_ONLY",
+          "directCrop": true
+        },
+        "prompt": "880c14d5efebac59623dad0dfb7ec4b10ed1deec0d4682de4cad59a5a592a961",
+        "review": "1fa614d35726cd36714b88601d9538102e38243faeef1d525ba0dc08f136769b"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "other",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_BACKGROUND_ONLY",
+          "directCrop": true
+        },
+        "prompt": "0b6c3fbe34907bd964d8d3750a266e7ea20f700de3d5b54476a2deccb5522ef5",
+        "review": "ccdc41606c6ad56bcf3e0f0240f2b237a09435c92ab402830021df0bcadad079"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "auto",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_KEEP_ARTWORK",
+          "directCrop": false
+        },
+        "prompt": "d8d8061f9fe59d64e2d84f6415fb08d74fec050d439912f6b60581eddbbb4034",
+        "review": "2869df39560982af21fb4b16989e3231f593eee2e4ce23e9e525ad8ddcefa12a"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "poster",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_KEEP_ARTWORK",
+          "directCrop": false
+        },
+        "prompt": "c7e0631eebb93954db7861fa1d8e64cf7d82b2947268e7cedf72e63197668d82",
+        "review": "556e86fc3445e489a254d74c9e23e3aec286bd978d3ebda1f1f810481384e279"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "lanyard",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_KEEP_ARTWORK",
+          "directCrop": false
+        },
+        "prompt": "77e33079b420f414b532911c251d7b1917c984c3bf938176c973750562c1776e",
+        "review": "8d5059ffef65bbfdd3055f1c949b0c5da3c7653210f5a08455cd15a7d5615078"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "banner",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_KEEP_ARTWORK",
+          "directCrop": false
+        },
+        "prompt": "0f4110254f7399326926c273436c37301417a9d7a5338d8306000b0e4bfe77c3",
+        "review": "4d85c95df1243e831dccb955f725935b15cbd162c74c4bd9a427d6a4e8ceb835"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "packaging",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_KEEP_ARTWORK",
+          "directCrop": false
+        },
+        "prompt": "4d99230173be67b80e1bb1a7a8b422183f72a797bb09505c9d0e18021044085a",
+        "review": "0de6d12cc896c5ff93b6e993f9986aa20b679d96b6220247ffe6c376c4e09c55"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "label",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_KEEP_ARTWORK",
+          "directCrop": false
+        },
+        "prompt": "36529cbe008376a4a0a8be3e02fe3f674e2abb1b5ec3acbb31fa7830b93e41b1",
+        "review": "41b52f9861eb5009f5107dc8982dec10c7cb9e983bda1e1d85a1f36fc859bbeb"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "other",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_KEEP_ARTWORK",
+          "directCrop": false
+        },
+        "prompt": "5373d43c5c39037455e96ea7cb330d90ba108a7a736b91a505e8eb5e66b7c467",
+        "review": "a67f54af25f15b3de210a9392d83d9b0460a175bf494ca828801ec99518271e3"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "auto",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_KEEP_ARTWORK",
+          "directCrop": true
+        },
+        "prompt": "fdc145ddf35864f83b510e49bcf46eb1e0bfd6f9cb6c401367415a02c34a29c6",
+        "review": "2869df39560982af21fb4b16989e3231f593eee2e4ce23e9e525ad8ddcefa12a"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "poster",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_KEEP_ARTWORK",
+          "directCrop": true
+        },
+        "prompt": "dd9a4c8e9dcdc992f4c6bd8b875a49a2d7e1d985d4209c5fa4082d4c1f8a3dc0",
+        "review": "556e86fc3445e489a254d74c9e23e3aec286bd978d3ebda1f1f810481384e279"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "lanyard",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_KEEP_ARTWORK",
+          "directCrop": true
+        },
+        "prompt": "b59f0d8696cbd43df307304bc583c29e6b3dcbf1d70a0629f5aef0099d72cffc",
+        "review": "8d5059ffef65bbfdd3055f1c949b0c5da3c7653210f5a08455cd15a7d5615078"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "banner",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_KEEP_ARTWORK",
+          "directCrop": true
+        },
+        "prompt": "37433421a143f024ad48ebbb2612deb57276386a020870f446ab04d96fd0ccf4",
+        "review": "4d85c95df1243e831dccb955f725935b15cbd162c74c4bd9a427d6a4e8ceb835"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "packaging",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_KEEP_ARTWORK",
+          "directCrop": true
+        },
+        "prompt": "020874ce7e7283bd9ae38252c76dccd6b4744372d07155f8101882d0a880b089",
+        "review": "0de6d12cc896c5ff93b6e993f9986aa20b679d96b6220247ffe6c376c4e09c55"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "label",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_KEEP_ARTWORK",
+          "directCrop": true
+        },
+        "prompt": "2a531d62185c0a55171c9d46db9d206ef0629b39e9774a280321f6ed0edfdeb2",
+        "review": "41b52f9861eb5009f5107dc8982dec10c7cb9e983bda1e1d85a1f36fc859bbeb"
+      },
+      {
+        "args": {
+          "imageUrls": [
+            "https://reference.test/cropped.png"
+          ],
+          "analysis": {
+            "reference_category": "other",
+            "aspect_ratio": "3:4",
+            "surface_description": "SYNTHETIC FRONT PRINT",
+            "readable_text": [
+              "DEMO PRINT",
+              "24"
+            ]
+          },
+          "mode": "UNIVERSAL_KEEP_ARTWORK",
+          "directCrop": true
+        },
+        "prompt": "794d6fa6463799b9479390b3beea075d40faec8881d7569902102b3d42241806",
+        "review": "a67f54af25f15b3de210a9392d83d9b0460a175bf494ca828801ec99518271e3"
+      }
+    ],
+    "analysis": [
+      {
+        "category": "auto",
+        "prompt": "3712f293eeb23c3464bc24c50342f8d02347904a6ce2d12c426b73860903230e"
+      },
+      {
+        "category": "poster",
+        "prompt": "8c0b10c4217eb576ac4be9f3476aa7e4f099e2246a4bb755c80b990f3d53f6cf"
+      },
+      {
+        "category": "lanyard",
+        "prompt": "9a721e182051e4d7039f996eec72a1cb2dce77d6089fa44ceefa5c8b3c683b1d"
+      },
+      {
+        "category": "banner",
+        "prompt": "815183806e606cf644933774f7942cb403519a7d0f86e021e02ffea82da6ba35"
+      },
+      {
+        "category": "packaging",
+        "prompt": "281b9be40bf96d5742c04e17bfe749b18c35171083785c3ddb82b14ecdea4468"
+      },
+      {
+        "category": "label",
+        "prompt": "ac8b8fc19c6ba642b0000b93dd81de333c6a43c9dcbfe2436ff48eb1347e7165"
+      },
+      {
+        "category": "other",
+        "prompt": "9f88e86cfd06ce2b0d975efa2784de72ccb4a1f0ca4bd0b3129258ffc21919f4"
+      }
+    ],
+    "inspection": [
+      {
+        "layout": "source_image",
+        "prompt": "5b85566c34cd46a60b021877ab94d89d37042a08a7b8a20bb588df091ea100f1"
+      },
+      {
+        "layout": "inspection_sheet",
+        "prompt": "b7ca6779379d09a9c2570ee24cb4f70676a750cbc5168d70bebc55c589621613"
+      }
+    ],
+    "modes": {
+      "UNIVERSAL_BACKGROUND_ONLY": "d9e76bde22d341a68a00af75dd5834247f30bc122c980fbef6f44ba6894f25d0",
+      "UNIVERSAL_KEEP_ARTWORK": "062800a838eaee1095abbe0c2e132d5d3054919cfbba9b6e9724ff629b13c883"
+    }
+  },
+  "strip": [
+    {
+      "mode": "UNIVERSAL_BACKGROUND_ONLY",
+      "strip": {
+        "count": 3,
+        "vertical": false
+      },
+      "instructions": "ccfaa507772ef9ad6940663966349e0451bd7b35320d158df83cf15b9c7aad61",
+      "prompt": "ecb9a23557279d838d6e0f55ca6c5650c7f70bfba5315f7e6a7e636f1d81f0fd"
+    },
+    {
+      "mode": "UNIVERSAL_BACKGROUND_ONLY",
+      "strip": {
+        "count": 3,
+        "vertical": true
+      },
+      "instructions": "da2379e4cff93c7fcbb447ef6fda0896fa1048efc6abdfed3726a23dc1a6be79",
+      "prompt": "b3e6cecd8cab65372d99ed3957457f4450610b9c3f3d8ae65a327bc7638ce9d4"
+    },
+    {
+      "mode": "UNIVERSAL_KEEP_ARTWORK",
+      "strip": {
+        "count": 3,
+        "vertical": false
+      },
+      "instructions": "ccfaa507772ef9ad6940663966349e0451bd7b35320d158df83cf15b9c7aad61",
+      "prompt": "2535e34ad7ff9c4476b878e5118a63fbb8e34b6f2527b806e104cca4f865002f"
+    },
+    {
+      "mode": "UNIVERSAL_KEEP_ARTWORK",
+      "strip": {
+        "count": 3,
+        "vertical": true
+      },
+      "instructions": "da2379e4cff93c7fcbb447ef6fda0896fa1048efc6abdfed3726a23dc1a6be79",
+      "prompt": "f57519034b0fefd84eb7bd9e123280714c7d466d34eca98113a46fc207cc7ab7"
+    }
+  ]
+}

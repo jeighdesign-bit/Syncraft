@@ -3,7 +3,8 @@ import { absoluteUrl } from "@/lib/site";
 export const metadata = {
   title: "Acceptable Use Policy",
   description:
-    "Review Syncraft acceptable use rules for AI design extraction, copyright-safe uploads, prohibited content, abuse prevention, and service limits.",
+    "Read Syncraft rules on authorized artwork, prohibited content, account and payment abuse, sharing, enforcement and review requests.",
+  robots: { index: false, follow: false },
   alternates: {
     canonical: absoluteUrl("/acceptable-use"),
   },

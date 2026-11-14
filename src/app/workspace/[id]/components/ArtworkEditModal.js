@@ -1,5 +1,6 @@
 'use client';
 
+import CreditAmount from '@/components/CreditAmount';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowUp,
@@ -519,7 +520,7 @@ export default function ArtworkEditModal({
                 disabled={commentsLocked || !comments.length || incompleteComments}
                 onClick={generate}
               >
-                {busy === 'generating' ? <Loader2 size={15} className={styles.spin} /> : 'Send'}
+                {busy === 'generating' ? <Loader2 size={15} className={styles.spin} /> : <>Send <CreditAmount amount={cost} unit="" /></>}
               </button>
               <button
                 type="button"
@@ -628,7 +629,7 @@ export default function ArtworkEditModal({
                 placeholder="Describe edits…"
               />
               <div className={styles.composerActions}>
-                <span className={styles.cost}>{cost} credits</span>
+                <span className={styles.cost}><CreditAmount amount={cost} /></span>
                 <button
                   type="submit"
                   className={styles.send}
@@ -659,9 +660,9 @@ export default function ArtworkEditModal({
               : busy === 'generating' || pending
                 ? 'Editing your artwork… Your request is saved.'
                 : candidate
-                  ? 'Apply to update your artwork. HD Upscale and Vector SVG will need rebuilding.'
+                  ? 'Apply to update your artwork. Syncraft Upscale and Syncraft Vector will need rebuilding.'
                   : commentMode
-                    ? `${cost} credits per edit`
+                    ? <><CreditAmount amount={cost} /> per edit</>
                     : 'Failed edits are refunded. Your current artwork stays saved.'}
           </p>
         </div>

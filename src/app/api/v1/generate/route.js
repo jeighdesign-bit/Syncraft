@@ -100,7 +100,9 @@ export async function POST(request) {
         imageUrl: image_url,
         prompt: finalPrompt,
         aspectRatio: "auto",
-        mode: "legacy",
+        // B2B packages and their existing 2K generation contract are separate
+        // from the consumer workspace's new resolution pricing.
+        resolution: "2K",
       });
       if (mode !== 'logo_trace') extractionInput.system_prompt = buildGarmentExtractionSystemPrompt();
 

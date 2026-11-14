@@ -1,0 +1,91 @@
+SYNCRAFT — PRIVACY POLICY
+Last updated: 11 November 2026
+Effective date: 11 November 2026
+Personal information controller/operator: JAY LUIS CAÑO, operating as Syncraft
+Privacy and support contact: jeighdesign@gmail.com
+
+1. ABOUT THIS NOTICE
+
+This policy explains how Syncraft collects, uses, shares and retains personal data in operating its website, accounts, creative tools, payments and support. It also explains your choices and privacy rights. It applies to the Syncraft service; independent sites you visit, payment providers and other third parties also publish notices governing their own processing.
+
+2. INFORMATION WE HANDLE
+
+Account information: Your account identifier, email, profile name and, where provided through sign-in, profile image. Google sign-in is handled through our authentication provider. We do not receive your Google password.
+
+Creative content and project records: Uploaded images, sketches, prompts, instructions, crops, selected settings, generated and edited results, vector/export files, project titles, version history, comments and technical information needed to process, save or recover a request. Images or prompts can contain personal data about you or other people.
+
+Payments and credits: Package selection, account identifiers, transaction and checkout references, payment amount and currency, payment status, credit charges, returns and adjustments, and relevant provider confirmations. If an offered payment flow or support investigation requires additional payer or receipt information, we process the information supplied for that purpose. Full payment credentials are handled through the relevant payment provider; do not send passwords or one-time payment codes to support.
+
+Sharing, public submissions and support: Collaborator account details and permissions, messages and attachments you send us, feedback, and any optional community submission containing your logo, business name, website link, display permission and moderation history.
+
+Technical information: IP address and request information, browser/device information, authentication and security records, errors, provider request identifiers, processing status and rate-limit information. If you allow analytics, additional usage information is described below.
+
+3. PURPOSES AND LAWFUL GROUNDS
+
+We process information necessary to provide the service you request: authenticate you, manage accounts and credits, process creative content, deliver and recover results, enable authorized collaboration, verify payments, handle refunds and respond to support inquiries. The applicable ground is generally performance of our service agreement or steps you request before entering it, as permitted by law.
+
+We also process proportionate information for legitimate purposes such as service security, fraud prevention, troubleshooting, maintaining reliability and resolving disputes, subject to applicable law and your rights. We process records required for tax, accounting, lawful requests and other legal obligations on the relevant legal basis.
+
+Optional analytics and optional community publication use the choices described in this notice. Where consent is required, we seek it separately; accepting the Terms or reading this policy is not blanket consent for every optional use. Do not upload another person's personal data unless you have a lawful basis to provide it for the requested processing.
+
+4. AI PROCESSING AND MODEL TRAINING
+
+Requested tools send the necessary reference files, prompts, settings or results to AI processing providers. This can include generation, analysis, background removal, editing, upscaling and vectorization. Authorized personnel may access relevant content where needed for support, diagnosing service faults, security, abuse investigation or legal compliance.
+
+Syncraft does not sell uploaded artwork or generated files, and does not use them to train its own AI models. We do not treat that statement as a promise that every upstream provider has identical retention or data-use rules. Provider handling depends on the API/service, contractual terms and settings that apply to the processing. We do not promise zero provider retention or instantaneous deletion from their systems.
+
+5. SERVICE PROVIDERS AND INTERNATIONAL PROCESSING
+
+Depending on the feature and configuration, recipients can include:
+
+- Fal.ai and its relevant model providers, including Google-powered models, for requested AI processing; Recraft's API for supported logo processing and vectorization.
+- Supabase for authentication, databases and relevant storage; Cloudflare R2 for file storage; hosting/infrastructure providers, including Vercel, to operate the website and server requests.
+- Cloudflare Turnstile and configured security/rate-limit services to detect abuse and protect the service.
+- PayMongo for offered QR Ph payments, and any additional enabled payment provider identified at checkout. These providers may act independently for their own payment, fraud-prevention and regulatory purposes.
+- Resend where transactional email is configured, and Google Analytics if you choose to allow analytics.
+
+These providers may process information outside the Philippines. We remain responsible for our obligations under applicable privacy law and use appropriate safeguards for the processing and transfers we arrange. This policy does not waive those responsibilities or transfer them entirely to a provider. Information may also be disclosed where lawfully required by a competent authority or reasonably necessary to establish or defend legal claims, subject to applicable safeguards.
+
+6. PROJECT SHARING, FILE LINKS AND COMMUNITY DISPLAY
+
+Project owners can authorize existing Syncraft users to view or edit supported projects. Collaborators may see project material and relevant account-identifying information, such as the owner's or collaborators' email/profile details shown by the sharing interface. An editor may change a shared project within the permission granted. You control whom you invite and should only share material you are authorized to disclose.
+
+In-app project authorization does not make every underlying file link confidential. Some images and exports are delivered through direct asset URLs. Anyone obtaining one of those URLs may be able to view or download the associated asset while it is available. Revoking a collaborator does not recall downloaded copies, cached files or links already disclosed. Avoid uploading sensitive documents or personal information unnecessary for your design task.
+
+The optional community showcase is separate from ordinary project history. A submission requires permission to display the logo and undergoes review. An approved listing can publicly display its logo and business link; business names may appear in accessible labels or link information. Submission alone does not publish it. You can withdraw your listing using the available controls. Withdrawal stops the current public listing but cannot recall copies or screenshots made by others. Submission and moderation records may remain where needed to operate the feature or handle disputes.
+
+7. COOKIES, LOCAL STORAGE AND ANALYTICS
+
+Essential cookies or browser storage support sign-in, security, preferences and workspace functionality, including relevant draft/settings recovery. This storage is distinct from optional analytics.
+
+If you choose "Accept Analytics", Syncraft loads Google Analytics to measure page views, traffic sources, approximate location, device/browser information and interactions such as tool use, generations, output counts/cost-related events and exports. We do not intentionally send the contents of your uploaded images, generated designs or prompts as analytics event payloads. Technical page addresses or identifiers may still accompany web analytics.
+
+Choosing "Essential Only" does not initially load the optional analytics integration. You can revisit Cookie Settings in the footer to change your choice. Changing a preference affects subsequent processing where the integration supports it; it does not erase information already lawfully collected or necessarily delete existing browser cookies. You may also clear cookies/storage through your browser, which can sign you out or remove locally saved drafts/preferences.
+
+8. RETENTION, EXPIRY AND DELETION
+
+Standard projects have a three-day access-expiry period measured from creation. Download needed files before expiry. Temporary transfer files and export caches may have shorter retention windows.
+
+Access expiry is not the same as immediate physical deletion. Syncraft's project-storage cleanup is designed around a three-day schedule, with separate processing for temporary assets. Actual deletion depends on cleanup execution and retries; we do not promise that every copy is erased at an exact hour. A user deletion request, provider retention cycle, cache or backup may require additional handling. Our internal project schedule does not determine every upstream provider's retention.
+
+Account, payment, tax, credit-transaction, security and support records may be retained longer as needed for their stated purposes, legal obligations, fraud prevention and disputes. Community submissions use separate storage and do not automatically follow ordinary three-day project expiry. Browser-local drafts and preferences may remain until replaced or cleared by you or the application. We review continued need and delete or de-identify records when no longer necessary, subject to applicable law.
+
+9. YOUR RIGHTS AND CHOICES
+
+Subject to applicable law and its conditions, you may request information about processing, access or copies of your personal data, correction, erasure or blocking, objection to processing, data portability where applicable, and withdrawal of consent for optional processing. You may also raise a complaint with the National Privacy Commission and pursue remedies available under law.
+
+Contact jeighdesign@gmail.com to make a privacy or account-deletion request. We may reasonably verify your identity and clarify the scope to protect your information, without asking for unnecessary sensitive documents. We will explain any lawful reason a request cannot be fully granted. Withdrawal of consent does not affect earlier lawful processing, and some records may need to be retained to comply with law or resolve claims.
+
+10. SECURITY AND AGE REQUIREMENTS
+
+We use access controls, authentication, encrypted network transport and other appropriate measures to protect information. No online system is completely risk-free. File-link exposure, authorized sharing and copies made outside Syncraft should be considered separately from account-access controls. We address incidents and provide notifications where required by applicable law.
+
+The service is intended for users who satisfy the age requirements in the Terms, including a minimum age of 18 for the integrated AI service. If you believe a child has supplied personal data contrary to those requirements, contact jeighdesign@gmail.com so we can assess and take appropriate action.
+
+11. CONTACT AND CHANGES
+
+Personal information controller/operator: JAY LUIS CAÑO, operating as Syncraft
+Privacy and support requests: jeighdesign@gmail.com
+National Privacy Commission information and complaint channels: https://privacy.gov.ph/
+
+This policy is effective from 11 November 2026. We will communicate material changes through appropriate channels. If new optional processing requires consent, we will seek it before relying on that consent.

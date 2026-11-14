@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchStoredAsset } from '@/lib/storageDownload';
 import { assertSafeSvg } from '@/lib/svgSafety.mjs';
+import { MAX_NATIVE_4K_BYTES } from '@/lib/extractionResolution.mjs';
 import {
   DEFAULT_MAX_IMAGE_BYTES,
   DEFAULT_MAX_PSD_BYTES,
@@ -68,6 +69,8 @@ export async function GET(request) {
           ? DEFAULT_MAX_PSD_BYTES
           : /\/upscaled[-_]/.test(path)
             ? DEFAULT_MAX_UPSCALED_IMAGE_BYTES
+            : /\/generated_flat_[^/]+\.(?:png|jpe?g|webp)$/.test(path)
+              ? MAX_NATIVE_4K_BYTES
             : DEFAULT_MAX_IMAGE_BYTES;
 
     // Consume and validate the entire upstream body before sending 200. The old

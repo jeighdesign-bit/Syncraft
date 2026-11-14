@@ -1,5 +1,6 @@
 "use client";
 
+import CreditAmount from '@/components/CreditAmount';
 import { ArrowDownLeft, ArrowUpRight, Clock, History } from "lucide-react";
 import styles from "./CreditHistory.module.css";
 
@@ -35,7 +36,7 @@ export default function CreditHistory({ logs, loading, signedIn }) {
           return <li key={log.id} className={styles.row}>
             <span className={`${styles.icon}${added ? ` ${styles.addedIcon}` : ""}`}><Icon size={16} aria-hidden="true" /></span>
             <div className={styles.activity}><strong>{activityName(log.action)}</strong><span>{log.valid ? <time dateTime={log.date.toISOString()}>{log.date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time> : "Time unavailable"}{" · "}{added ? "Credits received" : amount < 0 ? "Credits used" : "No credit change"}</span></div>
-            <div className={`${styles.amount}${added ? ` ${styles.added}` : ""}`}><strong>{added ? "+" : ""}{amount}</strong><span>credits</span></div>
+            <div className={`${styles.amount}${added ? ` ${styles.added}` : ""}`}><strong><CreditAmount amount={`${added ? "+" : ""}${amount}`} unit={null} /></strong><span>credits</span></div>
           </li>;
         })}</ul>
       </section>)}</div>}

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import * as resolutionPolicy from '../src/lib/extractionResolution.mjs';
 import ts from 'typescript';
 import * as categories from '../src/lib/referenceCategories.mjs';
 import { buildRecoveryImageInput } from '../src/lib/recoveryVision.mjs';
@@ -25,10 +26,10 @@ async function panel(props = {}) {
   const source = (await readFile(new URL('../src/app/workspace/[id]/components/PropertiesPanel.js', import.meta.url), 'utf8')).replace(/^import .*;\r?\n/gm, '');
   const code = ts.transpileModule(source, { fileName: 'panel.jsx', compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.CommonJS } }).outputText;
   const module = { exports: {} };
-  const icons = Object.fromEntries(['Download','Monitor','ChevronDown','FolderDown','Loader2','X','ImageMinus','Eraser','Scissors','Expand','WandSparkles'].map(name => [name, name]));
-  const context = vm.createContext({ ...categories, ...icons, Select: 'select', finalArtworkRaster, module, exports: module.exports,
+  const icons = Object.fromEntries(['Download','Columns2','ChevronDown','FolderDown','Loader2','X','ImageMinus','Eraser','Scissors','Expand','WandSparkles','ArrowUp','Zap'].map(name => [name, name]));
+  const context = vm.createContext({ ...resolutionPolicy, ...categories, ...icons, styles: {}, Select: 'select', finalArtworkRaster, module, exports: module.exports,
     UNIVERSAL_AVAILABLE: true, UNIVERSAL_UNAVAILABLE_MESSAGE: '', isUniversalTraceType: value => typeof value === 'string' && value.startsWith('universal'),
-    memo: fn => fn, useState: initial => [initial, () => {}], CREDIT_COST: { universal: 24, trace: 12 }, canResumeTraceUpscale: () => false,
+    CreditAmount:'CreditAmount', memo: fn => fn, useRef: current => ({ current }), useState: initial => [initial, () => {}], CREDIT_COST: { universal: 24, trace: 12 }, canResumeTraceUpscale: () => false,
     React: { createElement: (type, p, ...children) => ({ type, props: { ...p, children } }) },
   });
   vm.runInContext(code, context);
