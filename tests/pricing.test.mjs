@@ -17,9 +17,9 @@ test("all extraction tools share the approved 12-credit 1K default", () => {
   assert.equal(CREDIT_COST.universal, 12);
 });
 
-test("only Logo Studio variations receive the six-credit price", () => {
+test("approved workspace action prices preserve extraction, upscale and Logo Studio pricing", () => {
   assert.deepEqual(CREDIT_COST, {
-    trace: 12, universal: 12, removeBg: 12, upscale: 12, extend: 12, artworkEdit: 8,
+    trace: 12, universal: 12, removeBg: 2, upscale: 12, extend: 6, artworkEdit: 4,
     logoGenerate: 8, logoImageGenerate: 8, logoSketchGenerate: 8,
     logoVariations: 6, logoEdit: 8, logoRemoveBg: 2, logoVectorize: 2,
   });

@@ -33,6 +33,17 @@ async function panel(props={}) {
   const component=vm.runInContext(code,context);
   return {events,tree:component({project,traceState:'idle',userCredits:100,vectorColors:'auto',readOnly:false,...callbacks,...props})};
 }
+test('workspace paid actions are consecutive with their actual prices and existing callbacks',async()=>{
+  const h=await panel({project:{...project,trace_type:'mockup'}});
+  const buttons=nodes(h.tree).filter(node=>node.type==='button');
+  const tools=['AI Edit','Remove BG','Extend Design','Erase Noise','Crop Region'];
+  const actions=buttons.filter(node=>tools.some(label=>text(node).includes(label)));
+  assert.deepEqual(actions.map(node=>tools.find(label=>text(node).includes(label))),tools);
+  for(const [index,cost] of [[0,4],[1,2],[2,6]])assert.match(text(actions[index]),new RegExp(`\\b${cost}\\b`));
+  actions.forEach(node=>node.props.onClick());
+  assert.deepEqual(h.events,['onOpenAiEdit','onOpenRemoveBg','onEnterExtend','onOpenErase','onOpenCrop']);
+});
+
 test('disabled Universal buttons and category handlers cannot start generation or edits even if directly invoked',async()=>{
   const h=await panel();
   assert.match(text(h.tree),/Temporarily Unavailable/);

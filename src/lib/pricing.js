@@ -13,9 +13,9 @@ import { ARTWORK_EDIT_COST } from "./artworkEditPolicy.mjs";
 export const CREDIT_COST = {
   trace: 12,      // default 1K extraction; shared tiers: 2K=16, 4K=24
   universal: 12,  // same extraction tiers; availability remains independently gated
-  removeBg: 12,
+  removeBg: 2,
   upscale: 12,
-  extend: 12,     // one nano-banana-2.1/edit call + a free re-run of stages 2 and 3
+  extend: 6,      // one nano-banana-2.1/edit call + a free re-run of stages 2 and 3
   artworkEdit: ARTWORK_EDIT_COST, // preview edit; applying/restoring saved artwork is free
   logoGenerate: 8, // Per Text-to-Logo output; the server selects the style's model
   logoImageGenerate: 8,

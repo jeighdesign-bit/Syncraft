@@ -100,7 +100,7 @@ test('support tools cannot accidentally submit to Nano; pricing stays isolated f
   for (const mode of ['text', 'image', 'sketch']) assert.equal(logoOperationCost('generate', mode), 8);
   assert.equal(logoOperationCost('variations'), 6); assert.equal(logoOperationCost('edit'), 8);
   assert.equal(logoOperationCost('removeBg'), 2); assert.equal(logoOperationCost('vectorize'), 2);
-  assert.equal(CREDIT_COST.removeBg, 12); assert.equal(CREDIT_COST.trace, 12); assert.equal(CREDIT_COST.upscale, 12);
+  assert.equal(CREDIT_COST.removeBg, 2); assert.equal(CREDIT_COST.trace, 12); assert.equal(CREDIT_COST.upscale, 12);
 });
 
 test('Streetwear uses the existing text provider and one raster output without changing price', () => {

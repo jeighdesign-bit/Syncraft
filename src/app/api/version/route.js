@@ -5,6 +5,7 @@ import { UNIVERSAL_AVAILABLE } from '@/lib/universalAvailability.mjs';
 import { LOGO_STYLES, LOGO_BATCH_LIMIT, logoOperationCost } from '@/lib/logoStudio.mjs';
 import { logoUsesNano } from '@/lib/logoModelRouting.mjs';
 import { EXTRACTION_RESOLUTIONS } from '@/lib/extractionResolution.mjs';
+import { CREDIT_COST } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,11 @@ export function GET() {
       aiEdit: ARTWORK_EDIT_MODEL,
     },
     universalAvailable: UNIVERSAL_AVAILABLE,
+    workspaceActionCredits: {
+      aiEdit: CREDIT_COST.artworkEdit,
+      removeBg: CREDIT_COST.removeBg,
+      extendDesign: CREDIT_COST.extend,
+    },
     extraction: {
       tiers: EXTRACTION_RESOLUTIONS,
       native4KSkipsUpscale: true,

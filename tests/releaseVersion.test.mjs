@@ -9,6 +9,7 @@ import { UNIVERSAL_AVAILABLE } from '../src/lib/universalAvailability.mjs';
 import { LOGO_STYLES, LOGO_BATCH_LIMIT, logoOperationCost } from '../src/lib/logoStudio.mjs';
 import { logoUsesNano } from '../src/lib/logoModelRouting.mjs';
 import { EXTRACTION_RESOLUTIONS } from '../src/lib/extractionResolution.mjs';
+import { CREDIT_COST } from '../src/lib/pricing.js';
 
 test('live release verification reports the deployed commit and actual model/pricing contracts without caching', async () => {
   const source = (await readFile(new URL('../src/app/api/version/route.js', import.meta.url), 'utf8'))
@@ -16,7 +17,7 @@ test('live release verification reports the deployed commit and actual model/pri
   for (const env of [{ VERCEL_GIT_COMMIT_SHA: 'deployed-sha', VERCEL_GIT_COMMIT_REF: 'main', SYNCRAFT_RELEASE_COMMIT: 'fallback-sha' },
     { SYNCRAFT_RELEASE_COMMIT: 'fallback-sha' }, {}]) {
     const context = vm.createContext({ ARTWORK_GENERATION_MODEL, ARTWORK_EDIT_MODEL, RECOVERY_IMAGE_ENDPOINT,
-      UNIVERSAL_AVAILABLE, LOGO_STYLES, LOGO_BATCH_LIMIT, logoOperationCost, logoUsesNano, EXTRACTION_RESOLUTIONS, Response, process: { env } });
+      UNIVERSAL_AVAILABLE, LOGO_STYLES, LOGO_BATCH_LIMIT, logoOperationCost, logoUsesNano, EXTRACTION_RESOLUTIONS, CREDIT_COST, Response, process: { env } });
     const GET = vm.runInContext(`${source}\nGET`, context);
     const response = GET(); const body = await response.json();
     assert.equal(body.commit, env.VERCEL_GIT_COMMIT_SHA || env.SYNCRAFT_RELEASE_COMMIT || null);
@@ -24,6 +25,7 @@ test('live release verification reports the deployed commit and actual model/pri
     assert.equal(body.release, 'extraction-tiers-credits-community-legal-2026-11-14');
     assert.deepEqual(body.extraction.tiers, JSON.parse(JSON.stringify(EXTRACTION_RESOLUTIONS)));
     assert.equal(body.extraction.native4KSkipsUpscale, true);
+    assert.deepEqual(body.workspaceActionCredits, {aiEdit: 4, removeBg: 2, extendDesign: 6});
     assert.match(response.headers.get('cache-control'), /no-store/);
     assert.equal(body.logoStudio.batchLimit, 4);
     assert.equal(Object.keys(body.logoStudio.textModels).length, 13);

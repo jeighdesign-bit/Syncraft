@@ -363,24 +363,6 @@ const PropertiesPanel = memo(function PropertiesPanel({
           >
             <ImageMinus size={14} /> Remove BG <CreditAmount className={styles.actionCost} amount={CREDIT_COST.removeBg} unit="" />
           </button>
-          <button
-            onClick={editingAction(onOpenErase)}
-            disabled={editsLocked || isBusy}
-            style={secondaryBtnStyle(!editsLocked && !isBusy)}
-            onMouseOver={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = "#484848"; }}
-            onMouseOut={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
-          >
-            <Eraser size={14} /> Erase Noise
-          </button>
-          <button
-            onClick={editingAction(onOpenCrop)}
-            disabled={editsLocked || isBusy}
-            style={secondaryBtnStyle(!editsLocked && !isBusy)}
-            onMouseOver={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = "#484848"; }}
-            onMouseOut={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
-          >
-            <Scissors size={14} /> Crop Region
-          </button>
           {/* Extend operates on the flat extract rather than the original upload,
               so it only unlocks once Stage 1 has produced one. In extend mode this
               same button becomes the Proceed/generate action (per the requested
@@ -421,6 +403,24 @@ const PropertiesPanel = memo(function PropertiesPanel({
               </button>
             </>
           )}
+          <button
+            onClick={editingAction(onOpenErase)}
+            disabled={editsLocked || isBusy}
+            style={secondaryBtnStyle(!editsLocked && !isBusy)}
+            onMouseOver={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = "#484848"; }}
+            onMouseOut={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
+          >
+            <Eraser size={14} /> Erase Noise
+          </button>
+          <button
+            onClick={editingAction(onOpenCrop)}
+            disabled={editsLocked || isBusy}
+            style={secondaryBtnStyle(!editsLocked && !isBusy)}
+            onMouseOver={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = "#484848"; }}
+            onMouseOut={e => { if (!editsLocked && !isBusy) e.currentTarget.style.borderColor = COLOR.border; }}
+          >
+            <Scissors size={14} /> Crop Region
+          </button>
         </div>
       </div>
 
