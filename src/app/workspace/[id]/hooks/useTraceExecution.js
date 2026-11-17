@@ -31,6 +31,7 @@ export function useTraceExecution({
   setProject,
   userCredits,
   extractionResolution = DEFAULT_EXTRACTION_RESOLUTION,
+  garmentProvider = 'nano-banana',
   setUserCredits,
   supabase,
   onNoCredits,
@@ -423,8 +424,8 @@ export function useTraceExecution({
         try {
           data1 =
             project.trace_type === 'universal'
-              ? await postJson('/api/recovery/generate', { projectId: project.id, resolution }, authToken, 'step1')
-              : await postJson('/api/trace', { projectId: project.id, step: 1, resolution }, authToken, 'step1');
+              ? await postJson('/api/recovery/generate', { projectId: project.id, resolution, ...(garmentProvider === 'openai' ? { garmentProvider: 'openai' } : {}) }, authToken, 'step1')
+              : await postJson('/api/trace', { projectId: project.id, step: 1, resolution, ...(supportsExtractionResolution(project) && garmentProvider === 'openai' ? { garmentProvider: 'openai' } : {}) }, authToken, 'step1');
         } catch (e) {
           if (e.code === 'INSUFFICIENT_CREDITS') {
             setUserCredits(e.balance ?? userCredits);
@@ -479,6 +480,10 @@ export function useTraceExecution({
         }
 
         // ─── Steps 2 & 3 ─────────────────────────────────────────────────
+        if (data1.localOpenAiTest) {
+          const estimate = data1.localOpenAiTest.estimatedCostUsd;
+          logToConsole('[Vela] Flat extract saved. ' + (estimate == null ? 'Cost unavailable.' : 'Estimated API cost: $' + estimate.toFixed(6)) + ' Continuing to Syncraft Upscale and Vector.', 'success');
+        }
         await runStep2And3({ authToken, vectorColors });
 
         setTraceState('idle');
@@ -557,6 +562,7 @@ export function useTraceExecution({
     },
     [
       extractionResolution,
+      garmentProvider,
       project,
       traceState,
       userCredits,

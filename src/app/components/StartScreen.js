@@ -42,7 +42,7 @@ import SectionBadge from "./SectionBadge";
 import WhySyncraft from "./WhySyncraft";
 import CommunityShowcase from "./CommunityShowcase";
 import CommunitySubmissionModal from "../community/CommunitySubmissionModal";
-import LogoStudioAnnouncement from "./LogoStudioAnnouncement";
+import VelaAnnouncement from "./LogoStudioAnnouncement";
 
 const landingNavItems = [
   { id: "how-it-works", label: "How It Works" },
@@ -724,10 +724,7 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
       {/* FULL WIDTH HERO SECTION */}
       <div className="home-hero-backdrop" style={{ position: "relative", backgroundColor: "#1a1a1a", backgroundImage: isWorkspace ? "radial-gradient(rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px)" : "radial-gradient(ellipse at 50% 78%, rgba(255, 184, 45, 0.16) 0%, rgba(255, 184, 45, 0.075) 30%, transparent 64%), radial-gradient(rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px)", backgroundSize: isWorkspace ? "24px 24px" : "100% 100%, 24px 24px", backgroundPosition: isWorkspace ? "0 0" : "center, 0 0", backgroundRepeat: isWorkspace ? "repeat" : "no-repeat, repeat", paddingTop: isWorkspace ? "100px" : "22px", paddingBottom: isWorkspace ? "40px" : "48px", color: "#fff" }}>
         <div className={isWorkspace ? "workspace-announcement" : undefined}>
-        <LogoStudioAnnouncement onTry={() => {
-          if (user) router.push("/logo-studio");
-          else { setLoginReturnTo("/logo-studio"); setShowLoginModal(true); }
-        }} />
+        <VelaAnnouncement />
         </div>
         <div className="home-hero-content" style={isWorkspace ? undefined : { maxWidth: "1200px", margin: "0 auto", padding: "0 20px", position: "relative", zIndex: 2 }}>
 

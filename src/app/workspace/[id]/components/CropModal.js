@@ -15,6 +15,7 @@ const CropModal = memo(function CropModal({
   project,
   supabase,
   onClose,
+  onSkipCrop,
   onCropApplied,
   onLoginRequired,
 }) {
@@ -365,7 +366,7 @@ const CropModal = memo(function CropModal({
         )}
         <div className="modal-actions" style={{ marginTop: "24px", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
           {!isMandatoryUniversalCrop && <button
-            onClick={onClose}
+            onClick={project?.generated_image_url ? onClose : (onSkipCrop || onClose)}
             style={{ padding: "12px 24px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#aaa", cursor: "pointer", fontWeight: "600", fontSize: "13px", transition: "all 0.2s" }}
             onMouseOver={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#fff"; }}
             onMouseOut={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#aaa"; }}

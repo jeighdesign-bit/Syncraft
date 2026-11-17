@@ -142,7 +142,16 @@ async function native4KResult(project) {
     maxAttempts: 2, signal: AbortSignal.timeout(130_000), allowedContentTypes: ['image/'],
   });
   const metadata = await sharp(asset.buffer).metadata();
-  try { verifyNative4K(metadata); }
+  try {
+    // Vela's 4K canvases follow its own pixel limits. The extraction route
+    // already verified and recorded this exact size in the server-owned ledger.
+    const expectedSize = charge.metadata.provider === 'openai'
+      && (charge.metadata.openAiExtraction === true || charge.metadata.localTest === true) && charge.metadata.outputSize;
+    if (expectedSize) {
+      if (`${metadata.width}x${metadata.height}` !== expectedSize)
+        throw Object.assign(new Error('Saved Vela dimensions changed.'), { code: 'EXTRACTION_RESOLUTION_MISMATCH' });
+    } else verifyNative4K(metadata);
+  }
   catch (error) {
     if (error.code === 'EXTRACTION_RESOLUTION_MISMATCH')
       throw failure(error.code, 'The saved extraction is not native 4K. Your file is safe; contact support before generating again.', 409);

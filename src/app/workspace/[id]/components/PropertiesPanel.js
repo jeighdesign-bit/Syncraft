@@ -3,6 +3,8 @@
 import { memo, useRef, useState } from "react";
 import { Download, Columns2, FolderDown, Loader2, X, ImageMinus, Eraser, Scissors, Expand, WandSparkles, ArrowUp } from "lucide-react";
 import Select from '@/components/Select';
+import ExtractionGenerationSettings from './ExtractionGenerationSettings';
+import { useExtractionModels } from '../hooks/useExtractionModels';
 import styles from './PropertiesPanel.module.css';
 import { CREDIT_COST } from "@/lib/pricing";
 import CreditAmount from '@/components/CreditAmount';
@@ -11,6 +13,11 @@ import { canResumeTraceUpscale } from "@/lib/traceRequestPolicy.mjs";
 import { REFERENCE_CATEGORIES, normalizeReferenceCategory } from "@/lib/referenceCategories.mjs";
 import { UNIVERSAL_AVAILABLE, UNIVERSAL_UNAVAILABLE_MESSAGE, isUniversalTraceType } from "@/lib/universalAvailability.mjs";
 import { finalArtworkRaster } from '@/lib/artworkExport.mjs';
+
+const EXTRACTION_MODELS = [
+  { value: 'nano-banana', name: 'Syncraft Lyra', shortName: 'Lyra', badge: 'Default', detail: '1K / 2K / 4K' },
+  { value: 'openai', name: 'Syncraft Vela', shortName: 'Vela', badge: 'NEW', detail: '1K / 2K / 4K · High quality' },
+];
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
 // Shared spacing/type/color scale so every section in this panel reads as
@@ -161,9 +168,12 @@ const PropertiesPanel = memo(function PropertiesPanel({
   project,
   traceState,
   isSavingCrop,
+  cropSkipped = false,
   userCredits,
   extractionResolution = DEFAULT_EXTRACTION_RESOLUTION,
   onExtractionResolutionChange,
+  garmentProvider = 'nano-banana',
+  onGarmentProviderChange,
   consoleRef,
   onExecuteTrace,
   onRetryVector,
@@ -197,12 +207,20 @@ const PropertiesPanel = memo(function PropertiesPanel({
   const [downloading, setDownloading] = useState(null);
   const [exportError, setExportError] = useState('');
   const generationBarRef = useRef(null);
+  const { option: localOpenAiOption, loading: loadingModels, error: modelError = false, retry: retryModels } = useExtractionModels(project, onGarmentProviderChange);
+  const openAiTestSelected = localOpenAiOption?.enabled && garmentProvider === 'openai';
+  const modelChoiceAvailable = localOpenAiOption?.enabled && supportsExtractionResolution(project);
+  const selectedModel = EXTRACTION_MODELS.find(model => model.value === (openAiTestSelected ? 'openai' : 'nano-banana'));
+  const extractionModels = localOpenAiOption?.enabled && localOpenAiOption.configured
+    ? EXTRACTION_MODELS.map(model => ({ ...model, badge: model.value === 'openai' ? 'Default · NEW' : null }))
+    : EXTRACTION_MODELS;
 
   const isUnauthenticated = userCredits === null;
   const executionCost = extractionCredits(extractionResolution, project?.trace_type);
   const noCredits = !isUnauthenticated && userCredits < executionCost;
-  const isCropped = project?.original_image_url?.includes("crop") || project?.generated_image_url;
-  const isBusy = traceState !== "idle" || isSavingCrop || extendMode || isSavingReferenceCategory;
+  const isCropped = project?.original_image_url?.includes("crop") || project?.generated_image_url
+    || (cropSkipped && !!project?.original_image_url && !isUniversalTraceType(project?.trace_type));
+  const isBusy = traceState !== "idle" || isSavingCrop || extendMode || isSavingReferenceCategory || loadingModels;
   const isUniversal = project?.trace_type === "universal";
   const universalUnavailable = !UNIVERSAL_AVAILABLE && isUniversalTraceType(project?.trace_type);
   // Availability blocks creation/editing only. Real sharing permissions still
@@ -231,6 +249,10 @@ const PropertiesPanel = memo(function PropertiesPanel({
 
   const traceButtonLabel = universalUnavailable
     ? "Temporarily Unavailable"
+    : loadingModels
+    ? "Loading models..."
+    : modelError
+    ? "Models unavailable"
     : isSavingCrop
     ? "Saving Crop..."
     : traceState !== "idle"
@@ -249,10 +271,10 @@ const PropertiesPanel = memo(function PropertiesPanel({
 
   const showResolutionBar = supportsExtractionResolution(project) && !canRetryVector && !canResumeUpscale;
   const generationName = canRetryVector ? 'Syncraft Vector' : canResumeUpscale ? 'Syncraft Upscale'
-    : extractionDisplayName(extractionResolution);
+    : modelError ? 'Models unavailable' : modelChoiceAvailable ? `${selectedModel.shortName} · ${extractionResolution}` : extractionDisplayName(extractionResolution);
   const generationCost = canRetryVector ? null : canResumeUpscale ? 'Free' : executionCost;
   const runTrace = () => {
-    if (editsLocked || isBusy) return;
+    if (editsLocked || isBusy || modelError) return;
     if (canRetryVector) { onRetryVector?.(vectorColors); return; }
     if (canResumeUpscale) { onResumeUpscale?.(vectorColors); return; }
     if (isUnauthenticated || noCredits) { onOpenTopUp?.(); return; }
@@ -431,14 +453,17 @@ const PropertiesPanel = memo(function PropertiesPanel({
           <>
             <div className={styles.generationBar} ref={generationBarRef}>
               {showResolutionBar ? <div className={styles.resolutionPicker}>
+                {modelChoiceAvailable ? <ExtractionGenerationSettings models={extractionModels} selectedModel={selectedModel} configured={localOpenAiOption.configured}
+                  resolution={extractionResolution} anchorRef={generationBarRef} disabled={editsLocked || isBusy}
+                  onModelChange={onGarmentProviderChange} onResolutionChange={onExtractionResolutionChange}>{generationDetails}</ExtractionGenerationSettings> : (
                 <Select compact portal portalAnchorRef={generationBarRef} displayLabel={generationDetails} aria-label="Extraction resolution" value={extractionResolution}
-                  disabled={editsLocked || isBusy}
+                  disabled={editsLocked || isBusy || modelError}
                   onChange={event => { if (!editsLocked && !isBusy) onExtractionResolutionChange?.(event.target.value); }}>
-                  {EXTRACTION_RESOLUTIONS.map(option => <option key={option.value} value={option.value}>{option.label} · {option.value} — {extractionCredits(option.value, project?.trace_type)} credits</option>)}
-                </Select>
+                  {EXTRACTION_RESOLUTIONS.map(option => <option key={option.value} value={option.value}>{modelChoiceAvailable ? option.value : `${option.label} · ${option.value}`} - {extractionCredits(option.value, project?.trace_type)} credits</option>)}
+                </Select>)}
               </div> : <div className={styles.generationDetails} data-disabled={editsLocked || isBusy}>{generationDetails}</div>}
               <button type="button" className={styles.generateButton}
-                onClick={runTrace} disabled={editsLocked || isBusy || (!isCropped && !noCredits)}
+                onClick={runTrace} disabled={editsLocked || isBusy || modelError || (!isCropped && !noCredits)}
                 aria-label={traceButtonLabel === 'Generate Now' ? `Generate now with ${generationName} at ${extractionResolution} for ${executionCost} credits` : traceButtonLabel}
                 title={traceButtonLabel === 'Generate Now' ? `${generationName} · ${executionCost} credits` : traceButtonLabel}
                 aria-busy={isBusy}>
@@ -447,7 +472,7 @@ const PropertiesPanel = memo(function PropertiesPanel({
                 </span>
               </button>
             </div>
-            {!isBusy && traceButtonLabel !== 'Generate Now' && <p className={styles.generationStatus} role="status">{traceButtonLabel}</p>}
+            {!isBusy && traceButtonLabel !== 'Generate Now' && <p className={styles.generationStatus} role="status">{traceButtonLabel}{modelError && <> · <button type="button" className={styles.modelRetry} onClick={retryModels}>Retry models</button></>}</p>}
           </>
         ) : (
           <button

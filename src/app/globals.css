@@ -58,6 +58,7 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
   .app-container { animation: none; }
+  html:focus-within { scroll-behavior: auto; }
 }
 
 /* TOP MENU BAR (Like File, Edit, View) */

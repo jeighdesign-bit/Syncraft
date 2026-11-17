@@ -11,12 +11,15 @@ import { buildRecoveryImageInput } from '../src/lib/recoveryVision.mjs';
 import { matchRecoveryStripProportions } from '../src/lib/recoveryStrip.mjs';
 import { inspectStripExterior } from '../src/lib/recoveryStripBounds.mjs';
 import * as resolutionPolicy from '../src/lib/extractionResolution.mjs';
+import { localOpenAiConfig, validateLocalOpenAiInput, localOpenAiUniversalSize, extractLocalOpenAi } from '../src/lib/localOpenAiExtraction.mjs';
 
-async function harness({ mode = 'UNIVERSAL_KEEP_ARTWORK', category = 'auto', width = 367, height = 494, providerFails = false, resolution, output4K = false, insufficient = false, bodyExtras = {}, outputFailures = 0 } = {}) {
+async function harness({ mode = 'UNIVERSAL_KEEP_ARTWORK', category = 'auto', width = 367, height = 494, providerFails = false, resolution, output4K = false, insufficient = false, bodyExtras = {}, outputFailures = 0, localOpenAi = false, apiKey = 'test-only-key', wrongSize = false, available = true } = {}) {
   // Exercise the retained extraction implementation with its maintenance gate
   // open. The real disabled route is covered by universalAvailability.test.mjs.
   const source = await sharp({ create: { width, height, channels: 3, background: '#123456' } }).png().toBuffer();
-  const output = await sharp({ create: { width: output4K ? 4096 : 64, height: output4K ? 4096 : 256, channels: 3, background: '#abcdef' } }).png().toBuffer();
+  const nativeSize = localOpenAi && width / height >= 1/3 && width / height <= 3 && !wrongSize
+    ? localOpenAiUniversalSize({ width, height }, resolution || '1K').split('x').map(Number) : null;
+  const output = await sharp({ create: { width: nativeSize?.[0] || (output4K ? 4096 : 64), height: nativeSize?.[1] || (output4K ? 4096 : 256), channels: 3, background: '#abcdef' } }).png().toBuffer();
   const project = { id: 'project', user_id: 'owner', trace_type: 'universal', original_image_url: 'https://storage.test/exact-user-crop.png',
     canvas_data: { reference_category: category, universal_recovery: { status: 'analyzed', mode, analysis: {
       state: 'safe', confidence: 100, geometry_confidence: 100, aspect_ratio: '21:9',
@@ -24,7 +27,7 @@ async function harness({ mode = 'UNIVERSAL_KEEP_ARTWORK', category = 'auto', wid
       readable_text: ['FABRICATED_WORD'], already_flat: true, single_surface: true,
       print_quad: [[0,0],[300,0],[300,1000],[0,1000]],
     } } } };
-  const events = { generations: 0, refunds: 0, charged: 0, inspections: 0, alternatePaths: 0, falUploads: 0, fetched: [], saved: [], uploads: [], receipts: [], chargeInputs: [], refundInputs: [], downloads: [] };
+  const events = { generations: 0, openai: 0, refunds: 0, charged: 0, inspections: 0, alternatePaths: 0, falUploads: 0, fetched: [], saved: [], uploads: [], receipts: [], marks: [], chargeInputs: [], refundInputs: [], downloads: [] };
   const builder = { update(value) { events.saved.push(value); return this; }, select() { return this; }, eq() { return this; }, or() { return this; },
     single: async () => ({ data: project }), then(resolve) { resolve({ data: [{ id: project.id }], error: null }); } };
   const code = (await readFile(new URL('../src/app/api/recovery/generate/route.js', import.meta.url), 'utf8'))
@@ -32,14 +35,20 @@ async function harness({ mode = 'UNIVERSAL_KEEP_ARTWORK', category = 'auto', wid
   const forbiddenPath = async () => { events.alternatePaths++; throw new Error('Direct crop must not select or transform a different surface.'); };
   const context = vm.createContext({ ...resolutionPolicy, categoryRecoveryAnalysis, normalizeReferenceCategory, normalizeRecoveryAnalysis, snapToAllowedAspectRatio,
     universalUnavailableResponse: () => null,
+    getLocalOpenAiConfig: localOpenAiConfig, validateLocalOpenAiInput, localOpenAiUniversalSize,
+    extractLocalOpenAi: args => extractLocalOpenAi({ ...args, saveReport: false, fetchImpl: async (_url, init) => {
+      events.openai++; events.openaiPrompt = init.body.get('prompt'); events.openaiInput = Buffer.from(await init.body.get('image[]').arrayBuffer());
+      if (providerFails) throw new Error('Provider unavailable');
+      return Response.json({ data: [{ b64_json: output.toString('base64') }], usage: { output_tokens: 100 } }, { headers: { 'x-request-id': 'openai-request' } });
+    } }),
     buildRecoveryImageInput, matchRecoveryStripProportions, inspectStripExterior, createHash, sharp, Response, Buffer, URL, File, setTimeout,
     console: { warn() {}, error() {} },
-    process: { env: { RECOVERY_VISUAL_REVIEW_ENABLED: 'true', RECOVERY_SOURCE_PIXELS_ENABLED: 'true', RECOVERY_PLANAR_PIXELS_ENABLED: 'true', RECOVERY_STRIP_GRID_ENABLED: 'true' } },
+    process: { env: { NODE_ENV: 'development', LOCAL_OPENAI_GARMENT_TEST_ENABLED: available ? 'true' : 'false', OPENAI_API_KEY: apiKey, RECOVERY_VISUAL_REVIEW_ENABLED: 'true', RECOVERY_SOURCE_PIXELS_ENABLED: 'true', RECOVERY_PLANAR_PIXELS_ENABLED: 'true', RECOVERY_STRIP_GRID_ENABLED: 'true' } },
     NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) },
     adminSupabase: { auth: { getUser: async () => ({ data: { user: { id: 'owner' } } }) }, from: () => builder },
     getProjectAccess: async () => ({ project }), PROJECT_ACCESS: { EDIT: 'edit' }, enforceRateLimit: async () => ({ success: true }),
     chargeCreditsVerified: async input => { events.charged++; events.chargeInputs.push(input); if (insufficient) throw Object.assign(new Error('INSUFFICIENT_CREDITS'), {code:'INSUFFICIENT_CREDITS',balance:20}); return { transactionId: 'charge', isOwnerTest: true, balanceAfter: 100-input.amount }; },
-    refundCreditVerified: async input => { events.refunds++; events.refundInputs.push(input); return { refunded: true, balanceAfter:100 }; }, markCreditTransaction: async () => {},
+    refundCreditVerified: async input => { events.refunds++; events.refundInputs.push(input); return { refunded: true, balanceAfter:100 }; }, markCreditTransaction: async input => { events.marks.push(input); },
     recordProviderUsage: async receipt => { events.receipts.push(receipt); }, CREDIT_COST: { universal: 24 },
     normalizeUserImageUrl: url => url, isOwnedStorageUrl: () => true, validateUrlForSSRF: async () => true,
     getAllowedStorageHosts: () => [], getAllowedProviderHosts: () => [], DEFAULT_MAX_IMAGE_BYTES: 10e6,
@@ -56,9 +65,44 @@ async function harness({ mode = 'UNIVERSAL_KEEP_ARTWORK', category = 'auto', wid
     uploadToR2: async buffer => { events.uploads.push(buffer); return 'https://storage.test/generated.png'; },
   });
   const POST = vm.runInContext(`${code}\nPOST`, context);
-  const response = await POST({ headers: new Headers({ authorization: 'Bearer test' }), json: async () => ({ projectId: project.id, ...(resolution !== undefined ? {resolution} : {}), ...bodyExtras }), url: 'http://localhost/api/recovery/generate' });
+  const response = await POST({ headers: new Headers({ authorization: 'Bearer test' }), json: async () => ({ projectId: project.id, ...(resolution !== undefined ? {resolution} : {}), ...(localOpenAi ? { garmentProvider: 'openai' } : {}), ...bodyExtras }), url: 'http://localhost/api/recovery/generate' });
   return { response, events, source, output, project };
 }
+
+test('Vela Universal uses both saved content modes and categories, one direct edit, and the existing native save/billing pipeline', async () => {
+  for (const mode of ['UNIVERSAL_KEEP_ARTWORK', 'UNIVERSAL_BACKGROUND_ONLY']) for (const resolution of ['1K', '2K', '4K']) {
+    const { response, events, source, output } = await harness({ localOpenAi: true, mode, resolution, category: 'poster' });
+    assert.equal(response.body.success, true, response.body.error);
+    assert.deepEqual([events.openai, events.generations, events.charged, events.refunds, events.inspections], [1, 0, 1, 0, 0]);
+    assert.equal(events.chargeInputs[0].amount, resolutionPolicy.extractionCredits(resolution));
+    assert.equal(events.receipts[0].provider, 'openai');
+    assert.equal(events.marks[0].metadata.outputSize, localOpenAiUniversalSize({ width: 367, height: 494 }, resolution));
+    assert.ok(events.uploads[0].equals(output));
+    assert.ok(events.openaiInput.equals(await sharp(source).rotate().png().toBuffer()));
+    assert.match(events.openaiPrompt, /REFERENCE CATEGORY GUIDE: Poster/);
+    assert.match(events.openaiPrompt, mode === 'UNIVERSAL_KEEP_ARTWORK' ? /KEEP ARTWORK/ : /EXTRACT PATTERN ONLY/);
+    assert.doesNotMatch(events.openaiPrompt, /FABRICATED_WORD|imaginary back face|Remove the collar/);
+    assert.equal(response.body.localOpenAiTest.traceType, 'universal');
+  }
+});
+
+test('Vela Universal rejects unavailable keys, unsupported crops and modes before locking or billing', async () => {
+  for (const options of [{ apiKey: '' }, { available: false }, { width: 40, height: 600 }, { mode: 'UNKNOWN' }]) {
+    const { response, events } = await harness({ localOpenAi: true, ...options });
+    assert.notEqual(response.body.success, true);
+    assert.ok(response.status >= 400);
+    assert.deepEqual([events.charged, events.openai, events.generations, events.refunds, events.saved.length], [0, 0, 0, 0, 0]);
+  }
+});
+
+test('Vela Universal errors and wrong output dimensions refund exactly once without retry, Nano fallback or source substitution', async () => {
+  for (const options of [{ providerFails: true }, { wrongSize: true }]) {
+    const { response, events } = await harness({ localOpenAi: true, resolution: '2K', ...options });
+    assert.equal(response.body.success, false); assert.equal(response.body.refunded, true);
+    assert.deepEqual([events.charged, events.openai, events.generations, events.refunds, events.uploads.length], [1, 1, 0, 1, 0]);
+    assert.equal(events.chargeInputs[0].amount, 16); assert.equal(response.body.refundedCredits, 16);
+  }
+});
 
 test('the exact portrait crop goes directly to one image edit without stale descriptions or transcriptions', async () => {
   const { response, events, project } = await harness();

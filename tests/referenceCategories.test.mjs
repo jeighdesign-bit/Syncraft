@@ -30,6 +30,7 @@ async function panel(props = {}) {
   const context = vm.createContext({ ...resolutionPolicy, ...categories, ...icons, styles: {}, Select: 'select', finalArtworkRaster, module, exports: module.exports,
     UNIVERSAL_AVAILABLE: true, UNIVERSAL_UNAVAILABLE_MESSAGE: '', isUniversalTraceType: value => typeof value === 'string' && value.startsWith('universal'),
     CreditAmount:'CreditAmount', memo: fn => fn, useRef: current => ({ current }), useState: initial => [initial, () => {}], CREDIT_COST: { universal: 24, trace: 12 }, canResumeTraceUpscale: () => false,
+    useExtractionModels: () => ({ option: null, loading: false }),
     React: { createElement: (type, p, ...children) => ({ type, props: { ...p, children } }) },
   });
   vm.runInContext(code, context);

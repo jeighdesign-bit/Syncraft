@@ -7,6 +7,7 @@ import * as garment from '../src/lib/garmentPromptRules.mjs';
 import * as recovery from '../src/lib/recoveryVision.mjs';
 import * as strip from '../src/lib/recoveryStrip.mjs';
 import { ARTWORK_GENERATION_MODEL } from '../src/lib/falArtworkGeneration.mjs';
+import { buildLogoExtractionPrompt } from '../src/lib/logoExtractionPrompt.mjs';
 
 // Captured from the Git source of the deployment actually assigned to
 // syncraftech.com, verified against both Vercel's production target and alias.
@@ -39,7 +40,7 @@ test('garment extraction uses exactly the prompts from the verified live deploym
 });
 
 test('consumer and B2B Logo Extraction preserve their exact deployed instructions', async () => {
-  assert.equal(hash(logoLiteral(await read('src/app/api/trace/route.js'))), live.logo.consumer);
+  assert.equal(hash(buildLogoExtractionPrompt()), live.logo.consumer);
   assert.equal(hash(logoLiteral(await read('src/app/api/v1/generate/route.js'))), live.logo.b2b);
 });
 

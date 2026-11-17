@@ -16,6 +16,7 @@ import { categoryRecoveryAnalysis, normalizeReferenceCategory } from "@/lib/refe
 import { matchRecoveryStripProportions } from "@/lib/recoveryStrip.mjs";
 import { inspectStripExterior } from "@/lib/recoveryStripBounds.mjs";
 import { buildRecoveryImageInput, RECOVERY_IMAGE_ENDPOINT } from "@/lib/recoveryVision.mjs";
+import { localOpenAiConfig as getLocalOpenAiConfig, validateLocalOpenAiInput, localOpenAiUniversalSize, extractLocalOpenAi } from '@/lib/localOpenAiExtraction.mjs';
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -202,6 +203,9 @@ export async function POST(request) {
   let selectedResolution = DEFAULT_EXTRACTION_RESOLUTION;
   let executionCost = extractionCredits();
   let balanceAfter = null;
+  let openAi = null;
+  let openAiSource = null;
+  let localOpenAiReport = null;
   try {
     const token = request.headers.get("authorization")?.replace("Bearer ", "").trim();
     const { data: { user } } = await adminSupabase.auth.getUser(token || "");
@@ -225,6 +229,21 @@ export async function POST(request) {
     // Reuse the existing project billing flag as the atomic duplicate lock; all
     // Universal-only metadata lives inside the existing canvas_data JSON field.
     if (recovery.status !== "analyzed") return NextResponse.json({ error: "RECOVERY_NOT_ANALYZED" }, { status: 409 });
+    if (body.garmentProvider === 'openai') {
+      openAi = await getLocalOpenAiConfig(request, project, body.garmentProvider, selectedResolution, process.env);
+      const mode = recovery.mode || project.ai_prompt || 'UNIVERSAL_KEEP_ARTWORK';
+      if (!['UNIVERSAL_KEEP_ARTWORK', 'UNIVERSAL_BACKGROUND_ONLY'].includes(mode)) return NextResponse.json({ error: 'Unsupported Universal extraction mode.' }, { status: 400 });
+      const url = normalizeUserImageUrl(project.original_image_url, new URL(request.url).origin);
+      if ((!isOwnedStorageUrl(url, { userId: user.id, projectId }) && !isOwnedStorageUrl(url, { userId: project.user_id, projectId })) || !(await validateUrlForSSRF(url, { allowedHosts: getAllowedStorageHosts() })))
+        return NextResponse.json({ error: 'Invalid source image URL' }, { status: 400 });
+      openAiSource = await fetchRecoveryAsset(url, { allowedHosts: getAllowedStorageHosts(), maxBytes: DEFAULT_MAX_IMAGE_BYTES, allowedContentTypes: ['image/'] }, 'Source image');
+      const normalized = await sharp(openAiSource.buffer).rotate().png().toBuffer();
+      const dimensions = await sharp(normalized).metadata();
+      validateLocalOpenAiInput(normalized, 'image/png');
+      openAi.expectedSize = localOpenAiUniversalSize(dimensions, selectedResolution);
+      openAiSource.inputBuffer = normalized;
+      openAiSource.metadata = dimensions;
+    }
     const generatingCanvas = {
       ...(project.canvas_data || {}),
       universal_recovery: { ...recovery, status: "generating", resolution: selectedResolution },
@@ -262,16 +281,16 @@ export async function POST(request) {
     }
 
     const sourceUrl = normalizeUserImageUrl(project.original_image_url, new URL(request.url).origin);
-    if ((!isOwnedStorageUrl(sourceUrl, { userId: user.id, projectId }) && !isOwnedStorageUrl(sourceUrl, { userId: project.user_id, projectId })) || !(await validateUrlForSSRF(sourceUrl, { allowedHosts: getAllowedStorageHosts() }))) throw new Error("Invalid source image URL");
-    const source = await fetchRecoveryAsset(sourceUrl, {
+    if (!openAiSource && ((!isOwnedStorageUrl(sourceUrl, { userId: user.id, projectId }) && !isOwnedStorageUrl(sourceUrl, { userId: project.user_id, projectId })) || !(await validateUrlForSSRF(sourceUrl, { allowedHosts: getAllowedStorageHosts() })))) throw new Error("Invalid source image URL");
+    const source = openAiSource || await fetchRecoveryAsset(sourceUrl, {
       allowedHosts: getAllowedStorageHosts(),
       maxBytes: DEFAULT_MAX_IMAGE_BYTES,
       allowedContentTypes: ["image/"],
     }, "Source image");
     const sourceReferenceHash = createHash("sha256").update(source.buffer).digest("hex");
     // Read local crop dimensions without changing the reference sent to the model.
-    source.buffer = await sharp(source.buffer).rotate().png().toBuffer();
-    const sourceMeta = await sharp(source.buffer).metadata();
+    source.buffer = openAiSource?.inputBuffer || await sharp(source.buffer).rotate().png().toBuffer();
+    const sourceMeta = openAiSource?.metadata || await sharp(source.buffer).metadata();
     const sourceWidth = sourceMeta.width;
     const sourceHeight = sourceMeta.height;
     if (!sourceWidth || !sourceHeight) throw new Error("Could not read cropped reference dimensions.");
@@ -291,22 +310,38 @@ export async function POST(request) {
       reason: 'Direct extraction from the selected crop; no separate image analysis was requested.',
     }, 'auto'), source_width: sourceWidth, source_height: sourceHeight,
       crop_authoritative: true, preparation: 'local_crop_dimensions_only' }, project.canvas_data?.reference_category);
-    const finalImage = await runGeneration([source.finalUrl], analysis, recoveryMode, source.buffer, 'generation', selectedResolution);
-    let downloaded = await fetchRecoveryAsset(finalImage.url, {
-      allowedHosts: getAllowedProviderHosts(), maxBytes: selectedResolution === '4K' ? MAX_NATIVE_4K_BYTES : DEFAULT_MAX_IMAGE_BYTES,
-      ...(selectedResolution === '4K' ? { timeoutMs: 60_000, maxAttempts: 2 } : {}),
-      allowedContentTypes: ['image/'],
-    }, 'Generated image');
-    await recordProviderUsage({ creditTransactionId: chargeTransactionId, projectId, userId,
-      provider: 'fal', endpoint: RECOVERY_IMAGE_ENDPOINT, providerRequestId: finalImage.requestId || null,
-      estimatedCostUsd: 0.15, isOwnerTest,
-      metadata: { operation: 'universal_design_recovery', extraction_flow: 'direct_crop',
-        mode: recoveryMode, reference_category: analysis.reference_category,
-        input_reference_sha256: sourceReferenceHash, provider_input: finalImage.input,
-        source_width: sourceWidth, source_height: sourceHeight, resolution: selectedResolution, credits: executionCost },
-    });
-    if (selectedResolution === '4K') verifyNative4K(await sharp(downloaded.buffer).metadata());
-    const preserveStripProportions = cropRatio < 0.35 || cropRatio > 3;
+    let downloaded;
+    if (openAi) {
+      const result = await extractLocalOpenAi({ apiKey: openAi.apiKey, model: openAi.model, traceType: 'universal',
+        image: source.buffer, mime: 'image/png', sourceDimensions: { width: sourceWidth, height: sourceHeight },
+        projectId, recoveryMode, referenceCategory: analysis.reference_category, resolution: selectedResolution });
+      localOpenAiReport = result.report;
+      downloaded = { buffer: result.buffer, response: new Response(null, { headers: { 'content-type': 'image/png' } }) };
+      await recordProviderUsage({ creditTransactionId: chargeTransactionId, projectId, userId, provider: 'openai',
+        endpoint: 'images/edits', providerRequestId: result.report.requestId, estimatedCostUsd: result.report.estimatedCostUsd, isOwnerTest,
+        metadata: { openAiExtraction: true, operation: 'universal_design_recovery', extraction_flow: 'direct_crop', model: openAi.model,
+          mode: recoveryMode, reference_category: analysis.reference_category, input_reference_sha256: sourceReferenceHash,
+          source_width: sourceWidth, source_height: sourceHeight, resolution: selectedResolution, outputSize: openAi.expectedSize, credits: executionCost, usage: result.report.usage } });
+      const decoded = await sharp(result.buffer).metadata();
+      if (`${decoded.width}x${decoded.height}` !== openAi.expectedSize) throw new Error(`OpenAI did not return the requested ${openAi.expectedSize} artwork. Check OpenAI Usage before retrying.`);
+    } else {
+      const finalImage = await runGeneration([source.finalUrl], analysis, recoveryMode, source.buffer, 'generation', selectedResolution);
+      downloaded = await fetchRecoveryAsset(finalImage.url, {
+        allowedHosts: getAllowedProviderHosts(), maxBytes: selectedResolution === '4K' ? MAX_NATIVE_4K_BYTES : DEFAULT_MAX_IMAGE_BYTES,
+        ...(selectedResolution === '4K' ? { timeoutMs: 60_000, maxAttempts: 2 } : {}),
+        allowedContentTypes: ['image/'],
+      }, 'Generated image');
+      await recordProviderUsage({ creditTransactionId: chargeTransactionId, projectId, userId,
+        provider: 'fal', endpoint: RECOVERY_IMAGE_ENDPOINT, providerRequestId: finalImage.requestId || null,
+        estimatedCostUsd: 0.15, isOwnerTest,
+        metadata: { operation: 'universal_design_recovery', extraction_flow: 'direct_crop',
+          mode: recoveryMode, reference_category: analysis.reference_category,
+          input_reference_sha256: sourceReferenceHash, provider_input: finalImage.input,
+          source_width: sourceWidth, source_height: sourceHeight, resolution: selectedResolution, credits: executionCost },
+      });
+      if (selectedResolution === '4K') verifyNative4K(await sharp(downloaded.buffer).metadata());
+    }
+    const preserveStripProportions = !openAi && (cropRatio < 0.35 || cropRatio > 3);
     if (preserveStripProportions) downloaded = { ...downloaded,
       buffer: await matchRecoveryStripProportions(downloaded.buffer, sourceWidth, sourceHeight, { resolution: selectedResolution }),
       response: new Response(null, { headers: { 'content-type': 'image/png' } }) };
@@ -314,14 +349,14 @@ export async function POST(request) {
       contentRetentionCheck(source.buffer, downloaded.buffer), sharp(downloaded.buffer).metadata(),
       keepArtwork ? structuralSimilarity(source.buffer, downloaded.buffer) : Promise.resolve(null),
     ]);
-    if (selectedResolution === '4K') verifyNative4K(outputMeta);
+    if (selectedResolution === '4K' && !openAi) verifyNative4K(outputMeta);
     let validation = { pass: false, usable_partial: true, advisory_only: true, failures: [],
       review_status: 'not_requested', extraction_method: 'direct_crop_image_edit',
       correction: 'Extraction is ready. Compare the artwork with your selected crop before use.',
       input_reference_sha256: sourceReferenceHash, crop_authoritative: true,
       diagnostics: { collapsed: retention.collapsed, similarity,
         ratioDrift: recoveryAspectRatioDrift(sourceWidth, sourceHeight, outputMeta.width, outputMeta.height) },
-      source_proportions_preserved: preserveStripProportions };
+      source_proportions_preserved: !!openAi || preserveStripProportions };
     // This local warning cannot change the crop, call a model, or reject output.
     const stripExterior = await inspectStripExterior(downloaded.buffer, { category: analysis.reference_category,
       mode: recoveryMode, analysis, method: 'image_edit' });
@@ -376,7 +411,8 @@ export async function POST(request) {
     await markCreditTransaction({
       transactionId: chargeTransactionId,
       status: "succeeded",
-      metadata: { recovery_status: validation.pass ? "complete" : "partial", resolution: selectedResolution },
+      metadata: { recovery_status: validation.pass ? "complete" : "partial", resolution: selectedResolution,
+        ...(openAi ? { provider: 'openai', openAiExtraction: true, outputSize: openAi.expectedSize } : {}) },
     });
 
     return NextResponse.json({
@@ -390,6 +426,7 @@ export async function POST(request) {
       recoveryStatus: validation.pass ? "complete" : "partial",
       validation,
       analysis,
+      ...(localOpenAiReport ? { localOpenAiTest: localOpenAiReport } : {}),
     });
   } catch (error) {
     const errorMessage = providerErrorMessage(error);

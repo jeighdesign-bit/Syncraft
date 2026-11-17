@@ -89,7 +89,7 @@ async function harness(options = {}) {
     getAllowedProviderHosts: () => ['provider.test'],
     usesNativeTraceUpscale: () => options.native === true,
     resizeTraceForUpscale: async buffer => { calls.nativeResize++; return buffer; },
-    findLatestProjectCharge: async () => ({ transactionId: 'original-charge', isOwnerTest: false, status: 'provider_succeeded', metadata: { resolution: options.resolution || '2K' } }),
+    findLatestProjectCharge: async () => ({ transactionId: 'original-charge', isOwnerTest: false, status: 'provider_succeeded', metadata: { resolution: options.resolution || '2K', ...options.chargeMetadata } }),
     recordProviderUsage: async row => { usage.push(copy(row)); return true; },
     chargeCreditsVerified: async () => { calls.charge++; throw new Error('Upscale must not charge'); },
     refundCreditVerified: async () => { calls.refund++; throw new Error('Upscale must not refund'); },
@@ -308,6 +308,19 @@ test('native 4K keeps the exact saved URL in both preview slots without ESRGAN, 
   assert.equal(h.usage[0].provider, 'syncraft_native_4k');
   assert.equal(h.usage[0].creditTransactionId, 'original-charge');
   assert.equal(h.usage[0].estimatedCostUsd, 0);
+});
+
+test('Vela 4K uses the exact server-verified size for non-portrait canvases without resizing or another provider call', async () => {
+  const chargeMetadata = { provider: 'openai', localTest: true, outputSize: '2480x3312' };
+  const h = await harness({ resolution: '4K', sourceWidth: 2480, sourceHeight: 3312, chargeMetadata });
+  assert.equal((await h.start()).upscaleSkipped, true);
+  assert.equal(h.project.upscaled_image_url, h.project.generated_image_url);
+  for (const name of ['submit', 'nativeResize', 'upload', 'charge', 'refund']) assert.equal(h.calls[name], 0, name);
+  const mismatch = await harness({ resolution: '4K', sourceWidth: 1024, sourceHeight: 1024, chargeMetadata });
+  await assert.rejects(mismatch.start(), { code: 'EXTRACTION_RESOLUTION_MISMATCH' });
+  assert.equal(mismatch.project.upscaled_image_url, null);
+  const nano = await harness({ resolution: '4K', sourceWidth: 2480, sourceHeight: 3312 });
+  await assert.rejects(nano.start(), { code: 'EXTRACTION_RESOLUTION_MISMATCH' });
 });
 
 test('start, status and save can all recover saved 4K after an earlier failed ESRGAN job', async () => {

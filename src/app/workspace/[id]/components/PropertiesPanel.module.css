@@ -14,6 +14,39 @@
 .activitySection > :global(.console-area):empty { display: none; }
 .activitySection > :global(.console-area):not(:empty) + .activityEmpty { display: none; }
 
+.modelOption { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; white-space: normal; }
+.modelOptionHeading { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; color: #f5f5f5; font-size: 14px; line-height: 1.5; }
+.modelBadge { padding: 1px 5px; border: 1px solid #505744; border-radius: 4px; color: #cad6b5; font-size: 10px; font-weight: 500; line-height: 1.5; }
+.modelOptionDetail { color: #ccc; font-size: 12px; font-weight: 400; line-height: 1.5; }
+
+
+.settingsRoot { width: 100%; }
+.settingsTrigger { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: transparent; color: #f2f2f2; font: inherit; cursor: pointer; }
+.settingsTrigger > svg { flex-shrink: 0; transition: transform 150ms ease; }
+.settingsTrigger[aria-expanded=true] > svg { transform: rotate(180deg); }
+.settingsTrigger:focus-visible { outline: 2px solid #dedede; outline-offset: 2px; }
+.settingsTrigger:disabled { opacity: .5; cursor: not-allowed; }
+.settingsPopover { position: fixed; z-index: 1100; box-sizing: border-box; padding: 10px; border: 1px solid #494949; border-radius: 14px; background: #2b2b2b; color: #eee; box-shadow: 0 10px 30px #0005; font-family: inherit; }
+.settingsHeader { display: flex; justify-content: center; }
+.settingsHeading { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.settingsModelLabel { color: #bbb; font-size: 11px; line-height: 1.4; }
+.settingsModel { max-width: 100%; }
+.settingsModel > div { display: block; }
+.settingsPopover .settingsModel button[aria-haspopup=listbox] { min-height: 28px; padding: 1px 3px; gap: 4px; font-size: 14px; font-weight: 600; color: #f5f5f5; }
+.settingsPopover .settingsModel button > span { max-width: none; }
+.settingsModel [role=listbox] { left: 50%; right: auto; transform: translateX(-50%); min-width: 212px; max-width: min(240px, calc(100vw - 48px)); }
+.resolutionStops button:focus-visible, .resolutionSlider:focus-visible { outline: 2px solid #d4ff59; outline-offset: 3px; }
+.resolutionAdjustment { margin-top: 8px; }
+.resolutionSlider { display: block; appearance: none; width: 100%; height: 16px; margin: 0; border-radius: 99px; background: linear-gradient(to right, #f5f5f5 0%, #f5f5f5 var(--resolution-progress), #494949 var(--resolution-progress), #494949 100%); cursor: pointer; }
+.resolutionSlider::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; border: 1px solid #ddd; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px #0003; }
+.resolutionSlider::-moz-range-thumb { width: 18px; height: 18px; border: 1px solid #ddd; border-radius: 50%; background: #fff; }
+.resolutionSlider:disabled { cursor: default; }
+.resolutionStops { display: flex; justify-content: space-between; margin: 3px -3px 0; }
+.resolutionStops button { padding: 3px 6px; min-height: 24px; border: 0; border-radius: 5px; background: transparent; color: #bdbdbd; font: inherit; font-size: 12px; cursor: pointer; }
+.resolutionStops button[aria-pressed=true] { color: #fff; font-weight: 650; }
+.resolutionStops button:disabled { color: #707070; cursor: not-allowed; }
+.resolutionHint { display: block; margin-top: 5px; color: #bbb; text-align: center; font-size: 11px; line-height: 1.5; }
+
 .generationBar {
   display: flex;
   align-items: center;
@@ -87,4 +120,18 @@
 
 @media (prefers-reduced-motion: reduce) {
   .generateCircle { transition: none; }
+}
+.modelRetry {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.modelRetry:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
 }

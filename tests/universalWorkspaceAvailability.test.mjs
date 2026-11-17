@@ -28,6 +28,7 @@ async function panel(props={}) {
     'onDownloadSvg','onDownloadPsd','onDownloadRaster','onDownloadAll','onOpenCompare','onOpenTopUp'].map(name=>[name,()=>{events.push(name);} ]));
   const context=vm.createContext({...resolutionPolicy,...availability,UNIVERSAL_AVAILABLE:props.universalAvailable ?? availability.UNIVERSAL_AVAILABLE,CreditAmount,styles:{generationBar:'generation-bar',generateButton:'generate-action',compareBar:'compare-bar'},Select:'select',React:react,memo:fn=>fn,useRef:current=>({current}),useState:value=>[value,()=>{}],CREDIT_COST,
     REFERENCE_CATEGORIES,normalizeReferenceCategory,canResumeTraceUpscale,finalArtworkRaster,
+    useExtractionModels:()=>({option:null,loading:false}),
     ...Object.fromEntries(['Download','Columns2','ChevronDown','FolderDown','Loader2','X','ImageMinus','Eraser','Scissors','Expand','WandSparkles','ArrowUp','Zap'].map(name=>[name,name])),
   });
   const component=vm.runInContext(code,context);

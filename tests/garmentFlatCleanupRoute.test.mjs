@@ -3,6 +3,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 import sharp from 'sharp';
+import { buildLogoExtractionPrompt } from '../src/lib/logoExtractionPrompt.mjs';
 import * as resolutionPolicy from '../src/lib/extractionResolution.mjs';
 import { universalUnavailableResponse } from '../src/lib/universalAvailability.mjs';
 import { getAllowedStorageHosts, isOwnedStorageUrl, normalizeUserImageUrl, validateUrlForSSRF } from '../src/lib/ssrf.js';
@@ -39,7 +40,7 @@ async function harness({ enabled = false, garmentMode = 'PRESERVE_LOGOS', traceT
     markCreditTransaction: async () => {}, recordProviderUsage: async receipt => { calls.usage.push(receipt); },
     refundCreditVerified: async input => { calls.refunds++; calls.refundInputs.push(input); return { refunded: true, balanceAfter: 100 }; }, findLatestProjectCharge: async () => null,
     snapToAllowedAspectRatio, buildGarmentExtractionInput, garmentExtractionMode, shouldSaveGarmentExtractionServerSide,
-    ARTWORK_GENERATION_MODEL, buildArtworkGenerationInput, buildGarmentExtractionPrompt, buildGarmentExtractionSystemPrompt, resolveGarmentPromptMode,
+    ARTWORK_GENERATION_MODEL, buildArtworkGenerationInput, buildGarmentExtractionPrompt, buildGarmentExtractionSystemPrompt, resolveGarmentPromptMode, buildLogoExtractionPrompt,
   });
   const post = vm.runInContext(`${source}\nPOST`, context);
   const response = await post(new Request('https://app.test/api/trace', { method: 'POST', headers: { authorization: 'Bearer session', 'content-type': 'application/json' }, body: JSON.stringify({ projectId: 'project', step: 1, ...(resolution !== undefined ? { resolution } : {}), ...bodyExtras }) }));

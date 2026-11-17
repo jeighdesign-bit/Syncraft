@@ -4,12 +4,15 @@ import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 import * as policy from '../src/lib/extractionResolution.mjs';
 import { TRACE_REQUEST_TIMEOUT_MS, traceTimeoutMessage, traceConnectionMessage } from '../src/lib/traceRequestPolicy.mjs';
+import { waitForTraceUpscale } from '../src/lib/traceUpscaleClient.mjs';
 
 const source = (await readFile(new URL('../src/app/workspace/[id]/hooks/useTraceExecution.js', import.meta.url), 'utf8'))
   .replace(/^import[\s\S]*?;\r?\n/gm, '').replace(/export /g, '');
 
-function harness({ resolution = '1K', credits = 100, traceType = 'mockup', failure, captureLogs = false } = {}) {
+function harness({ resolution = '1K', credits = 100, traceType = 'mockup', failure, captureLogs = false, localOpenAi = false, pipelineFailure = false } = {}) {
   const requests = [], states = [];
+  const refs = [], effects = [];
+  let stateIndex = 0, refIndex = 0;
   const element = () => ({ children: [], textContent: '', appendChild(child) { this.children.push(child); }, set innerHTML(_) { this.children = []; } });
   const log = element();
   const logText = node => [node.textContent, ...node.children.map(logText)].join(' ');
@@ -19,23 +22,61 @@ function harness({ resolution = '1K', credits = 100, traceType = 'mockup', failu
     AbortController, AbortSignal, Response, setTimeout, clearTimeout, TRACE_REQUEST_TIMEOUT_MS, traceTimeoutMessage, traceConnectionMessage,
     CREDIT_COST: { trace: 12, universal: 24 }, console: { error() {} }, document: { createElement: element },
     trackGenerationStart() {}, trackGenerationFailure() {}, trackGenerationSuccess() {},
-    useState: initial => { const index = states.push(initial) - 1; return [initial, value => { states[index] = typeof value === 'function' ? value(states[index]) : value; }]; },
-    useRef: initial => ({ current: initial }), useEffect() {}, useCallback: callback => callback,
-    waitForTraceUpscale: async () => null,
+    useState: initial => { const index = stateIndex++; if (!(index in states)) states[index] = initial; return [states[index], value => { states[index] = typeof value === 'function' ? value(states[index]) : value; }]; },
+    useRef: initial => refs[refIndex++] ||= { current: initial }, useEffect: effect => effects.push(effect), useCallback: callback => callback,
+    waitForTraceUpscale: localOpenAi ? waitForTraceUpscale : async () => null,
     fetch: async (url, init) => {
       const body = JSON.parse(init.body); requests.push({ url, body });
       if (failure) return Response.json(failure.body, { status: failure.status });
-      return Response.json({ success: true, alreadySaved: true, fileUrl: 'https://storage.test/flat.png', resolution, creditsCharged: cost, balanceAfter: credits - cost });
+      if (url === '/api/trace-upscale') return Response.json({ success: true, status: 'succeeded', fileUrl: 'https://storage.test/hd.png', upscaleSkipped: resolution === '4K' });
+      if (url === '/api/trace-step3') return pipelineFailure
+        ? Response.json({ error: 'Vector provider unavailable' }, { status: 503 })
+        : Response.json({ success: true, svg_url: 'https://storage.test/vector.svg' });
+      return Response.json({ success: true, alreadySaved: true, fileUrl: 'https://storage.test/flat.png', resolution, creditsCharged: cost, balanceAfter: credits - cost,
+        ...(localOpenAi ? { localOpenAiTest: { estimatedCostUsd: 0.1 } } : {}) });
     },
   });
-  const hook = vm.runInContext(`${source}\nuseTraceExecution`, context)({ project, extractionResolution: resolution,
+  const useHook = vm.runInContext(`${source}\nuseTraceExecution`, context);
+  const render = () => {
+    stateIndex = 0; refIndex = 0; effects.length = 0;
+    return useHook({ project, extractionResolution: resolution, garmentProvider: localOpenAi ? 'openai' : 'nano-banana',
     userCredits: credits, setUserCredits: update => { balance = typeof update === 'function' ? update(balance) : update; },
     setProject: update => { project = update(project); }, onNoCredits: () => { noCredits++; },
     supabase: { auth: { getSession: async () => ({ data: { session: { access_token: 'session' } } }) } },
-  });
+    });
+  };
+  const hook = render();
   if (captureLogs) hook.consoleRef.current = log;
-  return { hook, requests, balance: () => balance, noCredits: () => noCredits, text: () => logText(log) };
+  return { hook, requests, render, runEffects: () => effects.forEach(effect => effect()), project: () => project, balance: () => balance, noCredits: () => noCredits, text: () => logText(log) };
 }
+
+test('Vela automatically continues Garment, Logo and Universal through upscale and vector at every resolution, billing extraction once', async () => {
+  for (const traceType of ['mockup', 'logo', 'universal']) for (const resolution of ['1K', '2K', '4K']) {
+    const h = harness({ resolution, localOpenAi: true, traceType });
+    const result = await h.hook.handleExecuteTrace();
+    assert.equal(result.success, true);
+    h.render();
+    h.runEffects();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(h.requests.map(request => request.url), [traceType === 'universal' ? '/api/recovery/generate' : '/api/trace', '/api/trace-upscale', '/api/trace-step3']);
+    assert.equal(h.requests[0].body.garmentProvider, 'openai');
+    assert.equal(h.balance(), 100 - policy.extractionCredits(resolution));
+    assert.equal(h.project().generated_image_url, 'https://storage.test/flat.png');
+    assert.equal(h.project().upscaled_image_url, 'https://storage.test/hd.png');
+    assert.equal(h.project().svg_url, 'https://storage.test/vector.svg');
+  }
+});
+
+test('a failed Vela vector continuation preserves the paid extract and HD file without a second generation or refund', async () => {
+  const h = harness({ resolution: '2K', localOpenAi: true, pipelineFailure: true });
+  await h.hook.handleExecuteTrace();
+  assert.equal(h.project().generated_image_url, 'https://storage.test/flat.png');
+  assert.equal(h.project().upscaled_image_url, 'https://storage.test/hd.png');
+  assert.equal(h.project().svg_url, null);
+  assert.equal(h.balance(), 84);
+  assert.equal(h.requests.filter(request => request.url === '/api/trace').length, 1);
+  assert.equal(h.requests.some(request => /refund/.test(request.url)), false);
+});
 
 test('garment and logo send the selected resolution and use the approved 12/16/24 credits', async () => {
   for (const traceType of ['mockup', 'logo']) for (const [resolution, expectedCost] of [['1K', 12], ['2K', 16], ['4K', 24]]) {

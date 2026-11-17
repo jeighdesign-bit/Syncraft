@@ -7,7 +7,7 @@ export const PROJECT_ACCESS = Object.freeze({
 });
 
 const ACCESS_RANK = { view: 1, edit: 2, owner: 3 };
-const PROJECT_RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
+export const PROJECT_RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
 
 export function projectExpiresAt(project) {
   if (!project?.created_at) return null;

@@ -162,5 +162,4 @@
 
 @media (prefers-reduced-motion: reduce) {
   .dashboardLink, .signOutButton, .primaryLink, .secondaryLink, .copyButton, .sidebar nav a { transition: none; }
-  html:focus-within { scroll-behavior: auto; }
 }

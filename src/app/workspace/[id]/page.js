@@ -99,11 +99,14 @@ export default function Workspace() {
   // here, so it needs the colour setting too.
   const [vectorColors, setVectorColors] = useState("auto");
   const [extractionResolution, setExtractionResolution] = useState(DEFAULT_EXTRACTION_RESOLUTION);
+  const [garmentProvider, setGarmentProvider] = useState('nano-banana');
+  useEffect(() => { setGarmentProvider('nano-banana'); }, [projectId]);
   useEffect(() => { setExtractionResolution(DEFAULT_EXTRACTION_RESOLUTION); }, [projectId]);
   const [isSavingReferenceCategory, setIsSavingReferenceCategory] = useState(false);
 
   // ─── Modal State ──────────────────────────────────────────────────────────
   const [showCropModal, setShowCropModal] = useState(false);
+  const [skippedCrop, setSkippedCrop] = useState(null);
   const [showEraseModal, setShowEraseModal] = useState(false);
   const [showAiEdit, setShowAiEdit] = useState(false);
   const appliedEditRef = useRef(null);
@@ -138,6 +141,7 @@ export default function Workspace() {
     logToConsole, handleExecuteTrace, analyzeRecovery, handleResumeFromStep2, handleRetryVector,
   } = useTraceExecution({
     extractionResolution,
+    garmentProvider,
     project,
     setProject,
     userCredits,
@@ -462,6 +466,13 @@ export default function Workspace() {
   }, [canModifyProject, universalUnavailable, project, analyzeRecovery, handleExecuteTrace, logToConsole]);
 
   // ─── Crop Handlers ────────────────────────────────────────────────────────
+  const handleSkipCrop = useCallback(() => {
+    if (!canModifyProject || !project?.original_image_url || project.trace_type === 'universal') return;
+    setSkippedCrop({ projectId: project.id, sourceUrl: project.original_image_url });
+    setShowCropModal(false);
+    logToConsole('[Ready] Using your original image. Choose your model and resolution, then tap ↑ to generate.', 'normal');
+  }, [canModifyProject, project?.id, project?.original_image_url, project?.trace_type, logToConsole]);
+
   const handleCropApplied = useCallback((publicUrl, errorMsg) => {
     if (!canModifyProject) return;
     if (errorMsg) {
@@ -789,6 +800,7 @@ export default function Workspace() {
           project={project}
           traceState={traceState}
           isSavingCrop={isSavingCrop}
+          cropSkipped={skippedCrop?.projectId === project?.id && skippedCrop?.sourceUrl === project?.original_image_url}
           userCredits={userCredits}
           consoleRef={consoleRef}
           onExecuteTrace={onExecuteTrace}
@@ -810,6 +822,8 @@ export default function Workspace() {
           onVectorColorsChange={setVectorColors}
           extractionResolution={extractionResolution}
           onExtractionResolutionChange={setExtractionResolution}
+          garmentProvider={garmentProvider}
+          onGarmentProviderChange={setGarmentProvider}
           extendMode={canModifyProject && extendMode}
           extendProcessing={extendProcessing}
           extendCanProceed={!!extendPlan?.ok}
@@ -873,6 +887,7 @@ export default function Workspace() {
         project={project}
         supabase={supabase}
         onClose={() => setShowCropModal(false)}
+        onSkipCrop={handleSkipCrop}
         onCropApplied={handleCropApplied}
         onLoginRequired={handleLogin}
       />

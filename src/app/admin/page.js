@@ -356,6 +356,7 @@ export default function AdminDashboard() {
             <span>Admin</span>
           </button>
           <div className={styles.topbarActions}>
+            <Link className={styles.secondaryButton} href="/admin/generations">Generation history</Link>
             <Link className={styles.secondaryButton} href="/admin/community">Community logos</Link>
             {process.env.NODE_ENV !== "production" && (
               <Link className={styles.secondaryButton} href="/admin/finance">
