@@ -21,7 +21,7 @@ const steps = [
   },
 ];
 
-const OnboardingModal = memo(function OnboardingModal({ show, onClose }) {
+const OnboardingModal = memo(function OnboardingModal({ show, onClose, welcomeCredits = 0 }) {
   const dialogRef = useRef(null);
 
   useEffect(() => {
@@ -61,6 +61,17 @@ const OnboardingModal = memo(function OnboardingModal({ show, onClose }) {
           </p>
         </header>
 
+        {welcomeCredits > 0 && (
+          <div className={`${styles.creditNote} ${styles.welcomeCreditNote}`}>
+            <div>
+              <p className={styles.creditTitle}><CreditAmount amount={welcomeCredits} unit="free credits" /></p>
+              <p className={styles.creditDescription}>
+                Added to your account. A 1K Garment Extraction uses {CREDIT_COST.trace} credits and includes upscale and vector.
+              </p>
+            </div>
+          </div>
+        )}
+
         <ol className={styles.steps}>
           {steps.map(({ title, description }, index) => (
             <li key={title} className={styles.step}>
@@ -73,13 +84,15 @@ const OnboardingModal = memo(function OnboardingModal({ show, onClose }) {
           ))}
         </ol>
 
-        <div className={styles.creditNote}>
-          <div>
-            <p className={styles.creditTitle}><CreditAmount amount={CREDIT_COST.trace} /></p>
-            <p className={styles.creditDescription}>for one AI generation</p>
+        {welcomeCredits === 0 && (
+          <div className={styles.creditNote}>
+            <div>
+              <p className={styles.creditTitle}><CreditAmount amount={CREDIT_COST.trace} /></p>
+              <p className={styles.creditDescription}>for one AI generation</p>
+            </div>
+            <p className={styles.creditPrice}>Plans from <strong>{CREDIT_PLANS.tingi.price}</strong></p>
           </div>
-          <p className={styles.creditPrice}>Plans from <strong>{CREDIT_PLANS.tingi.price}</strong></p>
-        </div>
+        )}
 
         <button type="button" className={styles.startButton} onClick={onClose}>
           START CREATING NOW

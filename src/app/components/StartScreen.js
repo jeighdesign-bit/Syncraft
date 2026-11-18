@@ -1,7 +1,7 @@
 "use client";
 
 // ─── React & Routing ──────────────────────────────────────────────────────────
-import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -141,7 +141,7 @@ function SocialIcon({ name }) {
   );
 }
 
-export default function StartScreen({ workspaceRoute = false, initialUser = null }) {
+export default function StartScreen({ workspaceRoute = false, initialUser = null, welcomeCredits = 0 }) {
   const router = useRouter();
   const supabase = createClient();
   const fileInputRef = useRef(null);
@@ -187,7 +187,36 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
       window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
     }
   }, [workspaceRoute]);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboarding, setOnboarding] = useState(null);
+  const onboardingUserId = user?.id;
+  const signedInUserId = initialUser?.id;
+  const signedInUserCreatedAt = initialUser?.created_at;
+  useEffect(() => {
+    if (!workspaceRoute || !onboardingUserId || onboardingUserId !== signedInUserId) return;
+
+    const accountAge = Date.now() - Date.parse(signedInUserCreatedAt);
+    const isNew = accountAge >= 0 && accountAge < 60_000;
+    if (!welcomeCredits && !isNew) return;
+
+    const key = `syncraft:onboarding:${welcomeCredits ? "welcome-credits" : "intro"}:${onboardingUserId}`;
+    try {
+      if (localStorage.getItem(key) || (!welcomeCredits && localStorage.getItem("onboarding_seen"))) return;
+    } catch {
+      // The welcome can still be shown if browser storage is unavailable.
+    }
+    setOnboarding({ userId: onboardingUserId, key, welcomeCredits });
+  }, [workspaceRoute, onboardingUserId, signedInUserId, signedInUserCreatedAt, welcomeCredits]);
+
+  const dismissOnboarding = useCallback(() => {
+    if (onboarding) {
+      try {
+        localStorage.setItem(onboarding.key, "1");
+      } catch {
+        // Dismiss this visit even if browser storage is unavailable.
+      }
+    }
+    setOnboarding(null);
+  }, [onboarding]);
   const [activeLandingSection, setActiveLandingSection] = useState(null);
   const [pendingFile, setPendingFile] = useState(null); // holds file waiting for type selection
 
@@ -375,15 +404,8 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
   }, []);
 
   const fetchCredits = async (userId) => {
-    const { data } = await supabase.from("profiles").select("credits, created_at").eq("id", userId).single();
-    if (data) {
-      setCredits(data.credits);
-      const isNew = data.created_at && (Date.now() - new Date(data.created_at).getTime()) < 60000;
-      if (workspaceRoute && isNew && !localStorage.getItem("onboarding_seen")) {
-        setShowOnboarding(true);
-        localStorage.setItem("onboarding_seen", "1");
-      }
-    }
+    const { data } = await supabase.from("profiles").select("credits").eq("id", userId).single();
+    if (data) setCredits(data.credits);
   };
 
   const fetchRecentProjects = async (userId) => {
@@ -923,8 +945,9 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
         />
 
         <OnboardingModal
-          show={showOnboarding}
-          onClose={() => setShowOnboarding(false)}
+          show={Boolean(onboarding && onboarding.userId === user?.id && !showTopUpModal)}
+          welcomeCredits={onboarding?.welcomeCredits}
+          onClose={dismissOnboarding}
         />
 
         <TopUpModal

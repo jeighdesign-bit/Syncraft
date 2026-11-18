@@ -38,7 +38,7 @@ async function component(file, options = {}) {
       const value = options.states?.[index] ?? (initial === 'mockup_erase' && options.traceType ? options.traceType : initial);
       return [value, next => changes.push({ index, value: next })];
     },
-    useEffect() {}, useRef: initial => ({ current: initial }),
+    useEffect() {}, useRef: initial => ({ current: initial }), useCallback: fn => fn,
     React: { Fragment: 'fragment', createElement(type, props, ...children) {
       const node = { type, props: { ...props, children: children.length === 1 ? children[0] : children } };
       return options.expand && typeof type === 'function' ? type(node.props) : node;
