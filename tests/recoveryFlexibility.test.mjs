@@ -39,7 +39,8 @@ async function harness({ mode = 'UNIVERSAL_KEEP_ARTWORK', category = 'auto', wid
     extractLocalOpenAi: args => extractLocalOpenAi({ ...args, saveReport: false, fetchImpl: async (_url, init) => {
       events.openai++; events.openaiPrompt = init.body.get('prompt'); events.openaiInput = Buffer.from(await init.body.get('image[]').arrayBuffer());
       if (providerFails) throw new Error('Provider unavailable');
-      return Response.json({ data: [{ b64_json: output.toString('base64') }], usage: { output_tokens: 100 } }, { headers: { 'x-request-id': 'openai-request' } });
+      const usage = { input_tokens_details: { text_tokens: 10, image_tokens: 20 }, output_tokens: 100 };
+      return Response.json({ data: [{ b64_json: output.toString('base64') }], usage }, { headers: { 'x-request-id': 'openai-request' } });
     } }),
     buildRecoveryImageInput, matchRecoveryStripProportions, inspectStripExterior, createHash, sharp, Response, Buffer, URL, File, setTimeout,
     console: { warn() {}, error() {} },
@@ -82,7 +83,8 @@ test('Vela Universal uses both saved content modes and categories, one direct ed
     assert.match(events.openaiPrompt, /REFERENCE CATEGORY GUIDE: Poster/);
     assert.match(events.openaiPrompt, mode === 'UNIVERSAL_KEEP_ARTWORK' ? /KEEP ARTWORK/ : /EXTRACT PATTERN ONLY/);
     assert.doesNotMatch(events.openaiPrompt, /FABRICATED_WORD|imaginary back face|Remove the collar/);
-    assert.equal(response.body.localOpenAiTest.traceType, 'universal');
+    assert.equal(response.body.localOpenAiTest, undefined);
+    assert.equal(events.receipts[0].estimatedCostUsd, 0.00321);
   }
 });
 
