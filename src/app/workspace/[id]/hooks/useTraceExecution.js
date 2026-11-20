@@ -480,10 +480,6 @@ export function useTraceExecution({
         }
 
         // ─── Steps 2 & 3 ─────────────────────────────────────────────────
-        if (data1.localOpenAiTest) {
-          const estimate = data1.localOpenAiTest.estimatedCostUsd;
-          logToConsole('[Vela] Flat extract saved. ' + (estimate == null ? 'Cost unavailable.' : 'Estimated API cost: $' + estimate.toFixed(6)) + ' Continuing to Syncraft Upscale and Vector.', 'success');
-        }
         await runStep2And3({ authToken, vectorColors });
 
         setTraceState('idle');
