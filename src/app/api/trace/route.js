@@ -34,7 +34,6 @@ export async function POST(request) {
   let executionCost = CREDIT_COST.trace;
   let balanceAfter = null;
   let localOpenAiConfig = null;
-  let localOpenAiReport = null;
   let sourceMetadata = null;
   try {
     // ─── Auth: verify caller identity server-side ─────────────────────────────
@@ -237,13 +236,13 @@ export async function POST(request) {
         generatedMimeType = 'image/png';
         extractionMode = garmentExtractionMode();
         const expectedSize = localOpenAiSettings(targetAspectRatio, localOpenAiConfig.model, selectedResolution).size;
-        localOpenAiReport = localResult.report;
+        const { report } = localResult;
         geminiThinking = 'Generated with Syncraft Vela (' + selectedResolution + ' / High)';
         await recordProviderUsage({
           creditTransactionId: chargeTransactionId, projectId, userId, provider: 'openai',
-          endpoint: 'images/edits', providerRequestId: localOpenAiReport.requestId,
-          estimatedCostUsd: localOpenAiReport.estimatedCostUsd, isOwnerTest,
-          metadata: { openAiExtraction: true, model: localOpenAiConfig.model, resolution: selectedResolution, outputSize: expectedSize, quality: 'high', credits: executionCost, usage: localOpenAiReport.usage },
+          endpoint: 'images/edits', providerRequestId: report.requestId,
+          estimatedCostUsd: report.estimatedCostUsd, isOwnerTest,
+          metadata: { openAiExtraction: true, model: localOpenAiConfig.model, resolution: selectedResolution, outputSize: expectedSize, quality: 'high', credits: executionCost, usage: report.usage },
         });
         // A completed provider request still has a cost when its image fails
         // our size check. Record that receipt before issuing the linked refund.
@@ -429,7 +428,6 @@ export async function POST(request) {
           fileUrl,
           mimeType: generatedMimeType,
           thinking: geminiThinking,
-          ...(localOpenAiReport ? { localOpenAiTest: localOpenAiReport } : {}),
         });
       }
 
