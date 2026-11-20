@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { isLocalOpenAiRequest, shouldUseLocalOpenAi, extractLocalOpenAi, localOpenAiCost, localOpenAiSettings, localOpenAiUniversalSize, localOpenAiConfig, validateLocalOpenAiInput } from '../src/lib/localOpenAiExtraction.mjs';
 const dev = { NODE_ENV: 'development', LOCAL_OPENAI_GARMENT_TEST_ENABLED: 'true' };
+const production = { NODE_ENV: 'production', VERCEL_ENV: 'production', OPENAI_EXTRACTION_ENABLED: 'true',
+  NEXT_PUBLIC_SITE_URL: 'https://syncraftech.com', VERCEL_URL: 'syncraft-release.vercel.app' };
 const request = (url, host) => new Request(url, { headers: host ? { host } : {} });
 
 test('OpenAI stays disabled without the production opt-in and for public or spoofed development hosts', () => {
@@ -15,8 +17,6 @@ test('OpenAI stays disabled without the production opt-in and for public or spoo
 });
 
 test('production Vela requires the release flag, production environment and a trusted HTTPS host', () => {
-  const production = { NODE_ENV: 'production', VERCEL_ENV: 'production', OPENAI_EXTRACTION_ENABLED: 'true',
-    NEXT_PUBLIC_SITE_URL: 'https://syncraftech.com', VERCEL_URL: 'syncraft-release.vercel.app' };
   for (const host of ['syncraftech.com', 'www.syncraftech.com', 'syncraft-release.vercel.app']) {
     assert.equal(isLocalOpenAiRequest(request(`https://${host}/api/trace`, host), production), true);
   }
@@ -80,7 +80,7 @@ import sharp from 'sharp';
 import * as resolutionPolicy from '../src/lib/extractionResolution.mjs';
 import * as garmentPrompts from '../src/lib/garmentPromptRules.mjs';
 
-async function routeHarness({ apiKey = '', resolution = '1K', failProvider = false, aspectRatio = '1:1', wrongSize = false, traceType = 'mockup', available = true, sourceFormat = 'png' } = {}) {
+async function routeHarness({ apiKey = '', resolution = '1K', failProvider = false, aspectRatio = '1:1', wrongSize = false, traceType = 'mockup', available = true, sourceFormat = 'png', env = dev } = {}) {
   const image = await sharp({ create: { width: 1024, height: 1024, channels: 3, background: '#111111' } }).toFormat(sourceFormat).toBuffer();
   const [outputWidth, outputHeight] = localOpenAiSettings(aspectRatio, 'gpt-image-2.5-sunburst', ['1K', '2K', '4K'].includes(resolution) ? resolution : '1K').size.split('x').map(Number);
   const outputImage = wrongSize ? image : await sharp({ create: { width: outputWidth, height: outputHeight, channels: 3, background: '#111111' } }).png().toBuffer();
@@ -88,7 +88,7 @@ async function routeHarness({ apiKey = '', resolution = '1K', failProvider = fal
   const project = { id: 'project', user_id: 'owner', trace_type: traceType, original_image_url: 'https://storage.test/users/owner/ref.png', canvas_data: { garment_mode: 'ERASE_LOGOS' } };
   const text = (await readFile(new URL('../src/app/api/trace/route.js', import.meta.url), 'utf8')).replace(/^import[\s\S]*?;\r?\n/gm, '').replace(/export /g, '').replace(/\bimport\(/g, '__import(');
   const context = vm.createContext({ ...resolutionPolicy, ...garmentPrompts, Buffer, AbortSignal, URL, localOpenAiSettings, NextResponse: Response,
-    process: { env: { ...dev, LOCAL_OPENAI_GARMENT_TEST_ENABLED: available ? 'true' : 'false', OPENAI_API_KEY: apiKey, LOCAL_GARMENT_OPENAI_MODEL: 'gpt-image-2.5-sunburst' } }, console: { log() {}, warn() {}, error() {} },
+    process: { env: { ...env, LOCAL_OPENAI_GARMENT_TEST_ENABLED: available ? 'true' : 'false', OPENAI_API_KEY: apiKey, LOCAL_GARMENT_OPENAI_MODEL: 'gpt-image-2.5-sunburst' } }, console: { log() {}, warn() {}, error() {} },
     getLocalOpenAiConfig: localOpenAiConfig, validateLocalOpenAiInput,
     shouldUseLocalOpenAi: (req, item, _env, selected) => shouldUseLocalOpenAi(req, item, dev, selected), readLocalOpenAiKey: async () => apiKey, localOpenAiModel: () => 'gpt-image-2.5-sunburst',
     __import: async name => name === 'sharp' ? { default: sharp } : (calls.fal++, Promise.reject(new Error('Unexpected Nano Banana import'))),
@@ -117,7 +117,8 @@ async function routeHarness({ apiKey = '', resolution = '1K', failProvider = fal
     uploadToR2: async buffer => { assert.deepEqual(buffer, outputImage); calls.upload++; return 'https://storage.test/generated.png'; },
   });
   const post = vm.runInContext(`${text}\nPOST`, context);
-  const response = await post(new Request('http://localhost:3000/api/trace', { method: 'POST', headers: { host: 'localhost:3000', authorization: 'Bearer test-session', 'content-type': 'application/json' }, body: JSON.stringify({ projectId: 'project', step: 1, resolution, garmentProvider: 'openai' }) }));
+  const url = new URL('/api/trace', env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000');
+  const response = await post(new Request(url, { method: 'POST', headers: { host: url.host, authorization: 'Bearer test-session', 'content-type': 'application/json' }, body: JSON.stringify({ projectId: 'project', step: 1, resolution, garmentProvider: 'openai' }) }));
   return { status: response.status, body: await response.json(), calls };
 }
 
@@ -144,16 +145,20 @@ test('actual route rejects unsupported test resolution before charges or model w
   assert.equal(result.calls.fal, 0);
 });
 
-test('actual local garment route makes one OpenAI edit, retains the existing save and billing flow', async () => {
-  const result = await routeHarness({ apiKey: 'test-key' });
-  assert.equal(result.status, 200);
-  assert.equal(result.calls.openai, 1);
-  assert.equal(result.calls.fal, 0);
-  assert.equal(result.calls.charge, 1);
-  assert.equal(result.calls.upload, 1);
-  assert.equal(result.body.alreadySaved, true);
-  assert.equal(result.body.localOpenAiTest.estimatedCostUsd, 0.06);
-  assert.equal(result.calls.receipts[0].provider, 'openai');
+test('Vela garment and logo routes keep provider costs and usage server-side in development and production', async () => {
+  for (const env of [dev, production]) for (const traceType of ['mockup', 'logo']) {
+    const result = await routeHarness({ apiKey: 'test-key', env, traceType });
+    assert.equal(result.status, 200);
+    assert.equal(result.calls.openai, 1);
+    assert.equal(result.calls.fal, 0);
+    assert.equal(result.calls.charge, 1);
+    assert.equal(result.calls.upload, 1);
+    assert.equal(result.body.alreadySaved, true);
+    assert.doesNotMatch(JSON.stringify(result.body), /localOpenAiTest|estimatedCostUsd|output_tokens|mock-request/);
+    assert.equal(result.calls.receipts[0].provider, 'openai');
+    assert.equal(result.calls.receipts[0].estimatedCostUsd, 0.06);
+    assert.equal(result.calls.receipts[0].metadata.usage.output_tokens, 1756);
+  }
 });
 
 test('OpenAI failure uses the existing linked refund without a Nano Banana retry', async () => {
@@ -223,7 +228,7 @@ test('both OpenAI content modes remove physical garment construction without era
   }
 });
 
-test('OpenAI sends the saved removal mode and excludes full prompt diagnostics from its client report', async () => {
+test('OpenAI sends the saved removal mode and excludes full prompt diagnostics from the usage report', async () => {
   const result = await extractLocalOpenAi({ apiKey: 'test-key', model: 'gpt-image-2.6-sunburst', image: Buffer.from('reference'), mime: 'image/jpeg', garmentMode: 'ERASE_LOGOS', aspectRatio: '9:16', saveReport: false,
     fetchImpl: async (_url, init) => {
       const prompt = init.body.get('prompt');

@@ -52,6 +52,7 @@ export default function ArtworkEditModal({
   const [activeComment, setActiveComment] = useState(null);
   const commentInput = useRef(null);
   const commentSend = useRef(null);
+  const candidateId = useRef(null);
   const [candidate, setCandidate] = useState(null);
   const [versions, setVersions] = useState([]);
   const [busy, setBusy] = useState('');
@@ -98,8 +99,17 @@ export default function ArtworkEditModal({
   );
 
   const applySnapshot = useCallback((data) => {
+    const nextCandidate = data.candidate || null;
+    if (candidateId.current !== (nextCandidate?.id ?? null)) {
+      candidateId.current = nextCandidate?.id ?? null;
+      setPrompt('');
+      setComments([]);
+      setActiveComment(null);
+      setCommentMode(false);
+      setViewOriginal(false);
+    }
     setVersions(data.versions || []);
-    setCandidate(data.candidate || null);
+    setCandidate(nextCandidate);
     setPending(data.pending || null);
     setStatusReady(true);
     if (!data.pending) requestId.current = null;
@@ -118,11 +128,7 @@ export default function ArtworkEditModal({
     setBusy('loading');
     request('GET')
       .then((data) => {
-        if (disposed) return;
-        setVersions(data.versions || []);
-        setCandidate(data.candidate || null);
-        setPending(data.pending || null);
-        setStatusReady(true);
+        if (!disposed) applySnapshot(data);
       })
       .catch((err) => {
         if (!disposed) {
@@ -183,8 +189,9 @@ export default function ArtworkEditModal({
       : { width: 180, height: 180 };
   const imageReady = previewStatus?.url === currentUrl && previewStatus.state === 'ready';
   const imageError = previewStatus?.url === currentUrl && previewStatus.state === 'error';
-  const commentsLocked =
-    !!busy || !!pending || !!candidate || !statusReady || !imageReady || imageError;
+  const lookingAtOriginal = !!candidate && viewOriginal;
+  const editControlsLocked =
+    !!busy || !!pending || lookingAtOriginal || !statusReady || !imageReady || imageError;
   const incompleteComments = comments.some((comment) => !comment.text.trim());
   const hasInstructions = !!prompt.trim() || comments.length > 0;
   const selectedComment = comments.find((comment) => comment.id === activeComment);
@@ -193,7 +200,7 @@ export default function ArtworkEditModal({
     if (activeComment) commentInput.current?.focus();
   }, [activeComment]);
   const addComment = (x, y) => {
-    if (commentsLocked || comments.length >= MAX_ARTWORK_COMMENTS) return;
+    if (editControlsLocked || comments.length >= MAX_ARTWORK_COMMENTS) return;
     const id = crypto.randomUUID();
     setComments((current) => [...current, { id, x, y, text: '' }]);
     setActiveComment(id);
@@ -225,17 +232,7 @@ export default function ArtworkEditModal({
 
   const generate = async (event) => {
     event.preventDefault();
-    if (
-      busy ||
-      pending ||
-      !statusReady ||
-      candidate ||
-      !hasInstructions ||
-      incompleteComments ||
-      !imageReady ||
-      imageError
-    )
-      return;
+    if (editControlsLocked || !hasInstructions || incompleteComments) return;
     if (userCredits !== null && userCredits < cost) {
       onClose();
       onOpenTopUp();
@@ -249,15 +246,11 @@ export default function ArtworkEditModal({
         prompt: prompt.trim(),
         comments: comments.map(({ x, y, text }) => ({ x, y, text: text.trim() })),
         sourceUrl,
+        previewId: candidate?.id ?? null,
         requestId: requestId.current,
       });
-      setCandidate(data.candidate);
-      setPending(data.pending || null);
-      setVersions(data.versions || versions);
-      setViewOriginal(false);
-      setCommentMode(false);
+      applySnapshot(data);
       setActiveComment(null);
-      requestId.current = null;
       onCreditsUpdated?.();
     } catch (err) {
       setError(err.message);
@@ -281,15 +274,7 @@ export default function ArtworkEditModal({
     try {
       const data = await request('PATCH', { action, editId, sourceUrl });
       if (data.project) onProjectUpdated(data.project);
-      setCandidate(data.candidate || null);
-      setPending(data.pending || null);
-      setVersions(data.versions || []);
-      setViewOriginal(false);
-      setPrompt('');
-      setComments([]);
-      setActiveComment(null);
-      setCommentMode(false);
-      requestId.current = null;
+      applySnapshot(data);
       if (action !== 'discard') onClose();
     } catch (err) {
       setError(err.message);
@@ -321,7 +306,7 @@ export default function ArtworkEditModal({
           <h2 id="artwork-edit-title">AI Edit</h2>
         </div>
         <p id="artwork-edit-description" className={styles.srOnly}>
-          Describe an edit, preview the result, then apply it to your artwork.
+          Describe an edit, refine the preview, then apply it to your artwork.
         </p>
         <button
           type="button"
@@ -352,7 +337,7 @@ export default function ArtworkEditModal({
             }}
             onError={() => setPreviewStatus({ url: currentUrl, state: 'error' })}
           />
-          {imageReady && !candidate && !pending && !busy && (
+          {!editControlsLocked && (
             <div
               className={`${styles.commentLayer} ${commentMode ? styles.commenting : ''}`}
               style={loadingBounds}
@@ -373,7 +358,6 @@ export default function ArtworkEditModal({
                   style={{ left: `${comment.x * 100}%`, top: `${comment.y * 100}%` }}
                   aria-label={`Edit comment ${index + 1}: ${comment.text || 'Empty comment'}`}
                   aria-pressed={activeComment === comment.id}
-                  disabled={commentsLocked}
                   onClick={() => {
                     setCommentMode(true);
                     setActiveComment(comment.id);
@@ -384,7 +368,7 @@ export default function ArtworkEditModal({
               ))}
             </div>
           )}
-          {selectedComment && commentPosition && !commentsLocked && (
+          {selectedComment && commentPosition && !editControlsLocked && (
             <ArtworkCommentPopover
               comment={selectedComment}
               number={comments.findIndex((comment) => comment.id === activeComment) + 1}
@@ -420,33 +404,31 @@ export default function ArtworkEditModal({
           {!commentMode && (
             <div
               className={`${styles.toolbar} ${!candidate ? styles.floatingToolbar : ''}`}
-              role={!candidate ? 'group' : undefined}
-              aria-label={!candidate ? 'Artwork tools' : undefined}
+              role="group"
+              aria-label="Artwork tools"
             >
               {!candidate && (
                 <GripVertical className={styles.toolbarGrip} size={15} aria-hidden="true" />
               )}
-              {!candidate && (
-                <button
-                  type="button"
-                  className={styles.commentToggle}
-                  aria-pressed={commentMode}
-                  title="Click the artwork to add comments"
-                  disabled={commentsLocked}
-                  onClick={() => {
-                    setCommentMode((current) => !current);
-                    setActiveComment(null);
-                  }}
-                >
-                  <MousePointerSquareDashed size={17} strokeWidth={1.6} aria-hidden="true" />
-                  <span>Comment{comments.length > 0 ? ` (${comments.length})` : ''}</span>
-                </button>
-              )}
+              <button
+                type="button"
+                className={styles.commentToggle}
+                title="Click the artwork to add comments"
+                disabled={editControlsLocked}
+                onClick={() => {
+                  setCommentMode(true);
+                  setActiveComment(null);
+                }}
+              >
+                <MousePointerSquareDashed size={17} strokeWidth={1.6} aria-hidden="true" />
+                <span>Comment{comments.length > 0 ? ` (${comments.length})` : ''}</span>
+              </button>
               {candidate ? (
                 <div className={styles.compare} aria-label="Compare artwork">
                   <button
                     type="button"
                     aria-pressed={viewOriginal}
+                    disabled={!!busy || !!pending}
                     onClick={() => setViewOriginal(true)}
                   >
                     Before
@@ -454,6 +436,7 @@ export default function ArtworkEditModal({
                   <button
                     type="button"
                     aria-pressed={!viewOriginal}
+                    disabled={!!busy || !!pending}
                     onClick={() => setViewOriginal(false)}
                   >
                     After
@@ -504,7 +487,7 @@ export default function ArtworkEditModal({
                 type="button"
                 className={styles.commentInstructions}
                 title="Add a comment at the center of the artwork"
-                disabled={commentsLocked || comments.length >= MAX_ARTWORK_COMMENTS}
+                disabled={editControlsLocked || comments.length >= MAX_ARTWORK_COMMENTS}
                 onClick={() => addComment(0.5, 0.5)}
               >
                 {comments.length >= MAX_ARTWORK_COMMENTS
@@ -517,7 +500,7 @@ export default function ArtworkEditModal({
                 className={styles.commentSend}
                 aria-label={`Send comments for ${cost} credits`}
                 title={`Send comments · ${cost} credits`}
-                disabled={commentsLocked || !comments.length || incompleteComments}
+                disabled={editControlsLocked || !comments.length || incompleteComments}
                 onClick={generate}
               >
                 {busy === 'generating' ? <Loader2 size={15} className={styles.spin} /> : <>Send <CreditAmount amount={cost} unit="" /></>}
@@ -534,7 +517,7 @@ export default function ArtworkEditModal({
               </button>
             </div>
           )}
-          {incompleteComments && !selectedComment && !commentsLocked && (
+          {incompleteComments && !selectedComment && !editControlsLocked && (
             <p className={styles.hint}>
               Select an empty pin to add its instruction, or delete it before sending.
             </p>
@@ -584,7 +567,7 @@ export default function ArtworkEditModal({
                 <button
                   type="button"
                   className={styles.secondary}
-                  disabled={!!busy || !!pending}
+                  disabled={!!busy || !!pending || !statusReady}
                   onClick={() => change('discard', candidate.id)}
                 >
                   Discard
@@ -592,7 +575,7 @@ export default function ArtworkEditModal({
                 <button
                   type="button"
                   className={styles.primary}
-                  disabled={!!busy || !!pending || !imageReady || imageError}
+                  disabled={editControlsLocked}
                   onClick={() => change('accept', candidate.id)}
                 >
                   {busy === 'accept' ? (
@@ -604,7 +587,8 @@ export default function ArtworkEditModal({
                 </button>
               </div>
             </div>
-          ) : !commentMode ? (
+          ) : null}
+          {!commentMode && (
             <form className={styles.form} onSubmit={generate}>
               <label htmlFor="artwork-edit-prompt" className={styles.srOnly}>
                 Describe edits
@@ -625,8 +609,14 @@ export default function ArtworkEditModal({
                   }
                 }}
                 maxLength={1500}
-                disabled={!!busy || !!pending || !statusReady}
-                placeholder="Describe edits…"
+                disabled={!!busy || !!pending || !statusReady || lookingAtOriginal}
+                placeholder={
+                  lookingAtOriginal
+                    ? 'Switch to After to refine the preview.'
+                    : candidate
+                      ? 'Describe another change.'
+                      : 'Describe edits…'
+                }
               />
               <div className={styles.composerActions}>
                 <span className={styles.cost}><CreditAmount amount={cost} /></span>
@@ -635,15 +625,7 @@ export default function ArtworkEditModal({
                   className={styles.send}
                   aria-label={`Generate edit for ${cost} credits`}
                   title={`Generate edit · ${cost} credits`}
-                  disabled={
-                    !!busy ||
-                    !!pending ||
-                    !statusReady ||
-                    !hasInstructions ||
-                    incompleteComments ||
-                    !imageReady ||
-                    imageError
-                  }
+                  disabled={editControlsLocked || !hasInstructions || incompleteComments}
                 >
                   {busy || (pending && statusReady) ? (
                     <Loader2 size={19} className={styles.spin} />
@@ -653,14 +635,14 @@ export default function ArtworkEditModal({
                 </button>
               </div>
             </form>
-          ) : null}
+          )}
           <p className={styles.hint} role="status">
             {pending && !statusReady
               ? 'Could not confirm the saved edit. Check its status before sending another request.'
               : busy === 'generating' || pending
                 ? 'Editing your artwork… Your request is saved.'
                 : candidate
-                  ? 'Apply to update your artwork. Syncraft Upscale and Syncraft Vector will need rebuilding.'
+                  ? 'Add another edit or apply this preview. Applying resets any upscale and vector exports.'
                   : commentMode
                     ? <><CreditAmount amount={cost} /> per edit</>
                     : 'Failed edits are refunded. Your current artwork stays saved.'}

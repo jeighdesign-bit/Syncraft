@@ -205,7 +205,6 @@ export async function POST(request) {
   let balanceAfter = null;
   let openAi = null;
   let openAiSource = null;
-  let localOpenAiReport = null;
   try {
     const token = request.headers.get("authorization")?.replace("Bearer ", "").trim();
     const { data: { user } } = await adminSupabase.auth.getUser(token || "");
@@ -315,7 +314,6 @@ export async function POST(request) {
       const result = await extractLocalOpenAi({ apiKey: openAi.apiKey, model: openAi.model, traceType: 'universal',
         image: source.buffer, mime: 'image/png', sourceDimensions: { width: sourceWidth, height: sourceHeight },
         projectId, recoveryMode, referenceCategory: analysis.reference_category, resolution: selectedResolution });
-      localOpenAiReport = result.report;
       downloaded = { buffer: result.buffer, response: new Response(null, { headers: { 'content-type': 'image/png' } }) };
       await recordProviderUsage({ creditTransactionId: chargeTransactionId, projectId, userId, provider: 'openai',
         endpoint: 'images/edits', providerRequestId: result.report.requestId, estimatedCostUsd: result.report.estimatedCostUsd, isOwnerTest,
@@ -426,7 +424,6 @@ export async function POST(request) {
       recoveryStatus: validation.pass ? "complete" : "partial",
       validation,
       analysis,
-      ...(localOpenAiReport ? { localOpenAiTest: localOpenAiReport } : {}),
     });
   } catch (error) {
     const errorMessage = providerErrorMessage(error);

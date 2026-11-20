@@ -52,6 +52,97 @@ test("comment-only edits send artwork-relative locations to the provider and pre
   assert.equal(f.calls.charge, 1);
 });
 
+test("prompts and comments can refine successive previews before the latest preview is applied", async () => {
+  const validatedSources = [];
+  const submissions = [];
+  const f = fixture({
+    validateSource: async (_project, url) => { validatedSources.push(url); },
+    sourceUrl: async url => `reference:${url}`,
+    submit: async input => {
+      submissions.push(input);
+      return { request_id: `fal-job-${submissions.length}` };
+    },
+    save: async (_project, job) => `preview:${job.id}`,
+  });
+  await f.service.generate(f.input);
+  const first = await f.service.read("project");
+  const refinement = {
+    ...f.input,
+    requestId: "refine-preview-with-comments",
+    previewId: first.candidate.id,
+    prompt: "",
+    comments: [{ x: .5, y: .25, text: "Make this stripe green" }],
+  };
+  const queued = await f.service.generate(refinement);
+  assert.equal(queued.candidate.id, first.candidate.id);
+  assert.equal(queued.pending.requestId, refinement.requestId);
+  await assert.rejects(
+    f.service.change({ projectId: "project", action: "accept", editId: first.candidate.id, sourceUrl: "flat" }),
+    /wait/i,
+  );
+
+  const second = await f.service.generate(refinement);
+  assert.equal(second.candidate.id, refinement.requestId);
+  assert.match(submissions[1].prompt, /Make this stripe green/);
+  await assert.rejects(
+    f.service.generate({ ...refinement, previewId: null }),
+    /another edit/,
+  );
+  await assert.rejects(
+    f.service.generate({ ...refinement, requestId: "stale-refinement-request" }),
+    /preview changed/,
+  );
+
+  const final = { ...f.input, requestId: "refine-preview-with-a-prompt", previewId: second.candidate.id };
+  await f.service.generate(final);
+  const third = await f.service.read("project");
+  assert.equal(third.candidate.id, final.requestId);
+  assert.equal(third.project.generated_image_url, "flat");
+  assert.equal(third.project.upscaled_image_url, "hd");
+  assert.equal(third.versions.length, 0);
+  assert.deepEqual(validatedSources, ["flat", first.candidate.imageUrl, second.candidate.imageUrl]);
+  assert.deepEqual(submissions.map(input => input.image_urls[0]), validatedSources.map(url => `reference:${url}`));
+  assert.equal(f.calls.charge, 3);
+
+  const applied = await f.service.change({ projectId: "project", action: "accept", editId: final.requestId, sourceUrl: "flat" });
+  assert.equal(applied.project.generated_image_url, third.candidate.imageUrl);
+  assert.equal(applied.project.upscaled_image_url, null);
+  assert.deepEqual(applied.versions.map(version => version.imageUrl), ["flat", third.candidate.imageUrl]);
+  assert.equal(f.calls.charge, 3);
+});
+
+test("a failed refinement refunds its own charge and leaves the previous preview available", async () => {
+  let shouldFail = false;
+  const f = fixture({ result: async () => shouldFail ? null : { url: "provider-output" } });
+  await f.service.generate(f.input);
+  const first = await f.service.read("project");
+
+  shouldFail = true;
+  await f.service.generate({ ...f.input, requestId: "refinement-that-fails", previewId: first.candidate.id });
+  await assert.rejects(f.service.read("project"), error => {
+    assert.match(error.message, /refunded/);
+    assert.deepEqual(error.snapshot.candidate, first.candidate);
+    assert.equal(error.snapshot.pending, null);
+    return true;
+  });
+  assert.equal(f.calls.charge, 2);
+  assert.equal(f.calls.refund, 1);
+  const applied = await f.service.change({ projectId: "project", action: "accept", editId: first.candidate.id, sourceUrl: "flat" });
+  assert.equal(applied.project.generated_image_url, first.candidate.imageUrl);
+});
+
+test("a preview of replaced artwork cannot be refined against the new saved artwork", async () => {
+  const f = fixture();
+  await f.service.generate(f.input);
+  const first = await f.service.read("project");
+  f.setProject({ ...f.project(), generated_image_url: "replacement" });
+  await assert.rejects(
+    f.service.generate({ ...f.input, sourceUrl: "replacement", requestId: "refine-replaced-artwork", previewId: first.candidate.id }),
+    /preview changed/,
+  );
+  assert.equal(f.calls.charge, 1);
+});
+
 test("invalid or unfinished comments are refused before billing", async () => {
   for (const comments of [null, {}, [{ x: 1.01, y: .5, text: "Change" }], [{ x: .5, y: NaN, text: "Change" }], [{ x: .5, y: .5, text: " " }], [{ x: .5, y: .5, text: "a".repeat(301) }], Array.from({ length: 9 }, () => ({ x: 0, y: 1, text: "Change" }))]) {
     const f = fixture();
