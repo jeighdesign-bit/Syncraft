@@ -8,6 +8,7 @@ const ACTIVE = new Set(['billing', 'submitting', 'queued', 'ready', 'unknown']);
 const MAX_EDITS = 40;
 const fail = (message, status = 409) => Object.assign(new Error(message), { status });
 const stateOf = (project) => project.canvas_data?.artwork_edits || { jobs: [], versions: [] };
+const previewOf = (state) => state.jobs.find((job) => job.status === 'preview');
 const item = (job) => ({
   id: job.id,
   imageUrl: job.imageUrl,
@@ -18,7 +19,7 @@ const item = (job) => ({
 
 export function artworkEditSnapshot(project) {
   const state = stateOf(project);
-  const candidate = state.jobs.find((job) => job.status === 'preview');
+  const candidate = previewOf(state);
   const pending = state.jobs.find((job) => ACTIVE.has(job.status));
   return {
     project,
@@ -158,8 +159,10 @@ export function createArtworkEditService(deps) {
         }
         throw error;
       }
-      project = await jobUpdate(projectId, job.id, (current) => {
+      project = await jobUpdate(projectId, job.id, (current, state) => {
         if (current.status === 'ready') {
+          const previous = previewOf(state);
+          if (previous) previous.status = 'superseded';
           current.status = 'preview';
           current.imageUrl = imageUrl;
         }
@@ -175,6 +178,7 @@ export function createArtworkEditService(deps) {
     prompt = '',
     comments = [],
     sourceUrl,
+    previewId = null,
     requestId,
   }) {
     try {
@@ -196,6 +200,7 @@ export function createArtworkEditService(deps) {
       if (
         previous.prompt !== prompt ||
         previous.sourceUrl !== sourceUrl ||
+        (previous.previewId ?? null) !== previewId ||
         JSON.stringify(previous.comments || []) !== JSON.stringify(comments)
       )
         throw fail('This request ID already belongs to another edit.');
@@ -203,15 +208,25 @@ export function createArtworkEditService(deps) {
     }
     if (project.generated_image_url !== sourceUrl)
       throw fail('The artwork changed. Reopen AI Edit before editing it.');
-    await deps.validateSource(project, sourceUrl);
+    const preview = previewOf(stateOf(project));
+    if ((preview?.id ?? null) !== previewId || (preview && preview.sourceUrl !== sourceUrl))
+      throw fail('The saved edit preview changed. Check it before sending another edit.');
+    const editSourceUrl = preview ? preview.imageUrl : sourceUrl;
+    await deps.validateSource(project, editSourceUrl);
     project = await update(projectId, (state, latest) => {
       if (latest.generated_image_url !== sourceUrl)
         throw fail('The artwork changed. Reopen AI Edit before editing it.');
+      const currentPreview = previewOf(state);
+      if (
+        (currentPreview?.id ?? null) !== previewId ||
+        (currentPreview &&
+          (currentPreview.imageUrl !== editSourceUrl || currentPreview.sourceUrl !== sourceUrl))
+      )
+        throw fail('The saved edit preview changed. Check it before sending another edit.');
       if (
         state.jobs.some(
           (job) =>
             ACTIVE.has(job.status) ||
-            job.status === 'preview' ||
             (job.status === 'failed' && job.chargeId && !job.refunded),
         )
       )
@@ -224,6 +239,7 @@ export function createArtworkEditService(deps) {
         prompt,
         comments,
         sourceUrl,
+        previewId,
         actorId,
         createdAt: now(),
         status: 'billing',
@@ -252,7 +268,7 @@ export function createArtworkEditService(deps) {
       );
     let inputUrl;
     try {
-      inputUrl = await deps.sourceUrl(sourceUrl);
+      inputUrl = await deps.sourceUrl(editSourceUrl);
     } catch (error) {
       const diagnostic = artworkEditFailureDetails(error, 'prepare-source');
       await jobUpdate(projectId, requestId, (job) => {
