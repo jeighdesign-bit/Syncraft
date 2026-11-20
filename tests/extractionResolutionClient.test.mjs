@@ -52,7 +52,7 @@ function harness({ resolution = '1K', credits = 100, traceType = 'mockup', failu
 
 test('Vela automatically continues Garment, Logo and Universal through upscale and vector at every resolution, billing extraction once', async () => {
   for (const traceType of ['mockup', 'logo', 'universal']) for (const resolution of ['1K', '2K', '4K']) {
-    const h = harness({ resolution, localOpenAi: true, traceType });
+    const h = harness({ resolution, localOpenAi: true, traceType, captureLogs: true });
     const result = await h.hook.handleExecuteTrace();
     assert.equal(result.success, true);
     h.render();
@@ -64,6 +64,7 @@ test('Vela automatically continues Garment, Logo and Universal through upscale a
     assert.equal(h.project().generated_image_url, 'https://storage.test/flat.png');
     assert.equal(h.project().upscaled_image_url, 'https://storage.test/hd.png');
     assert.equal(h.project().svg_url, 'https://storage.test/vector.svg');
+    assert.doesNotMatch(h.text(), /estimated api cost|\$0\.100000/i);
   }
 });
 
