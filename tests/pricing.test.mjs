@@ -62,3 +62,12 @@ test("the credit FAQ distinguishes six-credit variations from eight-credit creat
   assert.match(plainText(html), /creation or AI edit costs 8 credits per output; variations cost 6 credits per output/);
   assert.match(plainText(html), /12 credits at 1K, 16 credits at 2K, 24 credits at 4K/);
 });
+
+test("onboarding shows paid plans without advertising the paused signup bonus", async () => {
+  for (const props of [{ show: true }, { show: true, welcomeCredits: 12 }]) {
+    const text = plainText(await renderPricingComponent("OnboardingModal", props));
+    assert.match(text, /START CREATING NOW/);
+    assert.ok(text.includes(CREDIT_PLANS.tingi.price));
+    assert.doesNotMatch(text, /free credits|welcome credits|added to your account|12\s*credits/i);
+  }
+});

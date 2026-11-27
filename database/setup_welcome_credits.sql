@@ -1,5 +1,6 @@
 -- Run after setup_auth.sql and setup_verified_credit_ledger.sql.
--- Only accounts inserted after this trigger is installed can earn the grant.
+-- Signup bonus paused. Only accounts already marked pending before the pause
+-- may finish claiming their grant by confirming their email.
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 
@@ -32,25 +33,11 @@ DECLARE
   welcome_amount constant integer := 12;
   new_balance integer;
 BEGIN
-  IF NEW.email IS NULL OR NEW.is_anonymous THEN
-    RETURN NEW;
-  END IF;
-
-  IF TG_OP = 'UPDATE' THEN
-    -- Only the first confirmation of an eligible new account can grant credits.
-    IF OLD.email_confirmed_at IS NOT NULL OR NEW.email_confirmed_at IS NULL THEN
-      RETURN NEW;
-    END IF;
-  ELSIF NEW.email_confirmed_at IS NULL THEN
-    UPDATE public.profiles SET welcome_credits_pending = true WHERE id = NEW.id;
-    RETURN NEW;
-  END IF;
-
   UPDATE public.profiles
   SET credits = COALESCE(credits, 0) + welcome_amount,
       welcome_credits_pending = false
   WHERE id = NEW.id
-    AND (TG_OP = 'INSERT' OR welcome_credits_pending)
+    AND welcome_credits_pending
   RETURNING credits INTO new_balance;
 
   IF FOUND THEN
@@ -69,10 +56,11 @@ $$;
 
 REVOKE EXECUTE ON FUNCTION public.grant_verified_welcome_credits() FROM PUBLIC, anon, authenticated;
 
--- PostgreSQL fires these triggers alphabetically. on_auth_user_created creates
--- the profile before on_auth_user_welcome_credits reads or writes it.
 CREATE OR REPLACE TRIGGER on_auth_user_welcome_credits
-  AFTER INSERT OR UPDATE OF email_confirmed_at ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.grant_verified_welcome_credits();
+  AFTER UPDATE OF email_confirmed_at ON auth.users
+  FOR EACH ROW
+  WHEN (OLD.email_confirmed_at IS NULL AND NEW.email_confirmed_at IS NOT NULL
+        AND NEW.email IS NOT NULL AND NOT NEW.is_anonymous)
+  EXECUTE FUNCTION public.grant_verified_welcome_credits();
 
 COMMIT;
