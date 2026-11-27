@@ -136,19 +136,6 @@
   line-height: 1.3;
 }
 
-.welcomeCreditNote {
-  margin-top: 20px;
-  border-color: #485737;
-  background: #293021;
-}
-
-.creditDescription {
-  margin: 0;
-  color: #adb0a9;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
 .creditPrice {
   margin: 0;
   color: #adb0a9;
