@@ -1,7 +1,5 @@
 "use client";
 
-import { CREDIT_COST } from '@/lib/pricing';
-import CreditAmount from '@/components/CreditAmount';
 import { memo, useEffect, useRef } from "react";
 import { CREDIT_PLANS } from "@/lib/paymentPlans";
 import styles from "./OnboardingModal.module.css";
@@ -21,7 +19,7 @@ const steps = [
   },
 ];
 
-const OnboardingModal = memo(function OnboardingModal({ show, onClose, welcomeCredits = 0 }) {
+const OnboardingModal = memo(function OnboardingModal({ show, onClose }) {
   const dialogRef = useRef(null);
 
   useEffect(() => {
@@ -61,17 +59,6 @@ const OnboardingModal = memo(function OnboardingModal({ show, onClose, welcomeCr
           </p>
         </header>
 
-        {welcomeCredits > 0 && (
-          <div className={`${styles.creditNote} ${styles.welcomeCreditNote}`}>
-            <div>
-              <p className={styles.creditTitle}><CreditAmount amount={welcomeCredits} unit="free credits" /></p>
-              <p className={styles.creditDescription}>
-                Added to your account. A 1K Garment Extraction uses {CREDIT_COST.trace} credits and includes upscale and vector.
-              </p>
-            </div>
-          </div>
-        )}
-
         <ol className={styles.steps}>
           {steps.map(({ title, description }, index) => (
             <li key={title} className={styles.step}>
@@ -84,15 +71,10 @@ const OnboardingModal = memo(function OnboardingModal({ show, onClose, welcomeCr
           ))}
         </ol>
 
-        {welcomeCredits === 0 && (
-          <div className={styles.creditNote}>
-            <div>
-              <p className={styles.creditTitle}><CreditAmount amount={CREDIT_COST.trace} /></p>
-              <p className={styles.creditDescription}>for one AI generation</p>
-            </div>
-            <p className={styles.creditPrice}>Plans from <strong>{CREDIT_PLANS.tingi.price}</strong></p>
-          </div>
-        )}
+        <div className={styles.creditNote}>
+          <p className={styles.creditTitle}>Generation credits</p>
+          <p className={styles.creditPrice}>Plans from <strong>{CREDIT_PLANS.tingi.price}</strong></p>
+        </div>
 
         <button type="button" className={styles.startButton} onClick={onClose}>
           START CREATING NOW
