@@ -141,7 +141,7 @@ function SocialIcon({ name }) {
   );
 }
 
-export default function StartScreen({ workspaceRoute = false, initialUser = null, welcomeCredits = 0 }) {
+export default function StartScreen({ workspaceRoute = false, initialUser = null }) {
   const router = useRouter();
   const supabase = createClient();
   const fileInputRef = useRef(null);
@@ -196,16 +196,17 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
 
     const accountAge = Date.now() - Date.parse(signedInUserCreatedAt);
     const isNew = accountAge >= 0 && accountAge < 60_000;
-    if (!welcomeCredits && !isNew) return;
+    if (!isNew) return;
 
-    const key = `syncraft:onboarding:${welcomeCredits ? "welcome-credits" : "intro"}:${onboardingUserId}`;
+    const key = `syncraft:onboarding:intro:${onboardingUserId}`;
     try {
-      if (localStorage.getItem(key) || (!welcomeCredits && localStorage.getItem("onboarding_seen"))) return;
+      if (localStorage.getItem(key) || localStorage.getItem("onboarding_seen") ||
+          localStorage.getItem(`syncraft:onboarding:welcome-credits:${onboardingUserId}`)) return;
     } catch {
       // The welcome can still be shown if browser storage is unavailable.
     }
-    setOnboarding({ userId: onboardingUserId, key, welcomeCredits });
-  }, [workspaceRoute, onboardingUserId, signedInUserId, signedInUserCreatedAt, welcomeCredits]);
+    setOnboarding({ userId: onboardingUserId, key });
+  }, [workspaceRoute, onboardingUserId, signedInUserId, signedInUserCreatedAt]);
 
   const dismissOnboarding = useCallback(() => {
     if (onboarding) {
@@ -946,7 +947,6 @@ export default function StartScreen({ workspaceRoute = false, initialUser = null
 
         <OnboardingModal
           show={Boolean(onboarding && onboarding.userId === user?.id && !showTopUpModal)}
-          welcomeCredits={onboarding?.welcomeCredits}
           onClose={dismissOnboarding}
         />
 
